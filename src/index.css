@@ -1,0 +1,217 @@
+/* src/index.css (Final Version) */
+
+/* --- 1. 변수 및 기본 스타일 설정 --- */
+:root {
+  --primary-color: #3b82f6; /* Blue 500 */
+  --primary-hover-color: #2563eb; /* Blue 600 */
+  --light-gray-bg: #f9fafb; /* Gray 50 */
+  --medium-gray-border: #e5e7eb; /* Gray 200 */
+  --dark-gray-text: #374151; /* Gray 700 */
+  --medium-gray-text: #6b7280; /* Gray 500 */
+  --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --border-radius: 0.5rem; /* 8px */
+}
+
+body {
+  margin: 0;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f1f5f9; /* Slate 100 */
+  color: var(--dark-gray-text);
+}
+
+/* --- 2. 전체 레이아웃 --- */
+.app-container {
+  max-width: 1400px;
+  margin: 2rem auto;
+  padding: 2rem;
+}
+
+.main-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin-bottom: 2rem;
+  color: #1e293b; /* Slate 800 */
+}
+
+/* --- 3. 관리자 업로드 섹션 (접이식) --- */
+.admin-upload-section {
+  background-color: #fffbe6;
+  border: 1px solid #facc15;
+  border-radius: var(--border-radius);
+  margin-bottom: 2rem;
+  overflow: hidden;
+  transition: all 0.4s ease-in-out;
+}
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+}
+.admin-header .sub-title {
+  border: none; padding: 0; margin: 0; color: #a16207;
+}
+.admin-header .toggle-arrow {
+  font-size: 1rem; color: #a16207;
+}
+.admin-upload-section .uploaders-grid {
+  padding: 0 1.5rem;
+  max-height: 0;
+  opacity: 0;
+  transition: all 0.4s ease-in-out;
+}
+.admin-upload-section.is-open .uploaders-grid {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  max-height: 500px;
+  opacity: 1;
+}
+.file-uploader label { font-weight: 600; margin-bottom: 0.5rem; }
+.uploader-controls { display: flex; gap: 0.5rem; }
+.uploader-controls input[type="file"] { flex-grow: 1; }
+.uploader-controls button { padding: 0.5rem 1rem; background-color: #f59e0b; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 600; }
+.uploader-controls button:hover { background-color: #d97706; }
+.upload-message { margin-top: 0.5rem; font-size: 0.875rem; font-weight: 500; }
+.upload-message.success { color: #15803d; }
+.upload-message.warning { color: #c2410c; }
+.upload-message.info { color: #1d4ed8; }
+
+/* --- 4. 검색 필터 섹션 (간격 수정) --- */
+.search-filter-section {
+  padding: 1.5rem; /* 내부 여백 줄임 */
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  margin-bottom: 2rem;
+}
+.file-type-selector h3 {
+  margin-top: 0;
+  font-size: 1.125rem;
+  margin-bottom: 1rem; /* 제목 아래 여백 줄임 */
+  padding-bottom: 1rem; /* 구분선 아래 여백 줄임 */
+  border-bottom: 1px solid var(--medium-gray-border);
+}
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem; /* 필터 간 간격 줄임 */
+}
+.filter-item { display: flex; flex-direction: column; }
+.filter-item label { font-weight: 600; margin-bottom: 0.25rem; font-size: 0.875rem; color: var(--medium-gray-text); }
+.filter-input { width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--medium-gray-border); border-radius: 0.375rem; box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s; }
+.filter-input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4); }
+.filter-item.range .range-inputs { display: flex; align-items: center; gap: 0.5rem; }
+.search-button { width: 100%; padding: 0.65rem 1.5rem; background-color: var(--primary-color); color: white; font-weight: 600; border: none; border-radius: 0.375rem; cursor: pointer; transition: background-color 0.2s; align-self: end; }
+.search-button:hover { background-color: var(--primary-hover-color); }
+.search-button:disabled { background-color: #9ca3af; cursor: not-allowed; }
+
+/* --- 5. 메인 콘텐츠 2단 레이아웃 --- */
+.main-content-layout {
+  display: grid;
+  grid-template-columns: 450px 1fr; /* 왼쪽 450px, 나머지는 오른쪽 */
+  gap: 2rem;
+  align-items: flex-start;
+}
+.left-panel, .right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* --- 6. 검색 결과 및 상세 정보 --- */
+.search-results-list, .company-details {
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.company-details { position: sticky; top: 2rem; }
+.search-results-list { max-height: 70vh; overflow-y: auto; }
+.search-results-list ul { list-style: none; padding: 0; margin: 0; }
+.company-list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--medium-gray-border); cursor: pointer; transition: background-color 0.2s, color 0.2s; border-radius: 0.375rem; font-weight: 500; }
+.company-list-item:last-child { border-bottom: none; }
+.company-list-item:hover { background-color: var(--light-gray-bg); }
+.company-list-item.active { background-color: var(--primary-color); color: white; font-weight: 700; }
+.company-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 1rem; }
+.summary-status-badge { padding: 0.2rem 0.6rem; font-size: 0.75rem; font-weight: 700; border-radius: 9999px; flex-shrink: 0; }
+.summary-status-badge.status-latest { background-color: #16a34a; color: white; }
+.summary-status-badge.status-warning { background-color: #2563eb; color: white; }
+.summary-status-badge.status-old { background-color: #ef4444; color: white; }
+.summary-status-badge.status-unknown { background-color: #6b7280; color: white; }
+.details-table { width: 100%; border-collapse: collapse; }
+.details-table tr:nth-child(even) { background-color: var(--light-gray-bg); }
+.details-table th, .details-table td { padding: 0.75rem 1rem; font-size: 0.875rem; border-bottom: 1px solid var(--medium-gray-border); }
+.details-table th { font-weight: 600; width: 150px; text-align: left; color: var(--medium-gray-text); }
+.value-with-status { display: flex; align-items: center; }
+.status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
+.status-dot.status-latest { background-color: #22c55e; }
+.status-dot.status-warning { background-color: #3b82f6; }
+.status-dot.status-old { background-color: #f87171; }
+.status-dot.status-unknown { background-color: #d1d5db; }
+
+/* [수정] 상세 정보 헤더 */
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.details-header .sub-title {
+  margin-bottom: 0;
+  border-bottom: none;
+  flex-grow: 1; /* 제목이 남는 공간을 차지하도록 */
+}
+/* [수정] 파일 타입 뱃지 */
+.file-type-badge {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  text-align: center;
+}
+.file-type-badge.file-type-eung { background-color: #f59e0b; } /* 노란색 */
+.file-type-badge.file-type-tongsin { background-color: #3b82f6; } /* 파란색 */
+.file-type-badge.file-type-sobang { background-color: #ef4444; } /* 빨간색 */
+
+.copy-all-button { padding: 0.5rem 1rem; background-color: #16a34a; color: white; border: none; border-radius: 0.375rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+.copy-all-button:hover { background-color: #15803d; }
+.value-cell { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.copy-single-button { padding: 0.2rem 0.5rem; font-size: 0.75rem; background-color: #e5e7eb; color: #4b5563; border: none; border-radius: 0.25rem; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+.details-table tr:hover .copy-single-button { opacity: 1; }
+.copy-single-button:active { background-color: #9ca3af; color: white; }
+.dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.dialog-box { background-color: white; padding: 2rem; border-radius: var(--border-radius); box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); text-align: center; min-width: 300px; }
+.dialog-box p { margin-top: 0; margin-bottom: 1.5rem; font-size: 1rem; font-weight: 500; }
+.dialog-box button { padding: 0.6rem 1.5rem; background-color: var(--primary-color); color: white; border: none; border-radius: 0.375rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+.dialog-box button:hover { background-color: var(--primary-hover-color); }
+.error-message { color: #ef4444; background-color: #fee2e2; padding: 1rem; border-radius: 0.5rem; }
+@keyframes fadeIn { from { opacity: 0.5; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+
+.company-info-wrapper {
+  display: flex;
+  align-items: center;
+  min-width: 0; /* 텍스트가 길어질 때 줄임표(...) 처리를 위해 필요 */
+}
+
+/* 검색 결과의 작은 뱃지 */
+.file-type-badge-small {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  margin-right: 0.5rem;
+  flex-shrink: 0; /* 뱃지가 찌그러지지 않도록 함 */
+}
+/* 뱃지 색상 (한글 클래스 이름 사용) */
+.file-type-badge-small.file-type-전기 { background-color: #f59e0b; }
+.file-type-badge-small.file-type-통신 { background-color: #3b82f6; }
+.file-type-badge-small.file-type-소방 { background-color: #ef4444; }
