@@ -75,6 +75,8 @@ class SearchLogic {
         const sheet = workbook.getWorksheet(sheetName);
         if (!sheet) continue;
 
+        this.sheetNames.push(sheetName.trim());
+
         const maxRow = sheet.rowCount;
         const maxCol = sheet.columnCount;
 
@@ -144,8 +146,9 @@ class SearchLogic {
 
     // --- 필터링 로직 (Python 원본과 동일) ---
     if (criteria.region && criteria.region !== '전체') {
-      results = results.filter(comp => comp['지역'] === criteria.region);
+      results = results.filter(comp => comp['대표지역'] === criteria.region);
     }
+
     if (criteria.name) {
       const searchName = criteria.name.toLowerCase();
       results = results.filter(comp => String(comp["검색된 회사"] || '').toLowerCase().includes(searchName));

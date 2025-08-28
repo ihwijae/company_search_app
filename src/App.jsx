@@ -78,7 +78,7 @@ function AdminUpload({ fileStatuses, onUploadSuccess }) {
 const DISPLAY_ORDER = [ "검색된 회사", "대표자", "사업자번호", "지역", "시평", "3년 실적", "5년 실적", "부채비율", "유동비율", "영업기간", "신용평가", "여성기업", "고용자수", "일자리창출", "품질평가", "비고" ];
 
 function App() {
-  const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false });
+  const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false })
   const [uploadCount, setUploadCount] = useState(0); // [추가] 파일 선택 성공을 감지할 카운터
   const [filters, setFilters] = useState({ name: '', region: '전체', manager: '', min_sipyung: '', max_sipyung: '', min_3y: '', max_3y: '', min_5y: '', max_5y: '' });
   const [fileType, setFileType] = useState('eung');
@@ -101,24 +101,26 @@ function App() {
   
   // [추가] 파일 선택이 성공하면 이 함수가 호출됩니다.
   const handleUploadSuccess = () => {
-    console.log('[프론트엔드 LOG] 파일 선택 성공! 갱신 트리거를 당깁니다.');
+    console.log('[App.jsx LOG] 파일 선택 성공! 갱신 트리거를 작동시킵니다.');
     refreshFileStatuses();
     setUploadCount(prev => prev + 1); // 카운터를 증가시켜 useEffect를 다시 실행시킵니다.
   };
 
+
   useEffect(() => {
     const fetchRegions = async () => {
-      console.log(`[프론트엔드 LOG] 지역 목록(${fileType}) 가져오기 요청을 보냅니다. (트리거: uploadCount=${uploadCount})`);
+      console.log(`[App.jsx LOG] 지역 목록(${fileType}) 가져오기 요청을 보냅니다. (트리거: uploadCount=${uploadCount})`);
       const statuses = await window.electronAPI.checkFiles();
       if (statuses[fileType]) {
         const response = await window.electronAPI.getRegions(fileType);
-        console.log('[프론트엔드 LOG] 백엔드로부터 받은 응답:', response);
-        if (response.success) {
+        console.log('[App.jsx LOG] 백엔드로부터 받은 지역 목록 응답:', response);
+        if (response.success && response.data.length > 1) { // '전체' 외에 다른 항목이 있는지 확인
           setRegions(response.data);
         } else {
           setRegions(['전체']);
         }
       } else {
+        console.log(`[App.jsx LOG] ${fileType} 파일이 없어 지역 목록을 가져오지 않습니다.`);
         setRegions(['전체']);
       }
     };
