@@ -80,10 +80,10 @@ body {
 
 /* --- 4. 검색 필터 섹션 (간격 수정) --- */
 .search-filter-section {
-  padding: 1.5rem; /* 내부 여백 줄임 */
-  background-color: white;
-  border-radius: var(--border-radius);
-  box-shadow: var(--card-shadow);
+  padding: 1.5rem; /* 내부 여백 유지 */
+  background-color: transparent; /* 패널이 반투명 배경을 담당 */
+  border-radius: 0;
+  box-shadow: none;
   margin-bottom: 2rem;
 }
 .file-type-selector h3 {
@@ -122,21 +122,22 @@ body {
 
 /* --- 6. 검색 결과 및 상세 정보 --- */
 .search-results-list, .company-details {
-  background-color: white;
+  background-color: transparent; /* 패널 반투명 배경 사용 */
   border-radius: var(--border-radius);
-  box-shadow: var(--card-shadow);
-  padding: 1.5rem;
+  box-shadow: none; /* 그림자는 패널에서 처리 */
+  padding: 0; /* 여백은 패널에서 처리 */
   width: 100%;
   box-sizing: border-box;
 }
 .company-details { position: sticky; top: 2rem; }
 .search-results-list { max-height: 70vh; overflow-y: auto; }
 .search-results-list ul { list-style: none; padding: 0; margin: 0; }
-.company-list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--medium-gray-border); cursor: pointer; transition: background-color 0.2s, color 0.2s; border-radius: 0.375rem; font-weight: 500; }
+.company-list-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 0.75rem 1rem; border-bottom: 1px solid var(--medium-gray-border); cursor: pointer; transition: background-color 0.2s, color 0.2s; border-radius: 0.375rem; font-weight: 500; }
 .company-list-item:last-child { border-bottom: none; }
 .company-list-item:hover { background-color: var(--light-gray-bg); }
 .company-list-item.active { background-color: var(--primary-color); color: white; font-weight: 700; }
-.company-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 1rem; }
+.company-name { white-space: normal; overflow: visible; text-overflow: unset; margin-right: 1rem; word-break: break-word; }
+.badge-person { margin-left: 8px; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #eef2ff; color: #4f46e5; border: 1px solid #e0e7ff; flex-shrink: 0; }
 .summary-status-badge { padding: 0.2rem 0.6rem; font-size: 0.75rem; font-weight: 700; border-radius: 9999px; flex-shrink: 0; }
 .summary-status-badge.status-latest { background-color: #16a34a; color: white; }
 .summary-status-badge.status-warning { background-color: #2563eb; color: white; }

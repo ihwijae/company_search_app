@@ -1,6 +1,10 @@
 // src/App.jsx (지역 목록 갱신 및 로그 기능이 추가된 최종 버전)
 
 import React, { useState, useEffect, useRef } from 'react';
+import './styles.css';
+import './fonts.css';
+import Sidebar from './components/Sidebar';
+import Drawer from './components/Drawer';
 
 // --- Helper Functions & Components (변경 없음) ---
 const formatNumber = (value) => { if (!value && value !== 0) return ''; const num = String(value).replace(/,/g, ''); return isNaN(num) ? String(value) : Number(num).toLocaleString(); };
@@ -79,6 +83,8 @@ const DISPLAY_ORDER = [ "검색된 회사", "대표자", "사업자번호", "지
 
 function App() {
   const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false })
+  const [activeMenu, setActiveMenu] = useState('search');
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadCount, setUploadCount] = useState(0); // [추가] 파일 선택 성공을 감지할 카운터
   const [filters, setFilters] = useState({ name: '', region: '전체', manager: '', min_sipyung: '', max_sipyung: '', min_3y: '', max_3y: '', min_5y: '', max_5y: '' });
   const [fileType, setFileType] = useState('eung');
@@ -86,6 +92,8 @@ function App() {
   const [regions, setRegions] = useState(['전체']);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [sortKey, setSortKey] = useState(null); // 'sipyung' | '3y' | '5y'
+  const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -98,6 +106,28 @@ function App() {
     const statuses = await window.electronAPI.checkFiles();
     setFileStatuses(statuses);
   };
+  
+  // 데이터 자동 갱신 이벤트 구독
+  useEffect(() => {
+    if (!window.electronAPI?.onDataUpdated) return;
+    const unsubscribe = window.electronAPI.onDataUpdated(async (payload) => {
+      try {
+        await refreshFileStatuses();
+        // 지역 목록 갱신
+        const r = await window.electronAPI.getRegions(searchedFileType);
+        if (r.success && Array.isArray(r.data)) {
+          setRegions(r.data);
+        }
+        // 최근 검색이 있었다면 같은 조건으로 재검색 시도
+        if (searchPerformed) {
+          await handleSearch();
+        }
+      } catch (e) {
+        console.error('[Renderer] 데이터 갱신 처리 중 오류:', e);
+      }
+    });
+    return () => { if (typeof unsubscribe === 'function') unsubscribe(); };
+  }, [searchPerformed, searchedFileType]);
   
   // [추가] 파일 선택이 성공하면 이 함수가 호출됩니다.
   const handleUploadSuccess = () => {
@@ -181,22 +211,60 @@ function App() {
     setDialog({ isOpen: true, message: '전체 정보가 클립보드에 복사되었습니다!' });
   };
 
+  // 정렬 유틸 및 상태 기반 계산
+  const parseAmountLocal = (value) => {
+    if (value === null || value === undefined) return 0;
+    const num = String(value).replace(/,/g, '').trim();
+    const n = parseInt(num, 10);
+    return isNaN(n) ? 0 : n;
+  };
+
+  const sortedResults = React.useMemo(() => {
+    if (!sortKey) return searchResults;
+    const keyMap = { sipyung: '시평', '3y': '3년 실적', '5y': '5년 실적' };
+    const field = keyMap[sortKey];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...searchResults].sort((a, b) => {
+      const av = parseAmountLocal(a[field]);
+      const bv = parseAmountLocal(b[field]);
+      if (av === bv) return 0;
+      return av > bv ? dir : -dir;
+    });
+  }, [searchResults, sortKey, sortDir]);
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  };
+
   return (
-    <div className="app-container">
-      <h1 className="main-title">업체 검색 및 적격 심사</h1>
-      <AdminUpload fileStatuses={fileStatuses} onUploadSuccess={handleUploadSuccess} />
-      <div className="main-content-layout">
-        <div className="left-panel">
-          <div className="search-filter-section" ref={topSectionRef}>
-            <div className="file-type-selector">
-              <h3>검색 대상</h3>
-              <div className="radio-group">
-                <label><input type="radio" value="eung" checked={fileType === 'eung'} onChange={(e) => setFileType(e.target.value)} /> 전기</label>
-                <label><input type="radio" value="tongsin" checked={fileType === 'tongsin'} onChange={(e) => setFileType(e.target.value)} /> 통신</label>
-                <label><input type="radio" value="sobang" checked={fileType === 'sobang'} onChange={(e) => setFileType(e.target.value)} /> 소방</label>
+    <div className="app-shell">
+      <Sidebar
+        active={activeMenu}
+        onSelect={(k) => { setActiveMenu(k); if (k === 'upload') setUploadOpen(true); }}
+        fileStatuses={fileStatuses}
+        collapsed={true}
+      />
+      <div className="main">
+        <div className="title-drag" />
+        <div className="topbar" />
+        <div className="stage">
+          <div className="content">
+          <div className="panel">
+            <div className="search-filter-section" ref={topSectionRef}>
+              <div className="file-type-selector">
+                <h3>검색 대상</h3>
+                <div className="radio-group">
+                  <label><input type="radio" value="eung" checked={fileType === 'eung'} onChange={(e) => setFileType(e.target.value)} /> 전기</label>
+                  <label><input type="radio" value="tongsin" checked={fileType === 'tongsin'} onChange={(e) => setFileType(e.target.value)} /> 통신</label>
+                  <label><input type="radio" value="sobang" checked={fileType === 'sobang'} onChange={(e) => setFileType(e.target.value)} /> 소방</label>
+                </div>
               </div>
-            </div>
-            <div className="filter-grid">
+              <div className="filter-grid">
                 <div className="filter-item"><label>업체명</label><input type="text" name="name" value={filters.name} onChange={handleFilterChange} onKeyDown={handleKeyDown} className="filter-input" /></div>
                 <div className="filter-item"><label>지역</label><select name="region" value={filters.region} onChange={handleFilterChange} className="filter-input">{regions.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
                 <div className="filter-item"><label>담당자</label><input type="text" name="manager" value={filters.manager} onChange={handleFilterChange} className="filter-input" /></div>
@@ -204,94 +272,115 @@ function App() {
                 <div className="filter-item range"><label>3년 실적 범위</label><div className="range-inputs"><input type="text" name="min_3y" value={filters.min_3y} onChange={handleFilterChange} placeholder="최소" className="filter-input" /><span>~</span><input type="text" name="max_3y" value={filters.max_3y} onChange={handleFilterChange} placeholder="최대" className="filter-input" /></div></div>
                 <div className="filter-item range"><label>5년 실적 범위</label><div className="range-inputs"><input type="text" name="min_5y" value={filters.min_5y} onChange={handleFilterChange} placeholder="최소" className="filter-input" /><span>~</span><input type="text" name="max_5y" value={filters.max_5y} onChange={handleFilterChange} placeholder="최대" className="filter-input" /></div></div>
                 <div className="filter-item"><label>&nbsp;</label><button onClick={handleSearch} className="search-button" disabled={isLoading}>{isLoading ? '검색 중...' : '검색'}</button></div>
+              </div>
             </div>
           </div>
-          {searchPerformed && (
+          <div className="panel">
             <div className="search-results-list" ref={searchResultsRef}>
               <h2 className="sub-title">검색 결과 ({searchResults.length}개)</h2>
+              <div className="results-toolbar">
+                <button className={`sort-btn ${sortKey==='sipyung' ? 'active':''}`} onClick={()=>toggleSort('sipyung')}>
+                  시평액 {sortKey==='sipyung' ? (sortDir==='asc'?'▲':'▼') : ''}
+                </button>
+                <button className={`sort-btn ${sortKey==='3y' ? 'active':''}`} onClick={()=>toggleSort('3y')}>
+                  3년 실적 {sortKey==='3y' ? (sortDir==='asc'?'▲':'▼') : ''}
+                </button>
+                <button className={`sort-btn ${sortKey==='5y' ? 'active':''}`} onClick={()=>toggleSort('5y')}>
+                  5년 실적 {sortKey==='5y' ? (sortDir==='asc'?'▲':'▼') : ''}
+                </button>
+              </div>
               {isLoading && <p>로딩 중...</p>}
               {error && <p className="error-message">{error}</p>}
-              {!isLoading && !error && searchResults.length === 0 && <p>검색 결과가 없습니다.</p>}
-              <ul>
-                {searchResults.map((company, index) => {
-                  const isActive = selectedCompany && selectedCompany.사업자번호 === company.사업자번호;
-                  const summaryStatus = company['요약상태'] || '미지정';
-                  const fileTypeLabel = searchedFileType === 'eung' ? '전기' : searchedFileType === 'tongsin' ? '통신' : '소방';
-                  return (
-                    <li key={index} onClick={() => handleCompanySelect(company)} className={`company-list-item ${isActive ? 'active' : ''}`}>
-                      <div className="company-info-wrapper">
-                        <span className={`file-type-badge-small file-type-${searchedFileType}`}>{fileTypeLabel}</span>
-                        <span className="company-name">{company['검색된 회사']}</span>
+              {!isLoading && !error && searchResults.length === 0 && (
+                <p>{searchPerformed ? '검색 결과가 없습니다.' : '왼쪽에서 조건을 입력하고 검색하세요.'}</p>
+              )}
+              {sortedResults.length > 0 && (
+                <ul>
+                  {sortedResults.map((company, index) => {
+                    const isActive = selectedCompany && selectedCompany.사업자번호 === company.사업자번호;
+                    const summaryStatus = company['요약상태'] || '미지정';
+                    const fileTypeLabel = searchedFileType === 'eung' ? '전기' : searchedFileType === 'tongsin' ? '통신' : '소방';
+                    return (
+                      <li key={index} onClick={() => handleCompanySelect(company)} className={`company-list-item ${isActive ? 'active' : ''}`}>
+                        <div className="company-info-wrapper">
+                          <span className={`file-type-badge-small file-type-${searchedFileType}`}>{fileTypeLabel}</span>
+                          <span className="company-name">{company['검색된 회사']}</span>
+                          {company['담당자명'] && <span className="badge-person">{company['담당자명']}</span>}
+                        </div>
+                        <span className={`summary-status-badge ${getStatusClass(summaryStatus)}`}>{summaryStatus}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+          <div className="panel">
+            {searchPerformed && (
+              <div className="company-details fade-in" key={animationKey}>
+                <div className="details-header">
+                  <h2 className="sub-title">업체 상세 정보</h2>
+                  {selectedCompany && (
+                    <>
+                      <div className={`file-type-badge file-type-${searchedFileType}`}>
+                        {searchedFileType === 'eung' && '전기'}
+                        {searchedFileType === 'tongsin' && '통신'}
+                        {searchedFileType === 'sobang' && '소방'}
                       </div>
-                      <span className={`summary-status-badge ${getStatusClass(summaryStatus)}`}>{summaryStatus}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-        </div>
-        <div className="right-panel">
-          {searchPerformed && (
-            <div className="company-details fade-in" key={animationKey}>
-              <div className="details-header">
-                <h2 className="sub-title">업체 상세 정보</h2>
-                {selectedCompany && (
-                  <>
-                    <div className={`file-type-badge file-type-${searchedFileType}`}>
-                      {searchedFileType === 'eung' && '전기'}
-                      {searchedFileType === 'tongsin' && '통신'}
-                      {searchedFileType === 'sobang' && '소방'}
-                    </div>
-                    <button onClick={handleCopyAll} className="copy-all-button">전체 복사</button>
-                  </>
-                )}
-              </div>
-              {selectedCompany ? (
-                <div className="table-container">
-                  <table className="details-table">
-                    <tbody>
-                      {DISPLAY_ORDER.map((key) => {
-                        const value = selectedCompany[key] ?? 'N/A';
-                        const status = selectedCompany.데이터상태?.[key] ? selectedCompany.데이터상태[key] : '미지정';
-                        let displayValue;
-                        const percentageKeys = ['부채비율', '유동비율'];
-                        const formattedKeys = ['시평', '3년 실적', '5년 실적'];
-                        if (percentageKeys.includes(key)) {
-                          displayValue = formatPercentage(value);
-                        } else if (formattedKeys.includes(key)) {
-                          displayValue = formatNumber(value);
-                        } else {
-                          displayValue = String(value);
-                        }
-                        return (
-                          <tr key={key}>
-                            <th>{key}</th>
-                            <td>
-                              <div className="value-cell">
-                                <div className="value-with-status">
-                                  <span className={`status-dot ${getStatusClass(status)}`} title={status}></span>
-                                  <span>{displayValue}</span>
-                                </div>
-                                <button onClick={() => handleCopySingle(key, displayValue)} className="copy-single-button" title={`${key} 복사`}>복사</button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                      <button onClick={handleCopyAll} className="copy-all-button">전체 복사</button>
+                    </>
+                  )}
                 </div>
-              ) : (<p>왼쪽 목록에서 업체를 선택하세요.</p>)}
-            </div>
-          )}
+                {selectedCompany ? (
+                  <div className="table-container">
+                    <table className="details-table">
+                      <tbody>
+                        {DISPLAY_ORDER.map((key) => {
+                          const value = selectedCompany[key] ?? 'N/A';
+                          const status = selectedCompany.데이터상태?.[key] ? selectedCompany.데이터상태[key] : '미지정';
+                          let displayValue;
+                          const percentageKeys = ['부채비율', '유동비율'];
+                          const formattedKeys = ['시평', '3년 실적', '5년 실적'];
+                          if (percentageKeys.includes(key)) {
+                            displayValue = formatPercentage(value);
+                          } else if (formattedKeys.includes(key)) {
+                            displayValue = formatNumber(value);
+                          } else {
+                            displayValue = String(value);
+                          }
+                          return (
+                            <tr key={key}>
+                              <th>{key}</th>
+                              <td>
+                                <div className="value-cell">
+                                  <div className="value-with-status">
+                                    <span className={`status-dot ${getStatusClass(status)}`} title={status}></span>
+                                    <span>{displayValue}</span>
+                                  </div>
+                                  <button onClick={() => handleCopySingle(key, displayValue)} className="copy-single-button" title={`${key} 복사`}>복사</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (<p>왼쪽 목록에서 업체를 선택하세요.</p>)}
+              </div>
+            )}
+          </div>
         </div>
+        </div>
+        <CopyDialog
+          isOpen={dialog.isOpen}
+          message={dialog.message}
+          onClose={() => setDialog({ isOpen: false, message: '' })}
+        />
       </div>
-      <CopyDialog 
-        isOpen={dialog.isOpen} 
-        message={dialog.message} 
-        onClose={() => setDialog({ isOpen: false, message: '' })} 
-      />
+      <Drawer open={uploadOpen} onClose={() => setUploadOpen(false)}>
+        <AdminUpload fileStatuses={fileStatuses} onUploadSuccess={handleUploadSuccess} />
+      </Drawer>
     </div>
   );
 }

@@ -1,0 +1,13 @@
+/* Local bundled font (Option B)
+   Place font files here: assets/fonts/Pretendard-Variable.woff2 (recommended)
+   Fallbacks are provided in styles.css if the file is absent.
+*/
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/Pretendard-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
