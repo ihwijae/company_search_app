@@ -1,7 +1,7 @@
 // searchLogic.js (데이터 누락 문제를 해결하고 원본 로직을 100% 따른 최종 버전)
 
 const ExcelJS = require('exceljs');
-const { RELATIVE_OFFSETS } = require('./config.js'); 
+const { RELATIVE_OFFSETS: RELATIVE_OFFSETS } = require('./config.js'); 
 
 // --- Helper Functions (Python 원본과 동일 기능) ---
 const parseAmount = (value) => {

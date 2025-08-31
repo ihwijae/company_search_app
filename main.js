@@ -1,14 +1,11 @@
-// main.js (문법 오류를 수정한 최종 버전)
-
-const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
+﻿const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { SearchLogic } = require('./searchLogic.js');
 const chokidar = require('chokidar');
 const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
 const os = require('os');
 
-// --- 설정 ---
+// --- ?ㅼ젙 ---
 const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
 const WINDOW_STATE_PATH = path.join(app.getPath('userData'), 'window-state.json');
 let FILE_PATHS = { eung: '', tongsin: '', sobang: '' };
@@ -18,38 +15,36 @@ function loadConfig() {
         if (fs.existsSync(CONFIG_PATH)) {
             const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
             FILE_PATHS = { ...FILE_PATHS, ...config };
-            console.log('[MAIN.JS LOG] 설정 파일 로드 성공:', FILE_PATHS);
+            console.log('[MAIN] 설정 파일 로드 완료:', FILE_PATHS);
         } else {
-            console.log('[MAIN.JS LOG] 설정 파일이 없습니다. 기본값으로 시작합니다.');
+            console.log('[MAIN] 설정 파일이 없습니다. 기본값으로 동작합니다.');
         }
     } catch (err) {
-        console.error('[MAIN.JS ERROR] 설정 파일 로딩 실패:', err);
+        console.error('[MAIN] 설정 파일 로드 실패:', err);
     }
 }
 
 function saveConfig() {
     try {
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(FILE_PATHS, null, 2));
-        console.log('[MAIN.JS LOG] 설정이 저장되었습니다:', CONFIG_PATH);
+        console.log('[MAIN] 설정 저장:', CONFIG_PATH);
     } catch (err) {
-        console.error('[MAIN.JS ERROR] 설정 파일 저장 실패:', err);
+        console.error('[MAIN] 설정 저장 실패:', err);
     }
 }
 
 loadConfig();
 // ---
 
-const searchLogics = {};
-const fileWatchers = {};
 let mainWindowRef = null;
 const DEBOUNCE_MS = 500;
 
-// 임시 정화본 유지 정책
-const SANITIZED_KEEP_PER_SOURCE = 3; // 동일 원본당 최신 3개 유지
-const SANITIZED_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
-const CLEAN_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6시간
+// ?꾩떆 ?뺥솕蹂??좎? ?뺤콉
+const SANITIZED_KEEP_PER_SOURCE = 3; // ?숈씪 ?먮낯??理쒖떊 3媛??좎?
+const SANITIZED_TTL_MS = 24 * 60 * 60 * 1000; // 24?쒓컙
+const CLEAN_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6?쒓컙
 
-// 원본 경로별 정화본 목록 레지스트리
+// ?먮낯 寃쎈줈蹂??뺥솕蹂?紐⑸줉 ?덉??ㅽ듃由?
 const sanitizedRegistry = {}; // { sourcePath: [ tempPath, ... ] }
 
 function parseTimestampFromSanitized(p) {
@@ -62,7 +57,7 @@ function registerSanitized(sourcePath, tempPath) {
   if (!sourcePath || !tempPath) return;
   if (!sanitizedRegistry[sourcePath]) sanitizedRegistry[sourcePath] = [];
   sanitizedRegistry[sourcePath].push(tempPath);
-  // 최신순 정렬 후 보관 개수 초과분 삭제
+  // 理쒖떊???뺣젹 ??蹂닿? 媛쒖닔 珥덇낵遺???젣
   sanitizedRegistry[sourcePath].sort((a, b) => parseTimestampFromSanitized(b) - parseTimestampFromSanitized(a));
   while (sanitizedRegistry[sourcePath].length > SANITIZED_KEEP_PER_SOURCE) {
     const oldPath = sanitizedRegistry[sourcePath].pop();
@@ -95,7 +90,7 @@ function debounce(fn, delay) {
 }
 const isDev = process.env.NODE_ENV !== 'production';
 
-// ----- 창 상태 저장/복원 유틸 -----
+// ----- 李??곹깭 ???蹂듭썝 ?좏떥 -----
 function loadWindowState() {
   try {
     if (fs.existsSync(WINDOW_STATE_PATH)) {
@@ -111,16 +106,16 @@ function clampBoundsToDisplay(bounds) {
     const display = screen.getDisplayMatching(bounds);
     const wa = display.workArea; // {x,y,width,height}
     let { x, y, width, height } = bounds;
-    // 최소 크기 보정
+    // 理쒖냼 ?ш린 蹂댁젙
     width = Math.max(800, Math.min(width || 1400, wa.width));
     height = Math.max(600, Math.min(height || 900, wa.height));
-    // 위치 보정(화면 밖 방지)
+    // ?꾩튂 蹂댁젙(?붾㈃ 諛?諛⑹?)
     if (typeof x !== 'number') x = wa.x + Math.floor((wa.width - width) / 2);
     if (typeof y !== 'number') y = wa.y + Math.floor((wa.height - height) / 2);
-    // 오른쪽/아래 경계 넘김 방지
+    // ?ㅻⅨ履??꾨옒 寃쎄퀎 ?섍? 諛⑹?
     if (x + width > wa.x + wa.width) x = wa.x + wa.width - width;
     if (y + height > wa.y + wa.height) y = wa.y + wa.height - height;
-    // 왼쪽/위 경계 방지
+    // ?쇱そ/??寃쎄퀎 諛⑹?
     if (x < wa.x) x = wa.x;
     if (y < wa.y) y = wa.y;
     return { x, y, width, height };
@@ -164,7 +159,7 @@ function createWindow() {
   });
   mainWindowRef = mainWindow;
 
-  // 창 상태 이벤트로 저장
+  // 李??곹깭 ?대깽?몃줈 ???
   ['resize', 'move', 'maximize', 'unmaximize', 'restore'].forEach(evt => {
     mainWindow.on(evt, saveWindowStateDebounced);
   });
@@ -177,49 +172,31 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }
 
-  // 이전에 최대화 상태였다면 복원 시 최대화
+  // ?댁쟾??理쒕????곹깭??ㅻ㈃ 蹂듭썝 ??理쒕???
   if (prevState.isMaximized) {
     mainWindow.maximize();
   }
 }
 
 app.whenReady().then(async () => {
-  console.log('[main.js] 앱 준비 완료. 저장된 파일 경로 자동 로딩 시작...');
-  // 주기적 임시 파일 정리 시작
+  console.log('[MAIN] 초기화 완료. 저장된 경로 자동 로딩 시작...');
+  // 二쇨린???꾩떆 ?뚯씪 ?뺣━ ?쒖옉
   cleanOldTempFiles();
   setInterval(cleanOldTempFiles, CLEAN_INTERVAL_MS);
-  for (const fileType in FILE_PATHS) {
-    const filePath = FILE_PATHS[fileType];
-    if (filePath && fs.existsSync(filePath)) {
-      console.log(`[main.js] '${fileType}' 파일 로딩 시도: ${filePath}`);
-      // 댓글/메모 자동 정화 후 로딩
-      const { sanitizedPath, sanitized } = sanitizeXlsx(filePath);
-      if (sanitized) {
-        console.log(`[main.js] 정화된 임시 파일 사용: ${sanitizedPath}`);
-        registerSanitized(filePath, sanitizedPath);
-      }
-      searchLogics[fileType] = new SearchLogic(sanitizedPath);
-      try {
-        await searchLogics[fileType].load();
-      } catch (err) {
-        console.error(`[main.js] '${fileType}' 파일 자동 로딩 실패:`, err);
-        delete searchLogics[fileType];
-      }
-    }
-  }
-  console.log('[main.js] 자동 로딩 완료. 윈도우 생성.');
+
+  console.log('[MAIN] 초기화 완료. 윈도우 생성...');
   createWindow();
 });
 
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// 종료 직전, 소스별 보관 개수 정책을 한 번 더 적용
+// keep only the newest N sanitized temp files per source on quit
 app.on('before-quit', () => {
   try {
     Object.keys(sanitizedRegistry).forEach((src) => {
@@ -234,109 +211,71 @@ app.on('before-quit', () => {
   } catch {}
 });
 
-// --- IPC 핸들러 ---
+// Wire IPC using SearchService (feature-scoped)
+try {
+  const { SearchService } = require('./src/main/features/search/services/searchService');
+  const svc = new SearchService({
+    sanitizeXlsx,
+    chokidar,
+    registerSanitized,
+    debounceMs: DEBOUNCE_MS,
+    notifyUpdated: (type) => { try { if (mainWindowRef && !mainWindowRef.isDestroyed()) { mainWindowRef.webContents.send('data-updated', { type }); } } catch {} }
+  });
 
-ipcMain.handle('select-file', async (event, fileType) => {
-    console.log(`[MAIN.JS LOG] 'select-file' 요청 받음: [${fileType}]`);
+  // Preload previously saved files so UI can use immediately
+  (async () => {
+    try {
+      for (const ft in FILE_PATHS) {
+        const p = FILE_PATHS[ft];
+        if (p && fs.existsSync(p)) { try { await svc.loadAndWatch(ft, p); } catch {} }
+      }
+    } catch {}
+  })();
+
+  // Aggregate IPC routes (all types)
+  try {
+    const { registerAllIpcHandlers } = require('./src/main/features/search/ipc');
+    if (ipcMain.removeHandler) {
+      try { ipcMain.removeHandler('get-regions-all'); } catch {}
+      try { ipcMain.removeHandler('search-companies-all'); } catch {}
+    }
+    registerAllIpcHandlers({ ipcMain, searchService: svc });
+  } catch {}
+
+  // File selection and per-type routes
+  if (ipcMain.removeHandler) ipcMain.removeHandler('select-file');
+  ipcMain.handle('select-file', async (_event, fileType) => {
     const mainWindow = BrowserWindow.getFocusedWindow();
-    const result = await dialog.showOpenDialog(mainWindow, {
-        title: `${fileType} 엑셀 파일 선택`,
-        properties: ['openFile'],
-        filters: [{ name: 'Excel Files', extensions: ['xlsx'] }],
-    });
+    const result = await dialog.showOpenDialog(mainWindow, { title: `${fileType} file`, properties: ['openFile'], filters: [{ name: 'Excel Files', extensions: ['xlsx'] }] });
+    if (result.canceled || result.filePaths.length === 0) return { success: false, message: 'Selection canceled' };
+    const filePath = result.filePaths[0];
+    if (!filePath.toLowerCase().endsWith('.xlsx')) return { success: false, message: 'Please select a .xlsx file' };
+    FILE_PATHS[fileType] = filePath; saveConfig();
+    try { await svc.loadAndWatch(fileType, filePath); return { success: true, path: filePath }; }
+    catch (e) { return { success: false, message: e?.message || 'Load failed' }; }
+  });
 
-    if (!result.canceled && result.filePaths.length > 0) {
-        const filePath = result.filePaths[0];
-        if (!filePath.toLowerCase().endsWith('.xlsx')) {
-            return { success: false, message: '지원되지 않는 형식입니다. .xlsx 파일만 선택해주세요.' };
-        }
-        FILE_PATHS[fileType] = filePath;
-        saveConfig();
-        
-        console.log(`[MAIN.JS LOG] 새로운 파일 선택됨: ${filePath}. SearchLogic 인스턴스 생성 및 로딩 시작...`);
-        // 댓글/메모 자동 정화 후 로딩
-        const { sanitizedPath, sanitized } = sanitizeXlsx(filePath);
-        if (sanitized) {
-          console.log(`[MAIN.JS LOG] 댓글/메모 정화를 수행했습니다. 임시 파일: ${sanitizedPath}`);
-          registerSanitized(filePath, sanitizedPath);
-        }
-        searchLogics[fileType] = new SearchLogic(sanitizedPath);
-        try {
-            await searchLogics[fileType].load();
-            console.log(`[MAIN.JS LOG] [${fileType}] 파일 로딩 성공 완료.`);
-            // 기존 watcher가 있으면 해제
-            if (fileWatchers[fileType]) {
-              await fileWatchers[fileType].close().catch(() => {});
-              delete fileWatchers[fileType];
-            }
-            // 파일 변경 감시 시작(원본 파일 경로 기준)
-            const debouncedReload = debounce(async () => {
-              try {
-                const { sanitizedPath: sp2, sanitized: san2 } = sanitizeXlsx(filePath);
-                if (san2) console.log(`[MAIN.JS LOG] 변경 감지 후 정화 파일 생성: ${sp2}`);
-                registerSanitized(filePath, sp2);
-                const logic = new SearchLogic(sp2);
-                await logic.load();
-                searchLogics[fileType] = logic;
-                if (mainWindowRef && !mainWindowRef.isDestroyed()) {
-                  mainWindowRef.webContents.send('data-updated', { type: fileType });
-                }
-                console.log(`[MAIN.JS LOG] [${fileType}] 변경 사항 반영 완료.`);
-              } catch (e) {
-                console.error(`[MAIN.JS ERROR] [${fileType}] 변경 반영 중 오류:`, e);
-              }
-            }, DEBOUNCE_MS);
+  if (ipcMain.removeHandler) ipcMain.removeHandler('get-regions');
+  ipcMain.handle('get-regions', (_event, file_type) => {
+    try { return { success: true, data: svc.getRegions(file_type) }; }
+    catch { return { success: true, data: ['전체'] }; }
+  });
 
-            const watcher = chokidar.watch(filePath, { ignoreInitial: true });
-            watcher.on('change', () => {
-              console.log(`[MAIN.JS LOG] 파일 변경 감지: ${filePath}`);
-              debouncedReload();
-            });
-            fileWatchers[fileType] = watcher;
-            return { success: true, path: filePath };
-        } catch (err) {
-            console.error(`[MAIN.JS ERROR] [${fileType}] 새 파일 로딩 중 심각한 오류 발생:`, err);
-            delete searchLogics[fileType];
-            let msg = err.message || '파일 로딩 실패';
-            if (/comments/i.test(msg)) {
-              msg += '\n※ 엑셀 파일의 댓글/메모가 포함된 것으로 보입니다. 파일의 댓글/메모를 제거 후 다시 시도하거나, 파일을 새 문서로 복사 저장(.xlsx)해주세요.';
-            }
-            return { success: false, message: msg };
-        }
-    }
-    console.log(`[MAIN.JS LOG] 파일 선택이 취소되었습니다.`);
-    return { success: false, message: '파일 선택이 취소되었습니다.' };
-});
+  if (ipcMain.removeHandler) ipcMain.removeHandler('check-files');
+  ipcMain.handle('check-files', () => svc.getStatuses());
 
-ipcMain.handle('get-regions', (event, file_type) => {
-    console.log(`[MAIN.JS LOG] 'get-regions' 요청 받음: [${file_type}]`);
-    const logic = searchLogics[file_type];
+  // get-file-paths: expose currently registered original paths
+  if (ipcMain.removeHandler) ipcMain.removeHandler('get-file-paths');
+  ipcMain.handle('get-file-paths', () => ({ success: true, data: FILE_PATHS }));
 
-    if (logic && logic.isLoaded()) {
-        const regions = logic.getUniqueRegions();
-        console.log(`[MAIN.JS LOG] [${file_type}]의 지역 목록 응답:`, regions);
-        return { success: true, data: regions };
-    } else {
-        console.warn(`[MAIN.JS WARN] [${file_type}]에 대한 SearchLogic 인스턴스가 없거나 로드되지 않았습니다.`);
-        return { success: true, data: ['전체'] };
-    }
-});
+  if (ipcMain.removeHandler) ipcMain.removeHandler('search-companies');
+  ipcMain.handle('search-companies', (_event, { criteria, file_type }) => {
+    try { const data = svc.search(file_type, criteria); return { success: true, data }; }
+    catch (e) { return { success: false, message: e?.message || 'Search failed' }; }
+  });
+} catch (e) {
+  console.error('[MAIN] SearchService 초기화/바인딩 실패:', e);
+}
 
-ipcMain.handle('check-files', () => {
-    console.log(`[MAIN.JS LOG] 'check-files' 요청 받음`);
-    const statuses = {};
-    for (const key in FILE_PATHS) {
-      statuses[key] = !!(searchLogics[key] && searchLogics[key].isLoaded());
-    }
-    return statuses;
-});
 
-ipcMain.handle('search-companies', (event, { criteria, file_type }) => {
-    console.log(`[MAIN.JS LOG] 'search-companies' 요청 받음:`, { criteria, file_type });
-    const logic = searchLogics[file_type];
-    if (!logic || !logic.isLoaded()) {
-        return { success: false, message: `${file_type} 파일이 로드되지 않았습니다.` };
-    }
-    const results = logic.search(criteria);
-    return { success: true, data: results };
-});
+

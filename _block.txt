@@ -1,0 +1,3 @@
+<div className="uploader-controls">
+        <button onClick={handleSelectFile}>경로 설정</button>
+      </div>

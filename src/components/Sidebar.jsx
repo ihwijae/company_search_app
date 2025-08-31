@@ -23,7 +23,7 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect && onSelect(it.key); }}
           >
-            <span style={{ width: 20 }}>{it.icon}</span>
+            <span style={{ width: 28, fontSize: 22 }}>{it.icon}</span>
             {!collapsed && <span>{it.label}</span>}
             {it.key === 'upload' && (
               <span className={`dot ${anyLoaded ? 'on' : ''}`} />
