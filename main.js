@@ -88,7 +88,8 @@ function debounce(fn, delay) {
     t = setTimeout(() => fn(...args), delay);
   };
 }
-const isDev = process.env.NODE_ENV !== 'production';
+// Packaged 앱에서도 확실히 프로덕션 분기되도록 app.isPackaged 사용
+const isDev = !app.isPackaged;
 
 // ----- 李??곹깭 ???蹂듭썝 ?좏떥 -----
 function loadWindowState() {
