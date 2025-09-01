@@ -23,3 +23,8 @@ release
 *.njsproj
 *.sln
 *.sw?
+dist/
+dist-ssr/
+release/
+node_modules/
+*.local
