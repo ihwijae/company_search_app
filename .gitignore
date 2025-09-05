@@ -7,11 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-release
+# 빌드 산출물
+dist/
+dist-ssr/
+release/
+
+# 의존성
+node_modules/
 
 # Editor directories and files
 .vscode/*
@@ -23,8 +25,3 @@ release
 *.njsproj
 *.sln
 *.sw?
-dist/
-dist-ssr/
-release/
-node_modules/
-*.local

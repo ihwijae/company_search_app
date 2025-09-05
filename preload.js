@@ -26,4 +26,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('data-updated', handler);
     return () => ipcRenderer.removeListener('data-updated', handler);
   },
+  // Agreements persistence APIs
+  loadAgreements: () => ipcRenderer.invoke('agreements-load'),
+  saveAgreements: (items) => ipcRenderer.invoke('agreements-save', items),
+
+  // Formulas: load/save/evaluate
+  formulasLoad: () => ipcRenderer.invoke('formulas-load'),
+  formulasLoadDefaults: () => ipcRenderer.invoke('formulas-load-defaults'),
+  formulasLoadOverrides: () => ipcRenderer.invoke('formulas-load-overrides'),
+  formulasSaveOverrides: (payload) => ipcRenderer.invoke('formulas-save-overrides', payload),
+  formulasEvaluate: (payload) => ipcRenderer.invoke('formulas-evaluate', payload),
+
+  // Agreements Rules (load/save)
+  agreementsRulesLoad: () => ipcRenderer.invoke('agreements-rules-load'),
+  agreementsRulesSave: (payload) => ipcRenderer.invoke('agreements-rules-save', payload),
+  // Agreements: candidates fetch
+  fetchCandidates: (params) => ipcRenderer.invoke('agreements-fetch-candidates', params),
+  // Clipboard helper: write as 1-column CSV
+  copyCsvColumn: (rows) => ipcRenderer.invoke('copy-csv-column', { rows }),
 });

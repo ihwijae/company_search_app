@@ -108,6 +108,12 @@ body {
 .search-button:active { transform: translateY(1px); }
 .search-button:disabled { background: #9ca3af; border-color: #9ca3af; cursor: not-allowed; box-shadow: none; }
 
+/* Reset button styled subtly next to search */
+.reset-button { width: 100%; padding: 0.65rem 1.2rem; background: #e5e7eb; color: #374151; font-weight: 700; border: 1px solid #d1d5db; border-radius: 9999px; cursor: pointer; transition: background 0.2s, box-shadow 0.2s, transform 0.02s; align-self: end; }
+.reset-button:hover { background: #d1d5db; }
+.reset-button:active { transform: translateY(1px); }
+.reset-button:disabled { opacity: 0.7; cursor: not-allowed; }
+
 /* --- 5. 메인 콘텐츠 2단 레이아웃 --- */
 .main-content-layout {
   display: grid;

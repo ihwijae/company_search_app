@@ -122,6 +122,7 @@ function App() {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [sortKey, setSortKey] = useState(null); // 'sipyung' | '3y' | '5y'
+  const [onlyLatest, setOnlyLatest] = useState(false); // 최신자료만 필터
   const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(null); // 전체 검색 시 강조 인덱스
@@ -219,6 +220,22 @@ function App() {
     if (numberFields.includes(name)) { setFilters(prev => ({ ...prev, [name]: formatNumber(value) })); } else { setFilters(prev => ({ ...prev, [name]: value })); }
   };
 
+  // Reset only requested filters: 업체명(name), 지역(region), 시평액/3년/5년 범위 + 담당자
+  const handleResetFilters = () => {
+    setFilters(prev => ({
+      ...prev,
+      name: '',
+      region: (Array.isArray(regions) && regions.length > 0) ? regions[0] : '\uC804\uCCB4',
+      manager: '',
+      min_sipyung: '',
+      max_sipyung: '',
+      min_3y: '',
+      max_3y: '',
+      min_5y: '',
+      max_5y: ''
+    }));
+  };
+
   const handleSearch = async () => {
     setSearchPerformed(true);
     setIsLoading(true);
@@ -262,11 +279,51 @@ function App() {
 
   const handleKeyDown = (e) => { if (e.key === 'Enter') handleSearch(); };
   const handleCopySingle = (key, value) => { navigator.clipboard.writeText(String(value)); setDialog({ isOpen: true, message: `'${key}' 항목이 복사되었습니다.` }); };
-  const handleCopyAll = () => {
+  const escapeHtml = (s) => String(s)
+    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#39;');
+
+  const handleCopyAll = async () => {
     if (!selectedCompany) return;
-    const textToCopy = DISPLAY_ORDER.map(key => { const value = selectedCompany[key] ?? ''; const formattedKeys = ['시평', '3년 실적', '5년 실적']; return formattedKeys.includes(key) ? formatNumber(value) : String(value); }).join('\n');
-    navigator.clipboard.writeText(textToCopy);
-    setDialog({ isOpen: true, message: '전체 정보가 클립보드에 복사되었습니다!' });
+    const formattedKeys = ['시평', '3년 실적', '5년 실적'];
+    const percentKeys = ['부채비율', '유동비율'];
+
+    const values = DISPLAY_ORDER.map((key) => {
+      const raw = selectedCompany[key] ?? '';
+      if (percentKeys.some(k => key.includes(k))) {
+        return formatPercentage(raw);
+      }
+      if (formattedKeys.includes(key)) return formatNumber(raw);
+      let s = String(raw ?? '');
+      if (key === '신용평가') {
+        // 괄호로 유효기간이 이어지는 경우, 셀 내부 줄바꿈(LF) 삽입
+        if (!/\r?\n/.test(s)) {
+          s = s.replace(/\s*\(([^)]*)\)$/, '\n($1)');
+        }
+        s = s.replace(/\r\n|\r/g, '\n'); // 내부 개행은 LF로 표준화
+      } else if (key === '비고') {
+        s = s.replace(/\r\n|\r/g, '\n'); // 내부 개행 유지(LF)
+      } else {
+        s = s.replace(/\r\n|\r|\n/g, ' '); // 그 외 개행은 공백 처리
+      }
+      return s;
+    });
+
+    // Build rows for 1-column CSV: in-cell breaks only for 신용평가/비고 (LF = CHAR(10))
+    const rows = values.map((v, idx) => {
+      const key = DISPLAY_ORDER[idx];
+      // Excel in-cell newline is LF (CHAR(10)). CR can render as a musical note in some codepages.
+      if (key === '신용평가' || key === '비고') return String(v).replace(/\r\n|\r|\n/g, '\n');
+      return String(v).replace(/\r\n|\r|\n/g, ' ');
+    });
+
+    try {
+      const r = await window.electronAPI.copyCsvColumn(rows);
+      if (!r?.success) throw new Error(r?.message || 'copy failed');
+      setDialog({ isOpen: true, message: '전체 정보가 클립보드에 복사되었습니다!' });
+    } catch (e) {
+      setDialog({ isOpen: true, message: '복사 중 오류가 발생했습니다.' });
+    }
   };
 
   // 정렬 유틸 및 상태 기반 계산
@@ -278,17 +335,18 @@ function App() {
   };
 
   const sortedResults = React.useMemo(() => {
-    if (!sortKey) return searchResults;
+    const base = onlyLatest ? (searchResults || []).filter(c => (c['요약상태'] || '') === '최신') : searchResults;
+    if (!sortKey) return base;
     const keyMap = { sipyung: '시평', '3y': '3년 실적', '5y': '5년 실적' };
     const field = keyMap[sortKey];
     const dir = sortDir === 'asc' ? 1 : -1;
-    return [...searchResults].sort((a, b) => {
+    return [...base].sort((a, b) => {
       const av = parseAmountLocal(a[field]);
       const bv = parseAmountLocal(b[field]);
       if (av === bv) return 0;
       return av > bv ? dir : -dir;
     });
-  }, [searchResults, sortKey, sortDir]);
+  }, [searchResults, sortKey, sortDir, onlyLatest]);
 
   const toggleSort = (key) => {
     if (sortKey === key) {
@@ -303,7 +361,15 @@ function App() {
     <div className="app-shell">
       <Sidebar
         active={activeMenu}
-        onSelect={(k) => { setActiveMenu(k); if (k === 'upload') setUploadOpen(true); }}
+        onSelect={(k) => {
+          setActiveMenu(k);
+          if (k === 'upload') setUploadOpen(true);
+          if (k === 'agreements') window.location.hash = '#/agreements';
+          if (k === 'lh-under50') window.location.hash = '#/lh/under50';
+          if (k === 'lh-50to100') window.location.hash = '#/lh/50to100';
+          if (k === 'search') window.location.hash = '#/search';
+          if (k === 'settings') window.location.hash = '#/settings';
+        }}
         fileStatuses={fileStatuses}
         collapsed={true}
       />
@@ -324,6 +390,7 @@ function App() {
                 </div>
               </div>
               <div className="filter-grid" onKeyDown={handleKeyDown}>
+                <div className="filter-item"><label>&nbsp;</label><button onClick={handleResetFilters} className="reset-button" disabled={isLoading}>{"\uD544\uD130 \uCD08\uAE30\uD654"}</button></div>
                 <div className="filter-item"><label>업체명</label><input type="text" name="name" value={filters.name} onChange={handleFilterChange} onKeyDown={handleKeyDown} className="filter-input" /></div>
                 <div className="filter-item"><label>지역</label><select name="region" value={filters.region} onChange={handleFilterChange} className="filter-input">{regions.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
                 <div className="filter-item"><label>담당자</label><input type="text" name="manager" value={filters.manager} onChange={handleFilterChange} className="filter-input" /></div>
@@ -336,7 +403,7 @@ function App() {
           </div>
           <div className="panel">
             <div className="search-results-list" ref={searchResultsRef}>
-              <h2 className="sub-title">검색 결과 ({searchResults.length}개)</h2>
+              <h2 className="sub-title">검색 결과 ({sortedResults.length}개)</h2>
               <div className="results-toolbar">
                 <button className={`sort-btn ${sortKey==='sipyung' ? 'active':''}`} onClick={()=>toggleSort('sipyung')}>
                   시평액 {sortKey==='sipyung' ? (sortDir==='asc'?'▲':'▼') : ''}
@@ -346,6 +413,9 @@ function App() {
                 </button>
                 <button className={`sort-btn ${sortKey==='5y' ? 'active':''}`} onClick={()=>toggleSort('5y')}>
                   5년 실적 {sortKey==='5y' ? (sortDir==='asc'?'▲':'▼') : ''}
+                </button>
+                <button className={`sort-btn ${onlyLatest ? 'active' : ''}`} onClick={()=>setOnlyLatest(v => !v)} title="최신 자료만 보기">
+                  최신만 {onlyLatest ? '✔' : ''}
                 </button>
               </div>
               {isLoading && <p>로딩 중...</p>}

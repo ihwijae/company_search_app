@@ -1,0 +1,105 @@
+// Agreements text generator and validation (shared, UI-agnostic)
+
+const OWNER = {
+  MOIS: '행안부 및 조달청',
+  LH: '한국토지주택공사',
+};
+
+function normalizeShare(v) {
+  if (v === null || v === undefined) return NaN;
+  const s = String(v).trim();
+  if (!s) return NaN;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function computeSumShare(item) {
+  const l = normalizeShare(item?.leader?.share);
+  const ms = (item?.members || []).map(m => normalizeShare(m?.share));
+  let sum = 0;
+  if (Number.isFinite(l)) sum += l;
+  for (const n of ms) if (Number.isFinite(n)) sum += n;
+  // keep precision without rounding
+  return Number(sum.toFixed(10));
+}
+
+function hasDuplicateNames(item) {
+  const names = [];
+  if (item?.leader?.name) names.push(String(item.leader.name).trim());
+  (item?.members || []).forEach(m => { if (m?.name) names.push(String(m.name).trim()); });
+  const seen = new Set();
+  for (const n of names) {
+    if (!n) continue;
+    if (seen.has(n)) return true;
+    seen.add(n);
+  }
+  return false;
+}
+
+export function validateAgreement(item) {
+  const errors = [];
+  if (!item?.noticeNo || !String(item.noticeNo).trim()) errors.push('공고번호를 입력하세요.');
+  if (!item?.title || !String(item.title).trim()) errors.push('공고명을 입력하세요.');
+  if (!item?.leader?.name || !String(item.leader.name).trim()) errors.push('대표사를 선택/입력하세요.');
+  const lShare = normalizeShare(item?.leader?.share);
+  if (!Number.isFinite(lShare)) errors.push('대표사 지분(%)을 입력하세요.');
+  if ((item?.members || []).length > 4) errors.push('구성사는 최대 4명입니다.');
+
+  if (hasDuplicateNames(item)) errors.push('대표사/구성사에 중복된 업체가 있습니다.');
+
+  const sum = computeSumShare(item);
+  if (sum !== 100) errors.push('지분 합계가 100%가 되어야 합니다.');
+
+  return { ok: errors.length === 0, errors, sumShare: sum };
+}
+
+function needsHeader(owner) {
+  return owner !== OWNER.MOIS; // MOIS only: no header
+}
+
+function leaderNeedsBizNo(owner) {
+  return owner === OWNER.LH; // LH only
+}
+
+function memberNeedsBizNo(owner) {
+  if (owner === OWNER.MOIS) return true; // MOIS: member biz no
+  if (owner === OWNER.LH) return false;  // LH: no member biz no
+  return true; // others: member biz no
+}
+
+export function generateOne(item) {
+  const lines = [];
+  const owner = String(item.owner || '').trim();
+  if (needsHeader(owner)) lines.push(`[${owner}]`);
+  lines.push(`${item.noticeNo} ${item.title}`);
+  lines.push('');
+
+  const leaderName = String(item.leader?.name || '').trim();
+  const leaderShare = String(item.leader?.share || '').trim();
+  if (leaderName && leaderShare) {
+    const leaderBiz = leaderNeedsBizNo(owner) && item.leader?.bizNo ? ` [${item.leader.bizNo}]` : '';
+    lines.push(`${leaderName} ${leaderShare}%${leaderBiz}`);
+  }
+
+  (item.members || [])
+    .filter(m => String(m?.name || '').trim() && String(m?.share || '').trim())
+    .forEach(m => {
+      const n = String(m?.name || '').trim();
+      const s = String(m?.share || '').trim();
+      const biz = memberNeedsBizNo(owner) && m?.bizNo ? ` [${m.bizNo}]` : '';
+      lines.push(`${n} ${s}%${biz}`);
+    });
+  lines.push('');
+  lines.push('협정 부탁드립니다');
+  return lines.join('\n');
+}
+
+export function generateMany(items) {
+  const sep = '---------------------';
+  const blocks = (items || []).map(it => generateOne(it));
+  return blocks.join(`\n\n${sep}\n\n`);
+}
+
+export function helpers() {
+  return { computeSumShare, hasDuplicateNames };
+}

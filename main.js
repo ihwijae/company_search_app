@@ -1,13 +1,19 @@
-﻿const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
+﻿const { app, BrowserWindow, ipcMain, dialog, screen, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const chokidar = require('chokidar');
 const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
 const os = require('os');
 
-// --- ?ㅼ젙 ---
+// Minimize GPU shader cache errors on Windows (cannot create/move cache)
+try { app.commandLine.appendSwitch('disable-gpu-shader-disk-cache'); } catch {}
+
+// --- 설정 ---
 const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
 const WINDOW_STATE_PATH = path.join(app.getPath('userData'), 'window-state.json');
+const AGREEMENTS_PATH = path.join(app.getPath('userData'), 'agreements.json');
+const AGREEMENTS_RULES_PATH = path.join(app.getPath('userData'), 'agreements.rules.json');
+const FORMULAS_PATH = path.join(app.getPath('userData'), 'formulas.json');
 let FILE_PATHS = { eung: '', tongsin: '', sobang: '' };
 
 function loadConfig() {
@@ -254,7 +260,7 @@ try {
     FILE_PATHS[fileType] = filePath; saveConfig();
     try { await svc.loadAndWatch(fileType, filePath); return { success: true, path: filePath }; }
     catch (e) { return { success: false, message: e?.message || 'Load failed' }; }
-  });
+});
 
   if (ipcMain.removeHandler) ipcMain.removeHandler('get-regions');
   ipcMain.handle('get-regions', (_event, file_type) => {
@@ -278,5 +284,258 @@ try {
   console.error('[MAIN] SearchService 초기화/바인딩 실패:', e);
 }
 
+// Copy 1-column CSV to clipboard (preserve in-cell line breaks for Excel)
+try {
+  if (ipcMain.removeHandler) ipcMain.removeHandler('copy-csv-column');
+  ipcMain.handle('copy-csv-column', (_event, { rows }) => {
+    try {
+      const esc = (s) => '"' + String(s ?? '').replaceAll('"', '""') + '"';
+      const csv = Array.isArray(rows) ? rows.map(esc).join('\r\n') : '';
+      // Write as CSV first so Excel prefers it
+      try { clipboard.writeBuffer('text/csv', Buffer.from(csv, 'utf8')); } catch {}
+      // Also write plain text as fallback (same content)
+      try { clipboard.writeText(csv); } catch {}
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Clipboard write failed' };
+    }
+  });
+} catch {}
+
+// Agreements: Fetch candidates (skeleton implementation)
+try {
+  const { isSingleBidEligible } = require('./src/shared/agreements/rules/lh.js');
+  if (ipcMain.removeHandler) { try { ipcMain.removeHandler('agreements-fetch-candidates'); } catch {} }
+  ipcMain.handle('agreements-fetch-candidates', async (_event, params = {}) => {
+    try {
+      const ownerId = params.ownerId || 'LH';
+      const fileType = params.fileType || 'eung';
+      const entryAmount = params.entryAmount || params.estimatedPrice || 0;
+      const baseAmount = params.baseAmount || 0;
+      const dutyRegions = Array.isArray(params.dutyRegions) ? params.dutyRegions : [];
+      const excludeSingleBidEligible = params.excludeSingleBidEligible !== false; // default true
+      const filterByRegion = !!params.filterByRegion; // only include region-matching when dutyRegions provided
+
+      // Load rules
+      let rulesDoc = null;
+      try { if (fs.existsSync(AGREEMENTS_RULES_PATH)) rulesDoc = JSON.parse(fs.readFileSync(AGREEMENTS_RULES_PATH, 'utf-8')); } catch {}
+      const owners = (rulesDoc && rulesDoc.owners) || [];
+      const owner = owners.find(o => o.id === ownerId) || null;
+      const kind = owner && (owner.kinds || []).find(k => k.id === fileType);
+      const rules = (kind && kind.rules) || { alwaysInclude: [], alwaysExclude: [], excludeSingleBidEligible: true };
+
+      // Access SearchService instance created above
+      let data = [];
+      try {
+        // Reach into the earlier service by calling the same search IPC logic path
+        // We can't call renderer IPC from main; instead, reuse svc captured in this file's scope if available
+        // eslint-disable-next-line no-undef
+        if (typeof svc !== 'undefined' && svc && svc.search) {
+          data = svc.search(fileType, {});
+        }
+      } catch {}
+
+      if (!Array.isArray(data)) data = [];
+      // Fallback: if service instance not reachable, read from source file directly
+      if (data.length === 0) {
+        try {
+          const srcPath = FILE_PATHS[fileType];
+          if (srcPath && fs.existsSync(srcPath)) {
+            const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
+            const { SearchLogic } = require('./searchLogic.js');
+            const { sanitizedPath } = sanitizeXlsx(srcPath);
+            const lg = new SearchLogic(sanitizedPath);
+            await lg.load();
+            data = lg.search({});
+          }
+        } catch (e) { console.warn('[MAIN] fallback loading for candidates failed:', e?.message || e); }
+      }
+
+      const norm = (s) => String(s || '').trim();
+      const alwaysInclude = (rules.alwaysInclude || []).map(x => ({ bizNo: norm(x.bizNo), name: norm(x.name) }));
+      const alwaysExclude = (rules.alwaysExclude || []).map(x => ({ bizNo: norm(x.bizNo), name: norm(x.name) }));
+      const includeBiz = new Set(alwaysInclude.map(x => x.bizNo).filter(Boolean));
+      const includeName = new Set(alwaysInclude.map(x => x.name).filter(Boolean));
+      const excludeBiz = new Set(alwaysExclude.map(x => x.bizNo).filter(Boolean));
+      const excludeName = new Set(alwaysExclude.map(x => x.name).filter(Boolean));
+
+      const out = [];
+      for (const c of data) {
+        const name = norm(c['검색된 회사'] || c['회사명']);
+        const bizNo = norm(c['사업자번호']);
+        const manager = norm(c['대표자'] || c['담당자명'] || '');
+        const region = norm(c['대표지역'] || c['지역'] || '');
+        const rating = Number(String(c['시평'] || '').replace(/[, ]/g, '')) || 0;
+        const perf5y = Number(String(c['5년 실적'] || '').replace(/[, ]/g, '')) || 0;
+
+        const wasAlwaysExcluded = (bizNo && excludeBiz.has(bizNo)) || (!bizNo && excludeName.has(name));
+        const wasAlwaysIncluded = (bizNo && includeBiz.has(bizNo)) || (!bizNo && includeName.has(name));
+        if (wasAlwaysExcluded) continue;
+
+        let sbe = { ok: false, reasons: [], facts: {} };
+        try { sbe = isSingleBidEligible(c, { entryAmount, baseAmount, dutyRegions }); } catch {}
+        const moneyOk = sbe && sbe.facts ? (sbe.facts.sipyung >= sbe.facts.entry && sbe.facts.entry > 0) : false;
+        const perfOk = sbe && sbe.facts ? (sbe.facts.perf5y >= sbe.facts.base && sbe.facts.base > 0) : false;
+        const regionOk = sbe && sbe.facts ? (dutyRegions.length === 0 || dutyRegions.includes(sbe.facts.region)) : true;
+
+        if (excludeSingleBidEligible && sbe.ok && !wasAlwaysIncluded) continue;
+        if (filterByRegion && dutyRegions.length > 0 && !regionOk && !wasAlwaysIncluded) continue;
+
+        out.push({
+          id: bizNo || name,
+          name, bizNo, manager, region, rating, perf5y,
+          moneyOk, perfOk, regionOk,
+          singleBidEligible: !!sbe.ok,
+          wasAlwaysIncluded, wasAlwaysExcluded,
+          reasons: [
+            wasAlwaysIncluded ? '항상 포함' : null,
+            (excludeSingleBidEligible && sbe.ok) ? '단독 가능' : null,
+            !moneyOk ? '시평 미달' : null,
+            !perfOk ? '실적 미달' : null,
+            !regionOk ? '지역 불일치' : null,
+          ].filter(Boolean),
+        });
+      }
+
+      return { success: true, data: out };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to fetch candidates' };
+    }
+  });
+} catch (e) {
+  console.error('[MAIN] agreements-fetch-candidates IPC failed:', e);
+}
+
+// Agreements persistence IPC
+try {
+  if (ipcMain.removeHandler) {
+    try { ipcMain.removeHandler('agreements-load'); } catch {}
+    try { ipcMain.removeHandler('agreements-save'); } catch {}
+  }
+  ipcMain.handle('agreements-load', async () => {
+    try {
+      if (!fs.existsSync(AGREEMENTS_PATH)) return { success: true, data: [] };
+      const raw = JSON.parse(fs.readFileSync(AGREEMENTS_PATH, 'utf-8'));
+      return { success: true, data: Array.isArray(raw) ? raw : [] };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to load agreements' };
+    }
+  });
+  ipcMain.handle('agreements-save', async (_event, items) => {
+    try {
+      if (!Array.isArray(items)) throw new Error('Invalid payload');
+      fs.writeFileSync(AGREEMENTS_PATH, JSON.stringify(items, null, 2));
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to save agreements' };
+    }
+  });
+} catch {}
 
 
+// Formulas (defaults + overrides) and evaluation IPC
+try {
+  const formulasMod = require('./src/shared/formulas.js');
+  const evaluator = require('./src/shared/evaluator.js');
+
+  if (ipcMain.removeHandler) {
+    try { ipcMain.removeHandler('formulas-load'); } catch {}
+    try { ipcMain.removeHandler('formulas-load-defaults'); } catch {}
+    try { ipcMain.removeHandler('formulas-load-overrides'); } catch {}
+    try { ipcMain.removeHandler('formulas-save-overrides'); } catch {}
+    try { ipcMain.removeHandler('formulas-evaluate'); } catch {}
+  }
+
+  ipcMain.handle('formulas-load', async () => {
+    try {
+      // Bust cache so defaults/merger reflect latest edits during dev
+      try { delete require.cache[require.resolve('./src/shared/formulas.js')]; } catch {}
+      try { delete require.cache[require.resolve('./src/shared/formulas.defaults.json')]; } catch {}
+      const fresh = require('./src/shared/formulas.js');
+      const data = fresh.loadFormulasMerged();
+      return { success: true, data };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to load formulas' };
+    }
+  });
+
+  ipcMain.handle('formulas-load-defaults', async () => {
+    try {
+      try { delete require.cache[require.resolve('./src/shared/formulas.defaults.json')]; } catch {}
+      const defaults = require('./src/shared/formulas.defaults.json');
+      return { success: true, data: defaults };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to load default formulas' };
+    }
+  });
+
+  ipcMain.handle('formulas-load-overrides', async () => {
+    try {
+      if (!fs.existsSync(FORMULAS_PATH)) return { success: true, data: { version: 1, agencies: [] } };
+      const raw = JSON.parse(fs.readFileSync(FORMULAS_PATH, 'utf-8'));
+      return { success: true, data: raw };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to load overrides' };
+    }
+  });
+
+  ipcMain.handle('formulas-save-overrides', async (_event, payload) => {
+    try {
+      const incoming = payload && payload.agencies ? payload : { agencies: [] };
+      let base = { version: 1, agencies: [] };
+      try { if (fs.existsSync(FORMULAS_PATH)) base = JSON.parse(fs.readFileSync(FORMULAS_PATH, 'utf-8')); } catch {}
+      const mergedAgencies = formulasMod._internals.mergeAgencies(base.agencies, incoming.agencies);
+      const out = { version: Math.max(base.version || 1, incoming.version || 1), agencies: mergedAgencies };
+      fs.writeFileSync(FORMULAS_PATH, JSON.stringify(out, null, 2));
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to save overrides' };
+    }
+  });
+
+  ipcMain.handle('formulas-evaluate', async (_event, payload) => {
+    try {
+      const r = evaluator.evaluateScores(payload || {});
+      return { success: true, data: r };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to evaluate' };
+    }
+  });
+} catch (e) {
+  console.error('[MAIN] formulas/evaluator IPC wiring failed:', e);
+}
+
+
+// Agreements Rules (load/save)
+try {
+  if (ipcMain.removeHandler) {
+    try { ipcMain.removeHandler('agreements-rules-load'); } catch {}
+    try { ipcMain.removeHandler('agreements-rules-save'); } catch {}
+  }
+  ipcMain.handle('agreements-rules-load', async () => {
+    try {
+      if (!fs.existsSync(AGREEMENTS_RULES_PATH)) {
+        // Initialize empty rules if missing
+        const schema = require('./src/shared/agreements/rules/schema.js');
+        const def = schema.defaultRules();
+        fs.writeFileSync(AGREEMENTS_RULES_PATH, JSON.stringify(def, null, 2));
+        return { success: true, data: def };
+      }
+      const raw = JSON.parse(fs.readFileSync(AGREEMENTS_RULES_PATH, 'utf-8'));
+      return { success: true, data: raw };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to load agreement rules' };
+    }
+  });
+  ipcMain.handle('agreements-rules-save', async (_event, payload) => {
+    try {
+      const schema = require('./src/shared/agreements/rules/schema.js');
+      const v = schema.validateRules(payload);
+      if (!v.ok) return { success: false, message: v.errors.join(' / ') };
+      fs.writeFileSync(AGREEMENTS_RULES_PATH, JSON.stringify(payload, null, 2));
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to save agreement rules' };
+    }
+  });
+} catch {}

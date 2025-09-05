@@ -16,7 +16,8 @@
 html, body, #root { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Pretendard','Noto Sans KR','Segoe UI Variable','Segoe UI', ui-sans-serif, system-ui, -apple-system, Roboto, Arial, Apple Color Emoji, Segoe UI Emoji; overflow-x: hidden; }
 
-.app-shell { display: grid; grid-template-columns: 88px 1fr; height: 100vh; }
+.app-shell { display: grid; grid-template-columns: 88px 1fr; height: 100vh; transition: grid-template-columns .24s ease-in-out; }
+.app-shell.sidebar-wide { grid-template-columns: 220px 1fr; }
 /* 사이드바는 브랜드 퍼플 */
 .sidebar { background: var(--brand); border-right: 1px solid rgba(0,0,0,0.06); display: flex; flex-direction: column; color: #eef;
 }
@@ -30,6 +31,19 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
 .sidebar.collapsed .nav-item .dot { margin-left: 0; }
 .nav-item .dot.on { background: var(--success); }
 .sidebar-footer { margin-top: auto; padding: 10px; color: #d7d3ff; font-size: 12px; opacity: 0.8; }
+
+/* LH 드롭다운 서브메뉴 */
+.subnav { display: flex; flex-direction: column; gap: 4px; padding-left: 12px; margin-top: 2px; animation: subnav-fade-in .18s ease; }
+.nav-sub-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; color: #e7e3ff; cursor: pointer; justify-content: flex-start; }
+.nav-sub-item:hover { background: rgba(255,255,255,0.10); color: #fff; }
+.nav-sub-item.active { background: rgba(255,255,255,0.18); color: #fff; }
+.nav-sub-item .sub-bullet { width: 10px; text-align: center; opacity: 0.9; }
+.nav-sub-item .sub-label { font-size: 13px; font-weight: 600; }
+
+@keyframes subnav-fade-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 
 .main { display: flex; flex-direction: column; height: 100vh; background: var(--brand); }
 .topbar { height: 40px; background: var(--brand); }
@@ -65,7 +79,31 @@ input, select { background: #fff; color: var(--text); border: 1px solid #d0d5dd;
 button { background: #fff; color: var(--text); border: 1px solid #d0d5dd; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
 button:hover { background: #f2f4f7; }
 button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-button.primary:hover { background: #4338ca; }
+button.primary:hover { background: var(--accent-2); }
+/* small button utility */
+.btn-sm { padding: 6px 10px; border-radius: 8px; height: 32px; font-size: 13px; }
+.btn-muted { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.btn-muted:hover { background: #e5e7eb; }
+.btn-soft { background: #f6f0fa; color: var(--accent); border: 1px solid #ead8f3; }
+.btn-soft:hover { background: #efe1f7; }
+.btn-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+.btn-danger:hover { background: #fecaca; }
+.toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rules-toolbar { display: grid; grid-template-columns: 1fr 88px 88px; gap: 8px; align-items: center; }
+.rules-toolbar .btn-sm { height: 40px; }
+.card-soft { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; background: #fff; }
+/* soft table for modal lists */
+.table-soft { width: 100%; border-collapse: collapse; }
+.table-soft th, .table-soft td { padding: 8px; border-bottom: 1px solid #eef2f6; }
+.table-soft thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; }
+.table-soft tr:hover td { background: #f9fafb; }
+.details-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+.details-table th, .details-table td { padding: 10px 12px; border-bottom: 1px solid #eef2f6; text-align: left; vertical-align: middle; text-indent: 0; }
+.details-table thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; color: #475569; font-weight: 700; font-size: 13px; }
+.details-table tbody tr:hover td { background: #faf5ff; }
+.details-table tbody td:first-child, .details-table thead th:first-child { padding-left: 10px; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #eef2ff; color: #3730a3; border: 1px solid #e0e7ff; }
+.section-help { color: #6b7280; font-size: 12px; margin-top: 6px; }
 
 .results-list { list-style: none; margin: 0; padding: 0; }
 .results-list li { padding: 8px 10px; border-bottom: 1px solid #e6e8ef; }
@@ -79,3 +117,14 @@ button.primary:hover { background: #4338ca; }
 /* 타이틀바 드래그 영역 (overlay 모드) */
 .title-drag { height: 32px; -webkit-app-region: drag; background: var(--brand); }
 .no-drag { -webkit-app-region: no-drag; }
+
+/* Lightweight layout helpers for wizard pages */
+.section { margin-bottom: 12px; }
+.section-title { margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: var(--text); }
+.section .section-divider { border-top: 1px solid #eef2f6; margin: 8px 0 12px 0; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 1200px) { .grid-2 { grid-template-columns: 1fr; } }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { background: #f3e8ff; color: #4A154B; border: 1px solid #e9d5ff; padding: 4px 8px; border-radius: 999px; font-size: 12px; }
+.rules-split { gap: 16px; align-items: start; }
+.rules-box { border: 1px solid #eef2f6; border-radius: 10px; padding: 10px; background: #fff; }
