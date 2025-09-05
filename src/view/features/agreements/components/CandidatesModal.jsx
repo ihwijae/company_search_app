@@ -10,6 +10,8 @@ export default function CandidatesModal({ open, onClose, fileType, entryAmount, 
   const [excluded, setExcluded] = useState(new Set());
   const [error, setError] = useState('');
   const [sortDir, setSortDir] = useState('desc'); // 'desc' | 'asc'
+  const [sortSeq, setSortSeq] = useState(0);      // force re-sort even if same dir clicked
+  const applySort = (dir) => { setSortDir(dir); setSortSeq((n)=>n+1); };
   const [autoPin, setAutoPin] = useState(false);
   const [autoCount, setAutoCount] = useState(3);
 
@@ -59,18 +61,27 @@ export default function CandidatesModal({ open, onClose, fileType, entryAmount, 
 
   const computed = useMemo(() => {
     return (list || []).map((c) => {
-      let pct = null;
-      if (ratioBase > 0 && c.rating > 0) {
-        const raw = (c.rating / ratioBase) * 100;
-        pct = Math.floor(raw * 100) / 100; // floor to 2 decimals
+      let pctRaw = null; let pct = null;
+      if (ratioBase > 0) {
+        const r = Number(c.rating || 0);
+        if (Number.isFinite(r) && r > 0) {
+          pctRaw = (r / ratioBase) * 100;        // 정렬은 원시 비율값으로만
+          pct = Math.floor(pctRaw * 100) / 100;  // 표시값은 둘째자리 내림
+        }
       }
-      return { ...c, _pct: pct };
+      return { ...c, _pct: pct, _pctRaw: pctRaw };
     });
   }, [list, ratioBase]);
 
   const filtered = useMemo(() => {
-    const min = params.minPct !== '' ? Number(params.minPct) : null;
-    const max = params.maxPct !== '' ? Number(params.maxPct) : null;
+    const toFloat = (s) => {
+      const t = String(s ?? '').trim();
+      if (!t) return null;
+      const n = Number(t);
+      return Number.isFinite(n) ? n : null;
+    };
+    const min = toFloat(params.minPct);
+    const max = toFloat(params.maxPct);
     return computed.filter((c) => {
       if (excluded.has(c.id)) return false;
       if (min !== null && (c._pct === null || c._pct < min)) return false;
@@ -81,14 +92,20 @@ export default function CandidatesModal({ open, onClose, fileType, entryAmount, 
 
   const sorted = useMemo(() => {
     const arr = filtered.slice();
-    if (sortDir) {
-      arr.sort((a, b) => {
-        const av = a._pct ?? -1; const bv = b._pct ?? -1;
-        return sortDir === 'desc' ? (bv - av) : (av - bv);
-      });
-    }
+    arr.sort((a, b) => {
+      const av = a._pctRaw; const bv = b._pctRaw;
+      // null(계산 불가)은 항상 맨 아래
+      const aNull = av == null; const bNull = bv == null;
+      if (aNull && bNull) return String(a.name||'').localeCompare(String(b.name||''), 'ko-KR');
+      if (aNull) return 1;
+      if (bNull) return -1;
+      const diff = sortDir === 'asc' ? (av - bv) : (bv - av);
+      if (diff !== 0) return diff;
+      // 동률이면 이름으로 안정 정렬
+      return String(a.name||'').localeCompare(String(b.name||''), 'ko-KR');
+    });
     return arr;
-  }, [filtered, sortDir]);
+  }, [filtered, sortDir, sortSeq]);
 
   const autoPinned = useMemo(() => {
     if (!autoPin) return new Set();
@@ -157,8 +174,8 @@ export default function CandidatesModal({ open, onClose, fileType, entryAmount, 
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 6 }}>
             <div style={{ color: '#6b7280' }}>총 {summary.total}개 · 핀 {summary.pinned} · 제외 {summary.excluded}</div>
             <div style={{ display:'flex', gap: 6, alignItems:'center' }}>
-              <button className={`btn-sm ${sortDir==='desc'?'primary':'btn-soft'}`} onClick={()=>setSortDir('desc')}>지분 높은순</button>
-              <button className={`btn-sm ${sortDir==='asc'?'primary':'btn-soft'}`} onClick={()=>setSortDir('asc')}>지분 낮은순</button>
+              <button className={`btn-sm ${sortDir==='desc'?'primary':'btn-soft'}`} onClick={()=>applySort('desc')}>지분 높은순</button>
+              <button className={`btn-sm ${sortDir==='asc'?'primary':'btn-soft'}`} onClick={()=>applySort('asc')}>지분 낮은순</button>
               <label style={{ display:'inline-flex', alignItems:'center', gap:6, marginLeft: 6 }}>
                 <input type="checkbox" checked={autoPin} onChange={(e)=>setAutoPin(!!e.target.checked)} /> 자동 핀 상위
               </label>
@@ -166,7 +183,7 @@ export default function CandidatesModal({ open, onClose, fileType, entryAmount, 
               <button className="btn-muted btn-sm" onClick={()=>{ setPinned(new Set()); setExcluded(new Set()); }}>선택 초기화</button>
             </div>
           </div>
-          <div style={{ maxHeight: 460, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ maxHeight: 480, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, paddingBottom: 4 }}>
             <table className="details-table" style={{ width: '100%' }}>
               <thead>
                 <tr>
@@ -180,11 +197,11 @@ export default function CandidatesModal({ open, onClose, fileType, entryAmount, 
                 </tr>
               </thead>
               <tbody>
-                {(sorted || []).map((c) => {
+                {(sorted || []).map((c, idx) => {
                   const pct = c._pct;
                   const isAuto = autoPinned.has(c.id);
                   return (
-                  <tr key={c.id}>
+                  <tr key={`${c.id}-${idx}`}>
                     <td>{c.name}</td>
                     <td>{c.manager}</td>
                     <td>{c.region}</td>
@@ -192,7 +209,7 @@ export default function CandidatesModal({ open, onClose, fileType, entryAmount, 
                     <td>{c.perf5y ? c.perf5y.toLocaleString() : ''}</td>
                     <td>{pct !== null ? pct.toFixed(2) : '-'}</td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display:'flex', gap:6, justifyContent:'center', flexWrap:'wrap' }}>
+                      <div className="details-actions">
                         {c.wasAlwaysIncluded && <span className="pill">항상포함</span>}
                         {c.singleBidEligible && <span className="pill">단독가능</span>}
                         {c.moneyOk && <span className="pill">시평OK</span>}
@@ -200,7 +217,7 @@ export default function CandidatesModal({ open, onClose, fileType, entryAmount, 
                         {c.regionOk && <span className="pill">지역OK</span>}
                         {isAuto && <span className="pill">자동핀</span>}
                       </div>
-                      <div style={{ display:'flex', gap: 6, justifyContent:'center', marginTop: 6 }}>
+                      <div className="details-actions" style={{ marginTop: 6 }}>
                         <button className={pinnedView.has(c.id) ? 'btn-sm primary' : 'btn-sm btn-soft'} onClick={()=>onTogglePin(c.id)} disabled={isAuto}>{pinnedView.has(c.id) ? (isAuto ? '핀(자동)' : '핀 해제') : '핀'}</button>
                         <button className={excluded.has(c.id) ? 'btn-sm btn-danger' : 'btn-sm btn-muted'} onClick={()=>onToggleExclude(c.id)}>{excluded.has(c.id) ? '제외 해제' : '제외'}</button>
                       </div>

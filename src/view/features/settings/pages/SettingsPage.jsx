@@ -61,6 +61,7 @@ export default function SettingsPage() {
   const [preview, setPreview] = React.useState(null);
 
   const [rulesModalOpen, setRulesModalOpen] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
 
   const load = async () => {
     setStatus('로딩...');
@@ -120,6 +121,23 @@ export default function SettingsPage() {
       console.warn('hydrate failed:', e);
     }
   }
+
+  const exportSettings = async () => {
+    setBusy(true); setStatus('설정 내보내기...');
+    try { const r = await window.electronAPI.settingsExport(); setStatus(r.success ? '내보내기 완료' : (r.message || '실패')); }
+    catch (e) { setStatus('실패: ' + (e.message || e)); }
+    finally { setBusy(false); setTimeout(()=>setStatus(''), 1200); }
+  };
+  const importSettings = async () => {
+    setBusy(true); setStatus('설정 가져오기...');
+    try { const r = await window.electronAPI.settingsImport();
+      if (r.success) {
+        // Reload merged formulas to reflect overrides; rules modal는 다음 오픈 시 반영
+        await load(); setStatus('가져오기 완료');
+      } else { setStatus(r.message || '실패'); }
+    } catch (e) { setStatus('실패: ' + (e.message || e)); }
+    finally { setBusy(false); setTimeout(()=>setStatus(''), 1200); }
+  };
 
   function buildRulesFromForm() {
     const prev = rulesSnapshotRef.current || {};
@@ -390,6 +408,12 @@ export default function SettingsPage() {
                     </select>
                   </div>
                 </div>
+              </div>
+              <div style={{ display:'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                <button className="btn-soft" onClick={()=>setRulesModalOpen(true)}>협정 규칙 편집</button>
+                <button className="btn-soft" onClick={exportSettings} disabled={busy}>설정 내보내기</button>
+                <button className="btn-soft" onClick={importSettings} disabled={busy}>설정 가져오기</button>
+                {status && <span style={{ color: '#6b7280' }}>{status}</span>}
               </div>
             </div>
 

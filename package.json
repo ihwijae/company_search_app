@@ -46,6 +46,7 @@
       "dist/**",
       "searchLogic.js",
       "src/main/**",
+      "src/shared/**",
       "utils/**",
       "config.js"
     ],

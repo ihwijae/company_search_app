@@ -360,13 +360,18 @@ try {
       const excludeName = new Set(alwaysExclude.map(x => x.name).filter(Boolean));
 
       const out = [];
+      const toNumber = (v) => {
+        if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+        const s = String(v || '').replace(/[^0-9]/g, '');
+        return s ? Number(s) : 0;
+      };
       for (const c of data) {
         const name = norm(c['검색된 회사'] || c['회사명']);
         const bizNo = norm(c['사업자번호']);
         const manager = norm(c['대표자'] || c['담당자명'] || '');
         const region = norm(c['대표지역'] || c['지역'] || '');
-        const rating = Number(String(c['시평'] || '').replace(/[, ]/g, '')) || 0;
-        const perf5y = Number(String(c['5년 실적'] || '').replace(/[, ]/g, '')) || 0;
+        const rating = toNumber(c['시평']);
+        const perf5y = toNumber(c['5년 실적']);
 
         const wasAlwaysExcluded = (bizNo && excludeBiz.has(bizNo)) || (!bizNo && excludeName.has(name));
         const wasAlwaysIncluded = (bizNo && includeBiz.has(bizNo)) || (!bizNo && includeName.has(name));
@@ -515,11 +520,19 @@ try {
   ipcMain.handle('agreements-rules-load', async () => {
     try {
       if (!fs.existsSync(AGREEMENTS_RULES_PATH)) {
-        // Initialize empty rules if missing
-        const schema = require('./src/shared/agreements/rules/schema.js');
-        const def = schema.defaultRules();
-        fs.writeFileSync(AGREEMENTS_RULES_PATH, JSON.stringify(def, null, 2));
-        return { success: true, data: def };
+        // Seed from packaged defaults if present, else use schema default
+        try {
+          const defaultsDir = path.join(process.resourcesPath || app.getAppPath(), 'defaults');
+          const presetPath = path.join(defaultsDir, 'agreements.rules.json');
+          if (fs.existsSync(presetPath)) {
+            const preset = JSON.parse(fs.readFileSync(presetPath, 'utf-8'));
+            fs.writeFileSync(AGREEMENTS_RULES_PATH, JSON.stringify(preset, null, 2));
+          } else {
+            const schema = require('./src/shared/agreements/rules/schema.js');
+            const def = schema.defaultRules();
+            fs.writeFileSync(AGREEMENTS_RULES_PATH, JSON.stringify(def, null, 2));
+          }
+        } catch {}
       }
       const raw = JSON.parse(fs.readFileSync(AGREEMENTS_RULES_PATH, 'utf-8'));
       return { success: true, data: raw };
@@ -536,6 +549,78 @@ try {
       return { success: true };
     } catch (e) {
       return { success: false, message: e?.message || 'Failed to save agreement rules' };
+    }
+  });
+} catch {}
+
+// Settings import/export (rules + formulas overrides)
+try {
+  if (ipcMain.removeHandler) {
+    try { ipcMain.removeHandler('agreements-settings-export'); } catch {}
+    try { ipcMain.removeHandler('agreements-settings-import'); } catch {}
+  }
+
+  ipcMain.handle('agreements-settings-export', async () => {
+    try {
+      const saveTo = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow(), {
+        title: '설정 내보내기',
+        defaultPath: 'agreements-settings.json',
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+      if (saveTo.canceled || !saveTo.filePath) return { success: false, message: '사용자 취소' };
+
+      let rules = null; let formulas = null;
+      try { if (fs.existsSync(AGREEMENTS_RULES_PATH)) rules = JSON.parse(fs.readFileSync(AGREEMENTS_RULES_PATH, 'utf-8')); } catch {}
+      try { if (fs.existsSync(FORMULAS_PATH)) formulas = JSON.parse(fs.readFileSync(FORMULAS_PATH, 'utf-8')); } catch {}
+      const payload = { version: 1, exportedAt: Date.now(), rules, formulas };
+      fs.writeFileSync(saveTo.filePath, JSON.stringify(payload, null, 2));
+      return { success: true, path: saveTo.filePath };
+    } catch (e) {
+      return { success: false, message: e?.message || '내보내기 실패' };
+    }
+  });
+
+  ipcMain.handle('agreements-settings-import', async () => {
+    try {
+      const pick = await dialog.showOpenDialog(BrowserWindow.getFocusedWindow(), {
+        title: '설정 가져오기',
+        properties: ['openFile'],
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+      if (pick.canceled || !pick.filePaths.length) return { success: false, message: '사용자 취소' };
+      const filePath = pick.filePaths[0];
+      const payload = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      if (!payload || typeof payload !== 'object') throw new Error('JSON 형식이 아닙니다');
+
+      // Backup existing
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      try { if (fs.existsSync(AGREEMENTS_RULES_PATH)) fs.copyFileSync(AGREEMENTS_RULES_PATH, AGREEMENTS_RULES_PATH + '.' + stamp + '.bak'); } catch {}
+      try { if (fs.existsSync(FORMULAS_PATH)) fs.copyFileSync(FORMULAS_PATH, FORMULAS_PATH + '.' + stamp + '.bak'); } catch {}
+
+      // Validate and write rules if present
+      if (payload.rules) {
+        try {
+          const schema = require('./src/shared/agreements/rules/schema.js');
+          const v = schema.validateRules(payload.rules);
+          if (!v.ok) throw new Error('규칙 스키마 불일치: ' + v.errors.join(', '));
+          fs.writeFileSync(AGREEMENTS_RULES_PATH, JSON.stringify(payload.rules, null, 2));
+        } catch (e) {
+          return { success: false, message: '규칙 처리 실패: ' + (e?.message || e) };
+        }
+      }
+
+      // Write formulas overrides if present
+      if (payload.formulas) {
+        try {
+          fs.writeFileSync(FORMULAS_PATH, JSON.stringify(payload.formulas, null, 2));
+        } catch (e) {
+          return { success: false, message: '산식 처리 실패: ' + (e?.message || e) };
+        }
+      }
+
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: e?.message || '가져오기 실패' };
     }
   });
 } catch {}
