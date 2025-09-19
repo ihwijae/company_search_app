@@ -110,12 +110,113 @@ function AdminUpload({ fileStatuses, onUploadSuccess }) {
 
 const DISPLAY_ORDER = [ "검색된 회사", "대표자", "사업자번호", "지역", "시평", "3년 실적", "5년 실적", "부채비율", "유동비율", "영업기간", "신용평가", "여성기업", "고용자수", "일자리창출", "품질평가", "비고" ];
 
+function RegionSelector({
+  label,
+  options,
+  selected,
+  onToggle,
+  onSelectAll,
+  onClear,
+  placeholder = '지역을 선택하세요'
+}) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const containerRef = React.useRef(null);
+  const displayText = selected.length > 0 ? selected.join(', ') : placeholder;
+  const isEmpty = selected.length === 0;
+
+  const toggleDropdown = React.useCallback(() => {
+    if (options.length === 0) return;
+    setIsOpen(prev => !prev);
+  }, [options.length]);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!containerRef.current || containerRef.current.contains(event.target)) return;
+      setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => { document.removeEventListener('mousedown', handleClickOutside); };
+  }, []);
+
+  React.useEffect(() => {
+    if (options.length === 0) setIsOpen(false);
+  }, [options.length]);
+
+  return (
+    <div className={`filter-item region-selector ${isOpen ? 'is-open' : ''}`} ref={containerRef}>
+      <label>{label}</label>
+      <button
+        type="button"
+        className={`filter-input region-display ${isEmpty ? 'is-empty' : ''}`}
+        onClick={toggleDropdown}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleDropdown();
+          }
+          if (event.key === 'Escape') {
+            setIsOpen(false);
+          }
+        }}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <span className="region-display-text">{displayText}</span>
+        <span className="region-display-icon">{isOpen ? '▲' : '▼'}</span>
+      </button>
+      {isOpen && (
+        <div className="region-dropdown">
+          {options.length > 0 ? (
+            <>
+              {(onClear || onSelectAll) && (
+                <div className="region-dropdown-actions">
+                  {onSelectAll && (
+                    <button type="button" onClick={() => onSelectAll()} className="region-action-btn">전체 선택</button>
+                  )}
+                  {onClear && (
+                    <button type="button" onClick={() => onClear()} className="region-action-btn">선택 해제</button>
+                  )}
+                </div>
+              )}
+              <div className="region-dropdown-list" role="listbox">
+                {options.map((opt) => (
+                  <label key={opt} className="region-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(opt)}
+                      onChange={() => onToggle(opt)}
+                    />
+                    <span>{opt}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="region-checkbox-empty">등록된 지역이 없습니다</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false })
   const [activeMenu, setActiveMenu] = useState('search');
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadCount, setUploadCount] = useState(0); // [추가] 파일 선택 성공을 감지할 카운터
-  const [filters, setFilters] = useState({ name: '', region: '전체', manager: '', min_sipyung: '', max_sipyung: '', min_3y: '', max_3y: '', min_5y: '', max_5y: '' });
+  const [filters, setFilters] = useState({
+    name: '',
+    includeRegions: [],
+    excludeRegions: [],
+    manager: '',
+    min_sipyung: '',
+    max_sipyung: '',
+    min_3y: '',
+    max_3y: '',
+    min_5y: '',
+    max_5y: ''
+  });
   const [fileType, setFileType] = useState('eung');
   const [searchedFileType, setSearchedFileType] = useState('eung');
   const [regions, setRegions] = useState(['전체']);
@@ -213,19 +314,101 @@ function App() {
   useEffect(() => {
     refreshFileStatuses();
   }, []);
-  
+
+  const regionOptions = React.useMemo(() => (
+    Array.isArray(regions)
+      ? regions.filter((r) => r && r !== '전체')
+      : []
+  ), [regions]);
+
+  useEffect(() => {
+    setFilters((prev) => {
+      const validSet = new Set(regionOptions);
+      const include = prev.includeRegions.filter((r) => validSet.has(r));
+      const exclude = prev.excludeRegions.filter((r) => validSet.has(r));
+      const includeUnchanged = include.length === prev.includeRegions.length && include.every((v, i) => v === prev.includeRegions[i]);
+      const excludeUnchanged = exclude.length === prev.excludeRegions.length && exclude.every((v, i) => v === prev.excludeRegions[i]);
+      if (includeUnchanged && excludeUnchanged) return prev;
+      return { ...prev, includeRegions: include, excludeRegions: exclude };
+    });
+  }, [regionOptions]);
+
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     const numberFields = ['min_sipyung', 'max_sipyung', 'min_3y', 'max_3y', 'min_5y', 'max_5y'];
     if (numberFields.includes(name)) { setFilters(prev => ({ ...prev, [name]: formatNumber(value) })); } else { setFilters(prev => ({ ...prev, [name]: value })); }
   };
 
-  // Reset only requested filters: 업체명(name), 지역(region), 시평액/3년/5년 범위 + 담당자
+  const toggleRegionSelection = React.useCallback((current, region, optionsList) => {
+    const exists = current.includes(region);
+    const next = exists ? current.filter((r) => r !== region) : [...current, region];
+    const ordered = optionsList.filter((opt) => next.includes(opt));
+    return ordered;
+  }, []);
+
+  const handleIncludeRegionToggle = React.useCallback((region) => {
+    setFilters((prev) => {
+      if (!regionOptions.includes(region)) return prev;
+      const next = toggleRegionSelection(prev.includeRegions, region, regionOptions);
+      if (next.length === prev.includeRegions.length && next.every((v, i) => v === prev.includeRegions[i])) {
+        return prev;
+      }
+      return { ...prev, includeRegions: next };
+    });
+  }, [regionOptions, toggleRegionSelection]);
+
+  const handleIncludeRegionSelectAll = React.useCallback(() => {
+    if (regionOptions.length === 0) return;
+    setFilters((prev) => {
+      if (prev.includeRegions.length === regionOptions.length && prev.includeRegions.every((v, i) => v === regionOptions[i])) {
+        return prev;
+      }
+      return { ...prev, includeRegions: [...regionOptions] };
+    });
+  }, [regionOptions]);
+
+  const handleIncludeRegionClear = React.useCallback(() => {
+    setFilters((prev) => {
+      if (prev.includeRegions.length === 0) return prev;
+      return { ...prev, includeRegions: [] };
+    });
+  }, []);
+
+  const handleExcludeRegionToggle = React.useCallback((region) => {
+    setFilters((prev) => {
+      if (!regionOptions.includes(region)) return prev;
+      const next = toggleRegionSelection(prev.excludeRegions, region, regionOptions);
+      if (next.length === prev.excludeRegions.length && next.every((v, i) => v === prev.excludeRegions[i])) {
+        return prev;
+      }
+      return { ...prev, excludeRegions: next };
+    });
+  }, [regionOptions, toggleRegionSelection]);
+
+  const handleExcludeRegionSelectAll = React.useCallback(() => {
+    if (regionOptions.length === 0) return;
+    setFilters((prev) => {
+      if (prev.excludeRegions.length === regionOptions.length && prev.excludeRegions.every((v, i) => v === regionOptions[i])) {
+        return prev;
+      }
+      return { ...prev, excludeRegions: [...regionOptions] };
+    });
+  }, [regionOptions]);
+
+  const handleExcludeRegionClear = React.useCallback(() => {
+    setFilters((prev) => {
+      if (prev.excludeRegions.length === 0) return prev;
+      return { ...prev, excludeRegions: [] };
+    });
+  }, []);
+
+  // Reset only requested filters: 업체명, 지역 포함/제외, 시평액/3년/5년 범위, 담당자
   const handleResetFilters = () => {
     setFilters(prev => ({
       ...prev,
       name: '',
-      region: (Array.isArray(regions) && regions.length > 0) ? regions[0] : '\uC804\uCCB4',
+      includeRegions: [],
+      excludeRegions: [],
       manager: '',
       min_sipyung: '',
       max_sipyung: '',
@@ -244,12 +427,18 @@ function App() {
     setSearchResults([]);
     setError('');
     try {
-      const criteria = { ...filters };
+      const criteria = {
+        ...filters,
+        includeRegions: Array.isArray(filters.includeRegions) ? [...filters.includeRegions] : [],
+        excludeRegions: Array.isArray(filters.excludeRegions) ? [...filters.excludeRegions] : [],
+      };
       for (const key in criteria) {
         if (['min_sipyung', 'max_sipyung', 'min_3y', 'max_3y', 'min_5y', 'max_5y'].includes(key)) {
           criteria[key] = unformatNumber(criteria[key]);
         }
       }
+      criteria.includeRegions = criteria.includeRegions.filter((r) => r && r !== '전체');
+      criteria.excludeRegions = criteria.excludeRegions.filter((r) => r && r !== '전체');
       const response = await window.electronAPI.searchCompanies(criteria, fileType);
       if (response.success) {
         setSearchResults(response.data);
@@ -348,6 +537,22 @@ function App() {
     });
   }, [searchResults, sortKey, sortDir, onlyLatest]);
 
+  useEffect(() => {
+    if (isLoading || !searchPerformed) return;
+    if (Array.isArray(sortedResults) && sortedResults.length > 0) {
+      const topCompany = sortedResults[0];
+      const selectedBiz = selectedCompany?.['사업자번호'] || selectedCompany?.['검색된 회사'];
+      const topBiz = topCompany?.['사업자번호'] || topCompany?.['검색된 회사'];
+      if (!selectedCompany || selectedBiz !== topBiz) {
+        handleCompanySelect(topCompany, 0);
+      }
+    } else if (selectedCompany) {
+      setSelectedCompany(null);
+      setSelectedIndex(null)
+      ;
+    }
+  }, [sortedResults, isLoading, searchPerformed]);
+
   const toggleSort = (key) => {
     if (sortKey === key) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -392,7 +597,24 @@ function App() {
               <div className="filter-grid" onKeyDown={handleKeyDown}>
                 <div className="filter-item"><label>&nbsp;</label><button onClick={handleResetFilters} className="reset-button" disabled={isLoading}>{"\uD544\uD130 \uCD08\uAE30\uD654"}</button></div>
                 <div className="filter-item"><label>업체명</label><input type="text" name="name" value={filters.name} onChange={handleFilterChange} onKeyDown={handleKeyDown} className="filter-input" /></div>
-                <div className="filter-item"><label>지역</label><select name="region" value={filters.region} onChange={handleFilterChange} className="filter-input">{regions.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
+                <RegionSelector
+                  label="지역 포함"
+                  options={regionOptions}
+                  selected={filters.includeRegions}
+                  onToggle={handleIncludeRegionToggle}
+                  onSelectAll={handleIncludeRegionSelectAll}
+                  onClear={handleIncludeRegionClear}
+                  placeholder="지역을 선택하세요"
+                />
+                <RegionSelector
+                  label="지역 제외"
+                  options={regionOptions}
+                  selected={filters.excludeRegions}
+                  onToggle={handleExcludeRegionToggle}
+                  onSelectAll={handleExcludeRegionSelectAll}
+                  onClear={handleExcludeRegionClear}
+                  placeholder="제외할 지역을 선택하세요"
+                />
                 <div className="filter-item"><label>담당자</label><input type="text" name="manager" value={filters.manager} onChange={handleFilterChange} className="filter-input" /></div>
                 <div className="filter-item range"><label>시평액 범위</label><div className="range-inputs"><input type="text" name="min_sipyung" value={filters.min_sipyung} onChange={handleFilterChange} placeholder="최소" className="filter-input" /><span>~</span><input type="text" name="max_sipyung" value={filters.max_sipyung} onChange={handleFilterChange} placeholder="최대" className="filter-input" /></div></div>
                 <div className="filter-item range"><label>3년 실적 범위</label><div className="range-inputs"><input type="text" name="min_3y" value={filters.min_3y} onChange={handleFilterChange} placeholder="최소" className="filter-input" /><span>~</span><input type="text" name="max_3y" value={filters.max_3y} onChange={handleFilterChange} placeholder="최대" className="filter-input" /></div></div>

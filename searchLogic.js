@@ -216,7 +216,7 @@ class SearchLogic {
 
   getUniqueRegions() {
     if (!this.loaded) throw new Error('엑셀 파일이 로드되지 않았습니다.');
-    return ['전체', ...this.sheetNames.sort()];
+    return ['전체', ...this.sheetNames];
   }
   
   search(criteria) {
@@ -224,8 +224,25 @@ class SearchLogic {
     let results = [...this.allCompanies];
 
     // --- 필터링 로직 (Python 원본과 동일) ---
-    if (criteria.region && criteria.region !== '전체') {
-      results = results.filter(comp => comp['대표지역'] === criteria.region);
+    const normalizeRegion = (v) => String(v || '').trim();
+    const includeRegions = Array.isArray(criteria.includeRegions)
+      ? criteria.includeRegions.map(normalizeRegion).filter((r) => r && r !== '전체')
+      : [];
+    const excludeRegions = Array.isArray(criteria.excludeRegions)
+      ? criteria.excludeRegions.map(normalizeRegion).filter((r) => r && r !== '전체')
+      : [];
+
+    if (includeRegions.length > 0) {
+      const includeSet = new Set(includeRegions);
+      results = results.filter((comp) => includeSet.has(normalizeRegion(comp['대표지역'])));
+    } else if (criteria.region && criteria.region !== '전체') {
+      const target = normalizeRegion(criteria.region);
+      results = results.filter(comp => normalizeRegion(comp['대표지역']) === target);
+    }
+
+    if (excludeRegions.length > 0) {
+      const excludeSet = new Set(excludeRegions);
+      results = results.filter((comp) => !excludeSet.has(normalizeRegion(comp['대표지역'])));
     }
 
     if (criteria.name) {

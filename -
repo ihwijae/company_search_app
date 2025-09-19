@@ -6,19 +6,20 @@ import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import { validateAgreement, generateMany } from '../../../../shared/agreements/generator.js';
 
 const OWNERS = [
-  '조달청',
-  '한국토지주택공사',
-  '한국도로공사',
-  '국가철도공단',
-  '한국가스공사',
-  '인천국제공항공사',
-  '한국전력공사',
+  '?�안부 �?조달�?,
+  '?�국?��?주택공사',
+  '?�국?�로공사',
+  '�??철도공단',
+  '?�국가?�공??,
+  '?�천�?��공항공사',
+  '?�국?�자?�자??,
+  '?�국?�력공사',
 ];
 
 const FILE_TYPE_OPTIONS = [
-  { key: 'eung', label: '전기' },
-  { key: 'tongsin', label: '통신' },
-  { key: 'sobang', label: '소방' },
+  { key: 'eung', label: '?�기' },
+  { key: 'tongsin', label: '?�신' },
+  { key: 'sobang', label: '?�방' },
 ];
 
 // --- Shared utilities/components ---
@@ -64,16 +65,16 @@ function EditAgreementModal({ open, value, onChange, onClose, onSave, onSearchLe
   return (
     <div className="dialog-overlay" onClick={onClose}>
       <div className="dialog-box" style={{ maxWidth: 900, width: '92%' }} onClick={(e)=>e.stopPropagation()}>
-        <h3 style={{ marginTop: 0 }}>협정 편집</h3>
+        <h3 style={{ marginTop: 0 }}>?�정 ?�집</h3>
         {error && (
           <div style={{ margin: '8px 0', padding: '8px 12px', borderRadius: 8, background: '#fee2e2', color: '#991b1b' }}>
             {error}
           </div>
         )}
-        {/* 상단 영역: 발주처/공고번호 */}
+        {/* ?�단 ?�역: 발주�?공고번호 */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
           <div style={{ flex: 1 }}>
-            <label>발주처</label>
+            <label>발주�?/label>
             <select className="filter-input" value={it.owner} onChange={(e)=>onChange({ ...it, owner: e.target.value })}>
               {OWNERS.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
@@ -83,49 +84,49 @@ function EditAgreementModal({ open, value, onChange, onClose, onSave, onSearchLe
             <input type="text" className="filter-input" value={it.noticeNo} onChange={(e)=>onChange({ ...it, noticeNo: e.target.value })} />
           </div>
         </div>
-        {/* 공고명 */}
+        {/* 공고�??�체 */}
         <div style={{ marginBottom: 10 }}>
-          <label>공고명</label>
+          <label>공고�?/label>
           <input type="text" className="filter-input" value={it.title} onChange={(e)=>onChange({ ...it, title: e.target.value })} />
         </div>
-        {/* 공종 */}
+        {/* ?�??*/}
         <div style={{ marginBottom: 12 }}>
-          <label>공종</label>
+          <label>공고 ?�??/label>
           <select className="filter-input" value={it.type} onChange={(e)=>onChange({ ...it, type: e.target.value })}>
-            <option value="">선택</option>
+            <option value="">?�택</option>
             {FILE_TYPE_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
           </select>
         </div>
-        {/* 대표사 입력 */}
+        {/* ?�?�사 ??�?*/}
         <div style={{ marginBottom: 6 }}>
-          <label>대표사</label>
+          <label>?�?�사</label>
           <div style={{ display: 'flex', gap: 8 }}>
             <input type="text" className="filter-input" value={it.leader?.name || ''}
                    onChange={(e)=>onChange({ ...it, leader: { ...(it.leader||{}), name: e.target.value } })}
                    onKeyDown={(e)=>{ if(e.key==='Enter') onSearchLeader(it.leader?.name || ''); }} />
             <button className="no-drag" onClick={()=>onSearchLeader(it.leader?.name || '')}>조회</button>
-            <ShareInput className="filter-input" style={{ width: 140 }} placeholder="지분(%)"
+            <ShareInput className="filter-input" style={{ width: 140 }} placeholder="지�?%)"
                         value={it.leader?.share || ''}
                         onChange={(s)=>onChange({ ...it, leader: { ...(it.leader||{}), share: s } })} />
           </div>
         </div>
-        {/* 구성?? �?구성?�는 2???�름�? ?�업?�번?�줄) */}
+        {/* 구성?? �?구성?�는 2???�름�? ?�업?�번?�줄) */}
         {(it.members || []).map((m, idx) => (
           <div key={idx} style={{ marginTop: 10, borderTop: '1px solid #eef2f6', paddingTop: 10 }}>
             <div style={{ marginBottom: 6 }}>
-              <label>구성원#{idx+1}</label>
+              <label>구성??#{idx+1}</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input type="text" className="filter-input" value={m.name || ''}
                        onChange={(e)=>onChange({ ...it, members: it.members.map((x,i)=>(i===idx?{...x,name:e.target.value}:x)) })}
                        onKeyDown={(e)=>{ if(e.key==='Enter') onSearchMember(idx, m.name || ''); }} />
                 <button className="no-drag" onClick={()=>onSearchMember(idx, m.name || '')}>조회</button>
-                <ShareInput className="filter-input" style={{ width: 140 }} placeholder="지분(%)"
+                <ShareInput className="filter-input" style={{ width: 140 }} placeholder="지�?%)"
                             value={m.share || ''}
                             onChange={(s)=>onChange({ ...it, members: it.members.map((x,i)=>(i===idx?{...x,share:s}:x)) })} />
               </div>
             </div>
             <div>
-              <label>사업자번호</label>
+              <label>?�업?�번??/label>
               <input type="text" className="filter-input" value={m.bizNo || ''}
                      onChange={(e)=>onChange({ ...it, members: it.members.map((x,i)=>(i===idx?{...x,bizNo:e.target.value}:x)) })} />
             </div>
@@ -134,7 +135,7 @@ function EditAgreementModal({ open, value, onChange, onClose, onSave, onSearchLe
 
         <div style={{ marginTop: 16, textAlign: 'right', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button onClick={onClose}>취소</button>
-          <button className="primary" onClick={onSave}>저장</button>
+          <button className="primary" onClick={onSave}>?�??/button>
         </div>
       </div>
     </div>
@@ -144,7 +145,7 @@ function EditAgreementModal({ open, value, onChange, onClose, onSave, onSearchLe
 function AgreementsPage() {
   const [active, setActive] = useState((window.location.hash || '').includes('/lh/') ? 'lh' : 'agreements');
   const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false });
-  const [owner, setOwner] = useState((window.location.hash || '').includes('/lh/under50') ? '한국토지주택공사' : OWNERS[0]);
+  const [owner, setOwner] = useState((window.location.hash || '').includes('/lh/under50') ? '?�국?��?주택공사' : OWNERS[0]);
   const [noticeNo, setNoticeNo] = useState('');
   const [title, setTitle] = useState('');
   const [typeKey, setTypeKey] = useState('');
@@ -190,13 +191,12 @@ function AgreementsPage() {
     try { const r = await window.electronAPI.loadAgreements(); if (r?.success && Array.isArray(r.data)) setList(r.data); } catch {}
   })(); }, []);
 
-  // 해시 변경 시: LH 경로 처리
-  useEffect(() => {
+  // ?�우??변�???LH 경로 ?�기??  useEffect(() => {
     const onHashChange = () => {
       const h = window.location.hash || '';
       if (h.includes('/lh/')) {
         setActive('lh');
-        setOwner('한국토지주택공사');
+        setOwner('?�국?��?주택공사');
       } else {
         setActive('agreements');
       }
@@ -234,7 +234,7 @@ function AgreementsPage() {
 
   const saveCurrentAsItem = () => {
     if (!typeKey) {
-      window.alert('공종을 선택해 주세요.');
+      window.alert('공고?�?�을 ?�택??주세??');
       return;
     }
     const item = {
@@ -360,7 +360,7 @@ function AgreementsPage() {
   const copyText = async () => {
     const text = generateMany(list);
     await navigator.clipboard.writeText(text);
-    alert('문자 내용이 클립보드에 복사되었습니다.');
+    alert('문자�??�립보드??복사?�습?�다.');
   };
 
   return (
@@ -384,101 +384,101 @@ function AgreementsPage() {
         <div className="stage">
           <div className="content">
             <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h1 className="main-title" style={{ marginTop: 0 }}>협정 문자 생성</h1>
+              <h1 className="main-title" style={{ marginTop: 0 }}>?�정 문자 ?�성</h1>
               <div className="search-filter-section">
                 <div className="filter-grid">
                   <div className="filter-item">
-                    <label>발주처</label>
+                    <label>발주�?/label>
                     <select className="filter-input" value={owner} onChange={(e)=>setOwner(e.target.value)}>
                       {OWNERS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                   <div className="filter-item">
                     <label>공고번호</label>
-                    <input type="text" className="filter-input" value={noticeNo} onChange={(e)=>setNoticeNo(e.target.value)} placeholder="예: R25BK01030907-000" />
+                    <input type="text" className="filter-input" value={noticeNo} onChange={(e)=>setNoticeNo(e.target.value)} placeholder="?? R25BK01030907-000" />
                   </div>
                   <div className="filter-item" style={{ gridColumn: 'span 2' }}>
-                    <label>공고명</label>
-                    <input type="text" className="filter-input" value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="예: ○○사업 전기공사" />
+                    <label>공고�?/label>
+                    <input type="text" className="filter-input" value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="?? 가�??�명중학�?교사 ?�축 ?�방공사 계약" />
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h3 style={{ marginTop: 0 }}>협정 구성</h3>
+              <h3 style={{ marginTop: 0 }}>?�정 구성</h3>
               <div className="filter-grid">
                 <div className="filter-item">
-                  <label>공종</label>
+                  <label>공고 ?�??/label>
                   <select className="filter-input" value={typeKey} onChange={(e)=>setTypeKey(e.target.value)}>
-                    <option value="">선택</option>
+                    <option value="">?�택</option>
                     {FILE_TYPE_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
                   </select>
                 </div>
                 <div className="filter-item">
-                  <label>대표사</label>
+                  <label>?�?�사</label>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <input type="text" className="filter-input" value={leader.name} onChange={(e)=>setLeader(p=>({...p, name:e.target.value}))} onKeyDown={(e)=>{ if(e.key==='Enter'){ openModalFor('leader', leader.name); } }} placeholder="업체명" />
+                    <input type="text" className="filter-input" value={leader.name} onChange={(e)=>setLeader(p=>({...p, name:e.target.value}))} onKeyDown={(e)=>{ if(e.key==='Enter'){ openModalFor('leader', leader.name); } }} placeholder="?�체�? />
                     <button className="no-drag" onClick={()=>openModalFor('leader', leader.name)}>조회</button>
                   </div>
                 </div>
                 <div className="filter-item">
-                  <label>대표사 지분(%)</label>
-                  <ShareInput className="filter-input" value={leader.share} onChange={(s)=>setLeader(p=>({...p, share: s}))} placeholder="예: 60" />
+                  <label>?�?�사 지�?%)</label>
+                  <ShareInput className="filter-input" value={leader.share} onChange={(s)=>setLeader(p=>({...p, share: s}))} placeholder="?? 60" />
                 </div>
               </div>
 
               <div style={{ marginTop: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ margin: 0 }}>구성원(최대 4)</h4>
-                  <button className="no-drag" onClick={addMember} disabled={members.length >= 4}>구성원 추가</button>
+                  <h4 style={{ margin: 0 }}>구성??(최�? 4)</h4>
+                  <button className="no-drag" onClick={addMember} disabled={members.length >= 4}>구성??추�?</button>
                 </div>
                 {members.map((m, idx) => (
                   <div key={idx} className="filter-grid" style={{ marginTop: 8 }}>
                     <div className="filter-item">
-                      <label>구성원#{idx+1}</label>
+                      <label>구성??#{idx+1}</label>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <input type="text" className="filter-input" value={m.name} onChange={(e)=>setMembers(prev=>prev.map((x,i)=>(i===idx?{...x,name:e.target.value}:x)))} onKeyDown={(e)=>{ if(e.key==='Enter'){ openModalFor(idx, m.name); } }} placeholder="업체명" />
+                        <input type="text" className="filter-input" value={m.name} onChange={(e)=>setMembers(prev=>prev.map((x,i)=>(i===idx?{...x,name:e.target.value}:x)))} onKeyDown={(e)=>{ if(e.key==='Enter'){ openModalFor(idx, m.name); } }} placeholder="?�체�? />
                         <button className="no-drag" onClick={()=>openModalFor(idx, m.name)}>조회</button>
                       </div>
                     </div>
                     <div className="filter-item">
-                      <label>지분(%)</label>
+                      <label>지�?%)</label>
                       <ShareInput className="filter-input" value={m.share}
-                                  onChange={(s)=>setMembers(prev=>prev.map((x,i)=>(i===idx?{...x,share: s}:x)))} placeholder="예: 40" />
+                                  onChange={(s)=>setMembers(prev=>prev.map((x,i)=>(i===idx?{...x,share: s}:x)))} placeholder="?? 40" />
                     </div>
                     <div className="filter-item">
-                      <label>사업자번호</label>
-                      <input type="text" className="filter-input" value={m.bizNo} onChange={(e)=>setMembers(prev=>prev.map((x,i)=>(i===idx?{...x,bizNo:e.target.value}:x)))} placeholder="선택 시 자동 입력" />
+                      <label>?�업?�번??/label>
+                      <input type="text" className="filter-input" value={m.bizNo} onChange={(e)=>setMembers(prev=>prev.map((x,i)=>(i===idx?{...x,bizNo:e.target.value}:x)))} placeholder="?�택 ???�동 ?�력" />
                     </div>
                     <div className="filter-item" style={{ alignSelf: 'end' }}>
-                      <button className="no-drag" onClick={()=>removeMember(idx)}>삭제</button>
+                      <button className="no-drag" onClick={()=>removeMember(idx)}>??��</button>
                     </div>
                   </div>
                 ))}
 
                 <div style={{ marginTop: 12, color: sumShare===100? '#065f46':'#b91c1c', fontWeight: 700 }}>
-                  지분 합계: {sumShare}% {sumShare===100? '(정상)':'(100%가 되어야 합니다)'} {hasDup ? ' / (중복 존재)' : ''}
+                  지�??�계: {sumShare}% {sumShare===100? '(?�상)':'(100%가 ?�어???�니??'} {hasDup ? ' / (중복 존재)' : ''}
                 </div>
 
                 <div style={{ marginTop: 12, textAlign: 'right' }}>
-                  <button className="primary" onClick={saveCurrentAsItem}>리스트에 추가</button>
+                  <button className="primary" onClick={saveCurrentAsItem}>리스?�에 추�?</button>
                 </div>
               </div>
             </div>
 
             <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h3 style={{ marginTop: 0 }}>협정 리스트({list.length}개)</h3>
+              <h3 style={{ marginTop: 0 }}>?�정 리스??({list.length}�?</h3>
               {list.length === 0 ? (
-                <div style={{ color: '#6b7280' }}>추가된 협정이 없습니다.</div>
+                <div style={{ color: '#6b7280' }}>추�????�정???�습?�다.</div>
               ) : (
                 <ul className="results-list">
                   {list.map((it, idx) => (
                     <li key={idx} className="company-list-item" style={{ alignItems: 'center', display: 'flex', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span className="file-type-badge-small file-type-전기" style={{ display: it.type==='eung'?'inline-block':'none' }}>전기</span>
-                        <span className="file-type-badge-small file-type-통신" style={{ display: it.type==='tongsin'?'inline-block':'none' }}>통신</span>
-                        <span className="file-type-badge-small file-type-소방" style={{ display: it.type==='sobang'?'inline-block':'none' }}>소방</span>
+                        <span className="file-type-badge-small file-type-?�기" style={{ display: it.type==='eung'?'inline-block':'none' }}>?�기</span>
+                        <span className="file-type-badge-small file-type-?�신" style={{ display: it.type==='tongsin'?'inline-block':'none' }}>?�신</span>
+                        <span className="file-type-badge-small file-type-?�방" style={{ display: it.type==='sobang'?'inline-block':'none' }}>?�방</span>
                         <strong>[{it.owner}]</strong>
                         <span>{it.noticeNo} {it.title}</span>
                         {inlineIdx === idx ? (
@@ -506,7 +506,7 @@ function AgreementsPage() {
                                 const s = (m?.share || '').toString().trim();
                                 if (n && s) parts.push(`[${n}] ${s}%`);
                               });
-                              return parts.length ? ` → ${parts.join(' ')}` : '';
+                              return parts.length ? ` ??${parts.join(' ')}` : '';
                             })()}
                           </span>
                         )}
@@ -516,17 +516,16 @@ function AgreementsPage() {
                         <>
                           {inlineTotal !== 100 && (
                             <div style={{ color: '#b91c1c', fontWeight: 700, marginRight: 8 }}>
-                              합계 {inlineTotal}% (100%가 되어야 합니다)
-                            </div>
+                              ?�계 {inlineTotal}% ??100%가 ?�어???�니??                            </div>
                           )}
-                          <button className="no-drag" onClick={saveInlineEdit} disabled={inlineTotal !== 100}>저장</button>
+                          <button className="no-drag" onClick={saveInlineEdit} disabled={inlineTotal !== 100}>지�??�??/button>
                           <button className="no-drag" onClick={cancelInlineEdit}>취소</button>
                         </>
                       ) : (
                         <>
-                          <button className="no-drag" onClick={()=>openEdit(idx)}>편집</button>
-                          <button className="no-drag" onClick={()=>startInlineEdit(idx)}>지분 수정</button>
-                          <button className="no-drag" onClick={()=>removeItem(idx)}>삭제</button>
+                          <button className="no-drag" onClick={()=>openEdit(idx)}>?�집</button>
+                          <button className="no-drag" onClick={()=>startInlineEdit(idx)}>지�??�정</button>
+                          <button className="no-drag" onClick={()=>removeItem(idx)}>??��</button>
                         </>
                       )}
                     </div>
@@ -535,10 +534,10 @@ function AgreementsPage() {
               </ul>
             )}
               <div style={{ marginTop: 12, textAlign: 'left' }}>
-                <button className="no-drag" disabled={list.length===0} onClick={() => { if (list.length===0) return; if (window.confirm('리스트를 전체 삭제하시겠습니까?')) { const next = []; setList(next); window.electronAPI.saveAgreements(next).catch(()=>{}); } }}>전체 삭제</button>
+                <button className="no-drag" disabled={list.length===0} onClick={() => { if (list.length===0) return; if (window.confirm('리스?��? ?�체 ??��?�시겠습?�까?')) { const next = []; setList(next); window.electronAPI.saveAgreements(next).catch(()=>{}); } }}>?�체??��</button>
               </div>
               <div style={{ marginTop: 12, textAlign: 'right' }}>
-                <button className="primary" disabled={list.length===0} onClick={copyText}>문자 생성(복사)</button>
+                <button className="primary" disabled={list.length===0} onClick={copyText}>문자 ?�성(복사)</button>
               </div>
             </div>
           </div>
@@ -552,8 +551,8 @@ function AgreementsPage() {
         onChange={setEditData}
         onClose={()=>{ setEditOpen(false); setEditIdx(null); setEditData(null); }}
         onSave={saveEdit}
-        onSearchLeader={(init)=>{ const t = editData?.type || typeKey; if(!t){ window.alert('공고타입을 먼저 선택해 주세요.'); return; } openEditSearch('leader', init); }}
-        onSearchMember={(idx, init)=>{ const t = editData?.type || typeKey; if(!t){ window.alert('공고타입을 먼저 선택해 주세요.'); return; } openEditSearch(idx, init); }}
+        onSearchLeader={(init)=>openEditSearch('leader', init)}
+        onSearchMember={(idx, init)=>openEditSearch(idx, init)}
         error={editError}
       />
       <CompanySearchModal open={editSearchOpen} fileType={editData?.type || typeKey} initialQuery={editSearchInit}
