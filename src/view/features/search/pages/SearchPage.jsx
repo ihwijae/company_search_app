@@ -232,6 +232,8 @@ function App() {
   const [dialog, setDialog] = useState({ isOpen: false, message: '' });
   const topSectionRef = useRef(null);
   const searchResultsRef = useRef(null);
+  const detailsPanelRef = useRef(null); // For the observer to watch
+  const detailsTableRef = useRef(null); // To apply the class to
   const [animationKey, setAnimationKey] = useState(0);
 
   const refreshFileStatuses = async () => {
@@ -314,6 +316,41 @@ function App() {
   useEffect(() => {
     refreshFileStatuses();
   }, []);
+
+  useEffect(() => {
+    const panel = detailsPanelRef.current;
+    if (!panel || !selectedCompany) return;
+
+    const observer = new ResizeObserver(() => {
+        const table = detailsTableRef.current;
+        if (!table) return;
+
+        const rows = table.querySelectorAll('tbody tr');
+        if (rows.length === 0) return;
+
+        const SINGLE_LINE_HEIGHT_THRESHOLD = 45; 
+        let needsCompacting = false;
+
+        for (const row of rows) {
+            if (row.offsetHeight > SINGLE_LINE_HEIGHT_THRESHOLD) {
+                needsCompacting = true;
+                break;
+            }
+        }
+
+        if (needsCompacting) {
+            panel.classList.add('compact-details');
+        } else {
+            panel.classList.remove('compact-details');
+        }
+    });
+
+    observer.observe(panel);
+
+    return () => {
+        observer.disconnect();
+    };
+  }, [selectedCompany]);
 
   const regionOptions = React.useMemo(() => (
     Array.isArray(regions)
@@ -670,7 +707,7 @@ function App() {
               )}
             </div>
           </div>
-          <div className="panel">
+          <div className="panel" ref={detailsPanelRef}>
             {searchPerformed && (
               <div className="company-details fade-in" key={animationKey}>
                 <div className="details-header">
@@ -695,7 +732,7 @@ function App() {
                 </div>
                 {selectedCompany ? (
                   <div className="table-container">
-                    <table className="details-table">
+                    <table className="details-table" ref={detailsTableRef}>
                       <tbody>
                         {DISPLAY_ORDER.map((key) => {
                           let value = selectedCompany[key] ?? 'N/A';
