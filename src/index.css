@@ -330,26 +330,3 @@ body {
 .file-type-badge-small.file-type-통신 { background-color: #3b82f6; }
 .file-type-badge-small.file-type-소방 { background-color: #ef4444; }
 
-/* Styles for dynamically applied compact view */
-.compact-details .details-table th, 
-.compact-details .details-table td {
-  padding: 0.6rem 0.75rem;
-  font-size: 0.8rem;
-}
-
-.compact-details .details-table th {
-  width: 120px;
-}
-
-.compact-details .copy-single-button {
-  padding: 0.1rem 0.4rem;
-  font-size: 0.7rem;
-  opacity: 1;
-}
-
-.compact-details .badge-person, 
-.compact-details .ratio-badge, 
-.compact-details .duration-badge {
-  font-size: 0.7rem;
-  padding: 1px 5px;
-}

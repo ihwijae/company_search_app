@@ -130,3 +130,29 @@ button.primary:hover { background: var(--accent-2); }
 .chip { background: #f3e8ff; color: #4A154B; border: 1px solid #e9d5ff; padding: 4px 8px; border-radius: 999px; font-size: 12px; }
 .rules-split { gap: 16px; align-items: start; }
 .rules-box { border: 1px solid #eef2f6; border-radius: 10px; padding: 10px; background: #fff; }
+
+/* --- 업체 상세 테이블 최종 최적화 (정렬 개선된 줄바꿈) --- */
+.details-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.details-table th,
+.details-table td {
+  vertical-align: top; /* 셀 내용을 위쪽으로 정렬 */
+  padding: 10px 8px; /* 상하좌우 여백 최적화 */
+}
+
+.details-table th {
+  width: 35%; /* 항목 컬럼이 약 1/3 너비를 차지 */
+  min-width: 90px; /* 최소 너비 보장 */
+}
+
+.details-table td {
+  word-break: break-word; /* 공백 없는 긴 텍스트도 강제 줄바꿈 */
+}
+
+.value-with-status {
+  white-space: normal; /* 일반적인 줄바꿈 허용 */
+}
+
