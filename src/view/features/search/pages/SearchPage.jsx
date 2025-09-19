@@ -721,6 +721,9 @@ function App() {
                           let ratioBadgeClass = '';
                           let durationBadgeText = null;
                           let durationBadgeClass = '';
+                          const wrappableKeys = ['신용평가', '품질평가', '비고'];
+                          const isWrappable = wrappableKeys.includes(key);
+
                           try {
                             const avg = INDUSTRY_AVERAGES[searchedFileType === 'all' ? (selectedCompany?._file_type || '') : searchedFileType];
                             const debtFactor = DEBT_RATIO_WARN_FACTOR;      // 0.5
@@ -763,7 +766,7 @@ function App() {
                             }
                           } catch (_) { }
                           return (
-                            <tr key={key}>
+                            <tr key={key} className={isWrappable ? 'wrappable-row' : ''}>
                               <th>{key}</th>
                               <td>
                                 <div className="value-cell">

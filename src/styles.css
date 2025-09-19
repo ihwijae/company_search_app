@@ -131,28 +131,30 @@ button.primary:hover { background: var(--accent-2); }
 .rules-split { gap: 16px; align-items: start; }
 .rules-box { border: 1px solid #eef2f6; border-radius: 10px; padding: 10px; background: #fff; }
 
-/* --- 업체 상세 테이블 최종 최적화 (정렬 개선된 줄바꿈) --- */
+/* --- 업체 상세 테이블 최종 복원 (하이브리드) --- */
 .details-table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
 }
 
 .details-table th,
 .details-table td {
-  vertical-align: top; /* 셀 내용을 위쪽으로 정렬 */
-  padding: 10px 8px; /* 상하좌우 여백 최적화 */
+  vertical-align: top; /* 줄바꿈 시 상단 정렬 */
 }
 
 .details-table th {
-  width: 35%; /* 항목 컬럼이 약 1/3 너비를 차지 */
-  min-width: 90px; /* 최소 너비 보장 */
+  width: 1%;
+  white-space: nowrap;
+  padding-right: 10px;
 }
 
 .details-table td {
-  word-break: break-word; /* 공백 없는 긴 텍스트도 강제 줄바꿈 */
+  white-space: nowrap; /* 기본적으로 모든 내용은 줄바꿈 방지 */
 }
 
-.value-with-status {
-  white-space: normal; /* 일반적인 줄바꿈 허용 */
+/* 예외: wrappable-row 클래스가 있는 행의 내용만 줄바꿈 허용 */
+.details-table tr.wrappable-row td {
+  white-space: normal;
+  word-break: break-word;
 }
 
