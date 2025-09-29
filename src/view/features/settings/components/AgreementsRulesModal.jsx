@@ -2,6 +2,62 @@ import React from 'react';
 import Modal from '../../../../components/Modal';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 
+const OWNER_PRESETS = [
+  { id: 'LH', name: '한국토지주택공사' },
+  { id: 'MOIS', name: '행정안전부' },
+];
+
+const KIND_PRESETS = [
+  { id: 'eung', label: '전기' },
+  { id: 'tongsin', label: '통신' },
+  { id: 'sobang', label: '소방' },
+];
+
+function createBaseKindRules() {
+  return {
+    excludeSingleBidEligible: true,
+    alwaysInclude: [],
+    alwaysExclude: [],
+    pinCompanies: [],
+    fixedJV: [],
+    teamConstraints: { minSize: 2, maxSize: 4 },
+    shareConstraints: { minPerMember: 0, maxPerMember: 100, shareStep: 1 },
+    banPairs: [],
+    banManagerPairs: [],
+    banSameManager: false,
+    regionDutyOverride: null,
+  };
+}
+
+function ensureOwnerKinds(owner = {}) {
+  const kinds = Array.isArray(owner.kinds) ? owner.kinds : [];
+  const nextKinds = KIND_PRESETS.map(({ id }) => {
+    const existing = kinds.find((k) => k && k.id === id);
+    return {
+      id,
+      ...(existing || {}),
+      rules: existing?.rules || createBaseKindRules(),
+    };
+  });
+  return { ...owner, kinds: nextKinds };
+}
+
+function normalizeDoc(original) {
+  const base = original && typeof original === 'object' ? original : {};
+  const owners = Array.isArray(base.owners) ? base.owners.slice() : [];
+  const nextOwners = owners.map((owner) => ensureOwnerKinds(owner));
+
+  OWNER_PRESETS.forEach((preset) => {
+    if (!nextOwners.some((o) => (o?.id || '').toUpperCase() === preset.id)) {
+      nextOwners.push(
+        ensureOwnerKinds({ id: preset.id, name: preset.name })
+      );
+    }
+  });
+
+  return { ...base, owners: nextOwners };
+}
+
 export default function AgreementsRulesModal({ open, onClose }) {
   const [doc, setDoc] = React.useState(null);
   const [ownerId, setOwnerId] = React.useState('LH');
@@ -18,11 +74,14 @@ export default function AgreementsRulesModal({ open, onClose }) {
     try {
       const r = await window.electronAPI.agreementsRulesLoad();
       if (r?.success) {
-        setDoc(r.data);
-        const firstOwner = (r.data.owners || [])[0];
+        const normalized = normalizeDoc(r.data);
+        setDoc(normalized);
+        const selectable = normalized.owners || [];
+        const firstOwner = selectable.find((o) => o.id === ownerId) || selectable[0];
         if (firstOwner) {
-          setOwnerId(firstOwner.id || 'LH');
-          const firstKind = (firstOwner.kinds || [])[0];
+          const initialOwnerId = firstOwner.id || 'LH';
+          setOwnerId(initialOwnerId);
+          const firstKind = (firstOwner.kinds || []).find((k) => k.id === kindId) || (firstOwner.kinds || [])[0];
           if (firstKind) setKindId(firstKind.id || 'eung');
         }
       } else {
@@ -31,9 +90,25 @@ export default function AgreementsRulesModal({ open, onClose }) {
     } catch (e) { setStatus('규칙을 불러오지 못했습니다'); }
   })(); }, [open]);
 
+  React.useEffect(() => {
+    if (!doc) return;
+    const owners = doc.owners || [];
+    const currentOwner = owners.find((o) => o.id === ownerId);
+    if (!currentOwner) {
+      if (owners[0]?.id) {
+        setOwnerId(owners[0].id);
+      }
+      return;
+    }
+    const kinds = currentOwner.kinds || [];
+    if (!kinds.some((k) => k.id === kindId) && kinds[0]?.id) {
+      setKindId(kinds[0].id);
+    }
+  }, [doc, ownerId, kindId]);
+
   const updateRules = (updater) => {
     setDoc(prev => {
-      const next = JSON.parse(JSON.stringify(prev||{}));
+      const next = normalizeDoc(prev);
       const o = (next.owners || []).find(x => x.id === ownerId);
       if (!o) return next;
       const k = (o.kinds || []).find(x => x.id === kindId);
@@ -99,7 +174,9 @@ export default function AgreementsRulesModal({ open, onClose }) {
             <div className="filter-item">
               <label>발주처</label>
               <select className="filter-input" value={ownerId} onChange={(e)=>setOwnerId(e.target.value)}>
-                {(doc.owners || []).map(o => (<option key={o.id} value={o.id}>{o.name || o.id}</option>))}
+                {(normalizeDoc(doc).owners || []).map(o => (
+                  <option key={o.id} value={o.id}>{o.name || o.id}</option>
+                ))}
               </select>
             </div>
             <div className="filter-item">

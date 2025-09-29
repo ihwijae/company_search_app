@@ -13,6 +13,15 @@ function defaultRules() {
           { id: 'sobang', rules: baseKindRules() },
         ],
       },
+      {
+        id: 'MOIS',
+        name: '\uD589\uC815\uC548\uC804\uBD80',
+        kinds: [
+          { id: 'eung', rules: baseKindRules() },
+          { id: 'tongsin', rules: baseKindRules() },
+          { id: 'sobang', rules: baseKindRules() },
+        ],
+      },
     ],
   };
 }

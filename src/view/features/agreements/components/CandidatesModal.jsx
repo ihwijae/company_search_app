@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '../../../../components/Modal';
 import AmountInput from '../../../../components/AmountInput.jsx';
 
-export default function CandidatesModal({ open, onClose, fileType, entryAmount, baseAmount, dutyRegions = [], ratioBaseAmount = '', defaultExcludeSingle = true, onApply }) {
+export default function CandidatesModal({ open, onClose, ownerId = 'LH', fileType, entryAmount, baseAmount, dutyRegions = [], ratioBaseAmount = '', defaultExcludeSingle = true, onApply }) {
   const [params, setParams] = useState({ entryAmount: '', baseAmount: '', dutyRegions: [], ratioBase: '', minPct: '', maxPct: '', excludeSingleBidEligible: true, filterByRegion: true });
   const [loading, setLoading] = useState(false);
   const [list, setList] = useState([]);
@@ -15,7 +15,7 @@ export default function CandidatesModal({ open, onClose, fileType, entryAmount, 
   const [autoPin, setAutoPin] = useState(false);
   const [autoCount, setAutoCount] = useState(3);
 
-  const initKey = JSON.stringify({ entryAmount, baseAmount, dutyRegions, ratioBaseAmount, defaultExcludeSingle, fileType });
+  const initKey = JSON.stringify({ ownerId, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, defaultExcludeSingle, fileType });
   const didInitFetch = useRef(false);
   useEffect(() => {
     if (!open) return;
@@ -40,7 +40,7 @@ export default function CandidatesModal({ open, onClose, fileType, entryAmount, 
   const runFetch = async () => {
     setLoading(true); setError(''); setList([]);
     try {
-      const r = await window.electronAPI.fetchCandidates({ ownerId: 'LH', fileType, entryAmount: params.entryAmount, baseAmount: params.baseAmount, dutyRegions: params.dutyRegions, excludeSingleBidEligible: params.excludeSingleBidEligible, filterByRegion: !!params.filterByRegion });
+      const r = await window.electronAPI.fetchCandidates({ ownerId, fileType, entryAmount: params.entryAmount, baseAmount: params.baseAmount, dutyRegions: params.dutyRegions, excludeSingleBidEligible: params.excludeSingleBidEligible, filterByRegion: !!params.filterByRegion });
       if (!r?.success) throw new Error(r?.message || '후보 요청 실패');
       setList(r.data || []);
     } catch (e) { setError(String(e.message || e)); }

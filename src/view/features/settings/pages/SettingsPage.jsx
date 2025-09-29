@@ -63,6 +63,36 @@ export default function SettingsPage() {
   const [rulesModalOpen, setRulesModalOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
 
+  const updateMergedRules = React.useCallback((nextRules) => {
+    setMerged((prev) => {
+      if (!prev) return prev;
+
+      const agencies = prev.agencies || [];
+      const agencyIndex = agencies.findIndex((agency) => agency.id === agencyId);
+      if (agencyIndex === -1) return prev;
+
+      const targetAgency = agencies[agencyIndex];
+      const tiers = targetAgency?.tiers || [];
+      const targetTier = tiers[tierIdx] || tiers[tiers.length - 1];
+      if (!targetTier) return prev;
+
+      const matchTier = (tier) =>
+        (tier?.minAmount === targetTier?.minAmount && tier?.maxAmount === targetTier?.maxAmount);
+
+      const updatedTiers = tiers.map((tier, idx) => (
+        idx === tierIdx || matchTier(tier)
+          ? { ...tier, rules: nextRules }
+          : tier
+      ));
+
+      const updatedAgencies = agencies.slice();
+      updatedAgencies[agencyIndex] = { ...targetAgency, tiers: updatedTiers };
+
+      return { ...prev, agencies: updatedAgencies };
+    });
+    rulesSnapshotRef.current = nextRules;
+  }, [agencyId, tierIdx]);
+
   const load = async () => {
     setStatus('로딩...');
     const r = await window.electronAPI.formulasLoad();
@@ -297,7 +327,17 @@ export default function SettingsPage() {
     setTimeout(()=>setStatus(''), 1200);
   };
 
+  const ensureTargetSelected = () => {
+    if (!currentAgency || !currentTier) {
+      setStatus('발주처와 금액구간을 먼저 선택하세요');
+      setTimeout(() => setStatus(''), 1200);
+      return false;
+    }
+    return true;
+  };
+
   const saveSectionOverrides = async ({ debt, current, credit, quality }) => {
+    if (!ensureTargetSelected()) return;
     try {
       const rules = buildRulesFromFormWithOverrides({
         debtRowsOverride: debt || null,
@@ -311,14 +351,17 @@ export default function SettingsPage() {
           { id: currentAgency.id, tiers: [ { minAmount: currentTier.minAmount, maxAmount: currentTier.maxAmount, rules } ] }
         ]
       };
+      setStatus('저장 중...');
       const r = await window.electronAPI.formulasSaveOverrides(payload);
       if (!r.success) throw new Error(r.message || 'save failed');
+      updateMergedRules(rules);
       setStatus('저장 완료');
       setTimeout(()=>setStatus(''), 1200);
     } catch (e) { setStatus('저장 실패: ' + (e?.message || e)); }
   };
 
   const saveOverrides = async () => {
+    if (!ensureTargetSelected()) return;
     try {
       const rules = buildRulesFromForm();
       const payload = {
@@ -327,8 +370,10 @@ export default function SettingsPage() {
           { id: currentAgency.id, tiers: [ { minAmount: currentTier.minAmount, maxAmount: currentTier.maxAmount, rules } ] }
         ]
       };
+      setStatus('저장 중...');
       const r = await window.electronAPI.formulasSaveOverrides(payload);
       if (!r.success) throw new Error(r.message || 'save failed');
+      updateMergedRules(rules);
       setStatus('저장 완료');
       setTimeout(()=>setStatus(''), 1200);
     } catch (e) { setStatus('저장 실패: ' + (e?.message || e)); }
@@ -468,6 +513,10 @@ export default function SettingsPage() {
                     <input className="filter-input" style={{ maxWidth: 120 }} value={perfRoundDigits} onChange={(e)=>setPerfRoundDigits(e.target.value)} />
                   </div>
                 </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button className="btn-soft" onClick={saveOverrides}>시공점수 저장</button>
+                <button className="btn-muted" onClick={restoreDefaults}>기본값으로 복원</button>
               </div>
             </div>
 
