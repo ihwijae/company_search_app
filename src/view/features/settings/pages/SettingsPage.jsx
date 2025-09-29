@@ -6,6 +6,7 @@ import DebtModal from '../components/DebtModal';
 import CurrentModal from '../components/CurrentModal';
 import CreditModal from '../components/CreditModal';
 import QualityModal from '../components/QualityModal';
+import BizYearsModal from '../components/BizYearsModal.jsx';
 import AgreementsRulesModal from '../components/AgreementsRulesModal.jsx';
 
 const Num = (v, d=0) => {
@@ -13,9 +14,38 @@ const Num = (v, d=0) => {
   return Number.isFinite(n) ? n : d;
 };
 
+const MOIS_BIZ_DEFAULT = [
+  { gteYears: 3, score: 1.0 },
+  { ltYears: 3, score: 0.9 },
+];
+
+const MOIS_DEBT_DEFAULT = [
+  { lt: 0.5, score: 7.0 },
+  { lt: 0.75, score: 6.3 },
+  { lt: 1.0, score: 5.6 },
+  { lt: 1.25, score: 4.9 },
+  { gte: 1.25, score: 4.2 },
+];
+
+const MOIS_DEBT_LEGACY = [
+  { lt: 0.5, score: 8.0 },
+  { lt: 0.75, score: 7.2 },
+  { lt: 1.0, score: 6.4 },
+  { lt: 1.25, score: 5.6 },
+  { gte: 1.25, score: 4.8 },
+];
+
+const MOIS_CURRENT_DEFAULT = [
+  { gte: 1.5, score: 7.0 },
+  { gte: 1.2, score: 6.3 },
+  { gte: 1.0, score: 5.6 },
+  { gte: 0.7, score: 4.9 },
+  { lt: 0.7, score: 4.2 },
+];
+
 export default function SettingsPage() {
   const [active, setActive] = React.useState('settings');
-  const [openModal, setOpenModal] = React.useState(null); // 'debt' | 'current' | 'credit' | null
+  const [openModal, setOpenModal] = React.useState(null); // 'debt' | 'current' | 'credit' | 'biz' | 'quality'
   const [merged, setMerged] = React.useState(null);
   const [agencyId, setAgencyId] = React.useState('');
   const [tierIdx, setTierIdx] = React.useState(0);
@@ -37,11 +67,8 @@ export default function SettingsPage() {
     { op: 'gte', value: 0.7, score: 4.6 },
     { op: 'lt', value: 0.7, score: 3.8 },
   ]);
-  const [bizRows, setBizRows] = React.useState([
-    { op: 'gteYears', value: 3, score: 1.0 },
-    { op: 'gteYears', value: 1, score: 0.9 },
-    { op: 'ltYears', value: 1, score: 0.8 },
-  ]);
+  const [bizRows, setBizRows] = React.useState([]);
+  const [bizDefaultRows, setBizDefaultRows] = React.useState([]);
   const [perfMaxScore, setPerfMaxScore] = React.useState(13);
   const [perfRoundMethod, setPerfRoundMethod] = React.useState('truncate');
   const [perfRoundDigits, setPerfRoundDigits] = React.useState(2);
@@ -103,7 +130,7 @@ export default function SettingsPage() {
     if (first) {
       setAgencyId(first.id);
       const t = first.tiers && first.tiers[0];
-      if (t) hydrateFormFromRules(t.rules || {});
+      if (t) hydrateFormFromRules(t.rules || {}, { ownerId: first.id, minAmount: t.minAmount || 0 });
     }
     setStatus('');
   };
@@ -116,12 +143,31 @@ export default function SettingsPage() {
   const currentAgency = agencies.find(a => a.id === agencyId) || agencies[0];
   const tiers = currentAgency?.tiers || [];
   const currentTier = tiers[tierIdx] || tiers[0];
+  const currentAgencyId = (currentAgency?.id || '').toUpperCase();
+  const isMois = currentAgencyId === 'MOIS';
+  const currentTierMinAmount = currentTier?.minAmount || 0;
+  const showBizControls = !isMois
+    ? (bizRows && bizRows.length > 0)
+    : currentTierMinAmount >= 3000000000;
 
   React.useEffect(() => {
-    if (currentTier) hydrateFormFromRules(currentTier.rules || {});
-  }, [agencyId, tierIdx]);
+    if (isMois && openModal === 'quality') {
+      setOpenModal(null);
+    }
+    if (!showBizControls && openModal === 'biz') {
+      setOpenModal(null);
+    }
+  }, [isMois, showBizControls, openModal]);
 
-  function hydrateFormFromRules(rules) {
+  React.useEffect(() => {
+    if (currentTier) {
+      hydrateFormFromRules(currentTier.rules || {}, { ownerId: currentAgencyId, minAmount: currentTier.minAmount || 0 });
+    } else {
+      hydrateFormFromRules({}, { ownerId: currentAgencyId, minAmount: 0 });
+    }
+  }, [agencyId, tierIdx, currentAgencyId, currentTier]);
+
+  function hydrateFormFromRules(rules, meta = {}) {
     try {
       rulesSnapshotRef.current = rules || {};
       const mg = rules?.management || {};
@@ -131,14 +177,33 @@ export default function SettingsPage() {
       setMgRoundingDigits(Num(mround.digits, 2));
       const comp = (mg.methods || []).find(m => m.id === 'composite') || {};
       const comps = comp.components || {};
-      const debt = comps.debtRatio?.thresholds || [];
-      const curr = comps.currentRatio?.thresholds || [];
-      const biz = comps.bizYears?.thresholds || [];
+      let debt = comps.debtRatio?.thresholds || [];
+      let curr = comps.currentRatio?.thresholds || [];
+      let biz = comps.bizYears?.thresholds || [];
+      const effectiveOwner = (meta.ownerId || currentAgencyId || '').toUpperCase();
+      const tierMinAmount = meta.minAmount || 0;
+      if (effectiveOwner === 'MOIS' && tierMinAmount >= 3000000000) {
+        const isLegacyDebt = JSON.stringify(debt) === JSON.stringify(MOIS_DEBT_LEGACY);
+        if (isLegacyDebt || !debt.length) debt = MOIS_DEBT_DEFAULT;
+        if (!curr.length) curr = MOIS_CURRENT_DEFAULT;
+        if (!biz.length) biz = MOIS_BIZ_DEFAULT;
+        const effectiveBiz = biz.length ? biz : MOIS_BIZ_DEFAULT;
+        setBizDefaultRows(effectiveBiz.map((t) => ({ ...t })));
+      } else {
+        setBizDefaultRows((biz || []).map((t) => ({ ...t })));
+        if (effectiveOwner === 'MOIS') {
+          biz = [];
+        }
+      }
       if (debt.length) setDebtRows(debt.map(t => ({ op: (t.lt!=null?'lt':'gte'), value: Num(t.lt!=null?t.lt:t.gte), score: Num(t.score) })));
+      else setDebtRows([]);
       if (curr.length) setCurrentRows(curr.map(t => ({ op: (t.lt!=null?'lt':'gte'), value: Num(t.lt!=null?t.lt:t.gte), score: Num(t.score) })));
+      else setCurrentRows([]);
       if (biz.length) setBizRows(biz.map(t => ({ op: (t.ltYears!=null?'ltYears':'gteYears'), value: Num(t.ltYears!=null?t.ltYears:t.gteYears), score: Num(t.score) })));
+      else setBizRows([]);
       const quality = comps.qualityEval?.thresholds || [];
       if (quality.length) setQualityRows(quality.map(t => ({ op: (t.lt!=null?'lt':'gte'), value: Num(t.lt!=null?t.lt:t.gte), score: Num(t.score) })));
+      else setQualityRows([]);
       const credit = (mg.methods || []).find(m => m.id === 'credit');
       const grades = credit?.gradeTable || [];
       if (grades.length) setCreditRows(grades.map(g => ({ grade: String(g.grade||''), base: Num(g.base), score: Num(g.score) })));
@@ -285,6 +350,16 @@ export default function SettingsPage() {
     } else if (section === 'current') {
       const curr = comps.currentRatio?.thresholds || [];
       setCurrentRows(curr.map(tt => ({ op: (tt.lt!=null?'lt':'gte'), value: Num(tt.lt!=null?tt.lt:tt.gte), score: Num(tt.score) })));
+    } else if (section === 'biz') {
+      const biz = comps.bizYears?.thresholds || [];
+      if (currentAgencyId === 'MOIS' && (currentTier?.minAmount || 0) >= 3000000000) {
+        const value = biz.length ? biz : MOIS_BIZ_DEFAULT;
+        setBizRows(value.map(tt => ({ op: (tt.ltYears!=null?'ltYears':'gteYears'), value: Num(tt.ltYears!=null?tt.ltYears:tt.gteYears), score: Num(tt.score) })));
+        setBizDefaultRows(value.map((tt) => ({ ...tt })));
+      } else {
+        setBizRows(biz.map(tt => ({ op: (tt.ltYears!=null?'ltYears':'gteYears'), value: Num(tt.ltYears!=null?tt.ltYears:tt.gteYears), score: Num(tt.score) })));
+        setBizDefaultRows(biz.map((tt) => ({ ...tt })));
+      }
     } else if (section === 'quality') {
       const q = comps.qualityEval?.thresholds || [];
       setQualityRows(q.map(tt => ({ op: (tt.lt!=null?'lt':'gte'), value: Num(tt.lt!=null?tt.lt:tt.gte), score: Num(tt.score) })));
@@ -315,6 +390,16 @@ export default function SettingsPage() {
     } else if (section === 'current') {
       const curr = comps.currentRatio?.thresholds || [];
       setCurrentRows(curr.map(tt => ({ op: (tt.lt!=null?'lt':'gte'), value: Num(tt.lt!=null?tt.lt:tt.gte), score: Num(tt.score) })));
+    } else if (section === 'biz') {
+      const biz = comps.bizYears?.thresholds || [];
+      if (currentAgencyId === 'MOIS' && (currentTier?.minAmount || 0) >= 3000000000) {
+        const value = biz.length ? biz : MOIS_BIZ_DEFAULT;
+        setBizRows(value.map(tt => ({ op: (tt.ltYears!=null?'ltYears':'gteYears'), value: Num(tt.ltYears!=null?tt.ltYears:tt.gteYears), score: Num(tt.score) })));
+        setBizDefaultRows(value.map((tt) => ({ ...tt })));
+      } else {
+        setBizRows(biz.map(tt => ({ op: (tt.ltYears!=null?'ltYears':'gteYears'), value: Num(tt.ltYears!=null?tt.ltYears:tt.gteYears), score: Num(tt.score) })));
+        setBizDefaultRows(biz.map((tt) => ({ ...tt })));
+      }
     } else if (section === 'quality') {
       const q = comps.qualityEval?.thresholds || [];
       setQualityRows(q.map(tt => ({ op: (tt.lt!=null?'lt':'gte'), value: Num(tt.lt!=null?tt.lt:tt.gte), score: Num(tt.score) })));
@@ -336,13 +421,14 @@ export default function SettingsPage() {
     return true;
   };
 
-  const saveSectionOverrides = async ({ debt, current, credit, quality }) => {
+  const saveSectionOverrides = async ({ debt, current, credit, quality, biz }) => {
     if (!ensureTargetSelected()) return;
     try {
       const rules = buildRulesFromFormWithOverrides({
         debtRowsOverride: debt || null,
         currentRowsOverride: current || null,
         creditRowsOverride: credit || null,
+        bizRowsOverride: biz || null,
         qualityRowsOverride: quality || null,
       });
       const payload = {
@@ -468,7 +554,12 @@ export default function SettingsPage() {
                 <button onClick={() => setOpenModal('debt')}>부채비율 기준 수정</button>
                 <button onClick={() => setOpenModal('current')}>유동비율 기준 수정</button>
                 <button onClick={() => setOpenModal('credit')}>신용평가 기준 수정</button>
-                <button onClick={() => setOpenModal('quality')}>품질평가 기준 수정</button>
+                {showBizControls && (
+                  <button onClick={() => setOpenModal('biz')}>영업기간 기준 수정</button>
+                )}
+                {!isMois && (
+                  <button onClick={() => setOpenModal('quality')}>품질평가 기준 수정</button>
+                )}
                 <button onClick={() => setRulesModalOpen(true)} style={{ marginLeft: 'auto' }}>협정 규칙 편집</button>
               </div>
               <div className="filter-grid">
@@ -566,14 +657,31 @@ export default function SettingsPage() {
         onRestore={() => restoreSectionDefaults('credit')}
         onSave={(rows) => { setCreditRows(rows); return saveSectionOverrides({ credit: rows }); }}
       />
-      <QualityModal
-        open={openModal === 'quality'}
-        rows={qualityRows}
-        onClose={() => setOpenModal(null)}
-        onReload={() => reloadSectionMerged('quality')}
-        onRestore={() => restoreSectionDefaults('quality')}
-        onSave={(rows) => { setQualityRows(rows); return saveSectionOverrides({ quality: rows }); }}
-      />
+      {showBizControls && (
+        <BizYearsModal
+          open={openModal === 'biz'}
+          rows={bizRows}
+          fallbackRows={bizDefaultRows}
+          onClose={() => setOpenModal(null)}
+          onReload={() => reloadSectionMerged('biz')}
+          onRestore={() => restoreSectionDefaults('biz')}
+          onSave={(rows) => {
+            setBizRows(rows);
+            setBizDefaultRows((rows || []).map((row) => ({ ...row })));
+            return saveSectionOverrides({ biz: rows });
+          }}
+        />
+      )}
+      {!isMois && (
+        <QualityModal
+          open={openModal === 'quality'}
+          rows={qualityRows}
+          onClose={() => setOpenModal(null)}
+          onReload={() => reloadSectionMerged('quality')}
+          onRestore={() => restoreSectionDefaults('quality')}
+          onSave={(rows) => { setQualityRows(rows); return saveSectionOverrides({ quality: rows }); }}
+        />
+      )}
       <AgreementsRulesModal open={rulesModalOpen} onClose={()=>setRulesModalOpen(false)} />
     </div>
   );
