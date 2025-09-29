@@ -4,17 +4,101 @@ const fs = require('fs');
 const chokidar = require('chokidar');
 const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
 const os = require('os');
+const { execSync } = require('child_process');
+const pkg = (() => { try { return require('./package.json'); } catch { return {}; } })();
 
 // Minimize GPU shader cache errors on Windows (cannot create/move cache)
 try { app.commandLine.appendSwitch('disable-gpu-shader-disk-cache'); } catch {}
 
 // --- 설정 ---
-const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
-const WINDOW_STATE_PATH = path.join(app.getPath('userData'), 'window-state.json');
-const AGREEMENTS_PATH = path.join(app.getPath('userData'), 'agreements.json');
-const AGREEMENTS_RULES_PATH = path.join(app.getPath('userData'), 'agreements.rules.json');
-const FORMULAS_PATH = path.join(app.getPath('userData'), 'formulas.json');
 let FILE_PATHS = { eung: '', tongsin: '', sobang: '' };
+
+const isRunningInWSL = (() => {
+    if (process.platform !== 'linux') return false;
+    if (process.env.WSL_DISTRO_NAME) return true;
+    try {
+        const version = fs.readFileSync('/proc/version', 'utf-8').toLowerCase();
+        return version.includes('microsoft');
+    } catch {
+        return false;
+    }
+})();
+
+function toWSLPathIfNeeded(p) {
+    if (!p || !isRunningInWSL) return p;
+    if (!/^[A-Za-z]:\\/.test(p)) return p;
+    try {
+        return execSync(`wslpath -a ${JSON.stringify(p)}`, { encoding: 'utf-8' }).trim();
+    } catch {
+        const match = /^([A-Za-z]):\\(.*)$/.exec(p);
+        if (!match) return p;
+        const drive = match[1].toLowerCase();
+        const rest = match[2].replace(/\\/g, '/');
+        return `/mnt/${drive}/${rest}`;
+    }
+}
+
+const defaultUserDataDir = app.getPath('userData');
+const userDataDirNameCandidates = (() => {
+    const set = new Set();
+    const base = path.basename(defaultUserDataDir);
+    if (base) {
+        set.add(base);
+        set.add(base.toLowerCase());
+    }
+    const appName = app.getName && app.getName();
+    if (appName) {
+        set.add(appName);
+        set.add(appName.toLowerCase());
+        set.add(appName.replace(/\s+/g, ''));
+        set.add(appName.replace(/\s+/g, '').toLowerCase());
+    }
+    if (pkg && pkg.name) {
+        set.add(pkg.name);
+        set.add(String(pkg.name).toLowerCase());
+    }
+    set.add('company-search-electron');
+    return Array.from(set).filter(Boolean);
+})();
+
+function getWindowsAppDataPath() {
+    if (!isRunningInWSL) return null;
+    const envAppData = process.env.APPDATA;
+    if (envAppData && /^[A-Za-z]:\\/.test(envAppData)) return envAppData;
+    try {
+        const output = execSync('cmd.exe /C echo %APPDATA%', { encoding: 'utf-8' }).replace(/\r/g, '').trim();
+        if (output && /^[A-Za-z]:\\/.test(output)) return output;
+    } catch {}
+    try {
+        const output = execSync('powershell.exe -NoProfile -Command "$env:APPDATA"', { encoding: 'utf-8' }).replace(/\r/g, '').trim();
+        if (output && /^[A-Za-z]:\\/.test(output)) return output;
+    } catch {}
+    return null;
+}
+
+function resolveWindowsUserDataDir(dirNames) {
+    if (!isRunningInWSL) return null;
+    const appDataWin = getWindowsAppDataPath();
+    if (!appDataWin) return null;
+    for (const dirName of dirNames) {
+        if (!dirName) continue;
+        const candidateWin = path.win32 ? path.win32.join(appDataWin, dirName) : path.join(appDataWin, dirName);
+        const candidateWSL = toWSLPathIfNeeded(candidateWin);
+        if (candidateWSL && fs.existsSync(candidateWSL)) return candidateWSL;
+    }
+    return null;
+}
+
+const windowsUserDataDir = resolveWindowsUserDataDir(userDataDirNameCandidates);
+const userDataDir = windowsUserDataDir || defaultUserDataDir;
+if (windowsUserDataDir) {
+    console.log('[MAIN] WSL detected. Using Windows userData directory:', windowsUserDataDir);
+}
+const CONFIG_PATH = path.join(userDataDir, 'config.json');
+const WINDOW_STATE_PATH = path.join(userDataDir, 'window-state.json');
+const AGREEMENTS_PATH = path.join(userDataDir, 'agreements.json');
+const AGREEMENTS_RULES_PATH = path.join(userDataDir, 'agreements.rules.json');
+const FORMULAS_PATH = path.join(userDataDir, 'formulas.json');
 
 function loadConfig() {
     try {
@@ -233,8 +317,11 @@ try {
   (async () => {
     try {
       for (const ft in FILE_PATHS) {
-        const p = FILE_PATHS[ft];
-        if (p && fs.existsSync(p)) { try { await svc.loadAndWatch(ft, p); } catch {} }
+        const originalPath = FILE_PATHS[ft];
+        const runtimePath = toWSLPathIfNeeded(originalPath);
+        if (runtimePath && fs.existsSync(runtimePath)) {
+          try { await svc.loadAndWatch(ft, runtimePath); } catch {}
+        }
       }
     } catch {}
   })();
@@ -258,7 +345,8 @@ try {
     const filePath = result.filePaths[0];
     if (!filePath.toLowerCase().endsWith('.xlsx')) return { success: false, message: 'Please select a .xlsx file' };
     FILE_PATHS[fileType] = filePath; saveConfig();
-    try { await svc.loadAndWatch(fileType, filePath); return { success: true, path: filePath }; }
+    const runtimePath = toWSLPathIfNeeded(filePath);
+    try { await svc.loadAndWatch(fileType, runtimePath); return { success: true, path: filePath }; }
     catch (e) { return { success: false, message: e?.message || 'Load failed' }; }
 });
 
@@ -340,10 +428,11 @@ try {
       if (data.length === 0) {
         try {
           const srcPath = FILE_PATHS[fileType];
-          if (srcPath && fs.existsSync(srcPath)) {
+          const runtimePath = toWSLPathIfNeeded(srcPath);
+          if (runtimePath && fs.existsSync(runtimePath)) {
             const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
             const { SearchLogic } = require('./searchLogic.js');
-            const { sanitizedPath } = sanitizeXlsx(srcPath);
+            const { sanitizedPath } = sanitizeXlsx(runtimePath);
             const lg = new SearchLogic(sanitizedPath);
             await lg.load();
             data = lg.search({});
