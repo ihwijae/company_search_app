@@ -1,9 +1,7 @@
 // Client-side constants for ratio highlighting
-export const INDUSTRY_AVERAGES = {
-  eung: { debtRatio: 124.41, currentRatio: 142.58 },
-  tongsin: { debtRatio: 124.03, currentRatio: 140.06 },
-  sobang: { debtRatio: 110.08, currentRatio: 139.32 },
-};
+import industryAverages from './shared/industryAverages.json';
+
+export const INDUSTRY_AVERAGES = industryAverages;
 
 // Relative factors against the industry average
 // Debt ratio: highlight if value >= average * 0.5 (50% of average)

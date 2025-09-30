@@ -301,7 +301,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
             <div className="panel" style={{ gridColumn: '1 / -1' }}>
               <h3 style={{ marginTop: 0 }}>후보 풀</h3>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ color: '#6b7280' }}>핀 {pinned.length} · 제외 {excluded.length} · 후보 {candidates.length}</div>
+                <div style={{ color: '#6b7280' }}>고정 {pinned.length} · 제외 {excluded.length} · 후보 {candidates.length}</div>
                 <div>
                   <button className="btn-soft" onClick={() => setCandidatesOpen(true)}>후보 산출</button>
                 </div>
@@ -337,9 +337,12 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
         open={candidatesOpen}
         onClose={() => setCandidatesOpen(false)}
         ownerId={ownerId}
+        menuKey={menuKey}
         fileType={toFileType(form.industry)}
         entryAmount={form.entryQualificationAmount || form.estimatedPrice}
         baseAmount={form.baseAmount}
+        estimatedAmount={form.estimatedPrice}
+        perfectPerformanceAmount={perfectPerformanceAmount}
         dutyRegions={dutyRegions}
         defaultExcludeSingle
         onApply={({ candidates: list, pinned: pinnedList, excluded: excludedList }) => {

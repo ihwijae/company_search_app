@@ -3,6 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const chokidar = require('chokidar');
 const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
+const { evaluateScores } = require('./src/shared/evaluator.js');
+const industryAverages = require('./src/shared/industryAverages.json');
 const os = require('os');
 const { execSync } = require('child_process');
 const pkg = (() => { try { return require('./package.json'); } catch { return {}; } })();
@@ -400,9 +402,12 @@ try {
       const fileType = params.fileType || 'eung';
       const entryAmount = params.entryAmount || params.estimatedPrice || 0;
       const baseAmount = params.baseAmount || 0;
+      const menuKey = params.menuKey || '';
+      const perfectPerformanceAmount = params.perfectPerformanceAmount || 0;
       const dutyRegions = Array.isArray(params.dutyRegions) ? params.dutyRegions : [];
       const excludeSingleBidEligible = params.excludeSingleBidEligible !== false; // default true
       const filterByRegion = !!params.filterByRegion; // only include region-matching when dutyRegions provided
+      const isMoisUnder30 = ownerId === 'MOIS' && menuKey === 'mois-under30';
 
       // Load rules
       let rulesDoc = null;
@@ -454,13 +459,144 @@ try {
         const s = String(v || '').replace(/[^0-9]/g, '');
         return s ? Number(s) : 0;
       };
+      const parseNumeric = (value) => {
+        if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+        if (typeof value === 'string') {
+          const cleaned = value.replace(/[^0-9.+-]/g, '').trim();
+          if (!cleaned) return 0;
+          const num = Number(cleaned);
+          return Number.isFinite(num) ? num : 0;
+        }
+        return 0;
+      };
+      const estimatedAmount = params.estimatedAmount || params.estimatedPrice || 0;
+      const tierAmount = toNumber(estimatedAmount || baseAmount || entryAmount);
+      const baseAmountNumber = toNumber(baseAmount);
+      const perfectPerformanceNumber = isMoisUnder30
+        ? (toNumber(perfectPerformanceAmount) || baseAmountNumber)
+        : baseAmountNumber;
+      const matchesRegion = (value) => {
+        if (!Array.isArray(dutyRegions) || dutyRegions.length === 0) return true;
+        const target = String(value || '').trim();
+        if (!target) return false;
+        return dutyRegions.includes(target);
+      };
+      const industryAvg = (() => {
+        if (!industryAverages || typeof industryAverages !== 'object') return null;
+        const direct = industryAverages[fileType];
+        if (direct && typeof direct === 'object') return direct;
+        const lower = industryAverages[String(fileType || '').toLowerCase()];
+        return (lower && typeof lower === 'object') ? lower : null;
+      })();
+
+      const getAgencyOverrides = () => {
+        const agencies = rulesDoc && Array.isArray(rulesDoc.agencies) ? rulesDoc.agencies : null;
+        if (!agencies) return {};
+        const normalizedOwnerId = String(ownerId || '').toLowerCase();
+        const agency = agencies.find((a) => String(a.id || '').toLowerCase() === normalizedOwnerId) || null;
+        if (!agency) return {};
+        const tiers = Array.isArray(agency.tiers) ? agency.tiers : [];
+        const tier = tiers.find((t) => tierAmount >= toNumber(t.minAmount) && tierAmount < toNumber(t.maxAmount))
+          || tiers[tiers.length - 1]
+          || null;
+        const mgRules = (tier && tier.rules && tier.rules.management) || {};
+        const methods = Array.isArray(mgRules.methods) ? mgRules.methods : [];
+        const composite = methods.find((m) => m.id === 'composite') || null;
+        const components = (composite && composite.components) || {};
+        const debtThresholds = Array.isArray(components.debtRatio && components.debtRatio.thresholds)
+          ? components.debtRatio.thresholds
+          : [];
+        const currentThresholds = Array.isArray(components.currentRatio && components.currentRatio.thresholds)
+          ? components.currentRatio.thresholds
+          : [];
+        const maxByThresholds = (arr) => {
+          if (!Array.isArray(arr) || arr.length === 0) return null;
+          return arr.reduce((max, item) => {
+            const val = toScore(item && item.score);
+            return Number.isFinite(val) ? Math.max(max, val) : max;
+          }, 0);
+        };
+        const creditMethod = methods.find((m) => m.id === 'credit') || {};
+        const creditTable = Array.isArray(creditMethod.gradeTable) ? creditMethod.gradeTable : [];
+        const creditMaxScore = creditTable.reduce((max, row) => {
+          const val = toScore(row && row.score);
+          return Number.isFinite(val) ? Math.max(max, val) : max;
+        }, 0) || null;
+        return {
+          creditTable,
+          debtThresholds,
+          currentThresholds,
+          debtMaxScore: maxByThresholds(debtThresholds),
+          currentMaxScore: maxByThresholds(currentThresholds),
+          creditMaxScore,
+        };
+      };
+
+      const overrides = getAgencyOverrides();
+      const debtThresholdsBase = overrides.debtThresholds || [];
+      const currentThresholdsBase = overrides.currentThresholds || [];
+      const debtMaxScoreBase = overrides.debtMaxScore != null ? overrides.debtMaxScore : null;
+      const currentMaxScoreBase = overrides.currentMaxScore != null ? overrides.currentMaxScore : null;
+      const creditTableBase = overrides.creditTable || [];
+      const creditMaxScoreBase = overrides.creditMaxScore != null ? overrides.creditMaxScore : null;
+
+      const toScore = (value) => {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : 0;
+      };
+
+      const evaluateThresholdScore = (value, thresholds = []) => {
+        if (value == null || !Number.isFinite(value)) return null;
+        for (const threshold of thresholds) {
+          const lt = threshold.lt;
+          const gte = threshold.gte;
+          if (typeof lt === 'number' && value < lt) return toScore(threshold.score);
+          if (typeof gte === 'number') {
+            const ltCond = threshold.lt;
+            if (ltCond == null) {
+              if (value >= gte) return toScore(threshold.score);
+            } else if (value >= gte && value < ltCond) {
+              return toScore(threshold.score);
+            }
+          }
+        }
+        const last = thresholds[thresholds.length - 1];
+        return last ? toScore(last.score) : null;
+      };
       for (const c of data) {
         const name = norm(c['검색된 회사'] || c['회사명']);
         const bizNo = norm(c['사업자번호']);
         const manager = norm(c['대표자'] || c['담당자명'] || '');
         const region = norm(c['대표지역'] || c['지역'] || '');
+        const summaryStatus = norm(c['요약상태']);
+        const dataStatus = (c && c['데이터상태']) || null;
+        let isLatest = summaryStatus === '최신';
+        if (!isLatest && dataStatus && typeof dataStatus === 'object') {
+          try {
+            const critical = ['시평', '3년 실적', '5년 실적'];
+            isLatest = critical.every((field) => {
+              const value = dataStatus[field];
+              return (typeof value === 'string' ? value.trim() : '') === '최신';
+            });
+          } catch {
+            /* ignore */
+          }
+        }
         const rating = toNumber(c['시평']);
         const perf5y = toNumber(c['5년 실적']);
+        const debtRatio = parseNumeric(c['부채비율']);
+        const currentRatio = parseNumeric(c['유동비율']);
+        const bizYears = parseNumeric(c['영업기간']);
+        const qualityEval = parseNumeric(c['품질평가']);
+        const creditRawFull = norm(c['신용평가']);
+        const extractCreditGrade = (value) => {
+          const str = norm(value);
+          if (!str) return '';
+          const cleaned = str.replace(/\s+/g, ' ').trim();
+          const match = cleaned.match(/([A-Z]{1,3}[+-]?)/i);
+          return match ? match[1].toUpperCase() : cleaned.split(/[\s(]/)[0].toUpperCase();
+        };
+        const creditGradeRaw = extractCreditGrade(creditRawFull);
 
         const wasAlwaysExcluded = (bizNo && excludeBiz.has(bizNo)) || (!bizNo && excludeName.has(name));
         const wasAlwaysIncluded = (bizNo && includeBiz.has(bizNo)) || (!bizNo && includeName.has(name));
@@ -468,25 +604,165 @@ try {
 
         let sbe = { ok: false, reasons: [], facts: {} };
         try { sbe = isSingleBidEligible(c, { entryAmount, baseAmount, dutyRegions }); } catch {}
-        const moneyOk = sbe && sbe.facts ? (sbe.facts.sipyung >= sbe.facts.entry && sbe.facts.entry > 0) : false;
-        const perfOk = sbe && sbe.facts ? (sbe.facts.perf5y >= sbe.facts.base && sbe.facts.base > 0) : false;
-        const regionOk = sbe && sbe.facts ? (dutyRegions.length === 0 || dutyRegions.includes(sbe.facts.region)) : true;
 
-        if (excludeSingleBidEligible && sbe.ok && !wasAlwaysIncluded) continue;
-        if (filterByRegion && dutyRegions.length > 0 && !regionOk && !wasAlwaysIncluded) continue;
+        let moneyOk = null;
+        let perfOk = null;
+        let regionOk = matchesRegion(region);
+        let singleBidEligible = !!(sbe && sbe.ok);
+        let debtScore = null;
+        let currentScore = null;
+        let debtAgainstAverage = null;
+        let currentAgainstAverage = null;
+
+        if (debtRatio > 0 && industryAvg && Number(industryAvg.debtRatio) > 0) {
+          debtAgainstAverage = debtRatio / Number(industryAvg.debtRatio);
+        }
+        if (currentRatio > 0 && industryAvg && Number(industryAvg.currentRatio) > 0) {
+          currentAgainstAverage = currentRatio / Number(industryAvg.currentRatio);
+        }
+
+        const deriveScoresFromRules = () => {
+          if (debtScore == null && debtAgainstAverage != null) {
+            debtScore = evaluateThresholdScore(debtAgainstAverage, debtThresholdsBase);
+          }
+          if (currentScore == null && currentAgainstAverage != null) {
+            currentScore = evaluateThresholdScore(currentAgainstAverage, currentThresholdsBase);
+          }
+        };
+
+        deriveScoresFromRules();
+
+        if (debtScore == null || currentScore == null) {
+          try {
+            const evalResult = evaluateScores({
+              agencyId: String(ownerId || '').toLowerCase(),
+              amount: tierAmount,
+              inputs: {
+                debtRatio,
+                currentRatio,
+                bizYears,
+                qualityEval,
+                perf5y,
+                baseAmount: baseAmountNumber,
+              },
+              industryAvg,
+            });
+            const parts = evalResult && evalResult.management && evalResult.management.composite && evalResult.management.composite.parts;
+            if (parts) {
+              if (debtScore == null && parts.debtScore != null) debtScore = toScore(parts.debtScore);
+              if (currentScore == null && parts.currentScore != null) currentScore = toScore(parts.currentScore);
+            }
+          } catch (e) {
+            console.warn('[MAIN] evaluateScores fallback failed:', e?.message || e);
+          }
+        }
+
+        deriveScoresFromRules();
+
+        let creditScore = null;
+        let creditGradeResolved = creditGradeRaw || null;
+        let creditNote = null;
+
+        try {
+          const evalResult = evaluateScores({
+            agencyId: String(ownerId || '').toLowerCase(),
+            amount: tierAmount,
+            inputs: {
+              debtRatio,
+              currentRatio,
+              bizYears,
+              qualityEval,
+              perf5y,
+              baseAmount: baseAmountNumber,
+              creditGrade: creditGradeRaw,
+            },
+            industryAvg,
+          });
+          const parts = evalResult && evalResult.management && evalResult.management.composite && evalResult.management.composite.parts;
+          if (parts) {
+            if (debtScore == null && parts.debtScore != null) debtScore = toScore(parts.debtScore);
+            if (currentScore == null && parts.currentScore != null) currentScore = toScore(parts.currentScore);
+          }
+          const creditEval = evalResult && evalResult.management && evalResult.management.credit;
+          if (creditEval) {
+            if (creditEval.score != null) creditScore = toScore(creditEval.score);
+            if (creditEval.grade) creditGradeResolved = String(creditEval.grade).trim();
+            if (creditScore == null && creditEval.grade) {
+              const upperGrade = String(creditEval.grade).trim().toUpperCase();
+              const match = creditTableBase.find((item) => String(item.grade || '').trim().toUpperCase() === upperGrade);
+              if (match && match.score != null) creditScore = toScore(match.score);
+            }
+            if (creditEval.meta && creditEval.meta.expired) {
+              creditNote = 'expired';
+              creditScore = null;
+            }
+            if (creditEval.meta && creditEval.meta.overAgeLimit) {
+              creditNote = creditNote || 'over-age';
+              creditScore = creditScore ?? null;
+            }
+          }
+        } catch (e) {
+          console.warn('[MAIN] evaluateScores fallback failed:', e?.message || e);
+        }
+
+        if (!creditNote && creditRawFull) {
+          if (creditRawFull.includes('만료')) creditNote = 'expired';
+        }
+
+        deriveScoresFromRules();
+
+        if (sbe && sbe.facts) {
+          const entryFact = toNumber(sbe.facts.entry);
+          const baseFact = toNumber(sbe.facts.base);
+          const sipFact = toNumber(sbe.facts.sipyung);
+          const perfFact = toNumber(sbe.facts.perf5y);
+          if (entryFact > 0) moneyOk = sipFact >= entryFact;
+          if (baseFact > 0) perfOk = perfFact >= baseFact;
+          const regionFact = sbe.facts.region ? String(sbe.facts.region).trim() : region;
+          regionOk = matchesRegion(regionFact);
+        }
+
+        if (isMoisUnder30) {
+          const perfTarget = perfectPerformanceNumber;
+          perfOk = perfTarget > 0 ? (perf5y >= perfTarget) : null;
+          moneyOk = null;
+          regionOk = matchesRegion(region);
+          singleBidEligible = perfOk === true && regionOk !== false;
+        }
+
+        if (excludeSingleBidEligible && singleBidEligible && !wasAlwaysIncluded) continue;
+        if (filterByRegion && dutyRegions.length > 0 && regionOk === false && !wasAlwaysIncluded) continue;
 
         out.push({
           id: bizNo || name,
           name, bizNo, manager, region, rating, perf5y,
+          summaryStatus,
+          isLatest,
+          '요약상태': summaryStatus,
+          debtRatio,
+          currentRatio,
+          debtScore,
+          currentScore,
+          debtAgainstAverage,
+          currentAgainstAverage,
+          debtMaxScore: debtMaxScoreBase,
+          currentMaxScore: currentMaxScoreBase,
+          creditMaxScore: creditMaxScoreBase,
+          creditScore,
+          creditGrade: creditGradeResolved,
+          creditNote,
+          managementTotalScore: (debtScore != null || currentScore != null)
+            ? ((Number(debtScore) || 0) + (Number(currentScore) || 0))
+            : null,
           moneyOk, perfOk, regionOk,
-          singleBidEligible: !!sbe.ok,
+          singleBidEligible,
           wasAlwaysIncluded, wasAlwaysExcluded,
           reasons: [
             wasAlwaysIncluded ? '항상 포함' : null,
-            (excludeSingleBidEligible && sbe.ok) ? '단독 가능' : null,
-            !moneyOk ? '시평 미달' : null,
-            !perfOk ? '실적 미달' : null,
-            !regionOk ? '지역 불일치' : null,
+            (excludeSingleBidEligible && singleBidEligible) ? '단독 가능' : null,
+            moneyOk === false ? '시평 미달' : null,
+            perfOk === false ? '실적 미달' : null,
+            regionOk === false ? '지역 불일치' : null,
           ].filter(Boolean),
         });
       }

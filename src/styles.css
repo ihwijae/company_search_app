@@ -105,6 +105,12 @@ button.primary:hover { background: var(--accent-2); }
 .details-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; align-items: center; }
 .details-actions .btn-sm { height: 28px; padding: 4px 10px; }
 .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #eef2ff; color: #3730a3; border: 1px solid #e0e7ff; }
+.status-pill { display: inline-flex; align-items: center; justify-content: center; height: 22px; border-radius: 999px; font-size: 11px; font-weight: 600; padding: 0 8px; }
+.status-latest { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.status-warning { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.status-old { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.status-unknown { background: #e2e8f0; color: #334155; border: 1px solid #cbd5f5; }
+.details-table td.score-details { font-size: 13px; color: #4b5563; line-height: 1.5; }
 .section-help { color: #6b7280; font-size: 12px; margin-top: 6px; }
 
 .results-list { list-style: none; margin: 0; padding: 0; }
@@ -157,4 +163,3 @@ button.primary:hover { background: var(--accent-2); }
   white-space: normal;
   word-break: break-word;
 }
-
