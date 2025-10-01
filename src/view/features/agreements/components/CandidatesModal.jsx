@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '../../../../components/Modal';
 import AmountInput from '../../../../components/AmountInput.jsx';
 
@@ -69,31 +69,46 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
   const isMoisUnder30 = ownerId === 'MOIS' && menuKey === 'mois-under30';
   const perfAmountValue = Number(perfectPerformanceAmount) > 0 ? String(perfectPerformanceAmount) : '';
 
+  const buildInitialParams = useCallback(() => {
+    const initialBase = isMoisUnder30
+      ? (perfAmountValue || estimatedAmount || entryAmount || '')
+      : (baseAmount || '');
+    const initialRatio = isMoisUnder30 ? '' : (ratioBaseAmount || '');
+    return {
+      entryAmount: entryAmount || '',
+      baseAmount: initialBase,
+      dutyRegions: dutyRegions || [],
+      ratioBase: initialRatio,
+      minPct: '',
+      maxPct: '',
+      excludeSingleBidEligible: defaultExcludeSingle,
+      filterByRegion: true,
+    };
+  }, [isMoisUnder30, perfAmountValue, estimatedAmount, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, defaultExcludeSingle]);
+
   const initKey = JSON.stringify({ ownerId, menuKey, entryAmount, baseAmount, estimatedAmount, perfAmountValue, dutyRegions, ratioBaseAmount, defaultExcludeSingle, fileType });
   const didInitFetch = useRef(false);
   useEffect(() => {
     if (!open) return;
-    const initialBase = isMoisUnder30 ? (perfAmountValue || estimatedAmount || entryAmount || '') : (baseAmount || '');
-    const initialRatio = isMoisUnder30 ? '' : (ratioBaseAmount || '');
-    setParams({ entryAmount: entryAmount || '', baseAmount: initialBase, dutyRegions: dutyRegions || [], ratioBase: initialRatio, minPct: '', maxPct: '', excludeSingleBidEligible: defaultExcludeSingle, filterByRegion: true });
+    const initial = buildInitialParams();
+    setParams(initial);
     setList([]); setPinned(new Set()); setExcluded(new Set()); setError('');
     setOnlyLatest(false);
     didInitFetch.current = false; // allow auto fetch again for new inputs
-  }, [open, initKey, isMoisUnder30, estimatedAmount, perfAmountValue]);
+  }, [open, initKey, buildInitialParams]);
 
   // Auto fetch on open with incoming values (once per open/inputs)
   useEffect(() => {
     if (!open) return;
     if (didInitFetch.current) return;
-    // Require at least one of base/entry present or some dutyRegions to prevent empty accidental fetch
-    const baseCandidate = isMoisUnder30 ? (perfAmountValue || estimatedAmount || baseAmount) : baseAmount;
-    const hasAmounts = String(entryAmount || '').trim() || String(baseCandidate || '').trim();
-    const hasRegions = Array.isArray(dutyRegions) && dutyRegions.length > 0;
+    const initial = buildInitialParams();
+    const hasAmounts = String(initial.entryAmount || '').trim() || String(initial.baseAmount || '').trim() || String(estimatedAmount || '').trim();
+    const hasRegions = Array.isArray(initial.dutyRegions) && initial.dutyRegions.length > 0;
     if (hasAmounts || hasRegions) {
       didInitFetch.current = true;
-      runFetch();
+      runFetch(initial);
     }
-  }, [open, initKey, isMoisUnder30, estimatedAmount, perfAmountValue]);
+  }, [open, initKey, buildInitialParams, estimatedAmount]);
 
   const formatScore = (value) => {
     if (value === null || value === undefined) return '-';
@@ -150,11 +165,23 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
     return Number.isFinite(num) ? num : 0;
   };
 
-  const runFetch = async () => {
+  const runFetch = async (overrideParams = null) => {
+    const requestParams = overrideParams ? { ...overrideParams } : { ...params };
     setLoading(true); setError(''); setList([]);
     try {
-      const perfectAmountParam = isMoisUnder30 ? params.baseAmount : perfAmountValue;
-      const r = await window.electronAPI.fetchCandidates({ ownerId, menuKey, fileType, entryAmount: params.entryAmount, baseAmount: params.baseAmount, estimatedAmount, perfectPerformanceAmount: perfectAmountParam, dutyRegions: params.dutyRegions, excludeSingleBidEligible: params.excludeSingleBidEligible, filterByRegion: !!params.filterByRegion });
+      const perfectAmountParam = isMoisUnder30 ? requestParams.baseAmount : perfAmountValue;
+      const r = await window.electronAPI.fetchCandidates({
+        ownerId,
+        menuKey,
+        fileType,
+        entryAmount: requestParams.entryAmount,
+        baseAmount: requestParams.baseAmount,
+        estimatedAmount,
+        perfectPerformanceAmount: perfectAmountParam,
+        dutyRegions: requestParams.dutyRegions,
+        excludeSingleBidEligible: requestParams.excludeSingleBidEligible,
+        filterByRegion: !!requestParams.filterByRegion,
+      });
       if (!r?.success) throw new Error(r?.message || '후보 요청 실패');
 
       const enriched = (r.data || []).map((item) => {
@@ -165,7 +192,8 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
         const creditScoreRaw = item.creditScore ?? null;
         const creditGradeSource = item['신용평가'] ?? '';
         const creditGradeRaw = item.creditGrade ?? creditGradeSource;
-        const creditNoteOriginal = item.creditNote ?? item['신용메모'] ?? '';
+        const creditNoteOriginal = item.creditNoteText ?? item['신용메모'] ?? '';
+        const creditNoteStatus = item.creditNote ?? '';
         return {
           ...item,
           debtRatio: debtRatioRaw,
@@ -177,7 +205,7 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
           creditScore: creditScoreRaw != null ? Number(creditScoreRaw) : null,
           creditGrade: creditGradeRaw ? String(creditGradeRaw).toUpperCase() : '',
           creditGradeText: creditGradeSource ? String(creditGradeSource) : '',
-          creditNote: creditNoteOriginal ? String(creditNoteOriginal).toLowerCase() : '',
+          creditNote: creditNoteStatus ? String(creditNoteStatus).toLowerCase() : '',
           creditNoteText: creditNoteOriginal ? String(creditNoteOriginal) : '',
           debtMaxScore: item.debtMaxScore ?? null,
           currentMaxScore: item.currentMaxScore ?? null,
@@ -320,7 +348,7 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
             최신자료 업체만
           </label>
           <div style={{ marginTop: 12 }}>
-            <button className="btn-soft" onClick={runFetch} disabled={loading}>후보 검색</button>
+            <button className="btn-soft" onClick={() => runFetch()} disabled={loading}>후보 검색</button>
             {loading && <span style={{ marginLeft: 8, color: '#6b7280' }}>검색 중…</span>}
             {error && <div className="error-message" style={{ marginTop: 8 }}>{error}</div>}
           </div>
@@ -385,29 +413,32 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
                   const hasManagementScores = Number.isFinite(debtScore) || Number.isFinite(currentScore) || Number.isFinite(creditScore);
                   const creditNoteLower = String(c.creditNote || '').trim().toLowerCase();
                   const creditNoteTextRaw = c.creditNoteText || '';
+                  const creditNoteTextLower = creditNoteTextRaw.trim().toLowerCase();
                   const creditGradePure = (c.creditGrade || '').trim();
                   const creditGradeTextRaw = c.creditGradeText || creditGradePure;
                   const creditGradeTextLower = creditGradeTextRaw.trim().toLowerCase();
                   const creditExpiredFlag = /expired|만료|기한경과|유효\s*기간\s*만료/.test(creditNoteLower)
-                    || /만료|기한경과|유효\s*기간\s*만료/.test(creditGradeTextLower);
+                    || /만료|기한경과|유효\s*기간\s*만료/.test(creditGradeTextLower)
+                    || /만료|기한경과|유효\s*기간\s*만료/.test(creditNoteTextLower);
                   const creditOverAge = /over-age|기간\s*초과|인정\s*기간\s*초과|인정기간\s*초과/.test(creditNoteLower)
-                    || /기간\s*초과|인정\s*기간\s*초과|인정기간\s*초과/.test(creditGradeTextLower);
+                    || /기간\s*초과|인정\s*기간\s*초과|인정기간\s*초과/.test(creditGradeTextLower)
+                    || /기간\s*초과|인정\s*기간\s*초과|인정기간\s*초과/.test(creditNoteTextLower);
                   const expiryFromGrade = extractExpiryDate(creditGradeTextRaw);
                   const expiryFromNote = extractExpiryDate(creditNoteTextRaw);
                   const expiryDate = expiryFromGrade || expiryFromNote;
                   const isExpiredByDate = expiryDate ? expiryDate < today : false;
                   const creditScoreValue = Number.isFinite(creditScore) ? Number(creditScore) : null;
-                  const hasPositiveCreditScore = creditScoreValue != null && creditScoreValue > 0;
+                  const hasCreditScoreValue = creditScoreValue != null && creditScoreValue > 0;
                   const creditDisplayLabel = creditGradeTextRaw.trim() || creditGradePure;
                   const normalizedGrade = creditGradePure.replace(/\s+/g, '').toUpperCase();
                   const gradeIndicatesNone = !normalizedGrade
                     || normalizedGrade === 'N/A'
                     || normalizedGrade === 'NA'
                     || normalizedGrade.startsWith('N/');
-                  const noteSuggestsMissing = /자료없음|미제출|평가없음|미발급/.test(creditNoteLower)
+                  const noteSuggestsMissing = /자료없음|미제출|평가없음|미발급/.test(creditNoteTextLower)
                     || /자료없음|미제출|평가없음|미발급/.test(creditGradeTextLower);
                   const creditExpired = creditExpiredFlag || isExpiredByDate;
-                  const creditDataMissing = !creditExpired && !creditOverAge && (gradeIndicatesNone || noteSuggestsMissing) && !hasPositiveCreditScore;
+                  const creditDataMissing = !creditExpired && !creditOverAge && (gradeIndicatesNone || noteSuggestsMissing) && !hasCreditScoreValue;
                   const managementScoreValue = hasManagementScores && Number.isFinite(managementScore) ? Number(managementScore) : null;
                   const managementScoreIs15 = managementScoreValue != null && Math.abs(managementScoreValue - 15) < 1e-3;
                   const singleBidAllowed = !!c.singleBidEligible && managementScoreIs15;
@@ -462,28 +493,34 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
                             if (creditExpired) {
                               return (
                                 <span style={{ color: '#b91c1c', fontWeight: 600 }}>
-                                  신용 [신용평가 유효기간 만료]
-                                  {creditMax ? ` / ${formatScore(creditMax)}점` : ''}
+                                  [신용평가 유효기간 만료]
                                 </span>
                               );
                             }
                             if (creditDataMissing) {
                               return (
                                 <span style={{ color: '#b91c1c', fontWeight: 600 }}>
-                                  신용 [신용평가 자료 없음]
+                                  [신용평가 자료 없음]
                                 </span>
                               );
                             }
                             if (creditOverAge) {
                               return (
                                 <span style={{ color: '#b91c1c', fontWeight: 600 }}>
-                                  신용 [신용평가 인정기간 초과]
+                                  [신용평가 인정기간 초과]
                                 </span>
                               );
                             }
-                            if (hasPositiveCreditScore) {
+                            if (!hasCreditScoreValue) {
                               return (
-                                <span style={{ color: isMaxScore(c.creditScore, creditMax) ? '#166534' : '#b91c1c', fontWeight: isMaxScore(c.creditScore, creditMax) ? 600 : 500 }}>
+                                <span style={{ color: '#b91c1c', fontWeight: 600 }}>
+                                  [신용평가 자료 없음]
+                                </span>
+                              );
+                            }
+                            if (hasCreditScoreValue) {
+                              return (
+                                <span style={{ color: isMaxScore(creditScoreValue, creditMax) ? '#166534' : '#b91c1c', fontWeight: isMaxScore(creditScoreValue, creditMax) ? 600 : 500 }}>
                                   신용 {creditDisplayLabel || 'N/A'} → {formatScore(creditScoreValue)}점
                                   {creditMax ? ` / ${formatScore(creditMax)}점` : ''}
                                 </span>

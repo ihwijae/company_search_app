@@ -119,6 +119,44 @@ const AGREEMENTS_PATH = path.join(userDataDir, 'agreements.json');
 const AGREEMENTS_RULES_PATH = path.join(userDataDir, 'agreements.rules.json');
 const FORMULAS_PATH = path.join(userDataDir, 'formulas.json');
 
+const DATE_PATTERN = /(\d{2,4})[.\-/년\s]*(\d{1,2})[.\-/월\s]*(\d{1,2})/;
+
+function parseDateToken(input) {
+  if (!input) return null;
+  const match = String(input).match(DATE_PATTERN);
+  if (!match) return null;
+  let year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (year < 100) year += year >= 70 ? 1900 : 2000;
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function extractExpiryDate(text) {
+  if (!text) return null;
+  const source = String(text);
+  let match = source.match(/~\s*([0-9]{2,4}[^0-9]*[0-9]{1,2}[^0-9]*[0-9]{1,2})/);
+  if (match) {
+    const parsed = parseDateToken(match[1]);
+    if (parsed) return parsed;
+  }
+  match = source.match(/([0-9]{2,4}[^0-9]*[0-9]{1,2}[^0-9]*[0-9]{1,2})\s*(까지|만료|만기)/);
+  if (match) {
+    const parsed = parseDateToken(match[1]);
+    if (parsed) return parsed;
+  }
+  const tokens = source.match(/[0-9]{2,4}[^0-9]*[0-9]{1,2}[^0-9]*[0-9]{1,2}/g);
+  if (tokens && tokens.length) {
+    for (let i = tokens.length - 1; i >= 0; i -= 1) {
+      const parsed = parseDateToken(tokens[i]);
+      if (parsed) return parsed;
+    }
+  }
+  return null;
+}
+
 function loadConfig() {
     try {
         if (fs.existsSync(CONFIG_PATH)) {
@@ -506,6 +544,9 @@ try {
         return (lower && typeof lower === 'object') ? lower : null;
       })();
 
+      const todayMidnight = new Date();
+      todayMidnight.setHours(0, 0, 0, 0);
+
       const normalizedOwnerId = String(ownerId || '').toLowerCase();
       const normalizedMenuKey = String(menuKey || '').toLowerCase();
 
@@ -686,6 +727,9 @@ try {
         const bizYears = parseNumeric(c['영업기간']);
         const qualityEval = parseNumeric(c['품질평가']);
         const creditRawFull = norm(c['신용평가']);
+        const creditNoteRawFull = norm(c['신용메모']);
+        const creditExpiryDate = extractExpiryDate(creditRawFull) || extractExpiryDate(creditNoteRawFull);
+        const expiredByDate = creditExpiryDate ? creditExpiryDate.getTime() < todayMidnight.getTime() : false;
         const extractCreditGrade = (value) => {
           const str = norm(value);
           if (!str) return '';
@@ -806,6 +850,11 @@ try {
           if (creditRawFull.includes('만료')) creditNote = 'expired';
         }
 
+        if (expiredByDate) {
+          creditNote = 'expired';
+          creditScore = null;
+        }
+
         deriveScoresFromRules();
 
         if (sbe && sbe.facts) {
@@ -848,6 +897,7 @@ try {
           creditScore,
           creditGrade: creditGradeResolved,
           creditNote,
+          creditNoteText: creditNoteRawFull,
           managementTotalScore: (debtScore != null || currentScore != null)
             ? ((Number(debtScore) || 0) + (Number(currentScore) || 0))
             : null,
