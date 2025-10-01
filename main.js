@@ -9,6 +9,23 @@ const os = require('os');
 const { execSync } = require('child_process');
 const pkg = (() => { try { return require('./package.json'); } catch { return {}; } })();
 
+let formulasCache = null;
+const loadMergedFormulasCached = () => {
+  if (formulasCache) return formulasCache;
+  try {
+    const formulasModule = require('./src/shared/formulas.js');
+    if (formulasModule && typeof formulasModule.loadFormulasMerged === 'function') {
+      formulasCache = formulasModule.loadFormulasMerged();
+    }
+  } catch (e) {
+    console.warn('[MAIN] formulas cache load failed:', e?.message || e);
+  }
+  return formulasCache;
+};
+const invalidateFormulasCache = () => {
+  formulasCache = null;
+};
+
 // Minimize GPU shader cache errors on Windows (cannot create/move cache)
 try { app.commandLine.appendSwitch('disable-gpu-shader-disk-cache'); } catch {}
 
@@ -470,7 +487,7 @@ try {
         return 0;
       };
       const estimatedAmount = params.estimatedAmount || params.estimatedPrice || 0;
-      const tierAmount = toNumber(estimatedAmount || baseAmount || entryAmount);
+      let tierAmount = toNumber(estimatedAmount || baseAmount || entryAmount);
       const baseAmountNumber = toNumber(baseAmount);
       const perfectPerformanceNumber = isMoisUnder30
         ? (toNumber(perfectPerformanceAmount) || baseAmountNumber)
@@ -489,17 +506,19 @@ try {
         return (lower && typeof lower === 'object') ? lower : null;
       })();
 
-      const getAgencyOverrides = () => {
-        const agencies = rulesDoc && Array.isArray(rulesDoc.agencies) ? rulesDoc.agencies : null;
-        if (!agencies) return {};
-        const normalizedOwnerId = String(ownerId || '').toLowerCase();
-        const agency = agencies.find((a) => String(a.id || '').toLowerCase() === normalizedOwnerId) || null;
-        if (!agency) return {};
-        const tiers = Array.isArray(agency.tiers) ? agency.tiers : [];
-        const tier = tiers.find((t) => tierAmount >= toNumber(t.minAmount) && tierAmount < toNumber(t.maxAmount))
-          || tiers[tiers.length - 1]
-          || null;
-        const mgRules = (tier && tier.rules && tier.rules.management) || {};
+      const normalizedOwnerId = String(ownerId || '').toLowerCase();
+      const normalizedMenuKey = String(menuKey || '').toLowerCase();
+
+      const formulasMerged = loadMergedFormulasCached();
+
+      const toScore = (value) => {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : 0;
+      };
+
+      const buildOverridesFromTier = (tier, effectiveAmount) => {
+        if (!tier || !tier.rules) return null;
+        const mgRules = tier.rules.management || {};
         const methods = Array.isArray(mgRules.methods) ? mgRules.methods : [];
         const composite = methods.find((m) => m.id === 'composite') || null;
         const components = (composite && composite.components) || {};
@@ -529,21 +548,99 @@ try {
           debtMaxScore: maxByThresholds(debtThresholds),
           currentMaxScore: maxByThresholds(currentThresholds),
           creditMaxScore,
+          tierAmountForEval: Number.isFinite(effectiveAmount) && effectiveAmount > 0 ? effectiveAmount : null,
         };
       };
 
+      const selectTierForAgency = (agency, amount) => {
+        const tiersRaw = Array.isArray(agency && agency.tiers) ? agency.tiers.slice() : [];
+        if (!tiersRaw.length) return { tier: null, effectiveAmount: amount };
+        const tiersSorted = tiersRaw.slice().sort((a, b) => toNumber(a && a.minAmount) - toNumber(b && b.minAmount));
+
+        const findByAmount = (amt) => {
+          if (!Number.isFinite(amt) || amt <= 0) return null;
+          return tiersSorted.find((t) => {
+            const min = toNumber(t && t.minAmount);
+            const rawMax = t && t.maxAmount;
+            const maxNumber = rawMax === null || rawMax === undefined || rawMax === '' ? NaN : toNumber(rawMax);
+            const upper = Number.isFinite(maxNumber) && maxNumber > 0 ? maxNumber : Infinity;
+            const lower = Number.isFinite(min) ? min : 0;
+            return amt >= lower && amt < upper;
+          }) || null;
+        };
+
+        let effectiveAmount = Number.isFinite(amount) ? amount : 0;
+        if (effectiveAmount < 0) effectiveAmount = 0;
+
+        let chosen = null;
+
+        if (normalizedOwnerId === 'mois' && (!Number.isFinite(amount) || amount <= 0)) {
+          const indexMap = {
+            'mois-under30': 0,
+            'mois-30to50': 1,
+            'mois-50to100': 2,
+          };
+          const idx = indexMap[normalizedMenuKey];
+          if (typeof idx === 'number' && idx >= 0 && idx < tiersSorted.length) {
+            chosen = tiersSorted[idx];
+            const minVal = toNumber(chosen && chosen.minAmount);
+            if (!Number.isFinite(effectiveAmount) || effectiveAmount <= 0) {
+              effectiveAmount = minVal > 0 ? minVal : effectiveAmount;
+            }
+          }
+        }
+
+        if (!chosen) {
+          const byEffective = findByAmount(effectiveAmount);
+          if (byEffective) chosen = byEffective;
+        }
+
+        if (!chosen) {
+          const byRaw = findByAmount(amount);
+          if (byRaw) chosen = byRaw;
+        }
+
+        if (!chosen) {
+          chosen = tiersSorted[tiersSorted.length - 1] || null;
+        }
+
+        if (chosen && (!Number.isFinite(effectiveAmount) || effectiveAmount <= 0)) {
+          const minVal = toNumber(chosen && chosen.minAmount);
+          if (minVal > 0) effectiveAmount = minVal;
+        }
+
+        return { tier: chosen, effectiveAmount };
+      };
+
+      const getAgencyOverrides = () => {
+        const fromFormulas = (() => {
+          if (!formulasMerged || !Array.isArray(formulasMerged.agencies)) return null;
+          const agency = formulasMerged.agencies.find((a) => String(a.id || '').toLowerCase() === normalizedOwnerId) || null;
+          if (!agency) return null;
+          const { tier, effectiveAmount } = selectTierForAgency(agency, tierAmount);
+          return buildOverridesFromTier(tier, effectiveAmount);
+        })();
+        if (fromFormulas) return fromFormulas;
+
+        const agencies = rulesDoc && Array.isArray(rulesDoc.agencies) ? rulesDoc.agencies : null;
+        if (!agencies) return {};
+        const agency = agencies.find((a) => String(a.id || '').toLowerCase() === normalizedOwnerId) || null;
+        if (!agency) return {};
+        const { tier, effectiveAmount } = selectTierForAgency(agency, tierAmount);
+        return buildOverridesFromTier(tier, effectiveAmount) || {};
+      };
+
       const overrides = getAgencyOverrides();
+      if (overrides && overrides.tierAmountForEval != null) {
+        const amt = Number(overrides.tierAmountForEval);
+        if (Number.isFinite(amt) && amt > 0) tierAmount = amt;
+      }
       const debtThresholdsBase = overrides.debtThresholds || [];
       const currentThresholdsBase = overrides.currentThresholds || [];
       const debtMaxScoreBase = overrides.debtMaxScore != null ? overrides.debtMaxScore : null;
       const currentMaxScoreBase = overrides.currentMaxScore != null ? overrides.currentMaxScore : null;
       const creditTableBase = overrides.creditTable || [];
       const creditMaxScoreBase = overrides.creditMaxScore != null ? overrides.creditMaxScore : null;
-
-      const toScore = (value) => {
-        const num = Number(value);
-        return Number.isFinite(num) ? num : 0;
-      };
 
       const evaluateThresholdScore = (value, thresholds = []) => {
         if (value == null || !Number.isFinite(value)) return null;
@@ -823,6 +920,7 @@ try {
       try { delete require.cache[require.resolve('./src/shared/formulas.defaults.json')]; } catch {}
       const fresh = require('./src/shared/formulas.js');
       const data = fresh.loadFormulasMerged();
+      formulasCache = data;
       return { success: true, data };
     } catch (e) {
       return { success: false, message: e?.message || 'Failed to load formulas' };
@@ -857,6 +955,7 @@ try {
       const mergedAgencies = formulasMod._internals.mergeAgencies(base.agencies, incoming.agencies);
       const out = { version: Math.max(base.version || 1, incoming.version || 1), agencies: mergedAgencies };
       fs.writeFileSync(FORMULAS_PATH, JSON.stringify(out, null, 2));
+      invalidateFormulasCache();
       return { success: true };
     } catch (e) {
       return { success: false, message: e?.message || 'Failed to save overrides' };
@@ -978,6 +1077,7 @@ try {
       if (payload.formulas) {
         try {
           fs.writeFileSync(FORMULAS_PATH, JSON.stringify(payload.formulas, null, 2));
+          invalidateFormulasCache();
         } catch (e) {
           return { success: false, message: '산식 처리 실패: ' + (e?.message || e) };
         }

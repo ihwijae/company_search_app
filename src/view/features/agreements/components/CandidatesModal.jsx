@@ -334,6 +334,17 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
                   }
                   const managementIsMax = managementMax > 0 && Math.abs(managementScore - managementMax) < 1e-6;
                   const hasManagementScores = Number.isFinite(debtScore) || Number.isFinite(currentScore) || Number.isFinite(creditScore);
+                  const creditNoteLower = String(c.creditNote || '').toLowerCase();
+                  const creditExpired = creditNoteLower === 'expired';
+                  const creditOverAge = creditNoteLower === 'over-age';
+                  const creditLabel = creditExpired ? '[신용 기간만료]' : (c.creditGrade || 'N/A');
+                  const hasCreditScore = Number.isFinite(creditScore);
+                  const managementScoreValue = hasManagementScores && Number.isFinite(managementScore) ? Number(managementScore) : null;
+                  const managementScoreIs15 = managementScoreValue != null && Math.abs(managementScoreValue - 15) < 1e-3;
+                  const singleBidAllowed = !!c.singleBidEligible && managementScoreIs15;
+                  const singleBidBadgeStyle = singleBidAllowed
+                    ? { background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }
+                    : { background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' };
                   return (
                   <tr key={`${c.id}-${idx}`}>
                     <td>
@@ -354,7 +365,7 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
                     <td style={{ textAlign: 'left', fontSize: 13 }}>
                       <div className="details-actions" style={{ justifyContent: 'flex-start', gap: 4, rowGap: 4 }}>
                         {c.wasAlwaysIncluded && <span className="pill">항상포함</span>}
-                        {c.singleBidEligible && <span className="pill">단독가능</span>}
+                        <span className="pill" style={singleBidBadgeStyle}>{singleBidAllowed ? '단독가능' : '단독불가능'}</span>
                         {c.moneyOk && <span className="pill">시평OK</span>}
                         {c.perfOk && <span className="pill">실적OK</span>}
                         {c.regionOk && <span className="pill">지역OK</span>}
@@ -378,18 +389,19 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
                               {currentMax ? ` / ${formatScore(currentMax)}점` : ''}
                             </span>
                           )}
-                          {c.creditScore != null && (
+                          {hasCreditScore && (
                             <span style={{ color: isMaxScore(c.creditScore, creditMax) ? '#166534' : '#b91c1c', fontWeight: isMaxScore(c.creditScore, creditMax) ? 600 : 500 }}>
-                              신용 {c.creditGrade || 'N/A'} → {formatScore(c.creditScore)}점
+                              신용 {creditLabel} → {formatScore(c.creditScore)}점
                               {creditMax ? ` / ${formatScore(creditMax)}점` : ''}
                             </span>
                           )}
-                          {c.creditScore == null && c.creditNote === 'expired' && (
+                          {!hasCreditScore && creditExpired && (
                             <span style={{ color: '#b91c1c', fontWeight: 600 }}>
-                              신용 평가: 유효기간 만료
+                              신용 {creditLabel}
+                              {creditMax ? ` / ${formatScore(creditMax)}점` : ''}
                             </span>
                           )}
-                          {c.creditScore == null && c.creditNote === 'over-age' && (
+                          {!hasCreditScore && creditOverAge && (
                             <span style={{ color: '#b91c1c', fontWeight: 600 }}>
                               신용 평가: 인정 기간 초과
                             </span>

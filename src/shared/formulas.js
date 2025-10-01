@@ -53,6 +53,26 @@ function mergeAgencies(baseAgencies = [], overrideAgencies = []) {
   return result;
 }
 
+const isRunningInWSL = (() => {
+  if (process.platform !== 'linux') return false;
+  if (process.env.WSL_DISTRO_NAME) return true;
+  try {
+    const release = fs.readFileSync('/proc/version', 'utf-8').toLowerCase();
+    return release.includes('microsoft');
+  } catch {
+    return false;
+  }
+})();
+
+function toWSLPathIfNeeded(p) {
+  if (!p || !isRunningInWSL) return p;
+  const match = /^([A-Za-z]):\\(.*)$/.exec(p);
+  if (!match) return p;
+  const drive = match[1].toLowerCase();
+  const rest = match[2].replace(/\\/g, '/');
+  return `/mnt/${drive}/${rest}`;
+}
+
 function loadUserOverrides(userDataDir) {
   try {
     const file = path.join(userDataDir, 'formulas.json');
@@ -74,13 +94,13 @@ function getUserDataDirSafe() {
     const electron = require('electron');
     const app = electron.app || (electron.remote && electron.remote.app);
     if (app && typeof app.getPath === 'function') {
-      return app.getPath('userData');
+      return toWSLPathIfNeeded(app.getPath('userData'));
     }
   } catch (_) {
     // non-electron context
   }
   // Fallback to local project folder .userData
-  return path.join(process.cwd(), '.userData');
+  return toWSLPathIfNeeded(path.join(process.cwd(), '.userData'));
 }
 
 function loadFormulasMerged() {
@@ -98,4 +118,3 @@ module.exports = {
   loadFormulasMerged,
   _internals: { mergeAgencies, mergeTiers, loadUserOverrides, getUserDataDirSafe }
 };
-

@@ -76,6 +76,26 @@ export default function SettingsPage() {
   const [qualityRows, setQualityRows] = React.useState([]);
   const [status, setStatus] = React.useState('');
   const rulesSnapshotRef = React.useRef(null); // preserve untouched fields (gradeTable, notes, etc.)
+  const selectionRef = React.useRef({ agencyId: '', tierIdx: 0 });
+  const applyRulesToCurrentSelection = React.useCallback((nextRules) => {
+    setMerged((prev) => {
+      if (!prev) return prev;
+      const agencies = prev.agencies || [];
+      const { agencyId: selAgencyId, tierIdx: selTierIdx } = selectionRef.current || {};
+      const agencyIndex = agencies.findIndex((agency) => agency.id === selAgencyId);
+      if (agencyIndex === -1) return prev;
+      const targetAgency = agencies[agencyIndex];
+      const tiers = targetAgency?.tiers || [];
+      const targetTier = tiers[selTierIdx] || tiers[tiers.length - 1];
+      if (!targetTier) return prev;
+      const matchTier = (tier) => tier?.minAmount === targetTier?.minAmount && tier?.maxAmount === targetTier?.maxAmount;
+      const updatedTiers = tiers.map((tier, idx) => (idx === selTierIdx || matchTier(tier) ? { ...tier, rules: nextRules } : tier));
+      const updatedAgencies = agencies.slice();
+      updatedAgencies[agencyIndex] = { ...targetAgency, tiers: updatedTiers };
+      return { ...prev, agencies: updatedAgencies };
+    });
+    rulesSnapshotRef.current = nextRules;
+  }, []);
 
   // Preview inputs
   const [baseAmount, setBaseAmount] = React.useState('500000000');
@@ -90,52 +110,57 @@ export default function SettingsPage() {
   const [rulesModalOpen, setRulesModalOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
 
-  const updateMergedRules = React.useCallback((nextRules) => {
-    setMerged((prev) => {
-      if (!prev) return prev;
+  const load = React.useCallback(async ({ preserveSelection = false, silent = false } = {}) => {
+    if (!silent) setStatus('로딩...');
+    const { agencyId: prevAgencyId, tierIdx: prevTierIdx } = selectionRef.current || { agencyId: '', tierIdx: 0 };
+    const previousAgencyId = preserveSelection ? prevAgencyId : null;
+    const previousTierIdx = preserveSelection ? prevTierIdx : 0;
 
-      const agencies = prev.agencies || [];
-      const agencyIndex = agencies.findIndex((agency) => agency.id === agencyId);
-      if (agencyIndex === -1) return prev;
-
-      const targetAgency = agencies[agencyIndex];
-      const tiers = targetAgency?.tiers || [];
-      const targetTier = tiers[tierIdx] || tiers[tiers.length - 1];
-      if (!targetTier) return prev;
-
-      const matchTier = (tier) =>
-        (tier?.minAmount === targetTier?.minAmount && tier?.maxAmount === targetTier?.maxAmount);
-
-      const updatedTiers = tiers.map((tier, idx) => (
-        idx === tierIdx || matchTier(tier)
-          ? { ...tier, rules: nextRules }
-          : tier
-      ));
-
-      const updatedAgencies = agencies.slice();
-      updatedAgencies[agencyIndex] = { ...targetAgency, tiers: updatedTiers };
-
-      return { ...prev, agencies: updatedAgencies };
-    });
-    rulesSnapshotRef.current = nextRules;
-  }, [agencyId, tierIdx]);
-
-  const load = async () => {
-    setStatus('로딩...');
     const r = await window.electronAPI.formulasLoad();
-    if (!r.success) { setStatus('불러오기 실패'); return; }
-    const data = r.data;
-    setMerged(data);
-    const first = (data.agencies || [])[0];
-    if (first) {
-      setAgencyId(first.id);
-      const t = first.tiers && first.tiers[0];
-      if (t) hydrateFormFromRules(t.rules || {}, { ownerId: first.id, minAmount: t.minAmount || 0 });
+    if (!r.success) {
+      if (!silent) setStatus('불러오기 실패');
+      return false;
     }
-    setStatus('');
-  };
 
-  React.useEffect(() => { load(); }, []);
+    const data = r.data || {};
+    setMerged(data);
+
+    const agenciesList = data.agencies || [];
+    if (!agenciesList.length) {
+      setAgencyId('');
+      setTierIdx(0);
+      hydrateFormFromRules({}, { ownerId: '', minAmount: 0 });
+      if (!silent) setStatus('');
+      return true;
+    }
+
+    let targetAgency = null;
+    if (preserveSelection && previousAgencyId) {
+      targetAgency = agenciesList.find((a) => a.id === previousAgencyId) || agenciesList[0];
+    } else {
+      targetAgency = agenciesList[0];
+    }
+
+    const targetTiers = targetAgency?.tiers || [];
+    let nextTierIdx = 0;
+    if (preserveSelection && targetTiers.length) {
+      nextTierIdx = Math.min(Math.max(previousTierIdx, 0), targetTiers.length - 1);
+    }
+
+    setAgencyId(targetAgency.id);
+    setTierIdx(nextTierIdx);
+
+    const targetTier = targetTiers[nextTierIdx] || {};
+    hydrateFormFromRules(targetTier.rules || {}, { ownerId: targetAgency.id, minAmount: targetTier.minAmount || 0 });
+
+    if (!silent) setStatus('');
+    return true;
+  }, []);
+
+  React.useEffect(() => { load(); }, [load]);
+  React.useEffect(() => {
+    selectionRef.current = { agencyId, tierIdx };
+  }, [agencyId, tierIdx]);
 
   // (no-op) rules editor is now a modal and lazy-loads its data
 
@@ -437,11 +462,12 @@ export default function SettingsPage() {
           { id: currentAgency.id, tiers: [ { minAmount: currentTier.minAmount, maxAmount: currentTier.maxAmount, rules } ] }
         ]
       };
+      applyRulesToCurrentSelection(rules);
       setStatus('저장 중...');
       const r = await window.electronAPI.formulasSaveOverrides(payload);
       if (!r.success) throw new Error(r.message || 'save failed');
-      updateMergedRules(rules);
-      setStatus('저장 완료');
+      const reloaded = await load({ preserveSelection: true, silent: true });
+      setStatus(reloaded ? '저장 완료' : '저장 완료 (재로딩 실패)');
       setTimeout(()=>setStatus(''), 1200);
     } catch (e) { setStatus('저장 실패: ' + (e?.message || e)); }
   };
@@ -456,11 +482,12 @@ export default function SettingsPage() {
           { id: currentAgency.id, tiers: [ { minAmount: currentTier.minAmount, maxAmount: currentTier.maxAmount, rules } ] }
         ]
       };
+      applyRulesToCurrentSelection(rules);
       setStatus('저장 중...');
       const r = await window.electronAPI.formulasSaveOverrides(payload);
       if (!r.success) throw new Error(r.message || 'save failed');
-      updateMergedRules(rules);
-      setStatus('저장 완료');
+      const reloaded = await load({ preserveSelection: true, silent: true });
+      setStatus(reloaded ? '저장 완료' : '저장 완료 (재로딩 실패)');
       setTimeout(()=>setStatus(''), 1200);
     } catch (e) { setStatus('저장 실패: ' + (e?.message || e)); }
   };
