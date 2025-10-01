@@ -690,7 +690,7 @@ try {
           const str = norm(value);
           if (!str) return '';
           const cleaned = str.replace(/\s+/g, ' ').trim();
-          const match = cleaned.match(/([A-Z]{1,3}[+-]?)/i);
+          const match = cleaned.match(/^([A-Z]{1,3}[0-9]?(?:[+-])?)/i);
           return match ? match[1].toUpperCase() : cleaned.split(/[\s(]/)[0].toUpperCase();
         };
         const creditGradeRaw = extractCreditGrade(creditRawFull);
