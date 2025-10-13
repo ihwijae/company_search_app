@@ -997,38 +997,6 @@ function App() {
                   </button>
                 </div>
               </div>
-              <div className="results-scroll" ref={resultsScrollRef}>
-                {isLoading && <p>로딩 중...</p>}
-                {error && <p className="error-message">{error}</p>}
-                {!isLoading && !error && totalCount === 0 && (
-                  <p>{searchPerformed ? '검색 결과가 없습니다.' : '왼쪽에서 조건을 입력하고 검색하세요.'}</p>
-                )}
-                {searchResults.length > 0 && (
-                  <ul>
-                    {searchResults.map((company, index) => {
-                      const globalIndex = (currentPage - 1) * PAGE_SIZE + index;
-                      const isActive = selectedCompany && selectedCompany.사업자번호 === company.사업자번호;
-                      const summaryStatus = company['요약상태'] || '미지정';
-                      const fileTypeLabel = searchedFileType === 'eung' ? '전기' : searchedFileType === 'tongsin' ? '통신' : '소방';
-                      const listKey = composeCompanyKey(company, globalIndex) || `idx-${globalIndex}`;
-                      return (
-                        <li key={listKey} onClick={() => handleCompanySelect(company, globalIndex)} className={`company-list-item ${searchedFileType === 'all' ? (selectedIndex === globalIndex ? 'active' : '') : (isActive ? 'active' : '')}`}>
-                          <div className="company-info-wrapper">
-                            <span className={`file-type-badge-small file-type-${searchedFileType === 'all' ? (company._file_type || '') : searchedFileType}`}>
-                              {searchedFileType === 'all'
-                                ? (company._file_type === 'eung' ? '전기' : company._file_type === 'tongsin' ? '통신' : company._file_type === 'sobang' ? '소방' : '')
-                                : fileTypeLabel}
-                            </span>
-                            <span className="company-name">{company['검색된 회사']}</span>
-                            {company['담당자명'] && <span className="badge-person">{company['담당자명']}</span>}
-                          </div>
-                          <span className={`summary-status-badge ${getStatusClass(summaryStatus)}`}>{summaryStatus}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
               {totalCount > 0 && (
                 <div className="pagination-controls fixed">
                   <div className="pagination-info" aria-live="polite">
@@ -1071,6 +1039,38 @@ function App() {
                   </div>
                 </div>
               )}
+              <div className="results-scroll" ref={resultsScrollRef}>
+                {isLoading && <p>로딩 중...</p>}
+                {error && <p className="error-message">{error}</p>}
+                {!isLoading && !error && totalCount === 0 && (
+                  <p>{searchPerformed ? '검색 결과가 없습니다.' : '왼쪽에서 조건을 입력하고 검색하세요.'}</p>
+                )}
+                {searchResults.length > 0 && (
+                  <ul>
+                    {searchResults.map((company, index) => {
+                      const globalIndex = (currentPage - 1) * PAGE_SIZE + index;
+                      const isActive = selectedCompany && selectedCompany.사업자번호 === company.사업자번호;
+                      const summaryStatus = company['요약상태'] || '미지정';
+                      const fileTypeLabel = searchedFileType === 'eung' ? '전기' : searchedFileType === 'tongsin' ? '통신' : '소방';
+                      const listKey = composeCompanyKey(company, globalIndex) || `idx-${globalIndex}`;
+                      return (
+                        <li key={listKey} onClick={() => handleCompanySelect(company, globalIndex)} className={`company-list-item ${searchedFileType === 'all' ? (selectedIndex === globalIndex ? 'active' : '') : (isActive ? 'active' : '')}`}>
+                          <div className="company-info-wrapper">
+                            <span className={`file-type-badge-small file-type-${searchedFileType === 'all' ? (company._file_type || '') : searchedFileType}`}>
+                              {searchedFileType === 'all'
+                                ? (company._file_type === 'eung' ? '전기' : company._file_type === 'tongsin' ? '통신' : company._file_type === 'sobang' ? '소방' : '')
+                                : fileTypeLabel}
+                            </span>
+                            <span className="company-name">{company['검색된 회사']}</span>
+                            {company['담당자명'] && <span className="badge-person">{company['담당자명']}</span>}
+                          </div>
+                          <span className={`summary-status-badge ${getStatusClass(summaryStatus)}`}>{summaryStatus}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
           <div className="panel">
