@@ -354,6 +354,7 @@ function App() {
   const latestQueryRef = useRef({ criteria: null, fileType });
   const lastRequestIdRef = useRef(0);
   const selectedCompanyKeyRef = useRef(selectedCompanyKey);
+  const lastAutoSearchRef = useRef({ fileType, sortKey, sortDir, onlyLatest });
 
   useEffect(() => {
     selectedCompanyKeyRef.current = selectedCompanyKey;
@@ -552,7 +553,13 @@ function App() {
       preserveSelection,
       skipScrollIntoView: preserveSelection,
     });
-  }, [buildSearchCriteria, executeSearch, fileType]);
+    lastAutoSearchRef.current = {
+      fileType,
+      sortKey,
+      sortDir,
+      onlyLatest,
+    };
+  }, [buildSearchCriteria, executeSearch, fileType, onlyLatest, sortDir, sortKey]);
 
   const currentPage = React.useMemo(() => {
     const safeTotal = totalPages && totalPages > 0 ? totalPages : 1;
@@ -860,10 +867,22 @@ function App() {
   };
 
   useEffect(() => {
+    const nextState = { fileType, sortKey, sortDir, onlyLatest };
+    const prevState = lastAutoSearchRef.current || {};
+    const modifiersChanged = prevState.fileType !== nextState.fileType
+      || prevState.sortKey !== nextState.sortKey
+      || prevState.sortDir !== nextState.sortDir
+      || prevState.onlyLatest !== nextState.onlyLatest;
+    lastAutoSearchRef.current = nextState;
+
+    if (!modifiersChanged) return;
+    if (prevState.fileType !== nextState.fileType) return;
     if (!searchPerformed) return;
     if (restoreSearchRef.current) return;
+
     const latest = latestQueryRef.current;
     if (!latest || !latest.criteria) return;
+
     executeSearch({
       criteria: latest.criteria,
       targetFileType: latest.fileType || fileType,
