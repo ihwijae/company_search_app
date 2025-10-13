@@ -5,6 +5,29 @@ import Sidebar from '../../../../components/Sidebar';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import CandidatesModal from '../components/CandidatesModal.jsx';
 import { BASE_ROUTES, findMenuByKey } from '../../../../shared/navigation.js';
+import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
+
+const createDefaultForm = () => {
+  const today = new Date();
+  const formattedToday = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('-');
+
+  return {
+    industry: '전기',
+    noticeNo: '',
+    title: '',
+    baseAmount: '',
+    estimatedPrice: '',
+    noticeDate: formattedToday,
+    bidDeadline: '',
+    entryQualificationAmount: '',
+    regionDutyRate: '',
+    teamSizeMax: '3',
+  };
+};
 
 function Field({ label, children, style = {} }) {
   return (
@@ -17,35 +40,40 @@ function Field({ label, children, style = {} }) {
 
 export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeLabel }) {
   const fileStatuses = React.useMemo(() => ({ eung: false, tongsin: false, sobang: false }), []);
+  const storageKey = React.useMemo(() => {
+    const owner = ownerId || 'unknown';
+    const menu = menuKey || 'default';
+    return `agreementFlow:${owner}:${menu}`;
+  }, [ownerId, menuKey]);
 
   const [form, setForm] = React.useState(() => {
-    const today = new Date();
-    const formattedToday = [
-      today.getFullYear(),
-      String(today.getMonth() + 1).padStart(2, '0'),
-      String(today.getDate()).padStart(2, '0'),
-    ].join('-');
-
-    return {
-      industry: '전기',
-      noticeNo: '',
-      title: '',
-      baseAmount: '',
-      estimatedPrice: '',
-      noticeDate: formattedToday,
-      bidDeadline: '',
-      entryQualificationAmount: '',
-      regionDutyRate: '',
-      teamSizeMax: '3',
-    };
+    const base = createDefaultForm();
+    const saved = loadPersisted(`${storageKey}:form`, null);
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+      return { ...base, ...saved };
+    }
+    return base;
   });
 
   const [regionList, setRegionList] = React.useState([]);
-  const [dutyRegions, setDutyRegions] = React.useState([]);
+  const [dutyRegions, setDutyRegions] = React.useState(() => {
+    const saved = loadPersisted(`${storageKey}:dutyRegions`, []);
+    return Array.isArray(saved) ? saved.filter((name) => typeof name === 'string') : [];
+  });
   const [candidatesOpen, setCandidatesOpen] = React.useState(false);
   const [candidates, setCandidates] = React.useState([]);
   const [pinned, setPinned] = React.useState([]);
   const [excluded, setExcluded] = React.useState([]);
+
+  React.useEffect(() => {
+    if (!form || typeof form !== 'object' || Array.isArray(form)) return;
+    savePersisted(`${storageKey}:form`, form);
+  }, [storageKey, form]);
+
+  React.useEffect(() => {
+    if (!Array.isArray(dutyRegions)) return;
+    savePersisted(`${storageKey}:dutyRegions`, dutyRegions);
+  }, [storageKey, dutyRegions]);
 
   const onChange = (key) => (event) => setForm((prev) => ({ ...prev, [key]: event.target.value }));
 

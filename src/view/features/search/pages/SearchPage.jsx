@@ -6,6 +6,7 @@ import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import Drawer from '../../../../components/Drawer';
 import { INDUSTRY_AVERAGES, DEBT_RATIO_WARN_FACTOR, CURRENT_RATIO_WARN_FACTOR } from '../../../../ratios.js';
+import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 
 // --- Helper Functions & Components (변경 없음) ---
 const formatNumber = (value) => { if (!value && value !== 0) return ''; const num = String(value).replace(/,/g, ''); return isNaN(num) ? String(value) : Number(num).toLocaleString(); };
@@ -13,6 +14,42 @@ const unformatNumber = (value) => String(value).replace(/,/g, '');
 const formatPercentage = (value) => { if (!value && value !== 0) return ''; const num = Number(String(value).replace(/,/g, '')); if (isNaN(num)) return String(value); return num.toFixed(2) + '%'; };
 const getStatusClass = (statusText) => { if (statusText === '최신') return 'status-latest'; if (statusText === '1년 경과') return 'status-warning'; if (statusText === '1년 이상 경과') return 'status-old'; return 'status-unknown'; };
  
+const SEARCH_STORAGE_KEY = 'search:page';
+
+const createDefaultFilters = () => ({
+  name: '',
+  includeRegions: [],
+  excludeRegions: [],
+  manager: '',
+  min_sipyung: '',
+  max_sipyung: '',
+  min_3y: '',
+  max_3y: '',
+  min_5y: '',
+  max_5y: '',
+});
+
+const composeCompanyKey = (company, fallbackIndex = null) => {
+  if (!company) return '';
+  const biz = company['사업자번호'];
+  if (biz !== undefined && biz !== null) {
+    const trimmed = String(biz).trim();
+    if (trimmed) return `biz:${trimmed}`;
+  }
+  const name = company['검색된 회사'] || company['회사명'] || company['대표자'];
+  if (name !== undefined && name !== null) {
+    const trimmed = String(name).trim();
+    if (trimmed) {
+      const type = company._file_type ? String(company._file_type).trim() : '';
+      return `name:${trimmed}|type:${type}`;
+    }
+  }
+  if (typeof fallbackIndex === 'number') {
+    return `idx:${fallbackIndex}`;
+  }
+  return '';
+};
+
 // Parse percent-like strings into numbers, e.g., "123.4%" -> 123.4
 const parsePercentNumber = (v) => { if (v === null || v === undefined) return NaN; const s = String(v).replace(/[%%%\\s,]/g, ''); const n = Number(s); return Number.isFinite(n) ? n : NaN; };
 
@@ -201,32 +238,46 @@ function RegionSelector({
 }
 
 function App() {
-  const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false })
+  const persistedRef = useRef(null);
+  if (persistedRef.current === null) {
+    persistedRef.current = loadPersisted(SEARCH_STORAGE_KEY, null);
+  }
+  const persisted = persistedRef.current || {};
+
+  const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false });
   const [activeMenu, setActiveMenu] = useState('search');
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadCount, setUploadCount] = useState(0); // [추가] 파일 선택 성공을 감지할 카운터
-  const [filters, setFilters] = useState({
-    name: '',
-    includeRegions: [],
-    excludeRegions: [],
-    manager: '',
-    min_sipyung: '',
-    max_sipyung: '',
-    min_3y: '',
-    max_3y: '',
-    min_5y: '',
-    max_5y: ''
+  const [uploadCount, setUploadCount] = useState(0);
+  const [filters, setFilters] = useState(() => {
+    const base = createDefaultFilters();
+    const saved = persisted.filters;
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+      return { ...base, ...saved };
+    }
+    return base;
   });
-  const [fileType, setFileType] = useState('eung');
-  const [searchedFileType, setSearchedFileType] = useState('eung');
-  const [regions, setRegions] = useState(['전체']);
-  const [searchPerformed, setSearchPerformed] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
-  const [sortKey, setSortKey] = useState(null); // 'sipyung' | '3y' | '5y'
-  const [onlyLatest, setOnlyLatest] = useState(false); // 최신자료만 필터
-  const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
+  const [fileType, setFileType] = useState(() => persisted.fileType || 'eung');
+  const [searchedFileType, setSearchedFileType] = useState(() => persisted.searchedFileType || 'eung');
+  const [regions, setRegions] = useState(() => (
+    Array.isArray(persisted.regions) && persisted.regions.length > 0 ? persisted.regions : ['전체']
+  ));
+  const [searchPerformed, setSearchPerformed] = useState(() => !!persisted.searchPerformed);
+  const [searchResults, setSearchResults] = useState(() => (
+    Array.isArray(persisted.searchResults) ? persisted.searchResults : []
+  ));
+  const [sortKey, setSortKey] = useState(() => persisted.sortKey || null); // 'sipyung' | '3y' | '5y'
+  const [onlyLatest, setOnlyLatest] = useState(() => !!persisted.onlyLatest);
+  const [sortDir, setSortDir] = useState(() => (persisted.sortDir === 'asc' ? 'asc' : 'desc'));
+  const [selectedIndex, setSelectedIndex] = useState(() => (
+    typeof persisted.selectedIndex === 'number' ? persisted.selectedIndex : null
+  ));
+  const initialKey = () => {
+    if (typeof persisted.selectedCompanyKey === 'string') return persisted.selectedCompanyKey;
+    if (typeof persisted.selectedBizNo === 'string') return persisted.selectedBizNo;
+    return '';
+  };
+  const [selectedCompanyKey, setSelectedCompanyKey] = useState(initialKey);
   const [selectedCompany, setSelectedCompany] = useState(null);
-  const [selectedIndex, setSelectedIndex] = useState(null); // 전체 검색 시 강조 인덱스
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState({ isOpen: false, message: '' });
@@ -426,6 +477,7 @@ function App() {
     setIsLoading(true);
     setSelectedCompany(null);
     setSelectedIndex(null);
+    setSelectedCompanyKey('');
     setSearchResults([]);
     setError('');
     try {
@@ -460,6 +512,8 @@ function App() {
   const handleCompanySelect = (company, index = null) => {
     topSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     setSelectedCompany(company);
+    const key = composeCompanyKey(company, typeof index === 'number' ? index : null);
+    setSelectedCompanyKey(key);
     if (searchedFileType === 'all' || fileType === 'all') {
       setSelectedIndex(index);
     } else {
@@ -540,20 +594,34 @@ function App() {
   }, [searchResults, sortKey, sortDir, onlyLatest]);
 
   useEffect(() => {
+    if (!selectedCompanyKey) return;
+    const dataset = Array.isArray(sortedResults) ? sortedResults : [];
+    const matchIndex = dataset.findIndex((company, idx) => composeCompanyKey(company, idx) === selectedCompanyKey);
+    if (matchIndex >= 0) {
+      const match = dataset[matchIndex];
+      if (selectedCompany !== match) setSelectedCompany(match);
+      if ((searchedFileType === 'all' || fileType === 'all') && selectedIndex !== matchIndex) {
+        setSelectedIndex(matchIndex);
+      }
+    } else {
+      if (selectedCompany !== null) setSelectedCompany(null);
+      if (selectedIndex !== null) setSelectedIndex(null);
+      setSelectedCompanyKey('');
+    }
+  }, [sortedResults, selectedCompanyKey, selectedCompany, selectedIndex, searchedFileType, fileType]);
+
+  useEffect(() => {
     if (isLoading || !searchPerformed) return;
+    if (selectedCompanyKey) return;
     if (Array.isArray(sortedResults) && sortedResults.length > 0) {
       const topCompany = sortedResults[0];
-      const selectedBiz = selectedCompany?.['사업자번호'] || selectedCompany?.['검색된 회사'];
-      const topBiz = topCompany?.['사업자번호'] || topCompany?.['검색된 회사'];
-      if (!selectedCompany || selectedBiz !== topBiz) {
-        handleCompanySelect(topCompany, 0);
-      }
+      handleCompanySelect(topCompany, 0);
     } else if (selectedCompany) {
       setSelectedCompany(null);
-      setSelectedIndex(null)
-      ;
+      setSelectedIndex(null);
+      setSelectedCompanyKey('');
     }
-  }, [sortedResults, isLoading, searchPerformed]);
+  }, [sortedResults, isLoading, searchPerformed, selectedCompanyKey, selectedCompany]);
 
   const toggleSort = (key) => {
     if (sortKey === key) {
@@ -563,6 +631,33 @@ function App() {
       setSortDir('desc');
     }
   };
+
+  useEffect(() => {
+    const sanitizedFilters = {
+      ...filters,
+      includeRegions: Array.isArray(filters.includeRegions) ? [...filters.includeRegions] : [],
+      excludeRegions: Array.isArray(filters.excludeRegions) ? [...filters.excludeRegions] : [],
+    };
+    const sanitizedRegions = Array.isArray(regions)
+      ? regions.filter((name) => typeof name === 'string')
+      : [];
+    const snapshot = {
+      filters: sanitizedFilters,
+      fileType,
+      searchedFileType,
+      searchPerformed,
+      searchResults: Array.isArray(searchResults) ? searchResults : [],
+      sortKey,
+      sortDir,
+      onlyLatest,
+      selectedIndex,
+      selectedCompanyKey,
+      // legacy key retained for backwards compatibility in case old snapshots exist
+      selectedBizNo: selectedCompanyKey,
+      regions: sanitizedRegions.length > 0 ? sanitizedRegions : ['전체'],
+    };
+    savePersisted(SEARCH_STORAGE_KEY, snapshot);
+  }, [filters, fileType, searchedFileType, searchPerformed, searchResults, sortKey, sortDir, onlyLatest, selectedIndex, selectedCompanyKey, regions]);
 
   return (
     <div className="app-shell">
