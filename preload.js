@@ -46,4 +46,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fetchCandidates: (params) => ipcRenderer.invoke('agreements-fetch-candidates', params),
   // Clipboard helper: write as 1-column CSV
   copyCsvColumn: (rows) => ipcRenderer.invoke('copy-csv-column', { rows }),
+  // Renderer persistence fallback
+  stateLoadSync: (key) => ipcRenderer.sendSync('renderer-state-load-sync', key),
+  stateSave: (key, value) => ipcRenderer.invoke('renderer-state-save', { key, value }),
+  stateRemove: (key) => ipcRenderer.invoke('renderer-state-remove', key),
+  stateClear: (prefix) => ipcRenderer.invoke('renderer-state-clear', prefix),
 });

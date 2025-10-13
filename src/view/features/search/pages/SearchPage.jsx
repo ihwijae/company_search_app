@@ -31,21 +31,24 @@ const createDefaultFilters = () => ({
 
 const composeCompanyKey = (company, fallbackIndex = null) => {
   if (!company) return '';
-  const biz = company['사업자번호'];
-  if (biz !== undefined && biz !== null) {
-    const trimmed = String(biz).trim();
-    if (trimmed) return `biz:${trimmed}`;
+  const type = company._file_type ? String(company._file_type).trim() : '';
+  const bizRaw = company['사업자번호'];
+  if (bizRaw !== undefined && bizRaw !== null) {
+    const biz = String(bizRaw).trim();
+    if (biz) {
+      return type ? `biz:${biz}|type:${type}` : `biz:${biz}`;
+    }
   }
-  const name = company['검색된 회사'] || company['회사명'] || company['대표자'];
-  if (name !== undefined && name !== null) {
-    const trimmed = String(name).trim();
-    if (trimmed) {
-      const type = company._file_type ? String(company._file_type).trim() : '';
-      return `name:${trimmed}|type:${type}`;
+  const nameRaw = company['검색된 회사'] || company['회사명'] || company['대표자'];
+  if (nameRaw !== undefined && nameRaw !== null) {
+    const name = String(nameRaw).trim();
+    if (name) {
+      return type ? `name:${name}|type:${type}` : `name:${name}`;
     }
   }
   if (typeof fallbackIndex === 'number') {
-    return `idx:${fallbackIndex}`;
+    const indexToken = `idx:${fallbackIndex}`;
+    return type ? `${indexToken}|type:${type}` : indexToken;
   }
   return '';
 };
@@ -596,12 +599,40 @@ function App() {
   useEffect(() => {
     if (!selectedCompanyKey) return;
     const dataset = Array.isArray(sortedResults) ? sortedResults : [];
-    const matchIndex = dataset.findIndex((company, idx) => composeCompanyKey(company, idx) === selectedCompanyKey);
+    let matchIndex = dataset.findIndex((company, idx) => composeCompanyKey(company, idx) === selectedCompanyKey);
+
+    if (matchIndex < 0 && selectedCompanyKey.startsWith('biz:')) {
+      const bizToken = selectedCompanyKey.slice(4).split('|')[0];
+      matchIndex = dataset.findIndex((company) => {
+        const biz = company?.['사업자번호'];
+        return biz !== undefined && biz !== null && String(biz).trim() === bizToken;
+      });
+    }
+
+    if (matchIndex < 0 && selectedCompanyKey.startsWith('name:')) {
+      const nameToken = selectedCompanyKey.slice(5).split('|')[0];
+      matchIndex = dataset.findIndex((company) => {
+        const name = company?.['검색된 회사'] || company?.['회사명'] || company?.['대표자'];
+        return name !== undefined && name !== null && String(name).trim() === nameToken;
+      });
+    }
+
+    if (matchIndex < 0 && selectedCompanyKey.startsWith('idx:')) {
+      const idxToken = Number.parseInt(selectedCompanyKey.slice(4).split('|')[0], 10);
+      if (Number.isInteger(idxToken) && idxToken >= 0 && idxToken < dataset.length) {
+        matchIndex = idxToken;
+      }
+    }
+
     if (matchIndex >= 0) {
       const match = dataset[matchIndex];
       if (selectedCompany !== match) setSelectedCompany(match);
       if ((searchedFileType === 'all' || fileType === 'all') && selectedIndex !== matchIndex) {
         setSelectedIndex(matchIndex);
+      }
+      const normalizedKey = composeCompanyKey(match, matchIndex);
+      if (normalizedKey && normalizedKey !== selectedCompanyKey) {
+        setSelectedCompanyKey(normalizedKey);
       }
     } else {
       if (selectedCompany !== null) setSelectedCompany(null);

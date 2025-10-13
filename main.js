@@ -118,6 +118,34 @@ const WINDOW_STATE_PATH = path.join(userDataDir, 'window-state.json');
 const AGREEMENTS_PATH = path.join(userDataDir, 'agreements.json');
 const AGREEMENTS_RULES_PATH = path.join(userDataDir, 'agreements.rules.json');
 const FORMULAS_PATH = path.join(userDataDir, 'formulas.json');
+const RENDERER_STATE_PATH = path.join(userDataDir, 'renderer-state.json');
+
+const RENDERER_STATE_MISSING = { __companySearchStateMissing: true };
+
+const readRendererState = () => {
+  try {
+    if (fs.existsSync(RENDERER_STATE_PATH)) {
+      const raw = fs.readFileSync(RENDERER_STATE_PATH, 'utf-8');
+      if (raw && raw.trim()) {
+        return JSON.parse(raw);
+      }
+    }
+  } catch (err) {
+    console.warn('[MAIN] renderer state read failed:', err?.message || err);
+  }
+  return {};
+};
+
+const writeRendererState = (state) => {
+  try {
+    fs.mkdirSync(path.dirname(RENDERER_STATE_PATH), { recursive: true });
+    fs.writeFileSync(RENDERER_STATE_PATH, JSON.stringify(state, null, 2));
+    return true;
+  } catch (err) {
+    console.warn('[MAIN] renderer state write failed:', err?.message || err);
+    return false;
+  }
+};
 
 const DATE_PATTERN = /(\d{2,4})[.\-/년\s]*(\d{1,2})[.\-/월\s]*(\d{1,2})/;
 
@@ -392,6 +420,58 @@ try {
     }
     registerAllIpcHandlers({ ipcMain, searchService: svc });
   } catch {}
+
+  ipcMain.on('renderer-state-load-sync', (event, key) => {
+    const store = readRendererState();
+    if (!key || typeof key !== 'string') {
+      event.returnValue = store;
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(store, key)) {
+      event.returnValue = store[key];
+    } else {
+      event.returnValue = RENDERER_STATE_MISSING;
+    }
+  });
+
+  ipcMain.handle('renderer-state-save', async (_event, { key, value }) => {
+    if (!key || typeof key !== 'string' || !key.trim()) {
+      return { success: false, message: 'invalid key' };
+    }
+    const store = readRendererState();
+    store[key] = value;
+    const ok = writeRendererState(store);
+    return ok ? { success: true } : { success: false, message: 'write failed' };
+  });
+
+  ipcMain.handle('renderer-state-remove', async (_event, key) => {
+    if (!key || typeof key !== 'string' || !key.trim()) {
+      return { success: false, message: 'invalid key' };
+    }
+    const store = readRendererState();
+    if (Object.prototype.hasOwnProperty.call(store, key)) {
+      delete store[key];
+      const ok = writeRendererState(store);
+      return ok ? { success: true } : { success: false, message: 'write failed' };
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle('renderer-state-clear', async (_event, prefix = '') => {
+    const store = readRendererState();
+    if (!prefix || typeof prefix !== 'string' || !prefix.trim()) {
+      const ok = writeRendererState({});
+      return ok ? { success: true } : { success: false, message: 'write failed' };
+    }
+    const filtered = {};
+    Object.keys(store || {}).forEach((k) => {
+      if (!k.startsWith(prefix)) {
+        filtered[k] = store[k];
+      }
+    });
+    const ok = writeRendererState(filtered);
+    return ok ? { success: true } : { success: false, message: 'write failed' };
+  });
 
   // File selection and per-type routes
   if (ipcMain.removeHandler) ipcMain.removeHandler('select-file');
