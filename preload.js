@@ -3,10 +3,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // (?섏젙) searchCompanies???댁젣 criteria? file_type???④퍡 諛쏆뒿?덈떎.
-  searchCompanies: (criteria, file_type) => (
+  searchCompanies: (criteria, file_type, options) => (
     file_type === 'all'
-      ? ipcRenderer.invoke('search-companies-all', { criteria })
-      : ipcRenderer.invoke('search-companies', { criteria, file_type })
+      ? ipcRenderer.invoke('search-companies-all', { criteria, options })
+      : ipcRenderer.invoke('search-companies', { criteria, file_type, options })
   ),
   
   // (異붽?) ?덈줈??API?ㅼ쓣 ?깅줉?⑸땲??

@@ -9,7 +9,13 @@ const parseAmount = (value) => {
   const textValue = String(value).trim();
   if (!textValue) return 0;
   try {
-    return parseInt(textValue.replace(/,/g, ''), 10);
+    const cleaned = textValue
+      .replace(/[,\s]/g, '')
+      .replace(/(억원|억|만원|만|원)$/g, '');
+    const normalized = cleaned.replace(/[^0-9.+-]/g, '');
+    if (!normalized) return 0;
+    const num = Number(normalized);
+    return Number.isFinite(num) ? num : 0;
   } catch (e) {
     return 0;
   }
@@ -50,6 +56,8 @@ const getSummaryStatus = (statusesDict) => {
     if (keyStatuses.every(s => s === '최신')) return '최신';
     return '미지정';
 };
+
+const SORT_FIELD_MAP = { sipyung: '시평', '3y': '3년 실적', '5y': '5년 실적' };
 
 class SearchLogic {
   constructor(filePath) {
@@ -219,7 +227,7 @@ class SearchLogic {
     return ['전체', ...this.sheetNames];
   }
   
-  search(criteria) {
+  search(criteria = {}, options = {}) {
     if (!this.loaded) throw new Error('엑셀 데이터가 로드되지 않았습니다.');
     let results = [...this.allCompanies];
 
@@ -271,8 +279,83 @@ class SearchLogic {
         });
       }
     }
-    return results;
+    const processed = SearchLogic.postProcessResults(results, options || {});
+    if (processed && processed.paginated) {
+      return { items: processed.items, meta: processed.meta };
+    }
+    return processed.items;
   }
 }
+
+SearchLogic.postProcessResults = function postProcessResults(inputResults, options = {}) {
+  const base = Array.isArray(inputResults) ? [...inputResults] : [];
+  const { onlyLatest = false, sortKey = null, sortDir = 'desc', pagination = null } = options || {};
+
+  let working = onlyLatest
+    ? base.filter((item) => (item?.['요약상태'] || '') === '최신')
+    : base;
+
+  const sortField = sortKey && SORT_FIELD_MAP[sortKey] ? SORT_FIELD_MAP[sortKey] : null;
+  if (sortField) {
+    const direction = sortDir === 'asc' ? 1 : -1;
+    const collator = new Intl.Collator('ko', { sensitivity: 'base' });
+    const hasMetric = (value) => {
+      if (value === null || value === undefined) return false;
+      const str = String(value).trim();
+      if (!str) return false;
+      if (str === '-' || str === 'N/A' || str === 'NA') return false;
+      return true;
+    };
+    working = [...working].sort((a, b) => {
+      const rawA = a?.[sortField];
+      const rawB = b?.[sortField];
+      const aHas = hasMetric(rawA);
+      const bHas = hasMetric(rawB);
+      if (aHas && !bHas) return -1;
+      if (!aHas && bHas) return 1;
+
+      const av = aHas ? parseAmount(rawA) : 0;
+      const bv = bHas ? parseAmount(rawB) : 0;
+      if (av === bv) {
+        const nameA = String(a?.['검색된 회사'] || '');
+        const nameB = String(b?.['검색된 회사'] || '');
+        const byName = collator.compare(nameA, nameB);
+        if (byName !== 0) return byName;
+        const typeA = String(a?._file_type || '').toLowerCase();
+        const typeB = String(b?._file_type || '').toLowerCase();
+        if (typeA !== typeB) {
+          return collator.compare(typeA, typeB);
+        }
+        const bizA = String(a?.['사업자번호'] || '');
+        const bizB = String(b?.['사업자번호'] || '');
+        return collator.compare(bizA, bizB);
+      }
+      return av > bv ? direction : -direction;
+    });
+  }
+
+  const totalCount = working.length;
+
+  if (pagination && Number.isFinite(Number.parseInt(pagination.pageSize, 10)) && Number(pagination.pageSize) > 0) {
+    const rawSize = Number.parseInt(pagination.pageSize, 10);
+    const pageSize = rawSize > 0 ? rawSize : totalCount || 1;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const rawPage = Number.parseInt(pagination.page, 10) || 1;
+    const page = Math.min(Math.max(rawPage, 1), totalPages);
+    const start = (page - 1) * pageSize;
+    const items = working.slice(start, start + pageSize);
+    return {
+      items,
+      meta: { totalCount, totalPages, page, pageSize },
+      paginated: true,
+    };
+  }
+
+  return {
+    items: working,
+    meta: { totalCount },
+    paginated: false,
+  };
+};
 
 module.exports = { SearchLogic };

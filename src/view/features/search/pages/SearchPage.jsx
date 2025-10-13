@@ -13,8 +13,27 @@ const formatNumber = (value) => { if (!value && value !== 0) return ''; const nu
 const unformatNumber = (value) => String(value).replace(/,/g, '');
 const formatPercentage = (value) => { if (!value && value !== 0) return ''; const num = Number(String(value).replace(/,/g, '')); if (isNaN(num)) return String(value); return num.toFixed(2) + '%'; };
 const getStatusClass = (statusText) => { if (statusText === '최신') return 'status-latest'; if (statusText === '1년 경과') return 'status-warning'; if (statusText === '1년 이상 경과') return 'status-old'; return 'status-unknown'; };
- 
+
 const SEARCH_STORAGE_KEY = 'search:page';
+const PAGE_SIZE = 15;
+
+const normalizeFileType = (value) => {
+  const token = String(value ?? '').trim();
+  if (!token) return 'eung';
+  const direct = ({
+    eung: 'eung',
+    전기: 'eung',
+    tongsin: 'tongsin',
+    통신: 'tongsin',
+    sobang: 'sobang',
+    소방: 'sobang',
+    all: 'all',
+    전체: 'all',
+  })[token];
+  if (direct) return direct;
+  const lowered = token.toLowerCase();
+  return ({ eung: 'eung', tongsin: 'tongsin', sobang: 'sobang', all: 'all' })[lowered] || 'eung';
+};
 
 const createDefaultFilters = () => ({
   name: '',
@@ -51,6 +70,47 @@ const composeCompanyKey = (company, fallbackIndex = null) => {
     return type ? `${indexToken}|type:${type}` : indexToken;
   }
   return '';
+};
+
+const findMatchIndexByKey = (dataset, key, globalOffset = 0) => {
+  if (!Array.isArray(dataset) || !key) return -1;
+
+  const normalizedKey = String(key);
+  let matchIndex = dataset.findIndex((company, idx) => (
+    composeCompanyKey(company, globalOffset + idx) === normalizedKey
+  ));
+
+  if (matchIndex >= 0) return matchIndex;
+
+  if (normalizedKey.startsWith('biz:')) {
+    const bizToken = normalizedKey.slice(4).split('|')[0];
+    matchIndex = dataset.findIndex((company) => {
+      const biz = company?.['사업자번호'];
+      return biz !== undefined && biz !== null && String(biz).trim() === bizToken;
+    });
+    if (matchIndex >= 0) return matchIndex;
+  }
+
+  if (normalizedKey.startsWith('name:')) {
+    const nameToken = normalizedKey.slice(5).split('|')[0];
+    matchIndex = dataset.findIndex((company) => {
+      const name = company?.['검색된 회사'] || company?.['회사명'] || company?.['대표자'];
+      return name !== undefined && name !== null && String(name).trim() === nameToken;
+    });
+    if (matchIndex >= 0) return matchIndex;
+  }
+
+  if (normalizedKey.startsWith('idx:')) {
+    const idxToken = Number.parseInt(normalizedKey.slice(4).split('|')[0], 10);
+    if (Number.isInteger(idxToken)) {
+      const localIndex = idxToken - globalOffset;
+      if (localIndex >= 0 && localIndex < dataset.length) {
+        return localIndex;
+      }
+    }
+  }
+
+  return -1;
 };
 
 // Parse percent-like strings into numbers, e.g., "123.4%" -> 123.4
@@ -246,6 +306,7 @@ function App() {
     persistedRef.current = loadPersisted(SEARCH_STORAGE_KEY, null);
   }
   const persisted = persistedRef.current || {};
+  const restoreSearchRef = useRef(Boolean(persisted.searchPerformed));
 
   const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false });
   const [activeMenu, setActiveMenu] = useState('search');
@@ -259,15 +320,18 @@ function App() {
     }
     return base;
   });
-  const [fileType, setFileType] = useState(() => persisted.fileType || 'eung');
-  const [searchedFileType, setSearchedFileType] = useState(() => persisted.searchedFileType || 'eung');
+  const [fileType, setFileType] = useState(() => normalizeFileType(persisted.fileType || 'eung'));
+  const [searchedFileType, setSearchedFileType] = useState(() => normalizeFileType(persisted.searchedFileType || persisted.fileType || 'eung'));
   const [regions, setRegions] = useState(() => (
     Array.isArray(persisted.regions) && persisted.regions.length > 0 ? persisted.regions : ['전체']
   ));
-  const [searchPerformed, setSearchPerformed] = useState(() => !!persisted.searchPerformed);
-  const [searchResults, setSearchResults] = useState(() => (
-    Array.isArray(persisted.searchResults) ? persisted.searchResults : []
+  const [searchPerformed, setSearchPerformed] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [page, setPage] = useState(() => (
+    Number.isInteger(persisted.page) && persisted.page > 0 ? persisted.page : 1
   ));
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [sortKey, setSortKey] = useState(() => persisted.sortKey || null); // 'sipyung' | '3y' | '5y'
   const [onlyLatest, setOnlyLatest] = useState(() => !!persisted.onlyLatest);
   const [sortDir, setSortDir] = useState(() => (persisted.sortDir === 'asc' ? 'asc' : 'desc'));
@@ -285,8 +349,250 @@ function App() {
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState({ isOpen: false, message: '' });
   const topSectionRef = useRef(null);
-  const searchResultsRef = useRef(null);
+  const resultsScrollRef = useRef(null);
   const [animationKey, setAnimationKey] = useState(0);
+  const latestQueryRef = useRef({ criteria: null, fileType });
+  const lastRequestIdRef = useRef(0);
+  const selectedCompanyKeyRef = useRef(selectedCompanyKey);
+
+  useEffect(() => {
+    selectedCompanyKeyRef.current = selectedCompanyKey;
+  }, [selectedCompanyKey]);
+
+  const handleCompanySelect = React.useCallback((company, globalIndex = null, options = {}) => {
+    if (options.scrollIntoView) {
+      topSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    setSelectedCompany(company);
+    const key = composeCompanyKey(company, typeof globalIndex === 'number' ? globalIndex : null);
+    setSelectedCompanyKey(key);
+    const resultFileType = options.resultFileType || searchedFileType;
+    if (resultFileType === 'all' || fileType === 'all') {
+      setSelectedIndex(typeof globalIndex === 'number' ? globalIndex : null);
+    } else {
+      setSelectedIndex(null);
+    }
+    setAnimationKey(prevKey => prevKey + 1);
+  }, [fileType, searchedFileType]);
+
+  const buildSearchCriteria = React.useCallback(() => {
+    const criteria = {
+      ...filters,
+      includeRegions: Array.isArray(filters.includeRegions) ? [...filters.includeRegions] : [],
+      excludeRegions: Array.isArray(filters.excludeRegions) ? [...filters.excludeRegions] : [],
+    };
+    const rangeKeys = ['min_sipyung', 'max_sipyung', 'min_3y', 'max_3y', 'min_5y', 'max_5y'];
+    rangeKeys.forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(criteria, key)) {
+        criteria[key] = unformatNumber(criteria[key]);
+      }
+    });
+    criteria.includeRegions = criteria.includeRegions.filter((r) => r && r !== '전체');
+    criteria.excludeRegions = criteria.excludeRegions.filter((r) => r && r !== '전체');
+    return criteria;
+  }, [filters]);
+
+  const executeSearch = React.useCallback(async ({
+    criteria,
+    targetFileType,
+    targetPage = 1,
+    preserveSelection = false,
+    skipScrollIntoView = false,
+  } = {}) => {
+    const effectiveCriteria = criteria || buildSearchCriteria();
+    const effectiveFileType = normalizeFileType(targetFileType || fileType);
+
+    let payloadCriteria;
+    let criteriaJson;
+    try {
+      criteriaJson = JSON.stringify(effectiveCriteria);
+      payloadCriteria = JSON.parse(criteriaJson);
+    } catch (jsonErr) {
+      console.warn('[Search] criteria serialization failed, falling back to shallow copy', jsonErr);
+      payloadCriteria = { ...effectiveCriteria };
+      criteriaJson = JSON.stringify(payloadCriteria);
+    }
+
+    const payloadOptions = {
+      onlyLatest: !!onlyLatest,
+      sortKey: sortKey || null,
+      sortDir,
+      pagination: { page: targetPage, pageSize: PAGE_SIZE },
+    };
+
+    let optionsJson;
+    try {
+      optionsJson = JSON.stringify(payloadOptions);
+    } catch (jsonErr) {
+      console.warn('[Search] options serialization failed, falling back to shallow copy', jsonErr);
+      optionsJson = JSON.stringify({ ...payloadOptions });
+    }
+
+    latestQueryRef.current = {
+      criteria: payloadCriteria,
+      criteriaJson,
+      optionsJson,
+      fileType: effectiveFileType,
+    };
+
+    const requestId = lastRequestIdRef.current + 1;
+    lastRequestIdRef.current = requestId;
+
+    setSearchPerformed(true);
+    setIsLoading(true);
+    setError('');
+    if (!preserveSelection) {
+      setSelectedCompany(null);
+      setSelectedIndex(null);
+      setSelectedCompanyKey('');
+      setSearchResults([]);
+      setTotalCount(0);
+      setTotalPages(1);
+    }
+
+    try {
+      const response = await window.electronAPI.searchCompanies(criteriaJson, effectiveFileType, optionsJson);
+
+      if (lastRequestIdRef.current !== requestId) return;
+
+      if (!response?.success) {
+        throw new Error(response?.message || '검색 실패');
+      }
+
+      const items = Array.isArray(response.data) ? response.data : [];
+      const meta = response.meta || {};
+      const nextTotalCount = typeof meta.totalCount === 'number' ? meta.totalCount : items.length;
+      const nextPageSize = meta.pageSize && Number(meta.pageSize) > 0 ? Number(meta.pageSize) : PAGE_SIZE;
+      const derivedTotalPages = nextPageSize > 0
+        ? Math.max(1, Math.ceil((nextTotalCount || 0) / nextPageSize))
+        : 1;
+      const nextTotalPages = typeof meta.totalPages === 'number' && meta.totalPages > 0
+        ? meta.totalPages
+        : derivedTotalPages;
+      const nextPage = typeof meta.page === 'number' && meta.page > 0
+        ? meta.page
+        : Math.min(Math.max(targetPage, 1), nextTotalPages || 1);
+      const globalOffset = (nextPage - 1) * nextPageSize;
+
+      setSearchResults(items);
+      setTotalCount(nextTotalCount);
+      setTotalPages(nextTotalPages);
+      setPage(nextPage);
+      setSearchedFileType(effectiveFileType);
+
+      const currentSelectedKey = selectedCompanyKeyRef.current;
+
+      if (items.length === 0) {
+        setSelectedCompany(null);
+        setSelectedIndex(null);
+        setSelectedCompanyKey('');
+      } else if (!preserveSelection || !currentSelectedKey) {
+        handleCompanySelect(items[0], globalOffset, {
+          scrollIntoView: false,
+          resultFileType: effectiveFileType,
+        });
+      } else {
+        const matchIndex = findMatchIndexByKey(items, currentSelectedKey, globalOffset);
+        if (matchIndex >= 0) {
+          handleCompanySelect(items[matchIndex], globalOffset + matchIndex, {
+            scrollIntoView: false,
+            resultFileType: effectiveFileType,
+          });
+        }
+      }
+
+      setTimeout(() => {
+        if (resultsScrollRef.current) {
+          resultsScrollRef.current.scrollTop = 0;
+        }
+      }, 50);
+    } catch (err) {
+      if (lastRequestIdRef.current === requestId) {
+        setError(`검색 오류: ${err.message}`);
+        console.error(err);
+        setSearchResults([]);
+        setTotalCount(0);
+        setTotalPages(1);
+      }
+    } finally {
+      if (lastRequestIdRef.current === requestId) {
+        setIsLoading(false);
+        if (restoreSearchRef.current) {
+          restoreSearchRef.current = false;
+        }
+      }
+    }
+  }, [buildSearchCriteria, fileType, handleCompanySelect, onlyLatest, sortDir, sortKey]);
+
+  const handleSearch = React.useCallback(async (targetPage = 1, rawOptions = {}) => {
+    let safeTargetPage = targetPage;
+    let safeOptions = rawOptions;
+
+    if (safeTargetPage && typeof safeTargetPage === 'object') {
+      safeTargetPage.preventDefault?.();
+      safeTargetPage.stopPropagation?.();
+      safeTargetPage = 1;
+      safeOptions = {};
+    }
+
+    if (safeOptions && typeof safeOptions === 'object' && typeof safeOptions.preventDefault === 'function') {
+      safeOptions.preventDefault();
+      safeOptions.stopPropagation?.();
+      safeOptions = {};
+    }
+
+    const { preserveSelection = false } = safeOptions || {};
+
+    await executeSearch({
+      criteria: buildSearchCriteria(),
+      targetFileType: fileType,
+      targetPage: typeof safeTargetPage === 'number' && Number.isFinite(safeTargetPage)
+        ? safeTargetPage
+        : 1,
+      preserveSelection,
+      skipScrollIntoView: preserveSelection,
+    });
+  }, [buildSearchCriteria, executeSearch, fileType]);
+
+  const currentPage = React.useMemo(() => {
+    const safeTotal = totalPages && totalPages > 0 ? totalPages : 1;
+    return Math.min(Math.max(page, 1), safeTotal);
+  }, [page, totalPages]);
+
+  const goToPage = React.useCallback((targetPage) => {
+    const next = Number.isFinite(targetPage) ? Math.trunc(targetPage) : 1;
+    const safeTotal = totalPages && totalPages > 0 ? totalPages : 1;
+    const clampedTarget = Math.min(Math.max(next, 1), safeTotal);
+    if (clampedTarget === currentPage) return;
+    const latest = latestQueryRef.current;
+    if (!latest || !latest.criteria) {
+      setPage(clampedTarget);
+      return;
+    }
+    executeSearch({
+      criteria: latest.criteria,
+      targetFileType: latest.fileType || fileType,
+      targetPage: clampedTarget,
+      preserveSelection: true,
+      skipScrollIntoView: true,
+    });
+  }, [currentPage, executeSearch, fileType, totalPages]);
+
+  const goToPreviousPage = React.useCallback(() => {
+    goToPage(currentPage - 1);
+  }, [goToPage, currentPage]);
+
+  const goToNextPage = React.useCallback(() => {
+    goToPage(currentPage + 1);
+  }, [goToPage, currentPage]);
+
+  const goToFirstPage = React.useCallback(() => {
+    goToPage(1);
+  }, [goToPage]);
+
+  const goToLastPage = React.useCallback(() => {
+    goToPage(totalPages);
+  }, [goToPage, totalPages]);
 
   const refreshFileStatuses = async () => {
     const statuses = await window.electronAPI.checkFiles();
@@ -306,14 +612,21 @@ function App() {
         }
         // 최근 검색이 있었다면 같은 조건으로 재검색 시도
         if (searchPerformed) {
-          await handleSearch();
+          const latest = latestQueryRef.current;
+          await executeSearch({
+            criteria: latest?.criteria || buildSearchCriteria(),
+            targetFileType: latest?.fileType || fileType,
+            targetPage: currentPage,
+            preserveSelection: true,
+            skipScrollIntoView: true,
+          });
         }
       } catch (e) {
         console.error('[Renderer] 데이터 갱신 처리 중 오류:', e);
       }
     });
     return () => { if (typeof unsubscribe === 'function') unsubscribe(); };
-  }, [searchPerformed, searchedFileType]);
+  }, [buildSearchCriteria, currentPage, executeSearch, fileType, searchPerformed, searchedFileType]);
 
   // Always update admin upload statuses on any data refresh from main
   useEffect(() => {
@@ -475,55 +788,10 @@ function App() {
     }));
   };
 
-  const handleSearch = async () => {
-    setSearchPerformed(true);
-    setIsLoading(true);
-    setSelectedCompany(null);
-    setSelectedIndex(null);
-    setSelectedCompanyKey('');
-    setSearchResults([]);
-    setError('');
-    try {
-      const criteria = {
-        ...filters,
-        includeRegions: Array.isArray(filters.includeRegions) ? [...filters.includeRegions] : [],
-        excludeRegions: Array.isArray(filters.excludeRegions) ? [...filters.excludeRegions] : [],
-      };
-      for (const key in criteria) {
-        if (['min_sipyung', 'max_sipyung', 'min_3y', 'max_3y', 'min_5y', 'max_5y'].includes(key)) {
-          criteria[key] = unformatNumber(criteria[key]);
-        }
-      }
-      criteria.includeRegions = criteria.includeRegions.filter((r) => r && r !== '전체');
-      criteria.excludeRegions = criteria.excludeRegions.filter((r) => r && r !== '전체');
-      const response = await window.electronAPI.searchCompanies(criteria, fileType);
-      if (response.success) {
-        setSearchResults(response.data);
-      } else {
-        throw new Error(response.message);
-      }
-      setSearchedFileType(fileType);
-      setTimeout(() => { searchResultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
-    } catch (err) {
-      setError(`검색 오류: ${err.message}`);
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCompanySelect = (company, index = null) => {
-    topSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-    setSelectedCompany(company);
-    const key = composeCompanyKey(company, typeof index === 'number' ? index : null);
-    setSelectedCompanyKey(key);
-    if (searchedFileType === 'all' || fileType === 'all') {
-      setSelectedIndex(index);
-    } else {
-      setSelectedIndex(null);
-    }
-    setAnimationKey(prevKey => prevKey + 1);
-  };
+  useEffect(() => {
+    if (!restoreSearchRef.current) return;
+    handleSearch(page, { preserveSelection: true });
+  }, [handleSearch, page]);
 
   const handleKeyDown = (e) => { if (e.key === 'Enter') handleSearch(); };
   const handleCopySingle = (key, value) => { navigator.clipboard.writeText(String(value)); setDialog({ isOpen: true, message: `'${key}' 항목이 복사되었습니다.` }); };
@@ -574,85 +842,13 @@ function App() {
     }
   };
 
-  // 정렬 유틸 및 상태 기반 계산
-  const parseAmountLocal = (value) => {
-    if (value === null || value === undefined) return 0;
-    const num = String(value).replace(/,/g, '').trim();
-    const n = parseInt(num, 10);
-    return isNaN(n) ? 0 : n;
-  };
-
-  const sortedResults = React.useMemo(() => {
-    const base = onlyLatest ? (searchResults || []).filter(c => (c['요약상태'] || '') === '최신') : searchResults;
-    if (!sortKey) return base;
-    const keyMap = { sipyung: '시평', '3y': '3년 실적', '5y': '5년 실적' };
-    const field = keyMap[sortKey];
-    const dir = sortDir === 'asc' ? 1 : -1;
-    return [...base].sort((a, b) => {
-      const av = parseAmountLocal(a[field]);
-      const bv = parseAmountLocal(b[field]);
-      if (av === bv) return 0;
-      return av > bv ? dir : -dir;
-    });
-  }, [searchResults, sortKey, sortDir, onlyLatest]);
-
   useEffect(() => {
-    if (!selectedCompanyKey) return;
-    const dataset = Array.isArray(sortedResults) ? sortedResults : [];
-    let matchIndex = dataset.findIndex((company, idx) => composeCompanyKey(company, idx) === selectedCompanyKey);
-
-    if (matchIndex < 0 && selectedCompanyKey.startsWith('biz:')) {
-      const bizToken = selectedCompanyKey.slice(4).split('|')[0];
-      matchIndex = dataset.findIndex((company) => {
-        const biz = company?.['사업자번호'];
-        return biz !== undefined && biz !== null && String(biz).trim() === bizToken;
-      });
+    const safeTotal = totalPages && totalPages > 0 ? totalPages : 1;
+    const clamped = Math.min(Math.max(page, 1), safeTotal);
+    if (clamped !== page) {
+      setPage(clamped);
     }
-
-    if (matchIndex < 0 && selectedCompanyKey.startsWith('name:')) {
-      const nameToken = selectedCompanyKey.slice(5).split('|')[0];
-      matchIndex = dataset.findIndex((company) => {
-        const name = company?.['검색된 회사'] || company?.['회사명'] || company?.['대표자'];
-        return name !== undefined && name !== null && String(name).trim() === nameToken;
-      });
-    }
-
-    if (matchIndex < 0 && selectedCompanyKey.startsWith('idx:')) {
-      const idxToken = Number.parseInt(selectedCompanyKey.slice(4).split('|')[0], 10);
-      if (Number.isInteger(idxToken) && idxToken >= 0 && idxToken < dataset.length) {
-        matchIndex = idxToken;
-      }
-    }
-
-    if (matchIndex >= 0) {
-      const match = dataset[matchIndex];
-      if (selectedCompany !== match) setSelectedCompany(match);
-      if ((searchedFileType === 'all' || fileType === 'all') && selectedIndex !== matchIndex) {
-        setSelectedIndex(matchIndex);
-      }
-      const normalizedKey = composeCompanyKey(match, matchIndex);
-      if (normalizedKey && normalizedKey !== selectedCompanyKey) {
-        setSelectedCompanyKey(normalizedKey);
-      }
-    } else {
-      if (selectedCompany !== null) setSelectedCompany(null);
-      if (selectedIndex !== null) setSelectedIndex(null);
-      setSelectedCompanyKey('');
-    }
-  }, [sortedResults, selectedCompanyKey, selectedCompany, selectedIndex, searchedFileType, fileType]);
-
-  useEffect(() => {
-    if (isLoading || !searchPerformed) return;
-    if (selectedCompanyKey) return;
-    if (Array.isArray(sortedResults) && sortedResults.length > 0) {
-      const topCompany = sortedResults[0];
-      handleCompanySelect(topCompany, 0);
-    } else if (selectedCompany) {
-      setSelectedCompany(null);
-      setSelectedIndex(null);
-      setSelectedCompanyKey('');
-    }
-  }, [sortedResults, isLoading, searchPerformed, selectedCompanyKey, selectedCompany]);
+  }, [page, totalPages]);
 
   const toggleSort = (key) => {
     if (sortKey === key) {
@@ -662,6 +858,20 @@ function App() {
       setSortDir('desc');
     }
   };
+
+  useEffect(() => {
+    if (!searchPerformed) return;
+    if (restoreSearchRef.current) return;
+    const latest = latestQueryRef.current;
+    if (!latest || !latest.criteria) return;
+    executeSearch({
+      criteria: latest.criteria,
+      targetFileType: latest.fileType || fileType,
+      targetPage: 1,
+      preserveSelection: true,
+      skipScrollIntoView: true,
+    });
+  }, [executeSearch, fileType, onlyLatest, searchPerformed, sortDir, sortKey]);
 
   useEffect(() => {
     const sanitizedFilters = {
@@ -677,18 +887,18 @@ function App() {
       fileType,
       searchedFileType,
       searchPerformed,
-      searchResults: Array.isArray(searchResults) ? searchResults : [],
       sortKey,
       sortDir,
       onlyLatest,
       selectedIndex,
       selectedCompanyKey,
+      page: currentPage,
       // legacy key retained for backwards compatibility in case old snapshots exist
       selectedBizNo: selectedCompanyKey,
       regions: sanitizedRegions.length > 0 ? sanitizedRegions : ['전체'],
     };
     savePersisted(SEARCH_STORAGE_KEY, snapshot);
-  }, [filters, fileType, searchedFileType, searchPerformed, searchResults, sortKey, sortDir, onlyLatest, selectedIndex, selectedCompanyKey, regions]);
+  }, [filters, fileType, searchedFileType, searchPerformed, sortKey, sortDir, onlyLatest, selectedIndex, selectedCompanyKey, regions, currentPage]);
 
   return (
     <div className="app-shell">
@@ -714,12 +924,11 @@ function App() {
           <div className="panel">
             <div className="search-filter-section" ref={topSectionRef}>
               <div className="file-type-selector">
-                <h3>검색 대상</h3>
                 <div className="radio-group">
-                  <label><input type="radio" value="eung" checked={fileType === 'eung'} onChange={(e) => setFileType(e.target.value)} /> 전기</label>
-                  <label><input type="radio" value="tongsin" checked={fileType === 'tongsin'} onChange={(e) => setFileType(e.target.value)} /> 통신</label>
-                  <label><input type="radio" value="sobang" checked={fileType === 'sobang'} onChange={(e) => setFileType(e.target.value)} /> 소방</label>
-                  <label><input type="radio" value="all" checked={fileType === 'all'} onChange={(e) => setFileType(e.target.value)} /> 전체</label>
+                  <label><input type="radio" value="eung" checked={fileType === 'eung'} onChange={(e) => setFileType(normalizeFileType(e.target.value))} /> 전기</label>
+                  <label><input type="radio" value="tongsin" checked={fileType === 'tongsin'} onChange={(e) => setFileType(normalizeFileType(e.target.value))} /> 통신</label>
+                  <label><input type="radio" value="sobang" checked={fileType === 'sobang'} onChange={(e) => setFileType(normalizeFileType(e.target.value))} /> 소방</label>
+                  <label><input type="radio" value="all" checked={fileType === 'all'} onChange={(e) => setFileType(normalizeFileType(e.target.value))} /> 전체</label>
                 </div>
               </div>
               <div className="filter-grid" onKeyDown={handleKeyDown}>
@@ -747,80 +956,124 @@ function App() {
                 <div className="filter-item range"><label>시평액 범위</label><div className="range-inputs"><input type="text" name="min_sipyung" value={filters.min_sipyung} onChange={handleFilterChange} placeholder="최소" className="filter-input" /><span>~</span><input type="text" name="max_sipyung" value={filters.max_sipyung} onChange={handleFilterChange} placeholder="최대" className="filter-input" /></div></div>
                 <div className="filter-item range"><label>3년 실적 범위</label><div className="range-inputs"><input type="text" name="min_3y" value={filters.min_3y} onChange={handleFilterChange} placeholder="최소" className="filter-input" /><span>~</span><input type="text" name="max_3y" value={filters.max_3y} onChange={handleFilterChange} placeholder="최대" className="filter-input" /></div></div>
                 <div className="filter-item range"><label>5년 실적 범위</label><div className="range-inputs"><input type="text" name="min_5y" value={filters.min_5y} onChange={handleFilterChange} placeholder="최소" className="filter-input" /><span>~</span><input type="text" name="max_5y" value={filters.max_5y} onChange={handleFilterChange} placeholder="최대" className="filter-input" /></div></div>
-                <div className="filter-item"><label>&nbsp;</label><button onClick={handleSearch} className="search-button" disabled={isLoading}>{isLoading ? '검색 중...' : '검색'}</button></div>
+                <div className="filter-item"><label>&nbsp;</label><button onClick={() => handleSearch()} className="search-button" disabled={isLoading}>{isLoading ? '검색 중...' : '검색'}</button></div>
               </div>
             </div>
           </div>
-          <div className="panel">
-            <div className="search-results-list" ref={searchResultsRef}>
-              <h2 className="sub-title">검색 결과 ({sortedResults.length}개)</h2>
-              <div className="results-toolbar">
-                <button className={`sort-btn ${sortKey==='sipyung' ? 'active':''}`} onClick={()=>toggleSort('sipyung')}>
-                  시평액 {sortKey==='sipyung' ? (sortDir==='asc'?'▲':'▼') : ''}
-                </button>
-                <button className={`sort-btn ${sortKey==='3y' ? 'active':''}`} onClick={()=>toggleSort('3y')}>
-                  3년 실적 {sortKey==='3y' ? (sortDir==='asc'?'▲':'▼') : ''}
-                </button>
-                <button className={`sort-btn ${sortKey==='5y' ? 'active':''}`} onClick={()=>toggleSort('5y')}>
-                  5년 실적 {sortKey==='5y' ? (sortDir==='asc'?'▲':'▼') : ''}
-                </button>
-                <button className={`sort-btn ${onlyLatest ? 'active' : ''}`} onClick={()=>setOnlyLatest(v => !v)} title="최신 자료만 보기">
-                  최신만 {onlyLatest ? '✔' : ''}
-                </button>
+          <div className="panel panel-results">
+            <div className="search-results-list">
+              <div className="results-header">
+                <div className="results-toolbar">
+                  <button className={`sort-btn ${sortKey==='sipyung' ? 'active':''}`} onClick={()=>toggleSort('sipyung')}>
+                    시평액 {sortKey==='sipyung' ? (sortDir==='asc'?'▲':'▼') : ''}
+                  </button>
+                  <button className={`sort-btn ${sortKey==='3y' ? 'active':''}`} onClick={()=>toggleSort('3y')}>
+                    3년 실적 {sortKey==='3y' ? (sortDir==='asc'?'▲':'▼') : ''}
+                  </button>
+                  <button className={`sort-btn ${sortKey==='5y' ? 'active':''}`} onClick={()=>toggleSort('5y')}>
+                    5년 실적 {sortKey==='5y' ? (sortDir==='asc'?'▲':'▼') : ''}
+                  </button>
+                  <button className={`sort-btn ${onlyLatest ? 'active' : ''}`} onClick={()=>setOnlyLatest(v => !v)} title="최신 자료만 보기">
+                    최신만 {onlyLatest ? '✔' : ''}
+                  </button>
+                </div>
               </div>
-              {isLoading && <p>로딩 중...</p>}
-              {error && <p className="error-message">{error}</p>}
-              {!isLoading && !error && searchResults.length === 0 && (
-                <p>{searchPerformed ? '검색 결과가 없습니다.' : '왼쪽에서 조건을 입력하고 검색하세요.'}</p>
-              )}
-              {sortedResults.length > 0 && (
-                <ul>
-                  {sortedResults.map((company, index) => {
-                    const isActive = selectedCompany && selectedCompany.사업자번호 === company.사업자번호;
-                    const summaryStatus = company['요약상태'] || '미지정';
-                    const fileTypeLabel = searchedFileType === 'eung' ? '전기' : searchedFileType === 'tongsin' ? '통신' : '소방';
-                    return (
-                      <li key={index} onClick={() => handleCompanySelect(company, index)} className={`company-list-item ${searchedFileType === 'all' ? (selectedIndex === index ? 'active' : '') : (isActive ? 'active' : '')}`}>
-                        <div className="company-info-wrapper">
-                          <span className={`file-type-badge-small file-type-${searchedFileType === 'all' ? (company._file_type || '') : searchedFileType}`}>
-                            {searchedFileType === 'all'
-                              ? (company._file_type === 'eung' ? '전기' : company._file_type === 'tongsin' ? '통신' : company._file_type === 'sobang' ? '소방' : '')
-                              : fileTypeLabel}
-                          </span>
-                          <span className="company-name">{company['검색된 회사']}</span>
-                          {company['담당자명'] && <span className="badge-person">{company['담당자명']}</span>}
-                        </div>
-                        <span className={`summary-status-badge ${getStatusClass(summaryStatus)}`}>{summaryStatus}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
+              <div className="results-scroll" ref={resultsScrollRef}>
+                {isLoading && <p>로딩 중...</p>}
+                {error && <p className="error-message">{error}</p>}
+                {!isLoading && !error && totalCount === 0 && (
+                  <p>{searchPerformed ? '검색 결과가 없습니다.' : '왼쪽에서 조건을 입력하고 검색하세요.'}</p>
+                )}
+                {searchResults.length > 0 && (
+                  <ul>
+                    {searchResults.map((company, index) => {
+                      const globalIndex = (currentPage - 1) * PAGE_SIZE + index;
+                      const isActive = selectedCompany && selectedCompany.사업자번호 === company.사업자번호;
+                      const summaryStatus = company['요약상태'] || '미지정';
+                      const fileTypeLabel = searchedFileType === 'eung' ? '전기' : searchedFileType === 'tongsin' ? '통신' : '소방';
+                      const listKey = composeCompanyKey(company, globalIndex) || `idx-${globalIndex}`;
+                      return (
+                        <li key={listKey} onClick={() => handleCompanySelect(company, globalIndex)} className={`company-list-item ${searchedFileType === 'all' ? (selectedIndex === globalIndex ? 'active' : '') : (isActive ? 'active' : '')}`}>
+                          <div className="company-info-wrapper">
+                            <span className={`file-type-badge-small file-type-${searchedFileType === 'all' ? (company._file_type || '') : searchedFileType}`}>
+                              {searchedFileType === 'all'
+                                ? (company._file_type === 'eung' ? '전기' : company._file_type === 'tongsin' ? '통신' : company._file_type === 'sobang' ? '소방' : '')
+                                : fileTypeLabel}
+                            </span>
+                            <span className="company-name">{company['검색된 회사']}</span>
+                            {company['담당자명'] && <span className="badge-person">{company['담당자명']}</span>}
+                          </div>
+                          <span className={`summary-status-badge ${getStatusClass(summaryStatus)}`}>{summaryStatus}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+              {totalCount > 0 && (
+                <div className="pagination-controls fixed">
+                  <div className="pagination-info" aria-live="polite">
+                    <span className="pagination-summary">{currentPage} / {totalPages}</span>
+                    <span className="pagination-count">총 {totalCount}건</span>
+                  </div>
+                  <div className="pagination-buttons" role="navigation" aria-label="검색 결과 페이지 이동">
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={goToFirstPage}
+                      disabled={currentPage <= 1 || isLoading}
+                    >
+                      맨 앞
+                    </button>
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage <= 1 || isLoading}
+                    >
+                      이전
+                    </button>
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={goToNextPage}
+                      disabled={currentPage >= totalPages || isLoading}
+                    >
+                      다음
+                    </button>
+                    <button
+                      type="button"
+                      className="pagination-btn"
+                      onClick={goToLastPage}
+                      disabled={currentPage >= totalPages || isLoading}
+                    >
+                      맨 뒤
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
           <div className="panel">
             {searchPerformed && (
               <div className="company-details fade-in" key={animationKey}>
-                <div className="details-header">
-                  <h2 className="sub-title">업체 상세 정보</h2>
-                  {selectedCompany && (
-                    <>
-                      <div className={`file-type-badge file-type-${searchedFileType === 'all' ? (selectedCompany?._file_type || '') : searchedFileType}`}>
-                        {searchedFileType === 'all' && (
-                          <>
-                            {selectedCompany?._file_type === 'eung' && '전기'}
-                            {selectedCompany?._file_type === 'tongsin' && '통신'}
-                            {selectedCompany?._file_type === 'sobang' && '소방'}
-                          </>
-                        )}
-                        {searchedFileType === 'eung' && '전기'}
-                        {searchedFileType === 'tongsin' && '통신'}
-                        {searchedFileType === 'sobang' && '소방'}
-                      </div>
-                      <button onClick={handleCopyAll} className="copy-all-button">전체 복사</button>
-                    </>
-                  )}
-                </div>
+                {selectedCompany && (
+                  <div className="details-header">
+                    <div className={`file-type-badge file-type-${searchedFileType === 'all' ? (selectedCompany?._file_type || '') : searchedFileType}`}>
+                      {searchedFileType === 'all' && (
+                        <>
+                          {selectedCompany?._file_type === 'eung' && '전기'}
+                          {selectedCompany?._file_type === 'tongsin' && '통신'}
+                          {selectedCompany?._file_type === 'sobang' && '소방'}
+                        </>
+                      )}
+                      {searchedFileType === 'eung' && '전기'}
+                      {searchedFileType === 'tongsin' && '통신'}
+                      {searchedFileType === 'sobang' && '소방'}
+                    </div>
+                    <button onClick={handleCopyAll} className="copy-all-button">전체 복사</button>
+                  </div>
+                )}
                 {selectedCompany ? (
                   <div className="table-container">
                     <table className="details-table">

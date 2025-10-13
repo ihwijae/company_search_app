@@ -48,23 +48,30 @@ class SearchService {
     return Array.from(set);
   }
 
-  search(type, criteria) {
+  search(type, criteria, options = {}) {
     const logic = this.searchLogics[type];
     if (!logic || !logic.isLoaded || !logic.isLoaded()) {
       throw new Error(`${type} 파일이 로드되지 않았습니다`);
     }
-    return logic.search(criteria);
+    return logic.search(criteria, options || {});
   }
 
-  searchAll(criteria) {
+  searchAll(criteria, options = {}) {
     const merged = [];
     Object.keys(this.searchLogics).forEach((key) => {
       const logic = this.searchLogics[key];
       if (logic && logic.isLoaded && logic.isLoaded()) {
-        try { (logic.search(criteria) || []).forEach((item) => merged.push({ ...item, _file_type: key })); } catch {}
+        try {
+          const subset = logic.search(criteria) || [];
+          subset.forEach((item) => merged.push({ ...item, _file_type: key }));
+        } catch {}
       }
     });
-    return merged;
+    const processed = SearchLogic.postProcessResults(merged, options || {});
+    if (processed && processed.paginated) {
+      return { items: processed.items, meta: processed.meta };
+    }
+    return processed.items;
   }
 
   async loadAndWatch(fileType, sourcePath) {

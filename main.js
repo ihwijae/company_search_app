@@ -32,6 +32,42 @@ try { app.commandLine.appendSwitch('disable-gpu-shader-disk-cache'); } catch {}
 // --- 설정 ---
 let FILE_PATHS = { eung: '', tongsin: '', sobang: '' };
 
+const FILE_TYPE_ALIASES = {
+  eung: 'eung',
+  전기: 'eung',
+  전기공사: 'eung',
+  tongsin: 'tongsin',
+  통신: 'tongsin',
+  통신공사: 'tongsin',
+  sobang: 'sobang',
+  소방: 'sobang',
+  소방시설: 'sobang',
+  all: 'all',
+  전체: 'all',
+};
+
+const normalizeFileType = (value, { fallback = null } = {}) => {
+  if (value === undefined || value === null) return fallback;
+  const token = String(value).trim();
+  if (!token) return fallback;
+  if (Object.prototype.hasOwnProperty.call(FILE_TYPE_ALIASES, token)) {
+    return FILE_TYPE_ALIASES[token];
+  }
+  const lowered = token.toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(FILE_TYPE_ALIASES, lowered)) {
+    return FILE_TYPE_ALIASES[lowered];
+  }
+  return fallback;
+};
+
+const FILE_TYPE_LABELS = {
+  eung: '전기',
+  tongsin: '통신',
+  sobang: '소방',
+};
+
+const resolveFileTypeLabel = (type) => FILE_TYPE_LABELS[type] || String(type || '');
+
 const isRunningInWSL = (() => {
     if (process.platform !== 'linux') return false;
     if (process.env.WSL_DISTRO_NAME) return true;
@@ -188,9 +224,28 @@ function extractExpiryDate(text) {
 function loadConfig() {
     try {
         if (fs.existsSync(CONFIG_PATH)) {
-            const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-            FILE_PATHS = { ...FILE_PATHS, ...config };
+            const rawConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8')) || {};
+            const normalizedConfig = { eung: '', tongsin: '', sobang: '' };
+            Object.entries(rawConfig).forEach(([key, value]) => {
+                const normKey = normalizeFileType(key);
+                if (!normKey || normKey === 'all') return;
+                if (normKey === 'eung' || normKey === 'tongsin' || normKey === 'sobang') {
+                    if (typeof value === 'string' && value.trim()) {
+                        normalizedConfig[normKey] = value;
+                    }
+                }
+            });
+            FILE_PATHS = { ...FILE_PATHS, ...normalizedConfig };
+            const sanitizedForSave = {
+                eung: FILE_PATHS.eung,
+                tongsin: FILE_PATHS.tongsin,
+                sobang: FILE_PATHS.sobang,
+            };
+            FILE_PATHS = sanitizedForSave;
             console.log('[MAIN] 설정 파일 로드 완료:', FILE_PATHS);
+            if (JSON.stringify(rawConfig) !== JSON.stringify(sanitizedForSave)) {
+                saveConfig();
+            }
         } else {
             console.log('[MAIN] 설정 파일이 없습니다. 기본값으로 동작합니다.');
         }
@@ -476,21 +531,46 @@ try {
   // File selection and per-type routes
   if (ipcMain.removeHandler) ipcMain.removeHandler('select-file');
   ipcMain.handle('select-file', async (_event, fileType) => {
+    const normalizedType = normalizeFileType(fileType);
+    if (!normalizedType || normalizedType === 'all') {
+      return { success: false, message: '유효하지 않은 검색 대상입니다.' };
+    }
+    const typeLabel = resolveFileTypeLabel(normalizedType);
     const mainWindow = BrowserWindow.getFocusedWindow();
-    const result = await dialog.showOpenDialog(mainWindow, { title: `${fileType} file`, properties: ['openFile'], filters: [{ name: 'Excel Files', extensions: ['xlsx'] }] });
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: `${typeLabel || normalizedType} 파일 선택`,
+      properties: ['openFile'],
+      filters: [{ name: 'Excel Files', extensions: ['xlsx'] }],
+    });
     if (result.canceled || result.filePaths.length === 0) return { success: false, message: 'Selection canceled' };
     const filePath = result.filePaths[0];
     if (!filePath.toLowerCase().endsWith('.xlsx')) return { success: false, message: 'Please select a .xlsx file' };
-    FILE_PATHS[fileType] = filePath; saveConfig();
+    FILE_PATHS = {
+      eung: normalizedType === 'eung' ? filePath : FILE_PATHS.eung,
+      tongsin: normalizedType === 'tongsin' ? filePath : FILE_PATHS.tongsin,
+      sobang: normalizedType === 'sobang' ? filePath : FILE_PATHS.sobang,
+    };
+    saveConfig();
     const runtimePath = toWSLPathIfNeeded(filePath);
-    try { await svc.loadAndWatch(fileType, runtimePath); return { success: true, path: filePath }; }
+    try {
+      await svc.loadAndWatch(normalizedType, runtimePath);
+      return { success: true, path: filePath };
+    }
     catch (e) { return { success: false, message: e?.message || 'Load failed' }; }
 });
 
   if (ipcMain.removeHandler) ipcMain.removeHandler('get-regions');
   ipcMain.handle('get-regions', (_event, file_type) => {
-    try { return { success: true, data: svc.getRegions(file_type) }; }
-    catch { return { success: true, data: ['전체'] }; }
+    try {
+      const normalizedType = normalizeFileType(file_type, { fallback: 'eung' });
+      if (normalizedType === 'all') {
+        return { success: true, data: svc.getRegionsAll() };
+      }
+      return { success: true, data: svc.getRegions(normalizedType) };
+    }
+    catch {
+      return { success: true, data: ['전체'] };
+    }
   });
 
   if (ipcMain.removeHandler) ipcMain.removeHandler('check-files');
@@ -501,8 +581,26 @@ try {
   ipcMain.handle('get-file-paths', () => ({ success: true, data: FILE_PATHS }));
 
   if (ipcMain.removeHandler) ipcMain.removeHandler('search-companies');
-  ipcMain.handle('search-companies', (_event, { criteria, file_type }) => {
-    try { const data = svc.search(file_type, criteria); return { success: true, data }; }
+  ipcMain.handle('search-companies', (_event, { criteria, file_type, options }) => {
+    try {
+      const normalizedType = normalizeFileType(file_type, { fallback: null });
+      if (!normalizedType) {
+        throw new Error(`지원하지 않는 검색 대상입니다: ${file_type}`);
+      }
+      const sanitizedCriteria = parseMaybeJson(criteria, 'criteria');
+      const sanitizedOptions = parseMaybeJson(options, 'options');
+      const result = normalizedType === 'all'
+        ? svc.searchAll(sanitizedCriteria, sanitizedOptions || {})
+        : svc.search(normalizedType, sanitizedCriteria, sanitizedOptions || {});
+      if (result && typeof result === 'object' && !Array.isArray(result) && result.meta && result.items) {
+        return {
+          success: true,
+          data: sanitizeIpcPayload(result.items),
+          meta: sanitizeIpcPayload(result.meta),
+        };
+      }
+      return { success: true, data: sanitizeIpcPayload(result) };
+    }
     catch (e) { return { success: false, message: e?.message || 'Search failed' }; }
   });
 } catch (e) {
@@ -534,7 +632,8 @@ try {
   ipcMain.handle('agreements-fetch-candidates', async (_event, params = {}) => {
     try {
       const ownerId = params.ownerId || 'LH';
-      const fileType = params.fileType || 'eung';
+      const rawFileType = params.fileType || 'eung';
+      const fileType = normalizeFileType(rawFileType, { fallback: 'eung' }) || 'eung';
       const entryAmount = params.entryAmount || params.estimatedPrice || 0;
       const baseAmount = params.baseAmount || 0;
       const menuKey = params.menuKey || '';
@@ -549,7 +648,11 @@ try {
       try { if (fs.existsSync(AGREEMENTS_RULES_PATH)) rulesDoc = JSON.parse(fs.readFileSync(AGREEMENTS_RULES_PATH, 'utf-8')); } catch {}
       const owners = (rulesDoc && rulesDoc.owners) || [];
       const owner = owners.find(o => o.id === ownerId) || null;
-      const kind = owner && (owner.kinds || []).find(k => k.id === fileType);
+      const kind = owner && (owner.kinds || []).find((k) => {
+        if (!k || typeof k.id === 'undefined') return false;
+        if (k.id === fileType) return true;
+        return normalizeFileType(k.id) === fileType;
+      });
       const rules = (kind && kind.rules) || { alwaysInclude: [], alwaysExclude: [], excludeSingleBidEligible: true };
 
       // Access SearchService instance created above
@@ -1219,3 +1322,28 @@ try {
     }
   });
 } catch {}
+const sanitizeIpcPayload = (payload) => {
+  if (payload === null || payload === undefined) return payload;
+  const type = typeof payload;
+  if (type === 'string' || type === 'number' || type === 'boolean') return payload;
+  if (Array.isArray(payload)) {
+    try { return JSON.parse(JSON.stringify(payload)); }
+    catch (err) { console.warn('[MAIN] sanitize array failed:', err); return payload.map((item) => sanitizeIpcPayload(item)); }
+  }
+  try { return JSON.parse(JSON.stringify(payload)); }
+  catch (err) {
+    console.warn('[MAIN] sanitize payload failed:', err);
+    const clone = {};
+    Object.keys(payload || {}).forEach((key) => { clone[key] = sanitizeIpcPayload(payload[key]); });
+    return clone;
+  }
+};
+
+const parseMaybeJson = (value, label = 'payload') => {
+  if (typeof value !== 'string') return value;
+  try { return JSON.parse(value); }
+  catch (err) {
+    console.warn(`[MAIN] ${label} JSON.parse failed:`, err?.message || err);
+    return value;
+  }
+};
