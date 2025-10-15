@@ -647,13 +647,54 @@ try {
       let rulesDoc = null;
       try { if (fs.existsSync(AGREEMENTS_RULES_PATH)) rulesDoc = JSON.parse(fs.readFileSync(AGREEMENTS_RULES_PATH, 'utf-8')); } catch {}
       const owners = (rulesDoc && rulesDoc.owners) || [];
-      const owner = owners.find(o => o.id === ownerId) || null;
-      const kind = owner && (owner.kinds || []).find((k) => {
-        if (!k || typeof k.id === 'undefined') return false;
-        if (k.id === fileType) return true;
-        return normalizeFileType(k.id) === fileType;
-      });
-      const rules = (kind && kind.rules) || { alwaysInclude: [], alwaysExclude: [], excludeSingleBidEligible: true };
+      const owner = owners.find((o) => o.id === ownerId) || null;
+
+      const pickRuleFromKinds = (kinds = []) => {
+        if (!Array.isArray(kinds)) return null;
+        const normalizedType = normalizeFileType(fileType, { fallback: null }) || fileType;
+        const match = kinds.find((k) => {
+          if (!k || typeof k.id === 'undefined') return false;
+          if (k.id === fileType) return true;
+          const normalizedId = normalizeFileType(k.id, { fallback: null });
+          return normalizedId === normalizedType;
+        }) || kinds.find((k) => k && k.id);
+        return match && match.rules ? match.rules : null;
+      };
+
+      const globalRuleSet = pickRuleFromKinds(rulesDoc && rulesDoc.globalRules && rulesDoc.globalRules.kinds);
+
+      let rangeRuleSet = null;
+      if (owner && Array.isArray(owner.ranges) && owner.ranges.length > 0) {
+        let range = null;
+        if (menuKey) {
+          range = owner.ranges.find((r) => r && r.id === menuKey) || null;
+        }
+        if (!range) {
+          range = owner.ranges.find((r) => r && r.id) || null;
+        }
+        if (range) {
+          rangeRuleSet = pickRuleFromKinds(range.kinds);
+        }
+      }
+
+      let ownerKindRuleSet = null;
+      if (owner) {
+        ownerKindRuleSet = pickRuleFromKinds(owner.kinds);
+      }
+
+      const normalizeRegionKey = (value) => String(value || '').replace(/\s+/g, '').trim().toLowerCase();
+      const regionTargets = dutyRegions.map((region) => normalizeRegionKey(region)).filter(Boolean);
+      const regionRuleSets = [];
+      if (regionTargets.length > 0 && rulesDoc && Array.isArray(rulesDoc.regions)) {
+        rulesDoc.regions.forEach((region) => {
+          const key = normalizeRegionKey(region?.id || region?.label || region?.region);
+          if (!key || !regionTargets.includes(key)) return;
+          const ruleSet = pickRuleFromKinds(region?.kinds || []);
+          if (ruleSet) regionRuleSets.push(ruleSet);
+        });
+      }
+
+      const ruleSets = [globalRuleSet, rangeRuleSet, ownerKindRuleSet, ...regionRuleSets].filter(Boolean);
 
       // Access SearchService instance created above
       let data = [];
@@ -684,12 +725,31 @@ try {
       }
 
       const norm = (s) => String(s || '').trim();
-      const alwaysInclude = (rules.alwaysInclude || []).map(x => ({ bizNo: norm(x.bizNo), name: norm(x.name) }));
-      const alwaysExclude = (rules.alwaysExclude || []).map(x => ({ bizNo: norm(x.bizNo), name: norm(x.name) }));
-      const includeBiz = new Set(alwaysInclude.map(x => x.bizNo).filter(Boolean));
-      const includeName = new Set(alwaysInclude.map(x => x.name).filter(Boolean));
-      const excludeBiz = new Set(alwaysExclude.map(x => x.bizNo).filter(Boolean));
-      const excludeName = new Set(alwaysExclude.map(x => x.name).filter(Boolean));
+      const includeBiz = new Set();
+      const includeName = new Set();
+      const excludeBiz = new Set();
+      const excludeName = new Set();
+
+      const applyRuleSet = (ruleSet) => {
+        if (!ruleSet || typeof ruleSet !== 'object') return;
+        (ruleSet.alwaysInclude || []).forEach((entry) => {
+          const biz = norm(entry?.bizNo);
+          const name = norm(entry?.name);
+          if (biz) includeBiz.add(biz);
+          if (name) includeName.add(name);
+        });
+        (ruleSet.alwaysExclude || []).forEach((entry) => {
+          const biz = norm(entry?.bizNo);
+          const name = norm(entry?.name);
+          if (biz) excludeBiz.add(biz);
+          if (name) excludeName.add(name);
+        });
+      };
+
+      ruleSets.forEach(applyRuleSet);
+
+      const combinedExcludeSingleBid = ruleSets.every((set) => set?.excludeSingleBidEligible !== false);
+      const shouldExcludeSingle = excludeSingleBidEligible && combinedExcludeSingleBid;
 
       const out = [];
       const toNumber = (v) => {
@@ -1059,12 +1119,32 @@ try {
           singleBidEligible = perfOk === true && regionOk !== false;
         }
 
-        if (excludeSingleBidEligible && singleBidEligible && !wasAlwaysIncluded) continue;
+        if (shouldExcludeSingle && singleBidEligible && !wasAlwaysIncluded) continue;
         if (filterByRegion && dutyRegions.length > 0 && regionOk === false && !wasAlwaysIncluded) continue;
 
         out.push({
           id: bizNo || name,
-          name, bizNo, manager, region, rating, perf5y,
+          name,
+          bizNo,
+          manager,
+          region,
+          rating,
+          perf5y,
+          sipyung: rating,
+          '시평금액': rating,
+          '기초금액': rating,
+          '기초금액(원)': rating,
+          performance5y: perf5y,
+          '시평': rating,
+          '시평액': rating,
+          '시평액(원)': rating,
+          '5년 실적': perf5y,
+          '5년실적': perf5y,
+          '5년 실적 합계': perf5y,
+          '최근5년실적': perf5y,
+          '최근5년실적합계': perf5y,
+          '5년실적금액': perf5y,
+          '최근5년시공실적': perf5y,
           summaryStatus,
           isLatest,
           '요약상태': summaryStatus,
@@ -1089,7 +1169,7 @@ try {
           wasAlwaysIncluded, wasAlwaysExcluded,
           reasons: [
             wasAlwaysIncluded ? '항상 포함' : null,
-            (excludeSingleBidEligible && singleBidEligible) ? '단독 가능' : null,
+            (shouldExcludeSingle && singleBidEligible) ? '단독 가능' : null,
             moneyOk === false ? '시평 미달' : null,
             perfOk === false ? '실적 미달' : null,
             regionOk === false ? '지역 불일치' : null,

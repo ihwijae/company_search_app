@@ -4,6 +4,7 @@ import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import CandidatesModal from '../components/CandidatesModal.jsx';
+import { useAgreementBoard } from '../context/AgreementBoardContext.jsx';
 import { BASE_ROUTES, findMenuByKey } from '../../../../shared/navigation.js';
 import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 
@@ -65,6 +66,16 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   const [pinned, setPinned] = React.useState([]);
   const [excluded, setExcluded] = React.useState([]);
 
+  const toFileType = (industry) => {
+    if (industry === '전기') return 'eung';
+    if (industry === '통신') return 'tongsin';
+    return 'sobang';
+  };
+
+  const currentFileType = React.useMemo(() => toFileType(form.industry), [form.industry]);
+
+  const { boardState, openBoard, updateBoard } = useAgreementBoard();
+
   React.useEffect(() => {
     if (!form || typeof form !== 'object' || Array.isArray(form)) return;
     savePersisted(`${storageKey}:form`, form);
@@ -75,13 +86,33 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     savePersisted(`${storageKey}:dutyRegions`, dutyRegions);
   }, [storageKey, dutyRegions]);
 
-  const onChange = (key) => (event) => setForm((prev) => ({ ...prev, [key]: event.target.value }));
+  React.useEffect(() => {
+    if (!boardState?.open) return;
+    const groupSizeValue = Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3;
+    if (boardState.dutyRegions === dutyRegions && boardState.groupSize === groupSizeValue) return;
+    updateBoard({ dutyRegions, groupSize: groupSizeValue });
+  }, [boardState, dutyRegions, form.teamSizeMax, updateBoard]);
 
-  const toFileType = (industry) => {
-    if (industry === '전기') return 'eung';
-    if (industry === '통신') return 'tongsin';
-    return 'sobang';
-  };
+  React.useEffect(() => {
+    if (!boardState?.open) return;
+    if (boardState.candidates === candidates && boardState.pinned === pinned && boardState.excluded === excluded) return;
+    updateBoard({ candidates, pinned, excluded });
+  }, [boardState, candidates, pinned, excluded, updateBoard]);
+
+  React.useEffect(() => {
+    if (!boardState?.open) return;
+    const normalizedOwner = String(ownerId || 'LH').toUpperCase();
+    if (boardState.ownerId === normalizedOwner && boardState.fileType === currentFileType) return;
+    updateBoard({ ownerId: normalizedOwner, fileType: currentFileType });
+  }, [boardState, ownerId, currentFileType, updateBoard]);
+
+  React.useEffect(() => {
+    if (!boardState?.open) return;
+    if (boardState.rangeId === menuKey) return;
+    updateBoard({ rangeId: menuKey });
+  }, [boardState, menuKey, updateBoard]);
+
+  const onChange = (key) => (event) => setForm((prev) => ({ ...prev, [key]: event.target.value }));
 
   React.useEffect(() => {
     let canceled = false;
@@ -331,7 +362,28 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ color: '#6b7280' }}>고정 {pinned.length} · 제외 {excluded.length} · 후보 {candidates.length}</div>
                 <div>
-                  <button className="btn-soft" onClick={() => setCandidatesOpen(true)}>후보 산출</button>
+                  <button className="btn-soft" onClick={() => setCandidatesOpen(true)} style={{ marginRight: 6 }}>후보 산출</button>
+                  <button
+                    className="primary"
+                    onClick={() => {
+                      if (!candidates || candidates.length === 0) {
+                        window.alert('먼저 후보 산출을 실행해 최종 후보를 확정해주세요.');
+                        return;
+                      }
+                      openBoard({
+                        candidates,
+                        pinned,
+                        excluded,
+                        dutyRegions,
+                        groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
+                        ownerId: (ownerId || 'LH').toUpperCase(),
+                        fileType: currentFileType,
+                        rangeId: menuKey,
+                      });
+                    }}
+                  >
+                    협정보드 열기
+                  </button>
                 </div>
               </div>
               {candidates.length === 0 && (
@@ -378,6 +430,18 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
           setPinned(pinnedList);
           setExcluded(excludedList);
           setCandidatesOpen(false);
+          if (boardState?.open) {
+            updateBoard({
+              candidates: list,
+              pinned: pinnedList,
+              excluded: excludedList,
+              dutyRegions,
+              groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
+              ownerId: (ownerId || 'LH').toUpperCase(),
+              fileType: currentFileType,
+              rangeId: menuKey,
+            });
+          }
         }}
       />
     </div>

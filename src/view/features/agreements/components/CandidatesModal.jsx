@@ -185,6 +185,7 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
       if (!r?.success) throw new Error(r?.message || '후보 요청 실패');
 
       const enriched = (r.data || []).map((item) => {
+        const snapshot = { ...item };
         const debtRatioRaw = parseNumeric(item.debtRatio ?? item['부채비율']);
         const currentRatioRaw = parseNumeric(item.currentRatio ?? item['유동비율']);
         const debtAgainstAvg = Number(item.debtAgainstAverage ?? item['부채평균대비']);
@@ -196,6 +197,7 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
         const creditNoteStatus = item.creditNote ?? '';
         return {
           ...item,
+          snapshot,
           debtRatio: debtRatioRaw,
           currentRatio: currentRatioRaw,
           debtScore: item.debtScore ?? null,
@@ -210,6 +212,92 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
           debtMaxScore: item.debtMaxScore ?? null,
           currentMaxScore: item.currentMaxScore ?? null,
           creditMaxScore: item.creditMaxScore ?? null,
+          _sipyung: (() => {
+            const candidates = [
+              item.sipyung,
+              item.rating,
+              item['시평'],
+              item['시평액'],
+              item['시평액(원)'],
+              item['기초금액'],
+              item['기초금액(원)'],
+              snapshot.rating,
+              snapshot['시평'],
+              snapshot['시평액'],
+              snapshot['시평액(원)'],
+              snapshot['기초금액'],
+              snapshot['기초금액(원)'],
+            ];
+            for (const candidateValue of candidates) {
+              const parsed = parseNumeric(candidateValue);
+              if (Number.isFinite(parsed)) return parsed;
+            }
+            return null;
+          })(),
+          _performance5y: (() => {
+            const candidates = [
+              item.performance5y,
+              item.perf5y,
+              item['5년 실적'],
+              item['5년실적'],
+              item['5년 실적 합계'],
+              item['최근5년실적'],
+              item['최근5년실적합계'],
+              item['5년실적금액'],
+              item['최근5년시공실적'],
+              snapshot.perf5y,
+              snapshot['5년 실적'],
+              snapshot['5년실적'],
+              snapshot['5년 실적 합계'],
+              snapshot['최근5년실적'],
+              snapshot['최근5년실적합계'],
+              snapshot['5년실적금액'],
+              snapshot['최근5년시공실적'],
+            ];
+            for (const candidateValue of candidates) {
+              const parsed = parseNumeric(candidateValue);
+              if (Number.isFinite(parsed)) return parsed;
+            }
+            return null;
+          })(),
+          _score: (() => {
+            const candidates = [
+              item.score,
+              item.totalScore,
+              item['총점'],
+              item['평균점수'],
+              item['적격점수'],
+              item['종합점수'],
+              item['평가점수'],
+              snapshot['총점'],
+              snapshot['평균점수'],
+              snapshot['적격점수'],
+              snapshot['종합점수'],
+              snapshot['평가점수'],
+            ];
+            for (const candidateValue of candidates) {
+              const parsed = parseNumeric(candidateValue);
+              if (Number.isFinite(parsed)) return parsed;
+            }
+            return null;
+          })(),
+          _share: (() => {
+            const candidates = [
+              item.share,
+              item['_pct'],
+              item.candidateShare,
+              item['지분'],
+              item['기본지분'],
+              snapshot['share'],
+              snapshot['_pct'],
+              snapshot['지분'],
+            ];
+            for (const candidateValue of candidates) {
+              const parsed = parseNumeric(candidateValue);
+              if (Number.isFinite(parsed)) return parsed;
+            }
+            return null;
+          })(),
         };
       });
 
@@ -448,12 +536,19 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
                   return (
                   <tr key={`${c.id}-${idx}`}>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span>{c.name}</span>
-                        {c.summaryStatus && (
-                          <span className={`summary-status-badge ${getStatusClass(c.summaryStatus)}`}>
-                            {c.summaryStatus}
-                          </span>
+                      <div className="company-cell">
+                        <span className="company-name-text">{c.name}</span>
+                        {(c.wasAlwaysIncluded || c.summaryStatus) && (
+                          <div className="company-badges">
+                            {c.wasAlwaysIncluded && (
+                              <span className="fixed-badge">고정</span>
+                            )}
+                            {c.summaryStatus && (
+                              <span className={`summary-status-badge ${getStatusClass(c.summaryStatus)}`}>
+                                {c.summaryStatus}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </td>
@@ -464,7 +559,6 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
                     <td>{pct !== null ? pct.toFixed(2) : '-'}</td>
                     <td style={{ textAlign: 'left', fontSize: 13 }}>
                       <div className="details-actions" style={{ justifyContent: 'flex-start', gap: 4, rowGap: 4 }}>
-                        {c.wasAlwaysIncluded && <span className="pill">항상포함</span>}
                         <span className="pill" style={singleBidBadgeStyle}>{singleBidAllowed ? '단독가능' : '단독불가능'}</span>
                         {c.moneyOk && <span className="pill">시평OK</span>}
                         {c.perfOk && <span className="pill">실적OK</span>}

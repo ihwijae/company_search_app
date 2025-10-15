@@ -8,6 +8,7 @@ import LH50To100Page from './view/features/agreements/pages/LH50To100Page.jsx';
 import MOISUnder30Page from './view/features/agreements/pages/MOISUnder30Page.jsx';
 import MOIS30To50Page from './view/features/agreements/pages/MOIS30To50Page.jsx';
 import MOIS50To100Page from './view/features/agreements/pages/MOIS50To100Page.jsx';
+import { AgreementBoardProvider } from './view/features/agreements/context/AgreementBoardContext.jsx';
 
 export default function App() {
   const [route, setRoute] = React.useState(window.location.hash || '#/search');
@@ -18,23 +19,39 @@ export default function App() {
   }, []);
 
   const path = (route.replace('#', '') || '/search');
+
+  let Screen = SearchPage;
   switch (path) {
     case '/lh/under50':
-      return <LHUnder50Page />;
+      Screen = LHUnder50Page;
+      break;
     case '/lh/50to100':
-      return <LH50To100Page />;
+      Screen = LH50To100Page;
+      break;
     case '/mois/under30':
-      return <MOISUnder30Page />;
+      Screen = MOISUnder30Page;
+      break;
     case '/mois/30to50':
-      return <MOIS30To50Page />;
+      Screen = MOIS30To50Page;
+      break;
     case '/mois/50to100':
-      return <MOIS50To100Page />;
+      Screen = MOIS50To100Page;
+      break;
     case '/agreements':
-      return <AgreementsPage />;
+      Screen = AgreementsPage;
+      break;
     case '/settings':
-      return <SettingsPage />;
+      Screen = SettingsPage;
+      break;
     case '/search':
     default:
-      return <SearchPage />;
+      Screen = SearchPage;
+      break;
   }
+
+  return (
+    <AgreementBoardProvider>
+      <Screen />
+    </AgreementBoardProvider>
+  );
 }

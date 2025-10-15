@@ -71,12 +71,16 @@ export default function CompanySearchModal({ open, fileType, onClose, onPick, in
                     <button
                       className="btn-sm btn-soft"
                       style={{ minWidth: 64, whiteSpace: 'nowrap', height: 32 }}
-                      onClick={() => onPick && onPick({
-                        name: c['검색된 회사'],
-                        manager: c['대표자'] || '',
-                        region: c['대표지역'] || c['지역'] || '',
-                        bizNo: c['사업자번호'] || '',
-                      })}
+                      onClick={() => {
+                        if (!onPick) return;
+                        const snapshot = { ...c };
+                        const payload = {
+                          bizNo: c['사업자번호'] || c.bizNo || '',
+                          name: c['검색된 회사'] || c.name || '',
+                          snapshot,
+                        };
+                        onPick(payload);
+                      }}
                     >선택</button>
                   </td>
                 </tr>
