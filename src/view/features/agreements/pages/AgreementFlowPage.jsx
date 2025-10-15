@@ -93,11 +93,50 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     updateBoard({ dutyRegions, groupSize: groupSizeValue });
   }, [boardState, dutyRegions, form.teamSizeMax, updateBoard]);
 
+  const normalizeList = React.useCallback((value) => (
+    Array.isArray(value) ? value : []
+  ), []);
+
+  const listEqualsByKey = React.useCallback((a, b) => {
+    if (a === b) return true;
+    const left = normalizeList(a);
+    const right = normalizeList(b);
+    if (left.length !== right.length) return false;
+    const toKey = (item) => {
+      if (!item || typeof item !== 'object') return '';
+      return (
+        item.id
+        || item.bizNo
+        || item.bizno
+        || item.biz_no
+        || item['사업자번호']
+        || item['검색된 회사']
+        || item.name
+        || ''
+      );
+    };
+    for (let i = 0; i < left.length; i += 1) {
+      if (toKey(left[i]) !== toKey(right[i])) return false;
+    }
+    return true;
+  }, [normalizeList]);
+
   React.useEffect(() => {
     if (!boardState?.open) return;
-    if (boardState.candidates === candidates && boardState.pinned === pinned && boardState.excluded === excluded) return;
-    updateBoard({ candidates, pinned, excluded });
-  }, [boardState, candidates, pinned, excluded, updateBoard]);
+    const boardCandidates = normalizeList(boardState.candidates);
+    const boardPinned = normalizeList(boardState.pinned);
+    const boardExcluded = normalizeList(boardState.excluded);
+
+    if (!listEqualsByKey(boardCandidates, candidates)) {
+      setCandidates(boardCandidates.slice());
+    }
+    if (!listEqualsByKey(boardPinned, pinned)) {
+      setPinned(boardPinned.slice());
+    }
+    if (!listEqualsByKey(boardExcluded, excluded)) {
+      setExcluded(boardExcluded.slice());
+    }
+  }, [boardState?.open, boardState?.candidates, boardState?.pinned, boardState?.excluded, candidates, pinned, excluded, normalizeList, listEqualsByKey]);
 
   React.useEffect(() => {
     if (!boardState?.open) return;

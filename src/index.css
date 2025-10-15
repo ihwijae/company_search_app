@@ -620,6 +620,17 @@ body {
   font-size: 13px;
   color: #6b7280;
 }
+.board-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.board-sidebar-head .btn-sm {
+  height: 30px;
+  padding: 0 12px;
+}
 
 .agreement-board-sidebar .board-sidebar-list {
   display: flex;

@@ -46,7 +46,12 @@ export default function CompanySearchModal({ open, fileType, onClose, onPick, in
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e)=>{ if(e.key==='Enter') handleSearch(); }}
           />
-          <button className="btn-soft" style={{ minWidth: 80, height: 44 }} onClick={handleSearch} disabled={loading || !q.trim()}>검색</button>
+          <button
+            className="btn-soft"
+            style={{ minWidth: 80, height: 44 }}
+            onClick={() => handleSearch()}
+            disabled={loading || !q.trim()}
+          >검색</button>
         </div>
         {error && <div className="error-message" style={{ marginBottom: 12 }}>{error}</div>}
         <div style={{ maxHeight: 420, overflowY: 'auto', overflowX: 'hidden', border: '1px solid #e5e7eb', borderRadius: 10 }}>

@@ -8,6 +8,7 @@ import CreditModal from '../components/CreditModal';
 import QualityModal from '../components/QualityModal';
 import BizYearsModal from '../components/BizYearsModal.jsx';
 import AgreementsRulesModal from '../components/AgreementsRulesModal.jsx';
+import PerformanceModal from '../components/PerformanceModal.jsx';
 
 const Num = (v, d=0) => {
   const n = Number(v);
@@ -43,9 +44,19 @@ const MOIS_CURRENT_DEFAULT = [
   { lt: 0.7, score: 4.2 },
 ];
 
+const PERFORMANCE_DEFAULT_THRESHOLDS = [
+  { minRatio: 0.8, score: 15.0 },
+  { minRatio: 0.7, score: 13.0 },
+  { minRatio: 0.6, score: 11.0 },
+  { minRatio: 0.5, score: 9.0 },
+  { minRatio: 0.4, score: 7.0 },
+  { minRatio: 0.3, score: 5.0 },
+  { minRatio: 0.2, score: 3.0 },
+];
+
 export default function SettingsPage() {
   const [active, setActive] = React.useState('settings');
-  const [openModal, setOpenModal] = React.useState(null); // 'debt' | 'current' | 'credit' | 'biz' | 'quality'
+  const [openModal, setOpenModal] = React.useState(null); // 'debt' | 'current' | 'credit' | 'biz' | 'quality' | 'performance'
   const [merged, setMerged] = React.useState(null);
   const [agencyId, setAgencyId] = React.useState('');
   const [tierIdx, setTierIdx] = React.useState(0);
@@ -69,11 +80,13 @@ export default function SettingsPage() {
   ]);
   const [bizRows, setBizRows] = React.useState([]);
   const [bizDefaultRows, setBizDefaultRows] = React.useState([]);
+  const [performanceMode, setPerformanceMode] = React.useState('ratio-bands');
   const [perfMaxScore, setPerfMaxScore] = React.useState(13);
   const [perfRoundMethod, setPerfRoundMethod] = React.useState('truncate');
   const [perfRoundDigits, setPerfRoundDigits] = React.useState(2);
   const [creditRows, setCreditRows] = React.useState([]);
   const [qualityRows, setQualityRows] = React.useState([]);
+  const [performanceRows, setPerformanceRows] = React.useState([]);
   const [status, setStatus] = React.useState('');
   const rulesSnapshotRef = React.useRef(null); // preserve untouched fields (gradeTable, notes, etc.)
   const selectionRef = React.useRef({ agencyId: '', tierIdx: 0 });
@@ -129,7 +142,7 @@ export default function SettingsPage() {
     if (!agenciesList.length) {
       setAgencyId('');
       setTierIdx(0);
-      hydrateFormFromRules({}, { ownerId: '', minAmount: 0 });
+      hydrateFormFromRules({}, { ownerId: '', minAmount: 0, maxAmount: 0 });
       if (!silent) setStatus('');
       return true;
     }
@@ -151,7 +164,7 @@ export default function SettingsPage() {
     setTierIdx(nextTierIdx);
 
     const targetTier = targetTiers[nextTierIdx] || {};
-    hydrateFormFromRules(targetTier.rules || {}, { ownerId: targetAgency.id, minAmount: targetTier.minAmount || 0 });
+    hydrateFormFromRules(targetTier.rules || {}, { ownerId: targetAgency.id, minAmount: targetTier.minAmount || 0, maxAmount: targetTier.maxAmount || 0 });
 
     if (!silent) setStatus('');
     return true;
@@ -184,11 +197,30 @@ export default function SettingsPage() {
     }
   }, [isMois, showBizControls, openModal]);
 
+  const applyPerformanceRules = React.useCallback((performanceRules, { fallbackMode, ownerId, tierMax } = {}) => {
+    const effectiveOwner = (ownerId || currentAgencyId || '').toUpperCase();
+    const effectiveTierMax = typeof tierMax === 'number' ? tierMax : (currentTier?.maxAmount || 0);
+    const chosenMode = performanceRules?.mode || fallbackMode || ((effectiveOwner === 'MOIS' && effectiveTierMax <= 5000000000) ? 'ratio-bands' : 'formula');
+    setPerformanceMode(chosenMode);
+    setPerfMaxScore(Num(performanceRules?.maxScore, 13));
+    const pr = performanceRules?.rounding || { method: 'truncate', digits: 2 };
+    setPerfRoundMethod(pr.method || 'truncate');
+    setPerfRoundDigits(Num(pr.digits, 2));
+    if (chosenMode === 'ratio-bands') {
+      const perfThresholds = performanceRules?.thresholds && performanceRules.thresholds.length
+        ? performanceRules.thresholds
+        : PERFORMANCE_DEFAULT_THRESHOLDS;
+      setPerformanceRows(perfThresholds.map((t) => ({ min: Num(t.minRatio ?? t.min ?? 0), score: Num(t.score, 0) })));
+    } else {
+      setPerformanceRows([]);
+    }
+  }, [currentAgencyId, currentTier]);
+
   React.useEffect(() => {
     if (currentTier) {
-      hydrateFormFromRules(currentTier.rules || {}, { ownerId: currentAgencyId, minAmount: currentTier.minAmount || 0 });
+      hydrateFormFromRules(currentTier.rules || {}, { ownerId: currentAgencyId, minAmount: currentTier.minAmount || 0, maxAmount: currentTier.maxAmount || 0 });
     } else {
-      hydrateFormFromRules({}, { ownerId: currentAgencyId, minAmount: 0 });
+      hydrateFormFromRules({}, { ownerId: currentAgencyId, minAmount: 0, maxAmount: 0 });
     }
   }, [agencyId, tierIdx, currentAgencyId, currentTier]);
 
@@ -207,6 +239,7 @@ export default function SettingsPage() {
       let biz = comps.bizYears?.thresholds || [];
       const effectiveOwner = (meta.ownerId || currentAgencyId || '').toUpperCase();
       const tierMinAmount = meta.minAmount || 0;
+      const tierMaxAmount = typeof meta.maxAmount === 'number' ? meta.maxAmount : (currentTier?.maxAmount || 0);
       if (effectiveOwner === 'MOIS' && tierMinAmount >= 3000000000) {
         const isLegacyDebt = JSON.stringify(debt) === JSON.stringify(MOIS_DEBT_LEGACY);
         if (isLegacyDebt || !debt.length) debt = MOIS_DEBT_DEFAULT;
@@ -233,10 +266,7 @@ export default function SettingsPage() {
       const grades = credit?.gradeTable || [];
       if (grades.length) setCreditRows(grades.map(g => ({ grade: String(g.grade||''), base: Num(g.base), score: Num(g.score) })));
       const pf = rules?.performance || {};
-      setPerfMaxScore(Num(pf.maxScore, 13));
-      const pr = pf.rounding || { method: 'truncate', digits: 2 };
-      setPerfRoundMethod(pr.method || 'truncate');
-      setPerfRoundDigits(Num(pr.digits, 2));
+      applyPerformanceRules(pf, { ownerId: effectiveOwner, tierMax: tierMaxAmount });
     } catch (e) {
       console.warn('hydrate failed:', e);
     }
@@ -297,6 +327,12 @@ export default function SettingsPage() {
         variables: perfPrev.variables || ['perf5y', 'baseAmount'],
         maxScore: Num(perfMaxScore, 13),
         rounding: { method: perfRoundMethod || 'truncate', digits: Num(perfRoundDigits, 2) },
+        mode: performanceMode,
+        thresholds: (performanceMode === 'ratio-bands'
+          ? (performanceRows && performanceRows.length
+            ? performanceRows.map((r) => ({ minRatio: Num(r.min, 0), score: Num(r.score, 0) }))
+            : (perfPrev.thresholds || []))
+          : (perfPrev.thresholds || [])),
       },
       notes,
       effectiveFrom,
@@ -305,7 +341,7 @@ export default function SettingsPage() {
   }
 
   // Build rules but allow overriding a specific section's rows
-  function buildRulesFromFormWithOverrides({ debtRowsOverride, currentRowsOverride, bizRowsOverride, creditRowsOverride, qualityRowsOverride }) {
+  function buildRulesFromFormWithOverrides({ debtRowsOverride, currentRowsOverride, bizRowsOverride, creditRowsOverride, qualityRowsOverride, performanceRowsOverride }) {
     const prev = rulesSnapshotRef.current || {};
     const creditPrev = (prev.management?.methods || []).find(m => m.id === 'credit');
     const perfPrev = prev.performance || {};
@@ -319,6 +355,7 @@ export default function SettingsPage() {
     const bizSrc = bizRowsOverride || bizRows;
     const creditSrc = creditRowsOverride || creditRows;
     const qualitySrc = qualityRowsOverride || qualityRows;
+    const performanceSrc = typeof performanceRowsOverride !== 'undefined' ? performanceRowsOverride : performanceRows;
 
     return {
       management: {
@@ -349,6 +386,12 @@ export default function SettingsPage() {
         variables: perfPrev.variables || ['perf5y', 'baseAmount'],
         maxScore: Num(perfMaxScore, 13),
         rounding: { method: perfRoundMethod || 'truncate', digits: Num(perfRoundDigits, 2) },
+        mode: performanceMode,
+        thresholds: (performanceMode === 'ratio-bands'
+          ? (performanceSrc && performanceSrc.length
+            ? performanceSrc.map((r) => ({ minRatio: Num(r.min, 0), score: Num(r.score, 0) }))
+            : (perfPrev.thresholds || []))
+          : (perfPrev.thresholds || [])),
       },
       notes,
       effectiveFrom,
@@ -392,6 +435,9 @@ export default function SettingsPage() {
       const credit = (mg.methods || []).find(m => m.id === 'credit');
       const grades = credit?.gradeTable || [];
       setCreditRows(grades.map(g => ({ grade: String(g.grade||''), base: Num(g.base), score: Num(g.score) })));
+    } else if (section === 'performance') {
+      const pf = rules?.performance || {};
+      applyPerformanceRules(pf, { ownerId: currentAgencyId, tierMax: currentTier?.maxAmount || 0 });
     }
     setStatus('다시 불러오기 완료');
     setTimeout(()=>setStatus(''), 1200);
@@ -432,6 +478,9 @@ export default function SettingsPage() {
       const credit = (mg.methods || []).find(m => m.id === 'credit');
       const grades = credit?.gradeTable || [];
       setCreditRows(grades.map(g => ({ grade: String(g.grade||''), base: Num(g.base), score: Num(g.score) })));
+    } else if (section === 'performance') {
+      const pf = rules?.performance || {};
+      applyPerformanceRules(pf, { ownerId: currentAgencyId, tierMax: currentTier?.maxAmount || 0 });
     }
     setStatus('기본값으로 복원됨');
     setTimeout(()=>setStatus(''), 1200);
@@ -446,7 +495,7 @@ export default function SettingsPage() {
     return true;
   };
 
-  const saveSectionOverrides = async ({ debt, current, credit, quality, biz }) => {
+  const saveSectionOverrides = async ({ debt, current, credit, quality, biz, performance }) => {
     if (!ensureTargetSelected()) return;
     try {
       const rules = buildRulesFromFormWithOverrides({
@@ -455,6 +504,7 @@ export default function SettingsPage() {
         creditRowsOverride: credit || null,
         bizRowsOverride: biz || null,
         qualityRowsOverride: quality || null,
+        performanceRowsOverride: performance || null,
       });
       const payload = {
         version: 1,
@@ -521,7 +571,7 @@ export default function SettingsPage() {
     if (!ag) { setStatus('해당 발주처의 기본값이 없습니다'); return; }
     const t = (ag.tiers || []).find(x => x.minAmount === currentTier.minAmount && x.maxAmount === currentTier.maxAmount) || (ag.tiers || [])[0];
     if (!t) { setStatus('해당 구간의 기본값이 없습니다'); return; }
-    hydrateFormFromRules(t.rules || {});
+    hydrateFormFromRules(t.rules || {}, { ownerId: currentAgency?.id, minAmount: t.minAmount || 0, maxAmount: t.maxAmount || 0 });
     setStatus('기본값으로 복원됨');
     setTimeout(()=>setStatus(''), 1200);
   };
@@ -587,6 +637,12 @@ export default function SettingsPage() {
                 {!isMois && (
                   <button onClick={() => setOpenModal('quality')}>품질평가 기준 수정</button>
                 )}
+                <button onClick={() => {
+                  if (!ensureTargetSelected()) return;
+                  const pf = currentTier?.rules?.performance || {};
+                  applyPerformanceRules(pf, { ownerId: currentAgencyId, tierMax: currentTier?.maxAmount || 0 });
+                  setOpenModal('performance');
+                }}>실적점수 기준 수정</button>
                 <button onClick={() => setRulesModalOpen(true)} style={{ marginLeft: 'auto' }}>협정 규칙 편집</button>
               </div>
               <div className="filter-grid">
@@ -683,6 +739,15 @@ export default function SettingsPage() {
         onReload={() => reloadSectionMerged('credit')}
         onRestore={() => restoreSectionDefaults('credit')}
         onSave={(rows) => { setCreditRows(rows); return saveSectionOverrides({ credit: rows }); }}
+      />
+      <PerformanceModal
+        open={openModal === 'performance'}
+        mode={performanceMode}
+        rows={performanceRows}
+        onClose={() => setOpenModal(null)}
+        onReload={() => reloadSectionMerged('performance')}
+        onRestore={() => restoreSectionDefaults('performance')}
+        onSave={(rows) => { setPerformanceRows(Array.isArray(rows) ? rows : []); return saveSectionOverrides({ performance: Array.isArray(rows) ? rows : [] }); }}
       />
       {showBizControls && (
         <BizYearsModal

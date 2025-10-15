@@ -29,6 +29,78 @@ const normalizeRuleEntry = (item = {}) => ({
   snapshot: item.snapshot && typeof item.snapshot === 'object' ? { ...item.snapshot } : null,
 });
 
+const normalizeBizNo = (value) => (value ? String(value).replace(/[^0-9]/g, '') : '');
+
+const extractAmountValue = (candidate, directKeys = [], keywordGroups = []) => {
+  const direct = directKeys.find((key) => {
+    const value = candidate[key];
+    if (value !== undefined && value !== null && value !== '') {
+      candidate[key] = value;
+      return true;
+    }
+    if (candidate.snapshot && candidate.snapshot[key] !== undefined && candidate.snapshot[key] !== null && candidate.snapshot[key] !== '') {
+      candidate[key] = candidate.snapshot[key];
+      return true;
+    }
+    return false;
+  });
+  if (direct) return candidate[direct];
+  const sources = [candidate, candidate?.snapshot].filter(Boolean);
+  for (const source of sources) {
+    for (const keywords of keywordGroups) {
+      for (const key of Object.keys(source)) {
+        if (typeof key !== 'string') continue;
+        const normalized = key.replace(/\s+/g, '').toLowerCase();
+        if (!normalized) continue;
+        if (keywords.some((keyword) => normalized.includes(keyword))) {
+          const value = source[key];
+          if (value !== undefined && value !== null && value !== '') return value;
+        }
+      }
+    }
+  }
+  return null;
+};
+
+const buildCandidateFromSearchEntry = (entry) => {
+  if (!entry) return null;
+  const snapshot = entry.snapshot && typeof entry.snapshot === 'object' ? { ...entry.snapshot } : {};
+  const bizNoNormalized = normalizeBizNo(entry.bizNo || snapshot['사업자번호'] || '');
+  const baseId = bizNoNormalized || String(entry.name || snapshot['검색된 회사'] || '') || `search-${Date.now()}`;
+  const candidate = {
+    id: `search:${baseId}`,
+    bizNo: bizNoNormalized,
+    name: entry.name || snapshot['검색된 회사'] || snapshot['업체명'] || baseId || '대표사',
+    snapshot,
+    region: snapshot['대표지역'] || snapshot['지역'] || '',
+    source: 'search',
+    _forceRepresentative: true,
+  };
+
+  const sipyungValue = extractAmountValue(
+    candidate,
+    ['_sipyung', 'sipyung', '시평', '시평액', '시평액(원)', '시평금액', '기초금액', '기초금액(원)'],
+    [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']]
+  );
+  if (sipyungValue !== null && sipyungValue !== undefined && sipyungValue !== '') candidate._sipyung = sipyungValue;
+
+  const perfValue = extractAmountValue(
+    candidate,
+    ['_performance5y', 'performance5y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적'],
+    [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적']]
+  );
+  if (perfValue !== null && perfValue !== undefined && perfValue !== '') candidate._performance5y = perfValue;
+
+  const scoreValue = extractAmountValue(
+    candidate,
+    ['_score', 'score', 'totalScore', '총점', '평균점수', '적격점수', '종합점수', '평가점수'],
+    [['총점', '평균점수', 'score', '점수', '적격점수', '종합점수', '평가점수']]
+  );
+  if (scoreValue !== null && scoreValue !== undefined && scoreValue !== '') candidate._score = scoreValue;
+
+  return candidate;
+};
+
 const equalRuleLists = (a, b) => {
   if (a === b) return true;
   if (!Array.isArray(a) || !Array.isArray(b)) return false;
@@ -155,6 +227,41 @@ export function AgreementBoardProvider({ children }) {
     }));
   }, []);
 
+  const appendCandidates = React.useCallback((entries = []) => {
+    if (!Array.isArray(entries) || entries.length === 0) return;
+    setBoardState((prev) => {
+      const existing = Array.isArray(prev.candidates) ? prev.candidates : [];
+      const existingIds = new Set(existing.map((item) => item && item.id).filter(Boolean));
+      const normalized = entries
+        .map((item) => (item && typeof item === 'object' ? { ...item } : null))
+        .filter((item) => item && (item.id || item.bizNo || item.name));
+      if (normalized.length === 0) return prev;
+      const next = [];
+      normalized.forEach((item) => {
+        if (!item.id) {
+          const base = normalizeRuleEntry(item);
+          const key = normalizeBizNo(base.bizNo) || base.name || `ad-hoc-${next.length}`;
+          item.id = `added:${key}`;
+        }
+        if (!existingIds.has(item.id)) {
+          existingIds.add(item.id);
+          next.push(item);
+        }
+      });
+      if (next.length === 0) return prev;
+      return { ...prev, candidates: [...existing, ...next] };
+    });
+  }, []);
+
+  const appendCandidatesFromSearch = React.useCallback((entries = []) => {
+    if (!Array.isArray(entries) || entries.length === 0) return;
+    const normalized = entries
+      .map((entry) => buildCandidateFromSearchEntry(entry))
+      .filter(Boolean);
+    if (normalized.length === 0) return;
+    appendCandidates(normalized);
+  }, [appendCandidates]);
+
   const closeBoard = React.useCallback(() => {
     setBoardState((prev) => ({ ...prev, open: false }));
   }, []);
@@ -185,8 +292,10 @@ export function AgreementBoardProvider({ children }) {
     boardState,
     openBoard,
     updateBoard,
+    appendCandidates,
+    appendCandidatesFromSearch,
     closeBoard,
-  }), [boardState, openBoard, updateBoard, closeBoard]);
+  }), [boardState, openBoard, updateBoard, appendCandidates, closeBoard]);
 
   return (
     <AgreementBoardContext.Provider value={value}>
@@ -201,6 +310,8 @@ export function AgreementBoardProvider({ children }) {
         groupSize={boardState.groupSize || DEFAULT_GROUP_SIZE}
         title={boardState.title || '협정보드'}
         alwaysInclude={boardState.alwaysInclude || []}
+        fileType={boardState.fileType || DEFAULT_FILE_TYPE}
+        onAddRepresentatives={appendCandidatesFromSearch}
       />
     </AgreementBoardContext.Provider>
   );

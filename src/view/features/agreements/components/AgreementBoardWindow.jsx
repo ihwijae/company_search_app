@@ -1,5 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 
 const DEFAULT_GROUP_SIZE = 3;
 const MIN_GROUPS = 4;
@@ -190,6 +191,8 @@ export default function AgreementBoardWindow({
   groupSize = DEFAULT_GROUP_SIZE,
   title = '협정보드',
   alwaysInclude = [],
+  fileType,
+  onAddRepresentatives = () => {},
 }) {
   const boardWindowRef = React.useRef(null);
   const [portalContainer, setPortalContainer] = React.useState(null);
@@ -198,6 +201,27 @@ export default function AgreementBoardWindow({
   const [dropTarget, setDropTarget] = React.useState(null);
   const [groupShares, setGroupShares] = React.useState([]);
   const prevAssignmentsRef = React.useRef(groupAssignments);
+  const [representativeSearchOpen, setRepresentativeSearchOpen] = React.useState(false);
+
+  const openRepresentativeSearch = React.useCallback(() => {
+    setRepresentativeSearchOpen(true);
+  }, []);
+
+  const closeRepresentativeSearch = React.useCallback(() => {
+    setRepresentativeSearchOpen(false);
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) {
+      setRepresentativeSearchOpen(false);
+    }
+  }, [open]);
+
+  const handleRepresentativePicked = React.useCallback((picked) => {
+    if (!picked) return;
+    onAddRepresentatives?.([picked]);
+    closeRepresentativeSearch();
+  }, [onAddRepresentatives, closeRepresentativeSearch]);
 
   const closeWindow = React.useCallback(() => {
     const win = boardWindowRef.current;
@@ -307,12 +331,20 @@ export default function AgreementBoardWindow({
   }, [dutyRegionSet]);
 
   const representativeCandidates = React.useMemo(
-    () => representativeCandidatesRaw.filter((candidate) => !isDutyRegionCompany(candidate)),
+    () => representativeCandidatesRaw.filter((candidate) => {
+      if (!candidate) return false;
+      if (candidate._forceRepresentative) return true;
+      return !isDutyRegionCompany(candidate);
+    }),
     [representativeCandidatesRaw, isDutyRegionCompany],
   );
 
   const regionCandidates = React.useMemo(
-    () => representativeCandidatesRaw.filter((candidate) => isDutyRegionCompany(candidate)),
+    () => representativeCandidatesRaw.filter((candidate) => {
+      if (!candidate) return false;
+      if (candidate._forceRepresentative) return false;
+      return isDutyRegionCompany(candidate);
+    }),
     [representativeCandidatesRaw, isDutyRegionCompany],
   );
 
@@ -786,70 +818,96 @@ export default function AgreementBoardWindow({
     </div>
   );
 
+  const renderSearchButton = React.useCallback(() => {
+    if (!onAddRepresentatives) return null;
+    const disabled = !fileType;
+    return (
+      <button
+        type="button"
+        className="btn-sm btn-soft"
+        onClick={openRepresentativeSearch}
+        disabled={disabled}
+      >대표사 찾기</button>
+    );
+  }, [onAddRepresentatives, openRepresentativeSearch, fileType]);
+
   if (!open || !portalContainer) return null;
 
   return createPortal(
-    <div className="agreement-board-root">
-      <header className="agreement-board-header">
-        <div className="header-text">
-          <h2>{title}</h2>
-          <p>대표사 {summary.representativeTotal}명 · 확정 지역사 {summary.selectedRegions}명 · 협정 {summary.groups}개</p>
-        </div>
-        <div className="header-actions">
-          <button type="button" className="btn-soft" onClick={onClose}>닫기</button>
-        </div>
-      </header>
-      <div className="agreement-board-layout">
-        <aside className="agreement-board-sidebar">
-          <section className="sidebar-section">
-            <div className="board-sidebar-title">설정한 고정 업체</div>
-            <div className="board-sidebar-count">{pinnedRepresentatives.length}개 고정</div>
-            {renderEntryList(pinnedRepresentatives, '설정한 고정 업체가 없습니다.', 'pinned')}
-          </section>
-          <section className="sidebar-section">
-            <div className="board-sidebar-title">대표사 후보</div>
-            <div className="board-sidebar-count">총 {freeRepresentatives.length}명</div>
-            {renderEntryList(freeRepresentatives, '대표사 후보가 없습니다.')}
-          </section>
-          <section className="sidebar-section">
-            <div className="board-sidebar-title">확정된 지역사</div>
-            <div className="board-sidebar-count">{availableRegionEntries.length}개 준비</div>
-            {renderEntryList(availableRegionEntries, '후보산출에서 지역사를 선택하면 여기에 표시됩니다.', 'region')}
-          </section>
-        </aside>
-        <main className="agreement-board-main">
-          <div className="board-header">
-            <div>
-              <div className="board-title">협정 조합 미리보기</div>
-              <div className="board-subtitle">팀당 최대 {safeGroupSize}인 기준으로 대표사/지역사를 배치하세요.</div>
-            </div>
-            <div className="board-actions">
-              <button type="button" className="btn-soft" onClick={handleAddGroup}>빈 행 추가</button>
-              <button type="button" className="btn-soft" onClick={handleResetGroups}>초기화</button>
-            </div>
+    <>
+      <div className="agreement-board-root">
+        <header className="agreement-board-header">
+          <div className="header-text">
+            <h2>{title}</h2>
+            <p>대표사 {summary.representativeTotal}명 · 확정 지역사 {summary.selectedRegions}명 · 협정 {summary.groups}개</p>
           </div>
-          <div className="board-groups">
-            {groups.map((group, groupIndex) => (
-              <section key={group.id} className="board-group-card">
-                <header className="group-header">
-                  <div>
-                    <div className="group-title">협정 {group.id}</div>
-                    <div className="group-subtitle">대표사와 지역사를 드래그해서 배치하세요.</div>
-                  </div>
-                  <div className="group-meta">
-                    <span className="tag-muted">총점 미계산</span>
-                    <button type="button" className="btn-sm btn-muted" disabled>세부 설정</button>
-                  </div>
-                </header>
-                <div className="group-body">
-                  {group.memberIds.map((uid, slotIndex) => renderMemberCard(uid ? participantMap.get(uid) : null, slotIndex, groupIndex))}
-                </div>
-              </section>
-            ))}
+          <div className="header-actions">
+            <button type="button" className="btn-soft" onClick={onClose}>닫기</button>
           </div>
-        </main>
+        </header>
+        <div className="agreement-board-layout">
+          <aside className="agreement-board-sidebar">
+            <section className="sidebar-section">
+              <div className="board-sidebar-title">설정한 고정 업체</div>
+              <div className="board-sidebar-count">{pinnedRepresentatives.length}개 고정</div>
+              {renderEntryList(pinnedRepresentatives, '설정한 고정 업체가 없습니다.', 'pinned')}
+            </section>
+            <section className="sidebar-section">
+              <div className="board-sidebar-title">대표사 후보</div>
+              <div className="board-sidebar-head">
+                <div className="board-sidebar-count">총 {freeRepresentatives.length}명</div>
+                {renderSearchButton()}
+              </div>
+              {renderEntryList(freeRepresentatives, '대표사 후보가 없습니다.')}
+            </section>
+            <section className="sidebar-section">
+              <div className="board-sidebar-title">확정된 지역사</div>
+              <div className="board-sidebar-count">{availableRegionEntries.length}개 준비</div>
+              {renderEntryList(availableRegionEntries, '후보산출에서 지역사를 선택하면 여기에 표시됩니다.', 'region')}
+            </section>
+          </aside>
+          <main className="agreement-board-main">
+            <div className="board-header">
+              <div>
+                <div className="board-title">협정 조합 미리보기</div>
+                <div className="board-subtitle">팀당 최대 {safeGroupSize}인 기준으로 대표사/지역사를 배치하세요.</div>
+              </div>
+              <div className="board-actions">
+                <button type="button" className="btn-soft" onClick={handleAddGroup}>빈 행 추가</button>
+                <button type="button" className="btn-soft" onClick={handleResetGroups}>초기화</button>
+              </div>
+            </div>
+            <div className="board-groups">
+              {groups.map((group, groupIndex) => (
+                <section key={group.id} className="board-group-card">
+                  <header className="group-header">
+                    <div>
+                      <div className="group-title">협정 {group.id}</div>
+                      <div className="group-subtitle">대표사와 지역사를 드래그해서 배치하세요.</div>
+                    </div>
+                    <div className="group-meta">
+                      <span className="tag-muted">총점 미계산</span>
+                      <button type="button" className="btn-sm btn-muted" disabled>세부 설정</button>
+                    </div>
+                  </header>
+                  <div className="group-body">
+                    {group.memberIds.map((uid, slotIndex) => renderMemberCard(uid ? participantMap.get(uid) : null, slotIndex, groupIndex))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>,
+      {representativeSearchOpen && (
+        <CompanySearchModal
+          open={representativeSearchOpen}
+          onClose={closeRepresentativeSearch}
+          onPick={handleRepresentativePicked}
+          fileType={fileType || 'all'}
+        />
+      )}
+    </>,
     portalContainer,
   );
 }
