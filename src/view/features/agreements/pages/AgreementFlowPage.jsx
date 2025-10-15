@@ -362,12 +362,12 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ color: '#6b7280' }}>고정 {pinned.length} · 제외 {excluded.length} · 후보 {candidates.length}</div>
                 <div>
-                  <button className="btn-soft" onClick={() => setCandidatesOpen(true)} style={{ marginRight: 6 }}>후보 산출</button>
+                  <button className="btn-soft" onClick={() => setCandidatesOpen(true)} style={{ marginRight: 6 }}>지역사 찾기</button>
                   <button
                     className="primary"
                     onClick={() => {
                       if (!candidates || candidates.length === 0) {
-                        window.alert('먼저 후보 산출을 실행해 최종 후보를 확정해주세요.');
+                        window.alert('먼저 지역사 찾기를 실행해 최종 후보를 확정해주세요.');
                         return;
                       }
                       openBoard({
@@ -387,7 +387,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                 </div>
               </div>
               {candidates.length === 0 && (
-                <div style={{ color: '#6b7280', marginTop: 6 }}>아직 후보가 없습니다. “후보 산출”을 눌러 조건에 맞는 후보를 불러오세요.</div>
+                <div style={{ color: '#6b7280', marginTop: 6 }}>아직 후보가 없습니다. “지역사 찾기”를 눌러 조건에 맞는 후보를 불러오세요.</div>
               )}
             </div>
 

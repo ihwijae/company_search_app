@@ -666,9 +666,10 @@ export default function AgreementBoardWindow({
       ['_pct', 'candidateShare', 'share', '지분', '기본지분'],
       [['지분', 'share', '비율']]
     );
-    const share = toNumber(shareSource);
-    const shareValue = groupShares[groupIndex]?.[slotIndex] ?? '';
-    const displayShare = shareValue !== '' ? shareValue : (share !== null ? share.toFixed(1) : '');
+    const shareParsed = toNumber(shareSource);
+    const loadedShare = shareParsed !== null ? String(shareParsed) : '';
+    const storedShare = groupShares[groupIndex]?.[slotIndex];
+    const shareValue = storedShare === undefined ? loadedShare : storedShare;
 
     const sipyungRaw = candidate._sipyung ?? extractAmountValue(
       candidate,
@@ -733,9 +734,9 @@ export default function AgreementBoardWindow({
             type="text"
             value={shareValue}
             onChange={(e) => handleShareInput(groupIndex, slotIndex, e.target.value)}
-            placeholder={share !== null ? share.toFixed(1) : ''}
+            placeholder="지분을 입력하세요"
           />
-          {displayShare && shareValue === '' && <span className="share-hint">기본 {displayShare}%</span>}
+          {shareValue === '' && <span className="share-hint">지분을 입력하세요</span>}
         </div>
         <div className="member-stats">
           <div className="member-stat-row">
@@ -801,9 +802,9 @@ export default function AgreementBoardWindow({
       <div className="agreement-board-layout">
         <aside className="agreement-board-sidebar">
           <section className="sidebar-section">
-            <div className="board-sidebar-title">우선 배치 대표사</div>
+            <div className="board-sidebar-title">설정한 고정 업체</div>
             <div className="board-sidebar-count">{pinnedRepresentatives.length}개 고정</div>
-            {renderEntryList(pinnedRepresentatives, '고정된 대표사가 없습니다.', 'pinned')}
+            {renderEntryList(pinnedRepresentatives, '설정한 고정 업체가 없습니다.', 'pinned')}
           </section>
           <section className="sidebar-section">
             <div className="board-sidebar-title">대표사 후보</div>

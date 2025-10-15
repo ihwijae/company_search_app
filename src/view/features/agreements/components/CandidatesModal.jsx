@@ -389,7 +389,7 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
   const summary = useMemo(() => ({ total: sorted.length, pinned: pinnedView.size, excluded: excluded.size }), [sorted, pinnedView, excluded]);
 
   return (
-    <Modal open={open} onClose={onClose} onCancel={onClose} title="후보 산출" size="xl" maxWidth={1500} closeOnSave={false}
+    <Modal open={open} onClose={onClose} onCancel={onClose} title="지역사 찾기" size="xl" maxWidth={1500} closeOnSave={false}
            onSave={() => { if (onApply) onApply({ candidates: list, pinned: Array.from(pinned), excluded: Array.from(excluded) }); }}>
       <div style={{ display: 'grid', gridTemplateColumns: '320px minmax(0, 1fr)', gap: 16, padding: 8 }}>
         <div className="panel" style={{ padding: 16, fontSize: 14 }}>
