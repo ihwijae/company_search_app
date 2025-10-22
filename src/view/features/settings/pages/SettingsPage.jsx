@@ -52,6 +52,7 @@ const PERFORMANCE_DEFAULT_THRESHOLDS = [
   { minRatio: 0.4, score: 7.0 },
   { minRatio: 0.3, score: 5.0 },
   { minRatio: 0.2, score: 3.0 },
+  { minRatio: 0.0, score: 1.0 },
 ];
 
 export default function SettingsPage() {
@@ -81,7 +82,6 @@ export default function SettingsPage() {
   const [bizRows, setBizRows] = React.useState([]);
   const [bizDefaultRows, setBizDefaultRows] = React.useState([]);
   const [performanceMode, setPerformanceMode] = React.useState('ratio-bands');
-  const [perfMaxScore, setPerfMaxScore] = React.useState(13);
   const [perfRoundMethod, setPerfRoundMethod] = React.useState('truncate');
   const [perfRoundDigits, setPerfRoundDigits] = React.useState(2);
   const [creditRows, setCreditRows] = React.useState([]);
@@ -202,7 +202,6 @@ export default function SettingsPage() {
     const effectiveTierMax = typeof tierMax === 'number' ? tierMax : (currentTier?.maxAmount || 0);
     const chosenMode = performanceRules?.mode || fallbackMode || ((effectiveOwner === 'MOIS' && effectiveTierMax <= 5000000000) ? 'ratio-bands' : 'formula');
     setPerformanceMode(chosenMode);
-    setPerfMaxScore(Num(performanceRules?.maxScore, 13));
     const pr = performanceRules?.rounding || { method: 'truncate', digits: 2 };
     setPerfRoundMethod(pr.method || 'truncate');
     setPerfRoundDigits(Num(pr.digits, 2));
@@ -325,7 +324,6 @@ export default function SettingsPage() {
       performance: {
         formula: perfPrev.formula || '(perf5y / baseAmount) * 13',
         variables: perfPrev.variables || ['perf5y', 'baseAmount'],
-        maxScore: Num(perfMaxScore, 13),
         rounding: { method: perfRoundMethod || 'truncate', digits: Num(perfRoundDigits, 2) },
         mode: performanceMode,
         thresholds: (performanceMode === 'ratio-bands'
@@ -333,6 +331,9 @@ export default function SettingsPage() {
             ? performanceRows.map((r) => ({ minRatio: Num(r.min, 0), score: Num(r.score, 0) }))
             : (perfPrev.thresholds || []))
           : (perfPrev.thresholds || [])),
+        ...(performanceMode !== 'ratio-bands' && Number.isFinite(Number(perfPrev.maxScore))
+          ? { maxScore: Number(perfPrev.maxScore) }
+          : {}),
       },
       notes,
       effectiveFrom,
@@ -384,7 +385,6 @@ export default function SettingsPage() {
       performance: {
         formula: perfPrev.formula || '(perf5y / baseAmount) * 13',
         variables: perfPrev.variables || ['perf5y', 'baseAmount'],
-        maxScore: Num(perfMaxScore, 13),
         rounding: { method: perfRoundMethod || 'truncate', digits: Num(perfRoundDigits, 2) },
         mode: performanceMode,
         thresholds: (performanceMode === 'ratio-bands'
@@ -392,6 +392,9 @@ export default function SettingsPage() {
             ? performanceSrc.map((r) => ({ minRatio: Num(r.min, 0), score: Num(r.score, 0) }))
             : (perfPrev.thresholds || []))
           : (perfPrev.thresholds || [])),
+        ...(performanceMode !== 'ratio-bands' && Number.isFinite(Number(perfPrev.maxScore))
+          ? { maxScore: Number(perfPrev.maxScore) }
+          : {}),
       },
       notes,
       effectiveFrom,
@@ -675,7 +678,6 @@ export default function SettingsPage() {
             <div className="panel" style={{ gridColumn: '1 / -1' }}>
               <h3 style={{ marginTop: 0 }}>시공점수</h3>
               <div className="filter-grid">
-                <div className="filter-item"><label>최대 점수</label><input className="filter-input" value={perfMaxScore} onChange={(e)=>setPerfMaxScore(e.target.value)} /></div>
                 <div className="filter-item"><label>점수 절삭</label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <select className="filter-input" value={perfRoundMethod} onChange={(e)=>setPerfRoundMethod(e.target.value)} style={{ maxWidth: 160 }}>

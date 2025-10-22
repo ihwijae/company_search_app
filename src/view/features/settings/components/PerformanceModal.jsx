@@ -18,22 +18,96 @@ export default function PerformanceModal({ open, onClose, onSave, onRestore, onR
 
   const isRatioMode = mode === 'ratio-bands';
 
-  React.useEffect(() => {
-    if (open) {
-      if (isRatioMode) {
-        const toPercent = (value) => {
-          const num = Number(value);
-          return Number.isFinite(num) ? Math.round(num * 1000) / 10 : 0; // 0.1 단위 유지
-        };
-        setItems((rows || []).map((r) => ({
-          min: toPercent(r.min ?? r.minRatio ?? 0),
-          score: Number(r.score) || 0,
-        })));
-        setError('');
-        seededRef.current = false;
+  const clampRatio = React.useCallback((value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return 0;
+    if (num < 0) return 0;
+    if (num > 1) return 1;
+    return num;
+  }, []);
+
+  const toPercent = React.useCallback((value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return 0;
+    return Math.round(num * 1000) / 10;
+  }, []);
+
+  const formatPercentLabel = React.useCallback((value) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return '';
+    if (Math.abs(num - Math.round(num)) < 0.01) return `${Math.round(num)}%`;
+    return `${num.toFixed(1)}%`;
+  }, []);
+
+  const normalizeFromRows = React.useCallback((sourceRows) => {
+    const base = (sourceRows || [])
+      .map((row) => ({
+        rawMin: clampRatio(typeof row.minRatio === 'number' ? row.minRatio : Number(row.min)),
+        score: Number(row.score) || 0,
+      }))
+      .filter((entry) => Number.isFinite(entry.rawMin) && Number.isFinite(entry.score))
+      .sort((a, b) => b.rawMin - a.rawMin);
+
+    if (!base.length) return [];
+
+    const prepared = base.map((entry) => ({
+      rawMin: clampRatio(entry.rawMin),
+      score: String(entry.score ?? ''),
+      floorUpper: null,
+      manualPercent: String(toPercent(entry.rawMin)),
+    }));
+
+    const lastIndex = prepared.length - 1;
+    const prevRaw = lastIndex > 0 ? prepared[lastIndex - 1].rawMin : null;
+    const fallbackPercent = prevRaw != null ? toPercent(prevRaw) : 0;
+    prepared[lastIndex] = {
+      rawMin: 0,
+      score: prepared[lastIndex].score,
+      floorUpper: fallbackPercent,
+      manualPercent: String(fallbackPercent),
+    };
+    for (let i = 0; i < lastIndex; i += 1) {
+      prepared[i].floorUpper = null;
+      prepared[i].manualPercent = prepared[i].manualPercent ?? String(toPercent(prepared[i].rawMin));
+    }
+    return prepared;
+  }, [clampRatio, toPercent]);
+
+  const normalizeItems = React.useCallback((list) => {
+    if (!Array.isArray(list) || list.length === 0) return [];
+    const next = list.map((item) => ({
+      rawMin: item.rawMin != null ? clampRatio(item.rawMin) : null,
+      score: item.score,
+      floorUpper: Number.isFinite(Number(item.floorUpper)) ? Number(item.floorUpper) : null,
+      manualPercent: item.manualPercent != null ? String(item.manualPercent) : null,
+    }));
+    const lastIndex = next.length - 1;
+    const prevRaw = lastIndex > 0 ? next[lastIndex - 1].rawMin : null;
+    const fallbackPercent = Math.max(0, Math.min(100, prevRaw != null ? toPercent(prevRaw) : 0));
+    for (let i = 0; i < lastIndex; i += 1) {
+      next[i].floorUpper = null;
+      if (next[i].manualPercent == null) {
+        next[i].manualPercent = next[i].rawMin != null ? String(toPercent(next[i].rawMin)) : '';
       }
     }
-  }, [open, rows, isRatioMode]);
+    const fallbackManual = next[lastIndex].manualPercent;
+    next[lastIndex] = {
+      rawMin: 0,
+      score: next[lastIndex].score,
+      floorUpper: fallbackPercent,
+      manualPercent: fallbackManual === '' ? '' : (fallbackManual != null ? String(fallbackManual) : String(fallbackPercent)),
+    };
+    return next;
+  }, [clampRatio, toPercent]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (!isRatioMode) return;
+    const normalized = normalizeFromRows(rows);
+    setItems(normalized);
+    setError('');
+    seededRef.current = false;
+  }, [open, rows, isRatioMode, normalizeFromRows]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -45,15 +119,74 @@ export default function PerformanceModal({ open, onClose, onSave, onRestore, onR
   }, [open, items, onRestore, isRatioMode]);
 
   const setField = (idx, key, value) => {
-    setItems((prev) => prev.map((item, i) => (i === idx ? { ...item, [key]: value } : item)));
+    setItems((prev) => {
+      if (!prev || prev.length === 0) return prev;
+      const next = prev.slice();
+      if (key === 'score') {
+        next[idx] = { ...next[idx], score: value };
+        return normalizeItems(next);
+      }
+      if (key === 'min') {
+        const isFallback = idx === prev.length - 1;
+        if (isFallback) {
+          if (value === '') {
+            next[idx] = { ...next[idx], floorUpper: null, manualPercent: '' };
+            if (next.length >= 2) {
+              next[idx - 1] = { ...next[idx - 1], rawMin: null, manualPercent: '' };
+            }
+            return next;
+          }
+          const numeric = Number(value);
+          if (!Number.isFinite(numeric)) {
+            next[idx] = { ...next[idx], manualPercent: value };
+            return next;
+          }
+          const percent = Math.max(0, Math.min(100, numeric));
+          next[idx] = { ...next[idx], floorUpper: percent, manualPercent: String(percent) };
+          if (next.length >= 2) {
+            const ratio = clampRatio(percent / 100);
+            next[idx - 1] = { ...next[idx - 1], rawMin: ratio, manualPercent: String(percent) };
+          }
+          return normalizeItems(next);
+        }
+        if (value === '') {
+          next[idx] = { ...next[idx], rawMin: null, manualPercent: '' };
+          return next;
+        }
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) {
+          next[idx] = { ...next[idx], manualPercent: value };
+          return next;
+        }
+        const ratio = clampRatio(numeric / 100);
+        next[idx] = { ...next[idx], rawMin: ratio, manualPercent: String(Math.max(0, Math.min(100, numeric))) };
+        return normalizeItems(next);
+      }
+      return prev;
+    });
   };
 
   const addRow = () => {
-    setItems((prev) => [...prev, { min: 0, score: 0 }]);
+    setItems((prev) => {
+      if (!prev || prev.length === 0) {
+        return [{ rawMin: 0, score: '0', floorUpper: 0, manualPercent: '0' }];
+      }
+      const fallback = prev[prev.length - 1];
+      const head = prev.slice(0, -1);
+      const lastHead = head[head.length - 1];
+      const suggested = lastHead ? Math.max(0, lastHead.rawMin - 0.05) : 0.1;
+      const newRatio = clampRatio(suggested);
+      const next = [...head, { rawMin: newRatio, score: '0', floorUpper: null, manualPercent: String(toPercent(newRatio)) }, fallback];
+      return normalizeItems(next);
+    });
   };
 
   const removeRow = (idx) => {
-    setItems((prev) => prev.filter((_, i) => i !== idx));
+    setItems((prev) => {
+      if (!prev || prev.length <= 1) return prev;
+      const next = prev.filter((_, i) => i !== idx);
+      return normalizeItems(next);
+    });
   };
 
   const move = (idx, dir) => {
@@ -62,18 +195,28 @@ export default function PerformanceModal({ open, onClose, onSave, onRestore, onR
       const target = idx + dir;
       if (target < 0 || target >= next.length) return prev;
       [next[idx], next[target]] = [next[target], next[idx]];
-      return next;
+      return normalizeItems(next);
     });
   };
 
   const validate = () => {
     for (let i = 0; i < items.length; i += 1) {
       const row = items[i];
-      const min = Number(row.min);
-      const score = Number(row.score);
-      if (!Number.isFinite(min)) return `${i + 1}행: 최소 비율이 숫자가 아닙니다.`;
-      if (min < 0 || min > 100) return `${i + 1}행: 최소 비율은 0~100 사이여야 합니다.`;
-      if (!Number.isFinite(score)) return `${i + 1}행: 점수가 숫자가 아닙니다.`;
+      if (row.score === '' || !Number.isFinite(Number(row.score))) {
+        return `${i + 1}행: 점수가 숫자가 아닙니다.`;
+      }
+      const isFallback = i === items.length - 1;
+      if (isFallback) {
+        const floorValue = row.manualPercent != null ? row.manualPercent : row.floorUpper;
+        const floor = Number(floorValue);
+        if (floorValue === '' || !Number.isFinite(floor)) return `${i + 1}행: 기준 비율이 숫자가 아닙니다.`;
+        if (floor < 0 || floor > 100) return `${i + 1}행: 기준 비율은 0~100 사이여야 합니다.`;
+      } else {
+        const percentValue = row.manualPercent != null ? row.manualPercent : (row.rawMin != null ? toPercent(row.rawMin) : null);
+        const rawMin = percentValue == null || percentValue === '' ? NaN : Number(percentValue) / 100;
+        if (!Number.isFinite(rawMin)) return `${i + 1}행: 최소 비율이 숫자가 아닙니다.`;
+        if (rawMin < 0 || rawMin > 1) return `${i + 1}행: 최소 비율은 0~100 사이여야 합니다.`;
+      }
     }
     return '';
   };
@@ -85,11 +228,30 @@ export default function PerformanceModal({ open, onClose, onSave, onRestore, onR
     }
     const msg = validate();
     if (msg) { setError(msg); return; }
-    const normalized = (items || [])
+    const normalized = normalizeItems(items);
+    setItems(normalized);
+    const prepared = normalized
       .slice()
-      .sort((a, b) => Number(b.min) - Number(a.min))
-      .map((row) => ({ min: Number(row.min) / 100, score: Number(row.score) }));
-    return onSave && onSave(normalized);
+      .sort((a, b) => {
+        const aRatio = a.rawMin != null ? a.rawMin : clampRatio(Number(a.manualPercent) / 100);
+        const bRatio = b.rawMin != null ? b.rawMin : clampRatio(Number(b.manualPercent) / 100);
+        return bRatio - aRatio;
+      })
+      .map((row, idx, arr) => {
+        if (idx === arr.length - 1) {
+          return {
+            min: 0,
+            score: Number(row.score),
+          };
+        }
+        const percentValue = row.manualPercent != null ? Number(row.manualPercent) : toPercent(row.rawMin);
+        const ratio = clampRatio(percentValue / 100);
+        return {
+          min: ratio,
+          score: Number(row.score),
+        };
+      });
+    return onSave && onSave(prepared);
   };
 
   React.useEffect(() => {
@@ -152,44 +314,87 @@ export default function PerformanceModal({ open, onClose, onSave, onRestore, onR
               </tr>
             </thead>
             <tbody>
-              {(items || []).map((row, idx) => (
-                <tr key={idx}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
-                        <input
-                          className="filter-input"
-                          type="number"
-                          step="0.1"
-                          value={row.min}
-                          onChange={(e) => setField(idx, 'min', e.target.value)}
-                          placeholder="예: 80"
-                        />
-                        <span style={{ fontSize: 12, color: '#475569' }}>
-                          {idx === 0 && '해당 비율 이상'}
-                          {idx > 0 && `해당 비율 이상 · 이전 구간 미만`}
-                        </span>
+              {(items || []).map((row, idx) => {
+                const isFallback = idx === items.length - 1;
+                const prevRow = idx > 0 ? items[idx - 1] : null;
+                const prevPercent = prevRow ? (prevRow.manualPercent != null ? prevRow.manualPercent : (prevRow.rawMin != null ? String(toPercent(prevRow.rawMin)) : '')) : null;
+                const manualPercent = row.manualPercent;
+                let displayPercent;
+                if (manualPercent != null) {
+                  displayPercent = manualPercent === '' ? '' : Number(manualPercent);
+                } else if (isFallback) {
+                  if (Number.isFinite(Number(row.floorUpper))) {
+                    displayPercent = Number(row.floorUpper);
+                  } else if (prevPercent != null && prevPercent !== '') {
+                    displayPercent = Number(prevPercent);
+                  } else {
+                    displayPercent = '';
+                  }
+                } else if (row.rawMin != null) {
+                  displayPercent = Number(toPercent(row.rawMin));
+                } else {
+                  displayPercent = '';
+                }
+                const inputValue = displayPercent === '' ? '' : displayPercent;
+                const scoreValue = row.score;
+                return (
+                  <tr key={idx}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
+                          <input
+                            className="filter-input"
+                            type="number"
+                            step="0.1"
+                            value={inputValue}
+                            onChange={(e) => setField(idx, 'min', e.target.value)}
+                            placeholder="예: 80"
+                          />
+                          <span style={{ fontSize: 12, color: '#475569' }}>
+                            {(() => {
+                              const prevNumeric = prevPercent != null && prevPercent !== '' ? Number(prevPercent) : null;
+                              const currentNumeric = inputValue === '' ? null : Number(inputValue);
+                              if (idx === 0) {
+                                return currentNumeric != null
+                                  ? `${formatPercentLabel(currentNumeric)} 이상`
+                                  : '해당 비율 이상';
+                              }
+                              if (isFallback) {
+                                return prevNumeric != null
+                                  ? `${formatPercentLabel(prevNumeric)} 미만`
+                                  : '이전 구간 미만';
+                              }
+                              if (currentNumeric != null && prevNumeric != null) {
+                                return `${formatPercentLabel(currentNumeric)} 이상 · ${formatPercentLabel(prevNumeric)} 미만`;
+                              }
+                              if (currentNumeric != null) {
+                                return `${formatPercentLabel(currentNumeric)} 이상`;
+                              }
+                              return '해당 비율 이상';
+                            })()}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td>
-                    <input
-                      className="filter-input"
-                      type="number"
-                      step="0.1"
-                      value={row.score}
-                      onChange={(e) => setField(idx, 'score', e.target.value)}
-                    />
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    <button onClick={() => move(idx, -1)} disabled={idx === 0} style={{ marginRight: 6, background: '#e5e7eb', color: '#374151', border: '1px solid #d1d5db', minWidth: 36 }}>▲</button>
-                    <button onClick={() => move(idx, 1)} disabled={idx === items.length - 1} style={{ background: '#e5e7eb', color: '#374151', border: '1px solid #d1d5db', minWidth: 36 }}>▼</button>
-                  </td>
-                  <td>
-                    <button onClick={() => removeRow(idx)} style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}>삭제</button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td>
+                      <input
+                        className="filter-input"
+                        type="number"
+                        step="0.1"
+                        value={scoreValue}
+                        onChange={(e) => setField(idx, 'score', e.target.value)}
+                      />
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button onClick={() => move(idx, -1)} disabled={idx === 0 || idx === items.length - 1} style={{ marginRight: 6, background: '#e5e7eb', color: '#374151', border: '1px solid #d1d5db', minWidth: 36 }}>▲</button>
+                      <button onClick={() => move(idx, 1)} disabled={idx === items.length - 1} style={{ background: '#e5e7eb', color: '#374151', border: '1px solid #d1d5db', minWidth: 36 }}>▼</button>
+                    </td>
+                    <td>
+                      <button onClick={() => removeRow(idx)} style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}>삭제</button>
+                    </td>
+                  </tr>
+                );
+              })}
               {(!items || items.length === 0) && (
                 <tr>
                   <td colSpan={4} style={{ textAlign: 'center', color: '#6b7280' }}>행이 없습니다. 아래 버튼으로 추가하세요.</td>

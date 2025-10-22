@@ -8,6 +8,14 @@ const MIN_GROUPS = 4;
 const BID_SCORE = 65;
 const MANAGEMENT_SCORE_MAX = 15;
 const PERFORMANCE_DEFAULT_MAX = 13;
+const PERFORMANCE_CAP_VERSION = 2;
+
+const resolvePerformanceCap = (value) => {
+  if (value === null || value === undefined) return PERFORMANCE_DEFAULT_MAX;
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  return PERFORMANCE_DEFAULT_MAX;
+};
 
 const SHARE_DIRECT_KEYS = ['_share', '_pct', 'candidateShare', 'share', '지분', '기본지분'];
 const SHARE_KEYWORDS = [['지분', 'share', '비율']];
@@ -381,6 +389,13 @@ export default function AgreementBoardWindow({
   const [groupShares, setGroupShares] = React.useState([]);
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const candidateScoreCacheRef = React.useRef(new Map());
+  const performanceCapRef = React.useRef(PERFORMANCE_DEFAULT_MAX);
+  const getPerformanceCap = () => resolvePerformanceCap(performanceCapRef.current);
+  const updatePerformanceCap = (value) => {
+    const resolved = resolvePerformanceCap(value);
+    performanceCapRef.current = resolved;
+    return resolved;
+  };
   const [candidateMetricsVersion, setCandidateMetricsVersion] = React.useState(0);
   const prevAssignmentsRef = React.useRef(groupAssignments);
   const [representativeSearchOpen, setRepresentativeSearchOpen] = React.useState(false);
@@ -873,12 +888,14 @@ export default function AgreementBoardWindow({
         try {
           const response = await window.electronAPI.formulasEvaluate(payload);
           if (response?.success && response.data?.performance) {
-            const { score, capped, raw } = response.data.performance;
+            const perfData = response.data.performance;
+            const perfMax = updatePerformanceCap(perfData.maxScore);
+            const { score, capped, raw } = perfData;
             const numericCandidates = [score, capped, raw]
               .map((value) => toNumber(value))
               .filter((value) => value !== null);
             if (numericCandidates.length > 0) {
-              const resolved = clampScore(Math.max(...numericCandidates), PERFORMANCE_DEFAULT_MAX);
+              const resolved = clampScore(Math.max(...numericCandidates), perfMax);
               if (resolved != null) return resolved;
             }
           }
@@ -890,8 +907,9 @@ export default function AgreementBoardWindow({
       if (!performanceBaseReady || perfBase <= 0) return null;
       const ratio = perfAmount / perfBase;
       if (!Number.isFinite(ratio)) return null;
-      const fallback = ratio * PERFORMANCE_DEFAULT_MAX;
-      return clampScore(fallback, PERFORMANCE_DEFAULT_MAX);
+      const cap = getPerformanceCap();
+      const fallback = Math.max(1, ratio * cap);
+      return clampScore(fallback, cap);
     };
 
     const run = async () => {
@@ -1024,8 +1042,18 @@ export default function AgreementBoardWindow({
         if (canceled || !candidate || typeof candidate !== 'object') continue;
 
         const currentManagement = getCandidateManagementScore(candidate);
-        const currentPerformanceScore = candidate._agreementPerformanceScore != null
-          ? clampScore(candidate._agreementPerformanceScore, PERFORMANCE_DEFAULT_MAX)
+        const storedPerformanceMax = Number(candidate._agreementPerformanceMax);
+        const storedCapVersion = Number(candidate._agreementPerformanceCapVersion);
+        const capIsValid = Number.isFinite(storedPerformanceMax) && storedPerformanceMax > 0;
+        const capVersionFresh = storedCapVersion === PERFORMANCE_CAP_VERSION;
+        if (capIsValid && capVersionFresh) {
+          updatePerformanceCap(storedPerformanceMax);
+        }
+        const capForStored = (capIsValid && capVersionFresh)
+          ? storedPerformanceMax
+          : getPerformanceCap();
+        const currentPerformanceScore = (candidate._agreementPerformanceScore != null && capVersionFresh)
+          ? clampScore(candidate._agreementPerformanceScore, capForStored)
           : null;
         const performanceAmount = getCandidatePerformanceAmount(candidate);
         const needsManagement = currentManagement == null;
@@ -1109,9 +1137,12 @@ export default function AgreementBoardWindow({
                 }
               }
               if (needsPerformanceScore && performance && performance.score != null) {
-                const perfScore = clampScore(performance.score, PERFORMANCE_DEFAULT_MAX);
+                const perfMax = updatePerformanceCap(performance.maxScore);
+                const perfScore = clampScore(performance.score, perfMax);
                 if (perfScore != null) {
                   candidate._agreementPerformanceScore = perfScore;
+                  candidate._agreementPerformanceMax = perfMax;
+                  candidate._agreementPerformanceCapVersion = PERFORMANCE_CAP_VERSION;
                   resolvedPerformanceScore = perfScore;
                 }
               }
@@ -1123,9 +1154,12 @@ export default function AgreementBoardWindow({
           } else if (needsPerformanceScore && performanceAmount != null && performanceBaseReady) {
             const ratio = performanceAmount / perfBase;
             if (Number.isFinite(ratio)) {
-              const fallbackScore = clampScore(ratio * PERFORMANCE_DEFAULT_MAX, PERFORMANCE_DEFAULT_MAX);
+              const cap = getPerformanceCap();
+              const fallbackScore = clampScore(Math.max(1, ratio * cap), cap);
               if (fallbackScore != null) {
                 candidate._agreementPerformanceScore = fallbackScore;
+                candidate._agreementPerformanceMax = cap;
+                candidate._agreementPerformanceCapVersion = PERFORMANCE_CAP_VERSION;
                 resolvedPerformanceScore = fallbackScore;
               }
             }

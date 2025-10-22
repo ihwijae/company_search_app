@@ -101,7 +101,32 @@ function evalPerformance(inputs, rules) {
   const perf = rules.performance || {};
   const perf5y = toNumber(inputs.perf5y);
   const base = toNumber(inputs.baseAmount);
-  const maxScore = toNumber(perf.maxScore || 13);
+  const configMaxScoreRaw = Number(perf.maxScore);
+  const configMaxScore = Number.isFinite(configMaxScoreRaw) ? configMaxScoreRaw : null;
+
+  const thresholdsArray = Array.isArray(perf.thresholds) ? perf.thresholds : [];
+  const thresholdMax = thresholdsArray.reduce((acc, item) => {
+    const scoreRaw = Number(item && item.score);
+    return Number.isFinite(scoreRaw) ? Math.max(acc, scoreRaw) : acc;
+  }, 0);
+
+  let resolvedMaxScore = null;
+  if (perf.mode === 'ratio-bands') {
+    if (thresholdMax > 0 || configMaxScore != null) {
+      // If both exist, keep the higher one so manual caps never shrink band scores.
+      const candidate = thresholdMax > 0 ? thresholdMax : 0;
+      const fallback = configMaxScore != null ? configMaxScore : 0;
+      const best = Math.max(candidate, fallback);
+      resolvedMaxScore = best > 0 ? best : null;
+    }
+  } else if (configMaxScore != null) {
+    resolvedMaxScore = configMaxScore;
+  } else {
+    resolvedMaxScore = 13;
+  }
+
+  const hasCap = Number.isFinite(resolvedMaxScore) && resolvedMaxScore > 0;
+  const maxScore = hasCap ? resolvedMaxScore : null;
 
   const ratio = base > 0 ? (perf5y / base) : 0;
 
@@ -123,15 +148,15 @@ function evalPerformance(inputs, rules) {
       }
     }
     const usable = bandScore != null ? bandScore : 0;
-    const clamped = Math.min(usable, maxScore);
+    const clamped = maxScore != null ? Math.min(usable, maxScore) : usable;
     const score = applyRounding(clamped, perf.rounding);
-    return { score, raw: usable, capped: clamped, mode: 'ratio-bands', ratio };
+    return { score, raw: usable, capped: clamped, mode: 'ratio-bands', ratio, maxScore };
   }
 
   const raw = base > 0 ? ratio * maxScore : 0;
-  const capped = Math.min(raw, maxScore);
+  const capped = maxScore != null ? Math.min(raw, maxScore) : raw;
   const score = applyRounding(capped, perf.rounding);
-  return { score, raw, capped, mode: 'formula', ratio };
+  return { score, raw, capped, mode: 'formula', ratio, maxScore };
 }
 
 function pickTierByAmount(tiers = [], amount) {
