@@ -408,6 +408,24 @@ body {
   min-width: 0;
 }
 
+.company-name-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.company-manager-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.company-manager-badges .badge-person {
+  margin-left: 0;
+}
+
 .company-name-text {
   font-weight: 700;
   font-size: 0.92rem;
@@ -563,6 +581,38 @@ body {
   user-select: none;
 }
 
+.agreement-board-header .header-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.agreement-board-header .agreement-board-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.agreement-board-header .agreement-board-header-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.agreement-board-header .agreement-board-header-meta span strong {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.agreement-board-header .agreement-board-header-meta span strong::after {
+  content: ':';
+  margin-left: 2px;
+}
+
 .agreement-board-header .header-text h2 {
   margin: 0;
   font-size: 20px;
@@ -700,6 +750,39 @@ body {
 .agreement-board-sidebar .board-sidebar-item .meta .score {
   font-weight: 600;
   color: #4c1d95;
+}
+
+.agreement-board-sidebar .board-sidebar-item .meta.secondary {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #475569;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.agreement-board-sidebar .board-sidebar-item .meta.secondary .amount {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.agreement-board-sidebar .board-sidebar-item .actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.agreement-board-sidebar .board-sidebar-item .actions button {
+  background: none;
+  border: none;
+  color: #b91c1c;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.agreement-board-sidebar .board-sidebar-item .actions button:hover {
+  text-decoration: underline;
 }
 
 .agreement-board-sidebar .board-sidebar-empty {

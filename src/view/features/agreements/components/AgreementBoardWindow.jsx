@@ -1,9 +1,48 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
+import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
 
 const DEFAULT_GROUP_SIZE = 3;
 const MIN_GROUPS = 4;
+const BID_SCORE = 65;
+const MANAGEMENT_SCORE_MAX = 15;
+const PERFORMANCE_DEFAULT_MAX = 13;
+
+const SHARE_DIRECT_KEYS = ['_share', '_pct', 'candidateShare', 'share', '지분', '기본지분'];
+const SHARE_KEYWORDS = [['지분', 'share', '비율']];
+
+const PERFORMANCE_DIRECT_KEYS = ['_performance5y', 'performance5y', 'perf5y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적'];
+const PERFORMANCE_KEYWORDS = [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적']];
+
+const getCandidateNumericValue = (candidate, directKeys = [], keywordGroups = []) => {
+  if (!candidate || typeof candidate !== 'object') return null;
+  const value = extractAmountValue(candidate, directKeys, keywordGroups);
+  const parsed = toNumber(value);
+  return parsed;
+};
+
+const getCandidateCreditGrade = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return '';
+  const sources = [
+    candidate.creditGrade,
+    candidate.creditGradeText,
+    candidate.creditNote,
+    candidate['신용평가'],
+    candidate['신용등급'],
+    candidate['신용평가등급'],
+    candidate.snapshot?.['신용평가'],
+    candidate.snapshot?.['신용등급'],
+  ];
+  for (const src of sources) {
+    if (!src) continue;
+    const str = String(src).trim().toUpperCase();
+    if (!str) continue;
+    const match = str.match(/^([A-Z]{1,3}[0-9]?(?:[+-])?)/);
+    return match ? match[1] : str.split(/[\s(]/)[0];
+  }
+  return '';
+};
 
 const normalizeRuleEntry = (entry = {}) => ({
   bizNo: entry.bizNo ? String(entry.bizNo) : '',
@@ -60,6 +99,163 @@ const formatAmount = (value) => {
   const number = toNumber(value);
   if (number === null) return '-';
   try { return number.toLocaleString('ko-KR'); } catch (err) { return String(number); }
+};
+
+const formatPercent = (value) => {
+  if (value === null || value === undefined) return '-%';
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '-%';
+  const integerDiff = Math.abs(number - Math.round(number));
+  if (integerDiff < 0.01) return `${Math.round(number)}%`;
+  return `${number.toFixed(2)}%`;
+};
+
+const parseAmountValue = (value) => {
+  const parsed = toNumber(value);
+  return parsed === null ? null : parsed;
+};
+
+const clampScore = (value, max = MANAGEMENT_SCORE_MAX) => {
+  if (value === null || value === undefined) return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  if (number < 0) return 0;
+  if (number > max) return max;
+  return number;
+};
+
+const getCandidateManagementScore = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return null;
+  if (candidate._agreementManagementScore != null) {
+    const cached = clampScore(toNumber(candidate._agreementManagementScore));
+    if (cached != null) return cached;
+  }
+
+  const directFields = [
+    'managementScore',
+    '_managementScore',
+    '경영점수',
+    '경영평가점수',
+    '경영점수합',
+  ];
+  for (const field of directFields) {
+    if (candidate[field] != null) {
+      const parsed = clampScore(toNumber(candidate[field]));
+      if (parsed != null) {
+        candidate._agreementManagementScore = parsed;
+        return parsed;
+      }
+    }
+  }
+
+  const compositeCandidates = [
+    candidate.managementTotalScore,
+    candidate.totalManagementScore,
+    candidate.managementScoreTotal,
+    candidate['경영점수합'],
+    candidate['경영점수총점'],
+  ];
+  let composite = null;
+  for (const value of compositeCandidates) {
+    const parsed = clampScore(toNumber(value));
+    if (parsed != null) { composite = parsed; break; }
+  }
+
+  if (composite == null) {
+    const debt = clampScore(toNumber(
+      candidate.debtScore
+      ?? candidate.debtRatioScore
+      ?? candidate['부채점수']
+      ?? candidate['부채비율점수']
+    ), MANAGEMENT_SCORE_MAX);
+    const current = clampScore(toNumber(
+      candidate.currentScore
+      ?? candidate.currentRatioScore
+      ?? candidate['유동점수']
+      ?? candidate['유동비율점수']
+    ), MANAGEMENT_SCORE_MAX);
+    if (debt != null || current != null) {
+      const sum = (debt || 0) + (current || 0);
+      composite = clampScore(sum);
+    }
+  }
+
+  let credit = clampScore(toNumber(candidate.creditScore));
+  if (credit == null && candidate._creditScore != null) {
+    credit = clampScore(toNumber(candidate._creditScore));
+  }
+  if (credit == null && candidate['신용점수'] != null) {
+    credit = clampScore(toNumber(candidate['신용점수']));
+  }
+  if (credit == null && candidate['신용평가점수'] != null) {
+    credit = clampScore(toNumber(candidate['신용평가점수']));
+  }
+  if (credit == null && candidate.creditGrade != null && composite != null) {
+    // 일부 데이터는 신용점수를 별도로 주지 않고 composite에 포함시킴
+    credit = null;
+  }
+
+  const candidates = [composite, credit].filter((value) => value != null && Number.isFinite(value));
+  if (candidates.length === 0) return null;
+  const best = Math.max(...candidates);
+  const clamped = clampScore(best);
+  candidate._agreementManagementScore = clamped;
+  return clamped;
+};
+
+const getCandidatePerformanceAmount = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return null;
+  const directCandidates = [
+    candidate._agreementPerformance5y,
+    candidate._performance5y,
+    candidate.performance5y,
+    candidate.perf5y,
+    candidate.performanceTotal,
+    candidate['performance5y'],
+    candidate['5년 실적'],
+    candidate['5년실적'],
+    candidate['5년 실적 합계'],
+    candidate['최근5년실적'],
+    candidate['최근5년실적합계'],
+    candidate['5년실적금액'],
+    candidate['최근5년시공실적'],
+  ];
+  for (const value of directCandidates) {
+    const parsed = toNumber(value);
+    if (parsed != null) {
+      candidate._agreementPerformance5y = parsed;
+      return parsed;
+    }
+  }
+  const extracted = extractAmountValue(candidate, PERFORMANCE_DIRECT_KEYS, PERFORMANCE_KEYWORDS);
+  const parsed = toNumber(extracted);
+  if (parsed != null) {
+    candidate._agreementPerformance5y = parsed;
+    return parsed;
+  }
+  return null;
+};
+
+const extractCreditGrade = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return '';
+  const sources = [
+    candidate.creditGrade,
+    candidate.creditGradeText,
+    candidate.creditNote,
+    candidate['신용평가'],
+    candidate['신용등급'],
+    candidate['신용평가등급'],
+    candidate.snapshot?.['신용평가'],
+    candidate.snapshot?.['신용등급'],
+  ];
+  for (const src of sources) {
+    if (!src) continue;
+    const str = String(src).trim().toUpperCase();
+    if (!str) continue;
+    const match = str.match(/^([A-Z]{1,3}[0-9]?(?:[+-])?)/);
+    return match ? match[1] : str.split(/[\s(]/)[0];
+  }
+  return '';
 };
 
 const extractValue = (candidate, keys = []) => {
@@ -139,31 +335,6 @@ const isRegionExplicitlySelected = (candidate) => {
   return false;
 };
 
-const copyStyles = (sourceDoc, targetDoc) => {
-  if (!sourceDoc || !targetDoc) return;
-  const existing = targetDoc.querySelectorAll('[data-agreement-board-style="1"]');
-  existing.forEach((node) => node.parentNode.removeChild(node));
-
-  Array.from(sourceDoc.styleSheets).forEach((styleSheet) => {
-    try {
-      if (styleSheet.href) {
-        const link = targetDoc.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = styleSheet.href;
-        link.setAttribute('data-agreement-board-style', '1');
-        targetDoc.head.appendChild(link);
-      } else if (styleSheet.ownerNode && styleSheet.ownerNode.textContent) {
-        const style = targetDoc.createElement('style');
-        style.type = 'text/css';
-        style.setAttribute('data-agreement-board-style', '1');
-        style.textContent = styleSheet.ownerNode.textContent;
-        targetDoc.head.appendChild(style);
-      }
-    } catch {
-      /* ignore CORS-protected stylesheets */
-    }
-  });
-};
 
 const buildEntryUid = (prefix, candidate, index, seen) => {
   const rawId = candidate?.id
@@ -192,7 +363,15 @@ export default function AgreementBoardWindow({
   title = '협정보드',
   alwaysInclude = [],
   fileType,
+  ownerId = 'LH',
+  rangeId: _rangeId = null,
   onAddRepresentatives = () => {},
+  onRemoveRepresentative = () => {},
+  noticeNo = '',
+  noticeTitle = '',
+  industryLabel = '',
+  baseAmount = '',
+  estimatedAmount = '',
 }) {
   const boardWindowRef = React.useRef(null);
   const [portalContainer, setPortalContainer] = React.useState(null);
@@ -200,8 +379,27 @@ export default function AgreementBoardWindow({
   const [draggingId, setDraggingId] = React.useState(null);
   const [dropTarget, setDropTarget] = React.useState(null);
   const [groupShares, setGroupShares] = React.useState([]);
+  const [groupSummaries, setGroupSummaries] = React.useState([]);
+  const candidateScoreCacheRef = React.useRef(new Map());
+  const [candidateMetricsVersion, setCandidateMetricsVersion] = React.useState(0);
   const prevAssignmentsRef = React.useRef(groupAssignments);
   const [representativeSearchOpen, setRepresentativeSearchOpen] = React.useState(false);
+
+  const getSharePercent = React.useCallback((groupIndex, slotIndex, candidate) => {
+    const stored = groupShares[groupIndex]?.[slotIndex];
+    if (stored !== undefined && stored !== null && stored !== '') {
+      const parsedStored = toNumber(stored);
+      if (parsedStored !== null) return parsedStored;
+    }
+    if (!candidate || typeof candidate !== 'object') return null;
+    if (candidate._share != null) {
+      const parsedShare = toNumber(candidate._share);
+      if (parsedShare !== null) return parsedShare;
+    }
+    const extracted = extractAmountValue(candidate, SHARE_DIRECT_KEYS, SHARE_KEYWORDS);
+    const parsed = toNumber(extracted);
+    return parsed !== null ? parsed : null;
+  }, [groupShares]);
 
   const openRepresentativeSearch = React.useCallback(() => {
     setRepresentativeSearchOpen(true);
@@ -260,7 +458,7 @@ export default function AgreementBoardWindow({
       const root = child.document.createElement('div');
       root.id = 'agreement-board-root';
       child.document.body.appendChild(root);
-      copyStyles(document, child.document);
+      copyDocumentStyles(document, child.document);
       boardWindowRef.current = child;
       setPortalContainer(root);
       const handleBeforeUnload = () => {
@@ -273,7 +471,7 @@ export default function AgreementBoardWindow({
     } else {
       const win = boardWindowRef.current;
       if (win.document && win.document.readyState === 'complete') {
-        copyStyles(document, win.document);
+        copyDocumentStyles(document, win.document);
       }
       if (!portalContainer && win.document) {
         const existingRoot = win.document.getElementById('agreement-board-root');
@@ -304,6 +502,14 @@ export default function AgreementBoardWindow({
     const entries = Array.isArray(dutyRegions) ? dutyRegions : [];
     return new Set(entries.map((entry) => normalizeRegion(entry)).filter(Boolean));
   }, [dutyRegions]);
+
+  const boardDetails = React.useMemo(() => ({
+    noticeNo,
+    noticeTitle,
+    industryLabel,
+    baseAmount: baseAmount ? formatAmount(baseAmount) : '',
+    estimatedAmount: estimatedAmount ? formatAmount(estimatedAmount) : '',
+  }), [noticeNo, noticeTitle, industryLabel, baseAmount, estimatedAmount]);
 
   const pinnedSet = React.useMemo(() => new Set(pinned || []), [pinned]);
   const excludedSet = React.useMemo(() => new Set(excluded || []), [excluded]);
@@ -488,24 +694,29 @@ export default function AgreementBoardWindow({
       }
       map.set(entry.uid, { ...entry, candidate: mergedCandidate });
     });
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        window.__agreementBoard = {
+          participantMap: map,
+        };
+      } catch (err) {
+        /* ignore */
+      }
+    }
     return map;
   }, [representativeEntries, regionEntries]);
 
   const buildInitialAssignments = React.useCallback(() => {
-    const assignableIds = representativeEntries.filter((entry) => !entry.pinned).map((entry) => entry.uid);
-    const groupCount = Math.max(MIN_GROUPS, Math.ceil(representativeEntries.length / safeGroupSize));
+    const baseCount = representativeEntries.length > 0
+      ? Math.ceil(representativeEntries.length / safeGroupSize)
+      : 1;
+    const groupCount = Math.max(MIN_GROUPS, baseCount);
     const result = [];
-    let cursor = 0;
     for (let g = 0; g < groupCount; g += 1) {
-      const group = [];
-      for (let s = 0; s < safeGroupSize; s += 1) {
-        group.push(cursor < assignableIds.length ? assignableIds[cursor] : null);
-        cursor += 1;
-      }
-      result.push(group);
+      result.push(Array(safeGroupSize).fill(null));
     }
     return result;
-  }, [representativeEntries, safeGroupSize]);
+  }, [representativeEntries.length, safeGroupSize]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -525,17 +736,6 @@ export default function AgreementBoardWindow({
       const cleaned = trimmed.map((group) => group.map((id) => (id && validIds.has(id) ? id : null)));
       const used = new Set();
       cleaned.forEach((group) => group.forEach((id) => { if (id) used.add(id); }));
-      const remainingReps = representativeEntries
-        .filter((entry) => !entry.pinned)
-        .map((entry) => entry.uid)
-        .filter((id) => !used.has(id));
-      for (let g = 0; g < cleaned.length; g += 1) {
-        for (let s = 0; s < cleaned[g].length; s += 1) {
-          if (cleaned[g][s] === null && remainingReps.length > 0) {
-            cleaned[g][s] = remainingReps.shift();
-          }
-        }
-      }
       return cleaned;
     });
   }, [open, representativeEntries, regionEntries, safeGroupSize, buildInitialAssignments]);
@@ -584,6 +784,380 @@ export default function AgreementBoardWindow({
       return nextShares;
     });
   }, [groupAssignments]);
+
+  React.useEffect(() => {
+    if (!open) {
+      setGroupSummaries([]);
+      return;
+    }
+
+    const baseValue = parseAmountValue(baseAmount);
+    const estimatedValue = parseAmountValue(estimatedAmount);
+    const perfBase = (estimatedValue != null && estimatedValue > 0)
+      ? estimatedValue
+      : (baseValue != null && baseValue > 0 ? baseValue : null);
+    const evaluationAmount = (estimatedValue != null && estimatedValue > 0)
+      ? estimatedValue
+      : (baseValue != null && baseValue > 0 ? baseValue : null);
+    const ownerKey = String(ownerId || 'lh').toLowerCase();
+    const performanceBaseReady = perfBase != null && perfBase > 0;
+
+    const metrics = groupAssignments.map((memberIds, groupIndex) => {
+      const members = memberIds.map((uid, slotIndex) => {
+        if (!uid) return null;
+        const entry = participantMap.get(uid);
+        if (!entry || !entry.candidate) return null;
+        const candidate = entry.candidate;
+        const sharePercent = getSharePercent(groupIndex, slotIndex, candidate);
+        const managementScore = getCandidateManagementScore(candidate);
+        const performanceAmount = getCandidatePerformanceAmount(candidate);
+        return {
+          sharePercent,
+          managementScore,
+          performanceAmount,
+        };
+      }).filter(Boolean);
+
+      const shareSum = members.reduce((sum, member) => {
+        const shareValue = Number(member.sharePercent);
+        return Number.isFinite(shareValue) ? sum + shareValue : sum;
+      }, 0);
+      const missingShares = members.some((member) => member.sharePercent == null || Number.isNaN(Number(member.sharePercent)));
+      const shareValid = shareSum > 0 && !missingShares;
+      const shareComplete = shareValid && Math.abs(shareSum - 100) < 0.01;
+      const normalizedMembers = shareValid
+        ? members.map((member) => ({
+          ...member,
+          weight: member.sharePercent > 0 ? (member.sharePercent / shareSum) : 0,
+        }))
+        : members.map((member) => ({ ...member, weight: 0 }));
+
+      const managementMissing = normalizedMembers.some((member) => member.managementScore == null);
+      const performanceMissing = normalizedMembers.some((member) => member.performanceAmount == null);
+
+      const aggregatedManagement = (!managementMissing && shareComplete)
+        ? normalizedMembers.reduce((acc, member) => acc + (member.managementScore || 0) * member.weight, 0)
+        : null;
+
+      const aggregatedPerformanceAmount = (!performanceMissing && shareComplete)
+        ? normalizedMembers.reduce((acc, member) => acc + (member.performanceAmount || 0) * member.weight, 0)
+        : null;
+
+      return {
+        groupIndex,
+        memberCount: members.length,
+        shareSum,
+        shareValid,
+        shareComplete,
+        missingShares,
+        managementScore: aggregatedManagement,
+        managementMissing,
+        performanceAmount: aggregatedPerformanceAmount,
+        performanceMissing,
+      };
+    });
+
+    let canceled = false;
+
+    const evaluatePerformanceScore = async (perfAmount) => {
+      if (!performanceBaseReady || perfAmount == null) return null;
+      const payload = {
+        agencyId: ownerKey,
+        amount: evaluationAmount != null ? evaluationAmount : (perfBase != null ? perfBase : 0),
+        inputs: {
+          perf5y: perfAmount,
+          baseAmount: perfBase,
+        },
+      };
+      if (typeof window !== 'undefined' && window.electronAPI?.formulasEvaluate) {
+        try {
+          const response = await window.electronAPI.formulasEvaluate(payload);
+          if (response?.success && response.data?.performance) {
+            const { score, capped, raw } = response.data.performance;
+            const numericCandidates = [score, capped, raw]
+              .map((value) => toNumber(value))
+              .filter((value) => value !== null);
+            if (numericCandidates.length > 0) {
+              const resolved = clampScore(Math.max(...numericCandidates), PERFORMANCE_DEFAULT_MAX);
+              if (resolved != null) return resolved;
+            }
+          }
+        } catch (err) {
+          console.warn('[AgreementBoard] performance evaluate failed:', err?.message || err);
+        }
+      }
+
+      if (!performanceBaseReady || perfBase <= 0) return null;
+      const ratio = perfAmount / perfBase;
+      if (!Number.isFinite(ratio)) return null;
+      const fallback = ratio * PERFORMANCE_DEFAULT_MAX;
+      return clampScore(fallback, PERFORMANCE_DEFAULT_MAX);
+    };
+
+    const run = async () => {
+      const results = await Promise.all(metrics.map(async (metric) => {
+        const shareReady = metric.memberCount > 0 && metric.shareComplete;
+        const managementScore = shareReady && !metric.managementMissing
+          ? clampScore(metric.managementScore)
+          : null;
+
+        let performanceScore = null;
+        let performanceRatio = null;
+
+        if (shareReady && !metric.performanceMissing && metric.performanceAmount != null && performanceBaseReady) {
+          performanceScore = await evaluatePerformanceScore(metric.performanceAmount);
+          if (perfBase && perfBase > 0) {
+            performanceRatio = metric.performanceAmount / perfBase;
+          }
+        }
+
+        const totalScore = (managementScore != null && performanceScore != null)
+          ? managementScore + performanceScore + BID_SCORE
+          : null;
+
+        return {
+          ...metric,
+          shareReady,
+          shareComplete: metric.shareComplete,
+          managementScore,
+          managementMissing: metric.managementMissing,
+          performanceScore,
+          performanceMissing: metric.performanceMissing,
+          performanceRatio,
+          performanceBase: perfBase,
+          performanceBaseReady,
+          totalScore,
+          bidScore: metric.memberCount > 0 ? BID_SCORE : null,
+        };
+      }));
+      if (!canceled) setGroupSummaries(results);
+    };
+
+    run();
+
+    return () => {
+      canceled = true;
+    };
+  }, [open, groupAssignments, groupShares, participantMap, ownerId, estimatedAmount, baseAmount, getSharePercent, candidateMetricsVersion]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const evalApi = typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null;
+    const baseValue = parseAmountValue(baseAmount);
+    const estimatedValue = parseAmountValue(estimatedAmount);
+    const perfBase = (estimatedValue != null && estimatedValue > 0)
+      ? estimatedValue
+      : (baseValue != null && baseValue > 0 ? baseValue : null);
+    const evaluationAmount = (estimatedValue != null && estimatedValue > 0)
+      ? estimatedValue
+      : (baseValue != null && baseValue > 0 ? baseValue : null);
+    const ownerKey = String(ownerId || 'lh').toLowerCase();
+    const performanceBaseReady = perfBase != null && perfBase > 0;
+
+    const entries = Array.from(participantMap.values()).map((entry) => entry?.candidate).filter(Boolean);
+    if (entries.length === 0) return;
+
+    if (process.env.NODE_ENV !== 'production') {
+      const sample = entries.slice(0, 5).map((candidate) => ({
+        name: getCompanyName(candidate),
+        debtRatio: getCandidateNumericValue(candidate, ['debtRatio', '부채비율']),
+        currentRatio: getCandidateNumericValue(candidate, ['currentRatio', '유동비율']),
+        credit: extractCreditGrade(candidate),
+        perf5y: getCandidatePerformanceAmount(candidate),
+        managementScore: candidate.managementTotalScore ?? candidate.managementScore ?? candidate._agreementManagementScore ?? null,
+      }));
+      console.debug('[AgreementBoard] candidate sample', sample);
+    }
+
+    const hasManagementValues = entries.some((candidate) => {
+      if (!candidate || typeof candidate !== 'object') return false;
+      if (
+        candidate.managementScore != null || candidate._managementScore != null
+        || candidate.managementTotalScore != null || candidate.totalManagementScore != null
+        || candidate.managementScoreTotal != null
+        || candidate.debtScore != null || candidate.currentScore != null
+        || candidate.debtRatio != null || candidate.currentRatio != null
+        || candidate['부채비율'] != null || candidate['유동비율'] != null
+        || candidate.snapshot?.['부채비율'] != null || candidate.snapshot?.['유동비율'] != null
+        || candidate.debtRatioScore != null || candidate.currentRatioScore != null
+        || candidate['부채점수'] != null || candidate['유동점수'] != null
+        || candidate['경영점수'] != null || candidate['경영평가점수'] != null
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    const hasPerfValues = entries.some((candidate) => {
+      if (!candidate || typeof candidate !== 'object') return false;
+      if (
+        candidate._performance5y != null || candidate.performance5y != null
+        || candidate.perf5y != null || candidate.performanceTotal != null
+        || candidate['5년 실적'] != null || candidate['5년실적'] != null
+        || candidate['최근5년실적'] != null || candidate['5년실적금액'] != null
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    if (!hasManagementValues && !hasPerfValues) {
+      console.warn('[AgreementBoard] 후보 데이터에 경영/실적 점수 관련 값이 없습니다. main.js 후보 산출 로직을 확인하세요.');
+      return;
+    }
+
+    let canceled = false;
+
+    const normalizeCandidateKey = (candidate) => {
+      if (!candidate || typeof candidate !== 'object') return '';
+      if (candidate.id) return String(candidate.id);
+      const biz = normalizeBizNo(getBizNo(candidate));
+      if (biz) return `biz:${biz}`;
+      const name = getCompanyName(candidate);
+      return name ? `name:${name}` : '';
+    };
+
+    const resolveCandidateScores = async () => {
+      let updated = 0;
+
+      for (const candidate of entries) {
+        if (canceled || !candidate || typeof candidate !== 'object') continue;
+
+        const currentManagement = getCandidateManagementScore(candidate);
+        const currentPerformanceScore = candidate._agreementPerformanceScore != null
+          ? clampScore(candidate._agreementPerformanceScore, PERFORMANCE_DEFAULT_MAX)
+          : null;
+        const performanceAmount = getCandidatePerformanceAmount(candidate);
+        const needsManagement = currentManagement == null;
+        const needsPerformanceScore = performanceAmount != null && performanceAmount > 0
+          && performanceBaseReady && currentPerformanceScore == null;
+
+        if (!needsManagement && !needsPerformanceScore) continue;
+
+        const candidateKey = normalizeCandidateKey(candidate);
+        if (!candidateKey) continue;
+        const cacheKey = `${ownerKey}|${evaluationAmount || ''}|${perfBase || ''}|${candidateKey}`;
+        const cacheEntry = candidateScoreCacheRef.current.get(cacheKey);
+        if (cacheEntry === 'pending') continue;
+        if (cacheEntry === 'done' && !needsManagement && !needsPerformanceScore) continue;
+        candidateScoreCacheRef.current.set(cacheKey, 'pending');
+
+        const debtRatio = getCandidateNumericValue(
+          candidate,
+          ['debtRatio', '부채비율', '부채율', '부채비율(%)'],
+          [['부채', 'debt']]
+        );
+        const currentRatio = getCandidateNumericValue(
+          candidate,
+          ['currentRatio', '유동비율', '유동자산비율', '유동비율(%)'],
+          [['유동', 'current']]
+        );
+        const bizYears = getCandidateNumericValue(
+          candidate,
+          ['bizYears', '영업기간', '설립연수', '업력'],
+          [['영업기간', '업력', 'bizyears']]
+        );
+        const qualityEval = getCandidateNumericValue(
+          candidate,
+          ['qualityEval', '품질평가', '품질점수'],
+          [['품질', 'quality']]
+        );
+        const creditGrade = extractCreditGrade(candidate);
+        const candidatePerfAmount = performanceAmount;
+
+        let resolvedManagement = currentManagement;
+        let resolvedPerformanceScore = currentPerformanceScore;
+
+        const payload = {
+          agencyId: ownerKey,
+          amount: Number.isFinite(evaluationAmount) && evaluationAmount > 0
+            ? evaluationAmount
+            : (Number.isFinite(perfBase) && perfBase > 0 ? perfBase : 0),
+          inputs: {
+            debtRatio,
+            currentRatio,
+            bizYears,
+            qualityEval,
+            perf5y: candidatePerfAmount,
+            baseAmount: perfBase,
+            creditGrade,
+          },
+        };
+
+        if (!Number.isFinite(payload.inputs.debtRatio)) delete payload.inputs.debtRatio;
+        if (!Number.isFinite(payload.inputs.currentRatio)) delete payload.inputs.currentRatio;
+        if (!Number.isFinite(payload.inputs.bizYears)) delete payload.inputs.bizYears;
+        if (!Number.isFinite(payload.inputs.qualityEval)) delete payload.inputs.qualityEval;
+        if (!Number.isFinite(payload.inputs.perf5y)) delete payload.inputs.perf5y;
+        if (!Number.isFinite(payload.inputs.baseAmount)) delete payload.inputs.baseAmount;
+        if (!payload.inputs.creditGrade) delete payload.inputs.creditGrade;
+
+        try {
+          if (evalApi) {
+            const response = await evalApi(payload);
+            if (canceled) {
+              candidateScoreCacheRef.current.delete(cacheKey);
+              return;
+            }
+            if (response?.success && response.data) {
+              const { management, performance } = response.data;
+              if (needsManagement && management && management.score != null) {
+                const mgmtScore = clampScore(management.score);
+                if (mgmtScore != null) {
+                  candidate._agreementManagementScore = mgmtScore;
+                  resolvedManagement = mgmtScore;
+                }
+              }
+              if (needsPerformanceScore && performance && performance.score != null) {
+                const perfScore = clampScore(performance.score, PERFORMANCE_DEFAULT_MAX);
+                if (perfScore != null) {
+                  candidate._agreementPerformanceScore = perfScore;
+                  resolvedPerformanceScore = perfScore;
+                }
+              }
+            } else if (!response?.success) {
+              console.warn('[AgreementBoard] formulasEvaluate failed:', response?.message);
+            } else if (process.env.NODE_ENV !== 'production') {
+              console.debug('[AgreementBoard] formulasEvaluate returned no data', getCompanyName(candidate), response);
+            }
+          } else if (needsPerformanceScore && performanceAmount != null && performanceBaseReady) {
+            const ratio = performanceAmount / perfBase;
+            if (Number.isFinite(ratio)) {
+              const fallbackScore = clampScore(ratio * PERFORMANCE_DEFAULT_MAX, PERFORMANCE_DEFAULT_MAX);
+              if (fallbackScore != null) {
+                candidate._agreementPerformanceScore = fallbackScore;
+                resolvedPerformanceScore = fallbackScore;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('[AgreementBoard] candidate score evaluate failed:', err?.message || err);
+        } finally {
+          candidateScoreCacheRef.current.set(cacheKey, 'done');
+        }
+
+        if ((needsManagement && resolvedManagement != null) || (needsPerformanceScore && resolvedPerformanceScore != null)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.debug('[AgreementBoard] candidate score updated', getCompanyName(candidate), {
+              management: resolvedManagement,
+              performance: resolvedPerformanceScore,
+            });
+          }
+          updated += 1;
+        }
+      }
+
+      if (!canceled && updated > 0) {
+        setCandidateMetricsVersion((prev) => prev + 1);
+      }
+    };
+
+    resolveCandidateScores();
+
+    return () => {
+      canceled = true;
+    };
+  }, [open, participantMap, ownerId, baseAmount, estimatedAmount]);
 
   const handleDragStart = (id) => (event) => {
     if (!id) return;
@@ -666,13 +1240,22 @@ export default function AgreementBoardWindow({
     });
   };
 
+  const summaryByGroup = React.useMemo(() => {
+    const map = new Map();
+    groupSummaries.forEach((entry) => {
+      map.set(entry.groupIndex, entry);
+    });
+    return map;
+  }, [groupSummaries]);
+
   const groups = React.useMemo(() => (
     groupAssignments.map((group, index) => ({
       id: index + 1,
       memberIds: group,
       members: group.map((uid) => (uid ? participantMap.get(uid) || null : null)),
+      summary: summaryByGroup.get(index) || null,
     }))
-  ), [groupAssignments, participantMap]);
+  ), [groupAssignments, participantMap, summaryByGroup, candidateMetricsVersion]);
 
   const renderMemberCard = (entry, slotIndex, groupIndex) => {
     const slotActive = dropTarget && dropTarget.groupIndex === groupIndex && dropTarget.slotIndex === slotIndex;
@@ -685,6 +1268,9 @@ export default function AgreementBoardWindow({
           onDragEnter={handleDragOver(groupIndex, slotIndex)}
           onDragLeave={handleDragLeave(groupIndex, slotIndex)}
           onDrop={handleDropFromEvent(groupIndex, slotIndex)}
+          onDragOverCapture={handleDragOver(groupIndex, slotIndex)}
+          onDragEnterCapture={handleDragOver(groupIndex, slotIndex)}
+          onDropCapture={handleDropFromEvent(groupIndex, slotIndex)}
         >
           <div className="member-empty">대표사/지역사를 끌어다 놓으세요</div>
         </div>
@@ -693,15 +1279,11 @@ export default function AgreementBoardWindow({
 
     const { uid, candidate, type } = entry;
     const matchesDutyRegion = isDutyRegionCompany(candidate);
-    const shareSource = candidate._share ?? extractAmountValue(
-      candidate,
-      ['_pct', 'candidateShare', 'share', '지분', '기본지분'],
-      [['지분', 'share', '비율']]
-    );
-    const shareParsed = toNumber(shareSource);
-    const loadedShare = shareParsed !== null ? String(shareParsed) : '';
+    const sharePercent = getSharePercent(groupIndex, slotIndex, candidate);
     const storedShare = groupShares[groupIndex]?.[slotIndex];
-    const shareValue = storedShare === undefined ? loadedShare : storedShare;
+    const shareValue = storedShare !== undefined ? storedShare : (sharePercent != null ? String(sharePercent) : '');
+
+    const managementScoreForMember = getCandidateManagementScore(candidate);
 
     const sipyungRaw = candidate._sipyung ?? extractAmountValue(
       candidate,
@@ -721,7 +1303,9 @@ export default function AgreementBoardWindow({
 
     const sipyung = sipyungRaw ?? candidate.sipyung;
     const fiveYear = fiveYearRaw ?? candidate.performance5y;
-    const rating = ratingRaw ?? candidate.score;
+    const rating = managementScoreForMember != null
+      ? managementScoreForMember
+      : ((ratingRaw != null && ratingRaw !== '') ? ratingRaw : (candidate.score ?? candidate.totalScore ?? null));
 
     const classes = ['agreement-board-member', 'assigned'];
     if (matchesDutyRegion || type === 'region') classes.push('region');
@@ -750,6 +1334,9 @@ export default function AgreementBoardWindow({
         onDragOver={handleDragOver(groupIndex, slotIndex)}
         onDragLeave={handleDragLeave(groupIndex, slotIndex)}
         onDrop={handleDropFromEvent(groupIndex, slotIndex)}
+        onDragEnterCapture={handleDragOver(groupIndex, slotIndex)}
+        onDragOverCapture={handleDragOver(groupIndex, slotIndex)}
+        onDropCapture={handleDropFromEvent(groupIndex, slotIndex)}
       >
         <div className="member-tags">
           {tags.map((tag) => (
@@ -767,6 +1354,10 @@ export default function AgreementBoardWindow({
             value={shareValue}
             onChange={(e) => handleShareInput(groupIndex, slotIndex, e.target.value)}
             placeholder="지분을 입력하세요"
+            onDragOver={handleDragOver(groupIndex, slotIndex)}
+            onDragEnter={handleDragOver(groupIndex, slotIndex)}
+            onDragLeave={handleDragLeave(groupIndex, slotIndex)}
+            onDrop={handleDropFromEvent(groupIndex, slotIndex)}
           />
           {shareValue === '' && <span className="share-hint">지분을 입력하세요</span>}
         </div>
@@ -780,7 +1371,7 @@ export default function AgreementBoardWindow({
             <span className="stat-value">{formatAmount(fiveYear)}</span>
           </div>
           <div className="member-stat-row">
-            <span className="stat-label">점수</span>
+            <span className="stat-label">경영점수</span>
             <span className="stat-value">{formatScore(rating)}</span>
           </div>
         </div>
@@ -799,6 +1390,26 @@ export default function AgreementBoardWindow({
         if (extraClass) classes.push(extraClass);
         if (draggingId === entry.uid) classes.push('dragging');
         if (isDutyRegionCompany(entry.candidate) || entry.type === 'region') classes.push('region');
+        const perfValueRaw = entry.candidate?._performance5y ?? extractAmountValue(
+          entry.candidate,
+          ['_performance5y', 'performance5y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적'],
+          [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적']]
+        );
+        const perfDisplayRaw = perfValueRaw != null && perfValueRaw !== ''
+          ? formatAmount(perfValueRaw)
+          : null;
+        const perfDisplay = perfDisplayRaw && perfDisplayRaw !== '-' ? perfDisplayRaw : null;
+        const managementSidebarScore = getCandidateManagementScore(entry.candidate);
+        const baseScoreSource = managementSidebarScore != null
+          ? managementSidebarScore
+          : entry.candidate?.rating
+            ?? entry.candidate?.score
+            ?? entry.candidate?.managementTotalScore
+            ?? entry.candidate?.totalScore
+            ?? entry.candidate?._score;
+        const scoreDisplaySource = (baseScoreSource !== null && baseScoreSource !== undefined && baseScoreSource !== '')
+          ? baseScoreSource
+          : managementSidebarScore;
         return (
           <div
             key={entry.uid}
@@ -810,8 +1421,28 @@ export default function AgreementBoardWindow({
             <div className="name" title={getCompanyName(entry.candidate)}>{getCompanyName(entry.candidate)}</div>
             <div className="meta">
               <span>{getRegionLabel(entry.candidate)}</span>
-              <span className="score">{formatScore(entry.candidate.rating ?? entry.candidate.score)}</span>
+              <span className="score">{formatScore(scoreDisplaySource)}</span>
             </div>
+            {perfDisplay && (
+              <div className="meta secondary">
+                <span>5년 실적</span>
+                <span className="amount">{perfDisplay}</span>
+              </div>
+            )}
+            {entry.type === 'representative' && entry.candidate?.id && (
+              <div className="actions">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onRemoveRepresentative(entry.candidate.id);
+                  }}
+                >
+                  삭제
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
@@ -838,7 +1469,16 @@ export default function AgreementBoardWindow({
       <div className="agreement-board-root">
         <header className="agreement-board-header">
           <div className="header-text">
-            <h2>{title}</h2>
+            <div className="header-title-line">
+              <h2>{title}</h2>
+              <div className="agreement-board-header-meta">
+                <span><strong>공고명</strong> {boardDetails.noticeTitle || '-'}</span>
+                <span><strong>공고번호</strong> {boardDetails.noticeNo || '-'}</span>
+                <span><strong>공종</strong> {boardDetails.industryLabel || '-'}</span>
+                <span><strong>기초금액</strong> {boardDetails.baseAmount || '-'}</span>
+                <span><strong>추정금액</strong> {boardDetails.estimatedAmount || '-'}</span>
+              </div>
+            </div>
             <p>대표사 {summary.representativeTotal}명 · 확정 지역사 {summary.selectedRegions}명 · 협정 {summary.groups}개</p>
           </div>
           <div className="header-actions">
@@ -878,23 +1518,57 @@ export default function AgreementBoardWindow({
               </div>
             </div>
             <div className="board-groups">
-              {groups.map((group, groupIndex) => (
-                <section key={group.id} className="board-group-card">
-                  <header className="group-header">
-                    <div>
-                      <div className="group-title">협정 {group.id}</div>
-                      <div className="group-subtitle">대표사와 지역사를 드래그해서 배치하세요.</div>
+              {groups.map((group, groupIndex) => {
+                const summaryInfo = group.summary;
+                let scoreText = '총점 미계산';
+                let breakdownText = '';
+                let shareText = '';
+
+                if (!summaryInfo || summaryInfo.memberCount === 0) {
+                  scoreText = '업체를 배치하세요';
+                } else if (!summaryInfo.shareReady) {
+                  scoreText = '지분을 입력하세요';
+                  if (summaryInfo.shareSum != null) {
+                    shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
+                  }
+                } else if (summaryInfo.managementScore == null) {
+                  scoreText = '경영점수 데이터 확인';
+                  if (summaryInfo.shareSum != null) {
+                    shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
+                  }
+                } else if (summaryInfo.performanceScore == null) {
+                  scoreText = summaryInfo.performanceBaseReady ? '실적 데이터 확인' : '실적 기준 금액 확인 필요';
+                  if (summaryInfo.shareSum != null) {
+                    shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
+                  }
+                } else {
+                  scoreText = `총점 ${formatScore(summaryInfo.totalScore)}`;
+                  breakdownText = `경영 ${formatScore(summaryInfo.managementScore)} · 실적 ${formatScore(summaryInfo.performanceScore)} · 입찰 ${formatScore(summaryInfo.bidScore)}`;
+                  if (summaryInfo.shareSum != null) {
+                    shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
+                  }
+                }
+
+                return (
+                  <section key={group.id} className="board-group-card">
+                    <header className="group-header">
+                      <div>
+                        <div className="group-title">협정 {group.id}</div>
+                        <div className="group-subtitle">대표사와 지역사를 드래그해서 배치하세요.</div>
+                      </div>
+                      <div className="group-meta">
+                        <span className="tag-muted">{scoreText}</span>
+                        {breakdownText && <span className="tag-muted">{breakdownText}</span>}
+                        {shareText && <span className="tag-muted">{shareText}</span>}
+                        <button type="button" className="btn-sm btn-muted" disabled>세부 설정</button>
+                      </div>
+                    </header>
+                    <div className="group-body">
+                      {group.memberIds.map((uid, slotIndex) => renderMemberCard(uid ? participantMap.get(uid) : null, slotIndex, groupIndex))}
                     </div>
-                    <div className="group-meta">
-                      <span className="tag-muted">총점 미계산</span>
-                      <button type="button" className="btn-sm btn-muted" disabled>세부 설정</button>
-                    </div>
-                  </header>
-                  <div className="group-body">
-                    {group.memberIds.map((uid, slotIndex) => renderMemberCard(uid ? participantMap.get(uid) : null, slotIndex, groupIndex))}
-                  </div>
-                </section>
-              ))}
+                  </section>
+                );
+              })}
             </div>
           </main>
         </div>

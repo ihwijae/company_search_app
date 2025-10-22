@@ -4,6 +4,7 @@ const fs = require('fs');
 const chokidar = require('chokidar');
 const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
 const { evaluateScores } = require('./src/shared/evaluator.js');
+const { SearchLogic } = require('./searchLogic.js');
 const industryAverages = require('./src/shared/industryAverages.json');
 const os = require('os');
 const { execSync } = require('child_process');
@@ -714,8 +715,6 @@ try {
           const srcPath = FILE_PATHS[fileType];
           const runtimePath = toWSLPathIfNeeded(srcPath);
           if (runtimePath && fs.existsSync(runtimePath)) {
-            const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
-            const { SearchLogic } = require('./searchLogic.js');
             const { sanitizedPath } = sanitizeXlsx(runtimePath);
             const lg = new SearchLogic(sanitizedPath);
             await lg.load();
@@ -947,7 +946,21 @@ try {
       for (const c of data) {
         const name = norm(c['검색된 회사'] || c['회사명']);
         const bizNo = norm(c['사업자번호']);
-        const manager = norm(c['대표자'] || c['담당자명'] || '');
+        const managerFromNotes = (() => {
+          try {
+            const raw = c['비고'];
+            if (raw) {
+              const extracted = SearchLogic && typeof SearchLogic.extractManagerName === 'function'
+                ? SearchLogic.extractManagerName(raw)
+                : null;
+              return norm(extracted);
+            }
+          } catch (err) {
+            console.warn('[MAIN] manager extraction failed:', err?.message || err);
+          }
+          return '';
+        })();
+        const manager = norm(c['담당자명'] || managerFromNotes || '');
         const region = norm(c['대표지역'] || c['지역'] || '');
         const summaryStatus = norm(c['요약상태']);
         const dataStatus = (c && c['데이터상태']) || null;

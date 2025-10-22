@@ -101,10 +101,37 @@ function evalPerformance(inputs, rules) {
   const perf = rules.performance || {};
   const perf5y = toNumber(inputs.perf5y);
   const base = toNumber(inputs.baseAmount);
-  const raw = base > 0 ? (perf5y / base) * toNumber(perf.maxScore || 13) : 0;
-  const capped = Math.min(raw, toNumber(perf.maxScore || 13));
+  const maxScore = toNumber(perf.maxScore || 13);
+
+  const ratio = base > 0 ? (perf5y / base) : 0;
+
+  if (perf.mode === 'ratio-bands' && Array.isArray(perf.thresholds) && perf.thresholds.length > 0) {
+    const sorted = [...perf.thresholds]
+      .map((item) => ({
+        minRatio: typeof item.minRatio === 'number' ? item.minRatio : toNumber(item.minRatio),
+        score: typeof item.score === 'number' ? item.score : toNumber(item.score),
+      }))
+      .filter((item) => Number.isFinite(item.minRatio) && Number.isFinite(item.score))
+      .sort((a, b) => a.minRatio - b.minRatio);
+
+    let bandScore = null;
+    for (const band of sorted) {
+      if (ratio >= band.minRatio) {
+        bandScore = band.score;
+      } else {
+        break;
+      }
+    }
+    const usable = bandScore != null ? bandScore : 0;
+    const clamped = Math.min(usable, maxScore);
+    const score = applyRounding(clamped, perf.rounding);
+    return { score, raw: usable, capped: clamped, mode: 'ratio-bands', ratio };
+  }
+
+  const raw = base > 0 ? ratio * maxScore : 0;
+  const capped = Math.min(raw, maxScore);
   const score = applyRounding(capped, perf.rounding);
-  return { score, raw, capped };
+  return { score, raw, capped, mode: 'formula', ratio };
 }
 
 function pickTierByAmount(tiers = [], amount) {

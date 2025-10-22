@@ -65,6 +65,8 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   const [candidates, setCandidates] = React.useState([]);
   const [pinned, setPinned] = React.useState([]);
   const [excluded, setExcluded] = React.useState([]);
+  const prevIndustryRef = React.useRef(form.industry);
+  const prevDutyRegionsRef = React.useRef(dutyRegions);
 
   const toFileType = (industry) => {
     if (industry === '전기') return 'eung';
@@ -228,6 +230,47 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   const perfectPerformanceDisplay = formattedPerfectPerformanceAmount
     ? `${formattedPerfectPerformanceAmount}${perfectPerformanceBasis ? ` (${perfectPerformanceBasis})` : ''}`
     : '';
+
+  React.useEffect(() => {
+    const prevIndustry = prevIndustryRef.current;
+    const prevRegions = prevDutyRegionsRef.current || [];
+    const currentRegions = dutyRegions || [];
+    const industryChanged = prevIndustry !== form.industry;
+    const regionsChanged = (() => {
+      if (prevRegions.length !== currentRegions.length) return true;
+      for (let i = 0; i < currentRegions.length; i += 1) {
+        if (prevRegions[i] !== currentRegions[i]) return true;
+      }
+      return false;
+    })();
+
+    if ((industryChanged || regionsChanged) && (candidates.length > 0 || pinned.length > 0 || excluded.length > 0)) {
+      setCandidates([]);
+      setPinned([]);
+      setExcluded([]);
+      updateBoard({ candidates: [], pinned: [], excluded: [] });
+    }
+
+    prevIndustryRef.current = form.industry;
+    prevDutyRegionsRef.current = currentRegions.slice();
+  }, [form.industry, dutyRegions, candidates.length, pinned.length, excluded.length, updateBoard]);
+
+  React.useEffect(() => {
+    if (!boardState?.open) return;
+    const same = boardState.noticeNo === (form.noticeNo || '')
+      && boardState.noticeTitle === (form.title || '')
+      && boardState.industryLabel === (form.industry || '')
+      && boardState.baseAmount === (form.baseAmount || '')
+      && boardState.estimatedAmount === (form.estimatedPrice || '');
+    if (same) return;
+    updateBoard({
+      noticeNo: form.noticeNo || '',
+      noticeTitle: form.title || '',
+      industryLabel: form.industry || '',
+      baseAmount: form.baseAmount || '',
+      estimatedAmount: form.estimatedPrice || '',
+    });
+  }, [boardState?.open, boardState?.noticeNo, boardState?.noticeTitle, boardState?.industryLabel, boardState?.baseAmount, boardState?.estimatedAmount, form.noticeNo, form.title, form.industry, form.baseAmount, form.estimatedPrice, updateBoard]);
 
   const evalSingleBid = (company) => {
     if (!company) return;
@@ -418,6 +461,11 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         ownerId: (ownerId || 'LH').toUpperCase(),
                         fileType: currentFileType,
                         rangeId: menuKey,
+                        noticeNo: form.noticeNo || '',
+                        noticeTitle: form.title || '',
+                        industryLabel: form.industry || '',
+                        baseAmount: form.baseAmount || '',
+                        estimatedAmount: form.estimatedPrice || '',
                       });
                     }}
                   >
@@ -458,6 +506,9 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
         ownerId={ownerId}
         menuKey={menuKey}
         fileType={toFileType(form.industry)}
+        noticeNo={form.noticeNo}
+        noticeTitle={form.title}
+        industryLabel={form.industry}
         entryAmount={form.entryQualificationAmount || form.estimatedPrice}
         baseAmount={form.baseAmount}
         estimatedAmount={form.estimatedPrice}

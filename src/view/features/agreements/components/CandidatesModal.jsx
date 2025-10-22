@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Modal from '../../../../components/Modal';
+import { createPortal } from 'react-dom';
 import AmountInput from '../../../../components/AmountInput.jsx';
+import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
 
 const DATE_PATTERN = /(\d{2,4})[.\-/년\s]*(\d{1,2})[.\-/월\s]*(\d{1,2})/;
 
@@ -47,7 +48,84 @@ const getStatusClass = (statusText) => {
   return 'status-unknown';
 };
 
-export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey = '', fileType, entryAmount, baseAmount, estimatedAmount = '', perfectPerformanceAmount = 0, dutyRegions = [], ratioBaseAmount = '', defaultExcludeSingle = true, onApply }) {
+const industryToLabel = (type) => {
+  const normalized = String(type || '').toLowerCase();
+  if (normalized === 'eung' || normalized === '전기') return '전기';
+  if (normalized === 'tongsin' || normalized === '통신') return '통신';
+  if (normalized === 'sobang' || normalized === '소방') return '소방';
+  return normalized ? normalized.toUpperCase() : '';
+};
+
+const MANAGER_KEYS = [
+  '담당자명', '담당자', '담당자1', '담당자 1', '담당자2', '담당자 2', '담당자3', '담당자 3',
+  '담당자명1', '담당자명2', '담당자명3', '주담당자', '부담당자', '협력담당자', '업체담당자',
+  '현장담당자', '사무담당자', '담당', 'manager', 'managerName', 'manager_name',
+  'contactPerson', 'contact_person', 'contact',
+];
+const MANAGER_KEY_SET = new Set(MANAGER_KEYS.map((key) => key.replace(/\s+/g, '').toLowerCase()));
+
+const extractManagerNames = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return [];
+  const seen = new Set();
+  const names = [];
+
+  const addNameCandidate = (raw) => {
+    if (raw == null) return;
+    let token = String(raw).trim();
+    if (!token) return;
+    token = token.replace(/^[\[\(（【]([^\]\)）】]+)[\]\)】]?$/, '$1').trim();
+    token = token.replace(/(과장|팀장|차장|대리|사원|부장|대표|실장|소장|님)$/g, '').trim();
+    token = token.replace(/[0-9\-]+$/g, '').trim();
+    if (!/^[가-힣]{2,4}$/.test(token)) return;
+    const key = token.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    names.push(token);
+  };
+
+  const collectFromSource = (source) => {
+    if (!source || typeof source !== 'object') return;
+    Object.entries(source).forEach(([key, value]) => {
+      if (value == null || value === '') return;
+      const normalizedKey = key.replace(/\s+/g, '').toLowerCase();
+      if (MANAGER_KEY_SET.has(normalizedKey)) {
+        String(value).split(/[\n,/·•∙ㆍ;|\\]/).forEach((part) => addNameCandidate(part));
+        return;
+      }
+      if (/담당/.test(normalizedKey) || normalizedKey.includes('manager')) {
+        String(value).split(/[\n,/·•∙ㆍ;|\\]/).forEach((part) => addNameCandidate(part));
+        return;
+      }
+      if (normalizedKey === '비고') {
+        const text = String(value).replace(/\s+/g, ' ').trim();
+        if (!text) return;
+        const firstToken = text.split(/[ ,\/\|·•∙ㆍ;:\-]+/).filter(Boolean)[0] || '';
+        addNameCandidate(firstToken);
+        const patterns = [
+          /담당자?\s*[:：-]?\s*([가-힣]{2,4})/g,
+          /([가-힣]{2,4})\s*(과장|팀장|차장|대리|사원|부장|대표|실장|소장)/g,
+          /\b(?!확인서|등록증|증명서|평가|서류)([가-힣]{2,4})\b\s*(?:,|\/|\(|\d|$)/g,
+        ];
+        patterns.forEach((re) => {
+          let match;
+          while ((match = re.exec(text)) !== null) {
+            addNameCandidate(match[1]);
+          }
+        });
+      }
+    });
+  };
+
+  collectFromSource(candidate);
+  collectFromSource(candidate?.snapshot);
+
+  return names;
+};
+
+export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey = '', fileType, entryAmount, baseAmount, estimatedAmount = '', perfectPerformanceAmount = 0, dutyRegions = [], ratioBaseAmount = '', defaultExcludeSingle = true, noticeNo = '', noticeTitle = '', industryLabel = '', onApply }) {
+  const popupRef = useRef(null);
+  const [portalContainer, setPortalContainer] = useState(null);
+  const [applying, setApplying] = useState(false);
   const [params, setParams] = useState({ entryAmount: '', baseAmount: '', dutyRegions: [], ratioBase: '', minPct: '', maxPct: '', excludeSingleBidEligible: true, filterByRegion: true });
   const [loading, setLoading] = useState(false);
   const [list, setList] = useState([]);
@@ -66,8 +144,94 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
     return base;
   }, []);
 
+  const closeWindow = useCallback(() => {
+    const win = popupRef.current;
+    if (win && !win.closed) {
+      if (win.__candidatesCleanup) {
+        try { win.__candidatesCleanup(); } catch {}
+        delete win.__candidatesCleanup;
+      }
+      win.close();
+    }
+    popupRef.current = null;
+    setPortalContainer(null);
+  }, []);
+
+  const ensureWindow = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    if (popupRef.current && popupRef.current.closed) {
+      popupRef.current = null;
+      setPortalContainer(null);
+    }
+
+    if (!popupRef.current) {
+      const preferredWidth = Math.min(1620, Math.max(1100, window.innerWidth - 80));
+      const preferredHeight = Math.min(960, Math.max(720, window.innerHeight - 96));
+      const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
+      const dualScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
+      const left = Math.max(24, dualScreenLeft + Math.max(0, (window.innerWidth - preferredWidth) / 2));
+      const top = Math.max(24, dualScreenTop + Math.max(0, (window.innerHeight - preferredHeight) / 3));
+      const features = `width=${preferredWidth},height=${preferredHeight},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+      const child = window.open('', 'company-search-candidates', features);
+      if (!child) return;
+      popupRef.current = child;
+      child.document.title = '지역사 찾기';
+      child.document.body.style.margin = '0';
+      child.document.body.style.background = '#f3f4f6';
+      child.document.body.innerHTML = '';
+      const root = child.document.createElement('div');
+      root.id = 'candidates-window-root';
+      child.document.body.appendChild(root);
+      copyDocumentStyles(document, child.document);
+      setPortalContainer(root);
+      const handleBeforeUnload = () => {
+        popupRef.current = null;
+        setPortalContainer(null);
+        onClose?.();
+      };
+      child.addEventListener('beforeunload', handleBeforeUnload);
+      child.__candidatesCleanup = () => child.removeEventListener('beforeunload', handleBeforeUnload);
+    } else {
+      const win = popupRef.current;
+      if (win.document && win.document.readyState === 'complete') {
+        copyDocumentStyles(document, win.document);
+      }
+      if (!portalContainer && win.document) {
+        const existingRoot = win.document.getElementById('candidates-window-root');
+        if (existingRoot) setPortalContainer(existingRoot);
+      }
+      try { win.focus(); } catch {}
+    }
+  }, [onClose, portalContainer]);
+
   const isMoisUnder30 = ownerId === 'MOIS' && menuKey === 'mois-under30';
   const perfAmountValue = Number(perfectPerformanceAmount) > 0 ? String(perfectPerformanceAmount) : '';
+
+  useEffect(() => {
+    if (open) {
+      ensureWindow();
+    } else {
+      closeWindow();
+    }
+  }, [open, ensureWindow, closeWindow]);
+
+  useEffect(() => () => { closeWindow(); }, [closeWindow]);
+
+  useEffect(() => {
+    if (!open) return;
+    const win = popupRef.current;
+    if (!win || win.closed || !win.document) return;
+    try { win.document.title = '지역사 찾기'; } catch {}
+  }, [open]);
+
+const industryToLabel = (type) => {
+  const upper = String(type || '').toLowerCase();
+  if (upper === 'eung' || upper === '전기') return '전기';
+  if (upper === 'tongsin' || upper === '통신') return '통신';
+  if (upper === 'sobang' || upper === '소방') return '소방';
+  return upper ? upper.toUpperCase() : '';
+};
 
   const buildInitialParams = useCallback(() => {
     const initialBase = isMoisUnder30
@@ -93,6 +257,7 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
     const initial = buildInitialParams();
     setParams(initial);
     setList([]); setPinned(new Set()); setExcluded(new Set()); setError('');
+    setApplying(false);
     setOnlyLatest(false);
     didInitFetch.current = false; // allow auto fetch again for new inputs
   }, [open, initKey, buildInitialParams]);
@@ -132,6 +297,23 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
     const percent = n * 100;
     return `${percent.toFixed(1).replace(/\.0$/, '')}%`;
   };
+
+  const formatAmount = (value) => {
+    if (value === null || value === undefined) return '-';
+    const cleaned = String(value).replace(/[^0-9.\-]/g, '').trim();
+    if (!cleaned) return '-';
+    const num = Number(cleaned);
+    if (!Number.isFinite(num)) return '-';
+    try { return num.toLocaleString('ko-KR'); } catch { return String(num); }
+  };
+
+  const details = useMemo(() => ({
+    noticeNo,
+    title: noticeTitle,
+    industryLabel: industryLabel || industryToLabel(fileType),
+    baseAmount: formatAmount(baseAmount),
+    estimatedPrice: formatAmount(estimatedAmount),
+  }), [noticeNo, noticeTitle, industryLabel, fileType, baseAmount, estimatedAmount]);
 
   const isMaxScore = (score, maxScore) => {
     const scoreNum = Number(score);
@@ -346,12 +528,14 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
       return { ...c, summaryStatus };
     }).filter((c) => {
       if (excluded.has(c.id)) return false;
+      if (params.excludeSingleBidEligible && c.singleBidEligible && !c.wasAlwaysIncluded) return false;
       if (onlyLatest && !c.isLatest) return false;
+      if (params.filterByRegion && Array.isArray(params.dutyRegions) && params.dutyRegions.length > 0 && c.regionOk === false && !c.wasAlwaysIncluded) return false;
       if (min !== null && (c._pct === null || c._pct < min)) return false;
       if (max !== null && (c._pct === null || c._pct > max)) return false;
       return true;
     });
-  }, [computed, params.minPct, params.maxPct, excluded, onlyLatest]);
+  }, [computed, params.minPct, params.maxPct, params.excludeSingleBidEligible, params.filterByRegion, params.dutyRegions, excluded, onlyLatest]);
 
   const sorted = useMemo(() => {
     const arr = filtered.slice();
@@ -388,11 +572,58 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
 
   const summary = useMemo(() => ({ total: sorted.length, pinned: pinnedView.size, excluded: excluded.size }), [sorted, pinnedView, excluded]);
 
-  return (
-    <Modal open={open} onClose={onClose} onCancel={onClose} title="지역사 찾기" size="xl" maxWidth={1500} closeOnSave={false}
-           onSave={() => { if (onApply) onApply({ candidates: list, pinned: Array.from(pinned), excluded: Array.from(excluded) }); }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '320px minmax(0, 1fr)', gap: 16, padding: 8 }}>
-        <div className="panel" style={{ padding: 16, fontSize: 14 }}>
+  const handleClose = useCallback(() => {
+    onClose?.();
+  }, [onClose]);
+
+  const handleApply = useCallback(async () => {
+    if (!onApply) {
+      onClose?.();
+      return;
+    }
+    try {
+      setApplying(true);
+      const result = onApply({
+        candidates: list,
+        pinned: Array.from(pinned),
+        excluded: Array.from(excluded),
+      });
+      if (result && typeof result.then === 'function') {
+        await result;
+      }
+    } catch (e) {
+      console.warn('Candidates apply failed:', e);
+    } finally {
+      setApplying(false);
+    }
+  }, [onApply, list, pinned, excluded, onClose]);
+
+  if (!open || !portalContainer) return null;
+
+  return createPortal(
+    <div className="candidates-window">
+      <header className="candidates-window__header">
+        <div className="candidates-window__header-details">
+          <div className="header-title-line">
+            <h2>지역사 찾기</h2>
+            <div className="candidates-window__header-meta">
+              <span><strong>공고명</strong> {details.title || '-'}</span>
+              <span><strong>공고번호</strong> {details.noticeNo || '-'}</span>
+              <span><strong>공종</strong> {details.industryLabel || '-'}</span>
+              <span><strong>기초금액</strong> {details.baseAmount || '-'}</span>
+              <span><strong>추정금액</strong> {details.estimatedPrice || '-'}</span>
+            </div>
+          </div>
+          <p>총 {summary.total}개 · 선택 {summary.pinned} · 제외 {summary.excluded}</p>
+          {loading && <span className="candidates-window__loading">검색 중…</span>}
+        </div>
+        <div className="candidates-window__header-actions">
+          <button className="primary" onClick={handleApply} disabled={applying}>{applying ? '적용 중…' : '선택 적용'}</button>
+          <button className="btn-muted" onClick={handleClose}>닫기</button>
+        </div>
+      </header>
+      <div className="candidates-window__content" style={{ display: 'grid', gridTemplateColumns: '260px minmax(0, 1fr)', gap: 16, padding: '14px 18px 18px' }}>
+        <div className="panel candidates-window__filters" style={{ padding: 12, fontSize: 14 }}>
           <div className="filter-item">
             <label>입찰참가자격금액</label>
             <AmountInput value={params.entryAmount} onChange={(v)=>setParams(p=>({ ...p, entryAmount: v }))} placeholder="숫자" />
@@ -441,30 +672,30 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
             {error && <div className="error-message" style={{ marginTop: 8 }}>{error}</div>}
           </div>
         </div>
-        <div className="panel" style={{ padding: 16, fontSize: 14, minWidth: 0 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 6 }}>
-            <div style={{ color: '#6b7280' }}>총 {summary.total}개 · 고정 {summary.pinned} · 제외 {summary.excluded}</div>
-            <div style={{ display:'flex', gap: 6, alignItems:'center' }}>
+        <div className="panel candidates-window__results" style={{ padding: 16, fontSize: 14, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ color: '#6b7280' }}>총 {summary.total}개 · 선택 {summary.pinned} · 제외 {summary.excluded}</div>
+            <div style={{ display:'flex', gap: 6, alignItems:'center', flexWrap: 'wrap' }}>
               <button className={`btn-sm ${sortDir==='desc'?'primary':'btn-soft'}`} onClick={()=>applySort('desc')}>지분 높은순</button>
               <button className={`btn-sm ${sortDir==='asc'?'primary':'btn-soft'}`} onClick={()=>applySort('asc')}>지분 낮은순</button>
-              <label style={{ display:'inline-flex', alignItems:'center', gap:6, marginLeft: 6 }}>
-                <input type="checkbox" checked={autoPin} onChange={(e)=>setAutoPin(!!e.target.checked)} /> 자동 고정 상위
+              <label style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                <input type="checkbox" checked={autoPin} onChange={(e)=>setAutoPin(!!e.target.checked)} /> 자동 선택 상위
               </label>
-              <input type="number" min={1} max={10} value={autoCount} onChange={(e)=>setAutoCount(e.target.value)} style={{ width: 60, height: 32, borderRadius: 8, border: '1px solid #d0d5dd', padding: '0 8px' }} />
+              <input type="number" min={1} max={10} value={autoCount} onChange={(e)=>setAutoCount(e.target.value)} style={{ width: 68, height: 32, borderRadius: 8, border: '1px solid #d0d5dd', padding: '0 8px' }} />
               <button className="btn-muted btn-sm" onClick={()=>{ setPinned(new Set()); setExcluded(new Set()); }}>선택 초기화</button>
             </div>
           </div>
-          <div style={{ maxHeight: 560, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, paddingBottom: 4 }}>
-            <table className="details-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+          <div style={{ flex: 1, minHeight: 0, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, paddingBottom: 4 }}>
+            <table className="details-table" style={{ width: '100%', minWidth: 920, tableLayout: 'auto' }}>
               <thead>
                 <tr>
                   <th style={{ width: '22%' }}>업체명</th>
-                  <th style={{ width: '10%' }}>대표자</th>
-                  <th style={{ width: '8%' }}>지역</th>
-                  <th style={{ width: '12%' }}>시평</th>
-                  <th style={{ width: '12%' }}>5년실적</th>
-                  <th style={{ width: '10%' }}>가능지분(%)</th>
-                  <th style={{ width: '26%', textAlign: 'left' }}>상태</th>
+                  <th style={{ width: '12%' }}>대표자</th>
+                  <th style={{ width: '9%' }}>지역</th>
+                  <th style={{ width: '13%' }}>시평</th>
+                  <th style={{ width: '13%' }}>5년실적</th>
+                  <th style={{ width: '11%' }}>가능지분(%)</th>
+                  <th style={{ width: '20%', textAlign: 'left' }}>상태</th>
                 </tr>
               </thead>
               <tbody>
@@ -533,15 +764,25 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
                   const singleBidBadgeStyle = singleBidAllowed
                     ? { background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }
                     : { background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' };
+                  const managerNames = extractManagerNames(c);
                   return (
                   <tr key={`${c.id}-${idx}`}>
                     <td>
                       <div className="company-cell">
-                        <span className="company-name-text">{c.name}</span>
+                        <div className="company-name-line">
+                          <span className="company-name-text">{c.name}</span>
+                        </div>
+                        {managerNames.length > 0 && (
+                          <div className="company-manager-badges">
+                            {managerNames.map((name) => (
+                              <span key={`${c.id}-${name}`} className="badge-person">{name}</span>
+                            ))}
+                          </div>
+                        )}
                         {(c.wasAlwaysIncluded || c.summaryStatus) && (
                           <div className="company-badges">
                             {c.wasAlwaysIncluded && (
-                              <span className="fixed-badge">고정</span>
+                              <span className="fixed-badge">선택</span>
                             )}
                             {c.summaryStatus && (
                               <span className={`summary-status-badge ${getStatusClass(c.summaryStatus)}`}>
@@ -563,18 +804,16 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
                         {c.moneyOk && <span className="pill">시평OK</span>}
                         {c.perfOk && <span className="pill">실적OK</span>}
                         {c.regionOk && <span className="pill">지역OK</span>}
-                        {isAuto && <span className="pill">자동고정</span>}
+                        {isAuto && <span className="pill">자동선택</span>}
                       </div>
                       {(c.debtScore != null || c.currentScore != null || c.creditScore != null) && (
                         <div className="score-details" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {c.debtScore != null && (
-                            <span style={{ color: isMaxScore(c.debtScore, debtMax) ? '#166534' : '#b91c1c', fontWeight: isMaxScore(c.debtScore, debtMax) ? 600 : 500 }}>
+                          {c.debtScore != null && (<span style={{ color: isMaxScore(c.debtScore, debtMax) ? '#166534' : '#b91c1c', fontWeight: isMaxScore(c.debtScore, debtMax) ? 600 : 500 }}>
                               부채 {formatRatio(c.debtRatio)}
                               {c.debtAgainstAverage != null && ` (평균 대비 ${formatPercent(c.debtAgainstAverage)})`}
                               {` → ${formatScore(c.debtScore)}점`}
                               {debtMax ? ` / ${formatScore(debtMax)}점` : ''}
-                            </span>
-                          )}
+                            </span>)}
                           {c.currentScore != null && (
                             <span style={{ color: isMaxScore(c.currentScore, currentMax) ? '#166534' : '#b91c1c', fontWeight: isMaxScore(c.currentScore, currentMax) ? 600 : 500 }}>
                               유동 {formatRatio(c.currentRatio)}
@@ -639,7 +878,7 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
                         </div>
                       )}
                       <div className="details-actions" style={{ marginTop: 6 }}>
-                        <button className={pinnedView.has(c.id) ? 'btn-sm primary' : 'btn-sm btn-soft'} onClick={()=>onTogglePin(c.id)} disabled={isAuto}>{pinnedView.has(c.id) ? (isAuto ? '고정(자동)' : '고정 해제') : '고정'}</button>
+                        <button className={pinnedView.has(c.id) ? 'btn-sm primary' : 'btn-sm btn-soft'} onClick={()=>onTogglePin(c.id)} disabled={isAuto}>{pinnedView.has(c.id) ? (isAuto ? '선택(자동)' : '선택 해제') : '선택'}</button>
                         <button className={excluded.has(c.id) ? 'btn-sm btn-danger' : 'btn-sm btn-muted'} onClick={()=>onToggleExclude(c.id)}>{excluded.has(c.id) ? '제외 해제' : '제외'}</button>
                       </div>
                     </td>
@@ -653,6 +892,7 @@ export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey
           </div>
         </div>
       </div>
-    </Modal>
+    </div>,
+    portalContainer,
   );
 }

@@ -105,6 +105,22 @@ button.primary:hover { background: var(--accent-2); }
 .details-table tbody td:first-child, .details-table thead th:first-child { padding-left: 10px; }
 .details-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; align-items: center; }
 .details-actions .btn-sm { height: 28px; padding: 4px 10px; }
+
+.candidates-window { background: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
+.candidates-window__header { background: #ffffff; border-bottom: 1px solid #e5e7eb; padding: 16px 20px 12px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.candidates-window__header h2 { margin: 0 0 4px; font-size: 20px; }
+.candidates-window__header p { margin: 0; color: #4b5563; font-size: 14px; }
+.candidates-window__header-details { display: flex; flex-direction: column; gap: 6px; }
+.header-title-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.candidates-window__header-meta { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 13px; color: #4b5563; }
+.candidates-window__header-meta span { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; line-height: 1.4; }
+.candidates-window__header-meta span strong { color: #1f2937; font-weight: 600; position: relative; }
+.candidates-window__header-meta span strong::after { content: ':'; margin-left: 2px; }
+.candidates-window__loading { display: block; color: #9ca3af; font-size: 12px; margin-top: 4px; }
+.candidates-window__header-actions { display: flex; gap: 8px; align-items: center; }
+.candidates-window__content { flex: 1; min-height: 0; overflow: hidden; }
+.candidates-window__filters { background: #ffffff; border-radius: 12px; }
+.candidates-window__results { background: #ffffff; border-radius: 12px; }
 .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #eef2ff; color: #3730a3; border: 1px solid #e0e7ff; }
 .status-pill { display: inline-flex; align-items: center; justify-content: center; height: 22px; border-radius: 999px; font-size: 11px; font-weight: 600; padding: 0 8px; }
 .status-latest { background: #dcfce7; color: #166534; }

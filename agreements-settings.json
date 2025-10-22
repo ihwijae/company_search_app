@@ -1,0 +1,1654 @@
+{
+  "version": 1,
+  "exportedAt": 1761107009061,
+  "rules": {
+    "version": 1,
+    "owners": [
+      {
+        "id": "LH",
+        "name": "한국토지주택공사",
+        "kinds": [
+          {
+            "id": "eung",
+            "rules": {
+              "excludeSingleBidEligible": true,
+              "alwaysInclude": [],
+              "alwaysExclude": [
+                {
+                  "bizNo": "",
+                  "name": "",
+                  "note": ""
+                }
+              ],
+              "pinCompanies": [],
+              "fixedJV": [],
+              "teamConstraints": {
+                "minSize": 2,
+                "maxSize": 4
+              },
+              "shareConstraints": {
+                "minPerMember": 0,
+                "maxPerMember": 100,
+                "shareStep": 1
+              },
+              "banPairs": [],
+              "banManagerPairs": [],
+              "banSameManager": false,
+              "regionDutyOverride": null
+            }
+          },
+          {
+            "id": "tongsin",
+            "rules": {
+              "excludeSingleBidEligible": true,
+              "alwaysInclude": [],
+              "alwaysExclude": [],
+              "pinCompanies": [],
+              "fixedJV": [],
+              "teamConstraints": {
+                "minSize": 2,
+                "maxSize": 4
+              },
+              "shareConstraints": {
+                "minPerMember": 0,
+                "maxPerMember": 100,
+                "shareStep": 1
+              },
+              "banPairs": [],
+              "banManagerPairs": [],
+              "banSameManager": false,
+              "regionDutyOverride": null
+            }
+          },
+          {
+            "id": "sobang",
+            "rules": {
+              "excludeSingleBidEligible": true,
+              "alwaysInclude": [],
+              "alwaysExclude": [
+                {
+                  "bizNo": "134-81-75195",
+                  "name": "㈜보원엔지니어링",
+                  "note": ""
+                }
+              ],
+              "pinCompanies": [],
+              "fixedJV": [],
+              "teamConstraints": {
+                "minSize": 2,
+                "maxSize": 4
+              },
+              "shareConstraints": {
+                "minPerMember": 0,
+                "maxPerMember": 100,
+                "shareStep": 1
+              },
+              "banPairs": [],
+              "banManagerPairs": [],
+              "banSameManager": false,
+              "regionDutyOverride": null
+            }
+          }
+        ],
+        "ranges": [
+          {
+            "id": "lh-under50",
+            "label": "50억 미만",
+            "kinds": [
+              {
+                "id": "eung",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [
+                    {
+                      "bizNo": "",
+                      "name": "",
+                      "note": "",
+                      "region": "",
+                      "snapshot": null
+                    }
+                  ],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              },
+              {
+                "id": "tongsin",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              },
+              {
+                "id": "sobang",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [
+                    {
+                      "bizNo": "134-81-75195",
+                      "name": "㈜보원엔지니어링",
+                      "note": "",
+                      "region": "",
+                      "snapshot": null
+                    }
+                  ],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              }
+            ]
+          },
+          {
+            "id": "lh-50to100",
+            "label": "50억~100억",
+            "kinds": [
+              {
+                "id": "eung",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              },
+              {
+                "id": "tongsin",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              },
+              {
+                "id": "sobang",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "MOIS",
+        "name": "행정안전부",
+        "kinds": [
+          {
+            "id": "eung",
+            "rules": {
+              "excludeSingleBidEligible": false,
+              "alwaysInclude": [
+                {
+                  "bizNo": "132-81-79967",
+                  "name": "지음이엔아이㈜",
+                  "note": ""
+                },
+                {
+                  "bizNo": "135-81-40632",
+                  "name": "㈜우진일렉트",
+                  "note": ""
+                },
+                {
+                  "bizNo": "119-86-35582",
+                  "name": "아람이엔테크㈜",
+                  "note": ""
+                }
+              ],
+              "alwaysExclude": [],
+              "pinCompanies": [],
+              "fixedJV": [],
+              "teamConstraints": {
+                "minSize": 2,
+                "maxSize": 4
+              },
+              "shareConstraints": {
+                "minPerMember": 0,
+                "maxPerMember": 100,
+                "shareStep": 1
+              },
+              "banPairs": [],
+              "banManagerPairs": [],
+              "banSameManager": false,
+              "regionDutyOverride": null
+            }
+          },
+          {
+            "id": "tongsin",
+            "rules": {
+              "excludeSingleBidEligible": true,
+              "alwaysInclude": [],
+              "alwaysExclude": [],
+              "pinCompanies": [],
+              "fixedJV": [],
+              "teamConstraints": {
+                "minSize": 2,
+                "maxSize": 4
+              },
+              "shareConstraints": {
+                "minPerMember": 0,
+                "maxPerMember": 100,
+                "shareStep": 1
+              },
+              "banPairs": [],
+              "banManagerPairs": [],
+              "banSameManager": false,
+              "regionDutyOverride": null
+            }
+          },
+          {
+            "id": "sobang",
+            "rules": {
+              "excludeSingleBidEligible": true,
+              "alwaysInclude": [],
+              "alwaysExclude": [],
+              "pinCompanies": [],
+              "fixedJV": [],
+              "teamConstraints": {
+                "minSize": 2,
+                "maxSize": 4
+              },
+              "shareConstraints": {
+                "minPerMember": 0,
+                "maxPerMember": 100,
+                "shareStep": 1
+              },
+              "banPairs": [],
+              "banManagerPairs": [],
+              "banSameManager": false,
+              "regionDutyOverride": null
+            }
+          }
+        ],
+        "ranges": [
+          {
+            "id": "mois-under30",
+            "label": "30억 미만",
+            "kinds": [
+              {
+                "id": "eung",
+                "rules": {
+                  "excludeSingleBidEligible": false,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              },
+              {
+                "id": "tongsin",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              },
+              {
+                "id": "sobang",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              }
+            ]
+          },
+          {
+            "id": "mois-30to50",
+            "label": "30억~50억",
+            "kinds": [
+              {
+                "id": "eung",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              },
+              {
+                "id": "tongsin",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              },
+              {
+                "id": "sobang",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              }
+            ]
+          },
+          {
+            "id": "mois-50to100",
+            "label": "50억~100억",
+            "kinds": [
+              {
+                "id": "eung",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              },
+              {
+                "id": "tongsin",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              },
+              {
+                "id": "sobang",
+                "rules": {
+                  "excludeSingleBidEligible": true,
+                  "alwaysInclude": [],
+                  "alwaysExclude": [],
+                  "pinCompanies": [],
+                  "fixedJV": [],
+                  "teamConstraints": {
+                    "minSize": 2,
+                    "maxSize": 4
+                  },
+                  "shareConstraints": {
+                    "minPerMember": 0,
+                    "maxPerMember": 100,
+                    "shareStep": 1
+                  },
+                  "banPairs": [],
+                  "banManagerPairs": [],
+                  "banSameManager": false,
+                  "regionDutyOverride": null
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "globalRules": {
+      "kinds": [
+        {
+          "id": "eung",
+          "rules": {
+            "excludeSingleBidEligible": true,
+            "alwaysInclude": [
+              {
+                "bizNo": "135-81-40632",
+                "name": "㈜우진일렉트",
+                "note": "",
+                "region": "경기",
+                "snapshot": {
+                  "검색된 회사": "㈜우진일렉트",
+                  "대표지역": "경기",
+                  "대표자": "박현식",
+                  "사업자번호": "135-81-40632",
+                  "지역": "경기도 성남시",
+                  "시평": 21707328000,
+                  "3년 실적": 28823589000,
+                  "5년 실적": 57539030000,
+                  "부채비율": 16.8,
+                  "유동비율": 495.04,
+                  "영업기간": "2005.05.19",
+                  "신용평가": "BBB-\n(25.06.27~26.06.26)",
+                  "여성기업": "",
+                  "고용자수": "",
+                  "일자리창출": "",
+                  "품질평가": "없음 (25.05.01)",
+                  "비고": "특6, 고4, 중1, 초3\n(23.08.01)",
+                  "데이터상태": {
+                    "대표자": "최신",
+                    "사업자번호": "최신",
+                    "지역": "최신",
+                    "시평": "최신",
+                    "3년 실적": "최신",
+                    "5년 실적": "최신",
+                    "부채비율": "최신",
+                    "유동비율": "최신",
+                    "영업기간": "최신",
+                    "신용평가": "최신",
+                    "여성기업": "최신",
+                    "고용자수": "최신",
+                    "일자리창출": "최신",
+                    "품질평가": "최신",
+                    "비고": "최신"
+                  },
+                  "요약상태": "최신"
+                }
+              }
+            ],
+            "alwaysExclude": [],
+            "pinCompanies": [],
+            "fixedJV": [],
+            "teamConstraints": {
+              "minSize": 2,
+              "maxSize": 4
+            },
+            "shareConstraints": {
+              "minPerMember": 0,
+              "maxPerMember": 100,
+              "shareStep": 1
+            },
+            "banPairs": [],
+            "banManagerPairs": [],
+            "banSameManager": false,
+            "regionDutyOverride": null
+          }
+        },
+        {
+          "id": "tongsin",
+          "rules": {
+            "excludeSingleBidEligible": true,
+            "alwaysInclude": [
+              {
+                "bizNo": "135-81-40632",
+                "name": "㈜우진일렉트",
+                "note": "",
+                "region": "경기",
+                "snapshot": {
+                  "검색된 회사": "㈜우진일렉트",
+                  "대표지역": "경기",
+                  "대표자": "박현식",
+                  "사업자번호": "135-81-40632",
+                  "지역": "경기도 성남시",
+                  "시평": 4220100000,
+                  "3년 실적": 7227024000,
+                  "5년 실적": 28147269000,
+                  "부채비율": 16.8,
+                  "유동비율": 495.02999999999986,
+                  "영업기간": "1995.08.10",
+                  "신용평가": "BBB-\n(25.06.27~26.06.26)",
+                  "여성기업": "",
+                  "고용자수": "",
+                  "일자리창출": "",
+                  "품질평가": "없음(25.05.01)",
+                  "비고": "고2, 중1, 초1, 기1\n(23.08.01)",
+                  "데이터상태": {
+                    "대표자": "최신",
+                    "사업자번호": "최신",
+                    "지역": "최신",
+                    "시평": "최신",
+                    "3년 실적": "최신",
+                    "5년 실적": "최신",
+                    "부채비율": "최신",
+                    "유동비율": "최신",
+                    "영업기간": "최신",
+                    "신용평가": "최신",
+                    "여성기업": "최신",
+                    "고용자수": "최신",
+                    "일자리창출": "최신",
+                    "품질평가": "최신",
+                    "비고": "최신"
+                  },
+                  "요약상태": "최신"
+                }
+              },
+              {
+                "bizNo": "127-81-95155",
+                "name": "㈜대흥디씨티",
+                "note": "",
+                "region": "경기",
+                "snapshot": {
+                  "검색된 회사": "㈜대흥디씨티",
+                  "대표지역": "경기",
+                  "대표자": "박준석",
+                  "사업자번호": "127-81-95155",
+                  "지역": "경기도 양평군",
+                  "시평": 4133500000,
+                  "3년 실적": 4195227000,
+                  "5년 실적": 13410300000,
+                  "부채비율": 15.010000000000002,
+                  "유동비율": 450.34999999999997,
+                  "영업기간": "2003.03.04",
+                  "신용평가": "BBB-\n(25.05.09~26.05.08)",
+                  "여성기업": "",
+                  "고용자수": "",
+                  "일자리창출": "O",
+                  "품질평가": "없음 (25.05.01)",
+                  "비고": "고1,중3, 초1 (23.08.01)",
+                  "데이터상태": {
+                    "대표자": "최신",
+                    "사업자번호": "최신",
+                    "지역": "최신",
+                    "시평": "최신",
+                    "3년 실적": "최신",
+                    "5년 실적": "최신",
+                    "부채비율": "최신",
+                    "유동비율": "최신",
+                    "영업기간": "최신",
+                    "신용평가": "최신",
+                    "여성기업": "최신",
+                    "고용자수": "최신",
+                    "일자리창출": "최신",
+                    "품질평가": "최신",
+                    "비고": "최신"
+                  },
+                  "요약상태": "최신"
+                }
+              }
+            ],
+            "alwaysExclude": [],
+            "pinCompanies": [],
+            "fixedJV": [],
+            "teamConstraints": {
+              "minSize": 2,
+              "maxSize": 4
+            },
+            "shareConstraints": {
+              "minPerMember": 0,
+              "maxPerMember": 100,
+              "shareStep": 1
+            },
+            "banPairs": [],
+            "banManagerPairs": [],
+            "banSameManager": false,
+            "regionDutyOverride": null
+          }
+        },
+        {
+          "id": "sobang",
+          "rules": {
+            "excludeSingleBidEligible": true,
+            "alwaysInclude": [],
+            "alwaysExclude": [],
+            "pinCompanies": [],
+            "fixedJV": [],
+            "teamConstraints": {
+              "minSize": 2,
+              "maxSize": 4
+            },
+            "shareConstraints": {
+              "minPerMember": 0,
+              "maxPerMember": 100,
+              "shareStep": 1
+            },
+            "banPairs": [],
+            "banManagerPairs": [],
+            "banSameManager": false,
+            "regionDutyOverride": null
+          }
+        }
+      ]
+    },
+    "regions": [
+      {
+        "id": "경기",
+        "label": "경기",
+        "kinds": [
+          {
+            "id": "eung",
+            "rules": {
+              "excludeSingleBidEligible": true,
+              "alwaysInclude": [],
+              "alwaysExclude": [],
+              "pinCompanies": [],
+              "fixedJV": [],
+              "teamConstraints": {
+                "minSize": 2,
+                "maxSize": 4
+              },
+              "shareConstraints": {
+                "minPerMember": 0,
+                "maxPerMember": 100,
+                "shareStep": 1
+              },
+              "banPairs": [],
+              "banManagerPairs": [],
+              "banSameManager": false,
+              "regionDutyOverride": null
+            }
+          },
+          {
+            "id": "tongsin",
+            "rules": {
+              "excludeSingleBidEligible": true,
+              "alwaysInclude": [
+                {
+                  "bizNo": "209-81-32016",
+                  "name": "㈜건양전기신호",
+                  "note": "",
+                  "region": "경기",
+                  "snapshot": {
+                    "검색된 회사": "㈜건양전기신호",
+                    "대표지역": "경기",
+                    "대표자": "홍순양",
+                    "사업자번호": "209-81-32016",
+                    "지역": "경기도 의정부시",
+                    "시평": 521200000,
+                    "3년 실적": 88283000,
+                    "5년 실적": 222246000,
+                    "부채비율": 52.04,
+                    "유동비율": 248.74999999999997,
+                    "영업기간": "2003.05.06",
+                    "신용평가": "BBB-\n(25.04.11~26.04.10)",
+                    "여성기업": "",
+                    "고용자수": "",
+                    "일자리창출": "",
+                    "품질평가": "",
+                    "비고": "허민선",
+                    "데이터상태": {
+                      "대표자": "최신",
+                      "사업자번호": "최신",
+                      "지역": "최신",
+                      "시평": "최신",
+                      "3년 실적": "최신",
+                      "5년 실적": "최신",
+                      "부채비율": "최신",
+                      "유동비율": "최신",
+                      "영업기간": "최신",
+                      "신용평가": "최신",
+                      "여성기업": "최신",
+                      "고용자수": "최신",
+                      "일자리창출": "최신",
+                      "품질평가": "최신",
+                      "비고": "최신"
+                    },
+                    "요약상태": "최신",
+                    "담당자명": "허민선"
+                  }
+                }
+              ],
+              "alwaysExclude": [],
+              "pinCompanies": [],
+              "fixedJV": [],
+              "teamConstraints": {
+                "minSize": 2,
+                "maxSize": 4
+              },
+              "shareConstraints": {
+                "minPerMember": 0,
+                "maxPerMember": 100,
+                "shareStep": 1
+              },
+              "banPairs": [],
+              "banManagerPairs": [],
+              "banSameManager": false,
+              "regionDutyOverride": null
+            }
+          },
+          {
+            "id": "sobang",
+            "rules": {
+              "excludeSingleBidEligible": true,
+              "alwaysInclude": [],
+              "alwaysExclude": [],
+              "pinCompanies": [],
+              "fixedJV": [],
+              "teamConstraints": {
+                "minSize": 2,
+                "maxSize": 4
+              },
+              "shareConstraints": {
+                "minPerMember": 0,
+                "maxPerMember": 100,
+                "shareStep": 1
+              },
+              "banPairs": [],
+              "banManagerPairs": [],
+              "banSameManager": false,
+              "regionDutyOverride": null
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "formulas": {
+    "version": 1,
+    "agencies": [
+      {
+        "id": "lh",
+        "tiers": [
+          {
+            "minAmount": 0,
+            "maxAmount": 5000000000,
+            "rules": {
+              "management": {
+                "methodSelection": "max",
+                "methods": [
+                  {
+                    "id": "composite",
+                    "label": "요소합산",
+                    "maxScore": 15,
+                    "components": {
+                      "debtRatio": {
+                        "against": "industryAverage",
+                        "scale": "lowerIsBetter",
+                        "thresholds": [
+                          {
+                            "lt": 0.5,
+                            "score": 11
+                          },
+                          {
+                            "lt": 0.75,
+                            "score": 6.2
+                          },
+                          {
+                            "lt": 1,
+                            "score": 5.4
+                          },
+                          {
+                            "lt": 1.25,
+                            "score": 4.6
+                          },
+                          {
+                            "gte": 1.25,
+                            "score": 3.8
+                          }
+                        ]
+                      },
+                      "currentRatio": {
+                        "against": "industryAverage",
+                        "scale": "higherIsBetter",
+                        "thresholds": [
+                          {
+                            "gte": 1.5,
+                            "score": 7
+                          },
+                          {
+                            "gte": 1.2,
+                            "score": 6.2
+                          },
+                          {
+                            "gte": 1,
+                            "score": 5.4
+                          },
+                          {
+                            "gte": 0.7,
+                            "score": 4.6
+                          },
+                          {
+                            "lt": 0.7,
+                            "score": 3.8
+                          }
+                        ]
+                      },
+                      "bizYears": {
+                        "scale": "higherIsBetter",
+                        "thresholds": [
+                          {
+                            "gteYears": 3,
+                            "score": 1
+                          },
+                          {
+                            "gteYears": 1,
+                            "score": 0.9
+                          },
+                          {
+                            "ltYears": 1,
+                            "score": 0.8
+                          }
+                        ]
+                      },
+                      "qualityEval": {
+                        "scale": "higherIsBetter",
+                        "thresholds": [
+                          {
+                            "gte": 88,
+                            "score": 3
+                          },
+                          {
+                            "gte": 85,
+                            "score": 2
+                          },
+                          {
+                            "gte": 83,
+                            "score": 1.5
+                          },
+                          {
+                            "gte": 80,
+                            "score": 1
+                          },
+                          {
+                            "lt": 80,
+                            "score": 0
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "id": "credit",
+                    "label": "신용등급환산",
+                    "maxScore": 15,
+                    "gradeTable": [
+                      {
+                        "grade": "AAA",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "AA+",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "AA0",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "AA-",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "A+",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "A0",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "A-",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BBB+",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BBB0",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BBB-",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BB+",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BB0",
+                        "base": 35,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BB-",
+                        "base": 34.5,
+                        "score": 14.786
+                      },
+                      {
+                        "grade": "B+",
+                        "base": 34,
+                        "score": 14.571
+                      },
+                      {
+                        "grade": "B0",
+                        "base": 34,
+                        "score": 14.571
+                      },
+                      {
+                        "grade": "B-",
+                        "base": 34,
+                        "score": 14.571
+                      },
+                      {
+                        "grade": "CCC+",
+                        "base": 30,
+                        "score": 12.857
+                      },
+                      {
+                        "grade": "CCC0",
+                        "base": 30,
+                        "score": 12.857
+                      },
+                      {
+                        "grade": "CCC-",
+                        "base": 30,
+                        "score": 12.857
+                      },
+                      {
+                        "grade": "CC",
+                        "base": 30,
+                        "score": 12.857
+                      },
+                      {
+                        "grade": "C",
+                        "base": 30,
+                        "score": 12.857
+                      },
+                      {
+                        "grade": "D",
+                        "base": 30,
+                        "score": 12.857
+                      }
+                    ],
+                    "note": "환산식 예: base * (15/35). 공고의 유효기간/기관 기준 충족자료만 인정"
+                  }
+                ],
+                "rounding": {
+                  "method": "truncate",
+                  "digits": 2
+                },
+                "industryAverage": {
+                  "source": "default",
+                  "override": null
+                }
+              },
+              "performance": {
+                "formula": "(perf5y / baseAmount) * 13",
+                "variables": [
+                  "perf5y",
+                  "baseAmount"
+                ],
+                "maxScore": 13,
+                "rounding": {
+                  "method": "truncate",
+                  "digits": 2
+                }
+              },
+              "notes": "LH 50억 미만 기본값(클린 버전 기준)",
+              "effectiveFrom": null,
+              "effectiveTo": null
+            }
+          }
+        ]
+      },
+      {
+        "id": "mois",
+        "tiers": [
+          {
+            "minAmount": 0,
+            "maxAmount": 3000000000,
+            "rules": {
+              "management": {
+                "methodSelection": "max",
+                "methods": [
+                  {
+                    "id": "composite",
+                    "label": "요소합산",
+                    "maxScore": 15,
+                    "components": {
+                      "debtRatio": {
+                        "against": "industryAverage",
+                        "scale": "lowerIsBetter",
+                        "thresholds": [
+                          {
+                            "lt": 0.5,
+                            "score": 8
+                          },
+                          {
+                            "lt": 0.75,
+                            "score": 7.2
+                          },
+                          {
+                            "lt": 1,
+                            "score": 6.4
+                          },
+                          {
+                            "lt": 1.25,
+                            "score": 5.6
+                          },
+                          {
+                            "gte": 1.25,
+                            "score": 4.8
+                          }
+                        ]
+                      },
+                      "currentRatio": {
+                        "against": "industryAverage",
+                        "scale": "higherIsBetter",
+                        "thresholds": [
+                          {
+                            "gte": 1.5,
+                            "score": 7
+                          },
+                          {
+                            "gte": 1.2,
+                            "score": 6.3
+                          },
+                          {
+                            "gte": 1,
+                            "score": 5.6
+                          },
+                          {
+                            "gte": 0.7,
+                            "score": 4.9
+                          },
+                          {
+                            "lt": 0.7,
+                            "score": 4.2
+                          }
+                        ]
+                      },
+                      "bizYears": {
+                        "scale": "higherIsBetter",
+                        "thresholds": []
+                      },
+                      "qualityEval": {
+                        "scale": "higherIsBetter",
+                        "thresholds": []
+                      }
+                    }
+                  },
+                  {
+                    "id": "credit",
+                    "label": "신용평가",
+                    "maxScore": 15,
+                    "gradeTable": [
+                      {
+                        "grade": "AAA",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "AA+",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "AA0",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "AA-",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "A+",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "A0",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "A-",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BBB+",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BBB0",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BBB-",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BB+",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BB0",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BB-",
+                        "base": 0,
+                        "score": 14
+                      },
+                      {
+                        "grade": "B+",
+                        "base": 0,
+                        "score": 13
+                      },
+                      {
+                        "grade": "B0",
+                        "base": 0,
+                        "score": 13
+                      },
+                      {
+                        "grade": "B-",
+                        "base": 0,
+                        "score": 13
+                      },
+                      {
+                        "grade": "CCC+",
+                        "base": 0,
+                        "score": 10
+                      },
+                      {
+                        "grade": "CCC0",
+                        "base": 0,
+                        "score": 10
+                      },
+                      {
+                        "grade": "CCC-",
+                        "base": 0,
+                        "score": 10
+                      },
+                      {
+                        "grade": "CC",
+                        "base": 0,
+                        "score": 10
+                      },
+                      {
+                        "grade": "C",
+                        "base": 0,
+                        "score": 10
+                      },
+                      {
+                        "grade": "D",
+                        "base": 0,
+                        "score": 10
+                      }
+                    ],
+                    "note": "행안부 신용평가 기본값"
+                  }
+                ],
+                "rounding": {
+                  "method": "truncate",
+                  "digits": 2
+                },
+                "industryAverage": {
+                  "source": "default",
+                  "override": null
+                }
+              },
+              "performance": {
+                "formula": "(perf5y / baseAmount) * 13",
+                "variables": [
+                  "perf5y",
+                  "baseAmount"
+                ],
+                "maxScore": 13,
+                "rounding": {
+                  "method": "truncate",
+                  "digits": 2
+                },
+                "mode": "ratio-bands",
+                "thresholds": [
+                  {
+                    "minRatio": 0.8,
+                    "score": 15
+                  },
+                  {
+                    "minRatio": 0.7,
+                    "score": 13
+                  },
+                  {
+                    "minRatio": 0.6,
+                    "score": 11
+                  },
+                  {
+                    "minRatio": 0.5,
+                    "score": 9
+                  },
+                  {
+                    "minRatio": 0.4,
+                    "score": 7
+                  },
+                  {
+                    "minRatio": 0.3,
+                    "score": 5
+                  },
+                  {
+                    "minRatio": 0.2,
+                    "score": 3
+                  }
+                ]
+              },
+              "notes": "행안부 30억 미만 기본값",
+              "effectiveFrom": null,
+              "effectiveTo": null
+            }
+          },
+          {
+            "minAmount": 3000000000,
+            "maxAmount": 5000000000,
+            "rules": {
+              "management": {
+                "methodSelection": "max",
+                "methods": [
+                  {
+                    "id": "composite",
+                    "label": "요소합산",
+                    "maxScore": 15,
+                    "components": {
+                      "debtRatio": {
+                        "against": "industryAverage",
+                        "scale": "lowerIsBetter",
+                        "thresholds": [
+                          {
+                            "lt": 0.5,
+                            "score": 7
+                          },
+                          {
+                            "lt": 0.75,
+                            "score": 6.3
+                          },
+                          {
+                            "lt": 1,
+                            "score": 5.6
+                          },
+                          {
+                            "lt": 1.25,
+                            "score": 4.9
+                          },
+                          {
+                            "gte": 1.25,
+                            "score": 4.2
+                          }
+                        ]
+                      },
+                      "currentRatio": {
+                        "against": "industryAverage",
+                        "scale": "higherIsBetter",
+                        "thresholds": [
+                          {
+                            "gte": 1.5,
+                            "score": 15
+                          },
+                          {
+                            "gte": 1.2,
+                            "score": 6.3
+                          },
+                          {
+                            "gte": 1,
+                            "score": 5.6
+                          },
+                          {
+                            "gte": 0.7,
+                            "score": 4.9
+                          },
+                          {
+                            "lt": 0.7,
+                            "score": 4.2
+                          }
+                        ]
+                      },
+                      "bizYears": {
+                        "scale": "higherIsBetter",
+                        "thresholds": [
+                          {
+                            "gteYears": 3,
+                            "score": 1
+                          },
+                          {
+                            "ltYears": 3,
+                            "score": 0.9
+                          }
+                        ]
+                      },
+                      "qualityEval": {
+                        "scale": "higherIsBetter",
+                        "thresholds": []
+                      }
+                    }
+                  },
+                  {
+                    "id": "credit",
+                    "label": "신용평가",
+                    "maxScore": 15,
+                    "gradeTable": [
+                      {
+                        "grade": "AAA",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "AA+",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "AA0",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "AA-",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "A+",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "A0",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "A-",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BBB+",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BBB0",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BBB-",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BB+",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BB0",
+                        "base": 0,
+                        "score": 15
+                      },
+                      {
+                        "grade": "BB-",
+                        "base": 0,
+                        "score": 14
+                      },
+                      {
+                        "grade": "B+",
+                        "base": 0,
+                        "score": 13
+                      },
+                      {
+                        "grade": "B0",
+                        "base": 0,
+                        "score": 13
+                      },
+                      {
+                        "grade": "B-",
+                        "base": 0,
+                        "score": 13
+                      },
+                      {
+                        "grade": "CCC+",
+                        "base": 0,
+                        "score": 10
+                      },
+                      {
+                        "grade": "CCC0",
+                        "base": 0,
+                        "score": 10
+                      },
+                      {
+                        "grade": "CCC-",
+                        "base": 0,
+                        "score": 10
+                      },
+                      {
+                        "grade": "CC",
+                        "base": 0,
+                        "score": 10
+                      },
+                      {
+                        "grade": "C",
+                        "base": 0,
+                        "score": 10
+                      },
+                      {
+                        "grade": "D",
+                        "base": 0,
+                        "score": 10
+                      }
+                    ],
+                    "note": "행안부 신용평가 기본값"
+                  }
+                ],
+                "rounding": {
+                  "method": "truncate",
+                  "digits": 2
+                },
+                "industryAverage": {
+                  "source": "default",
+                  "override": null
+                }
+              },
+              "performance": {
+                "formula": "(perf5y / baseAmount) * 13",
+                "variables": [
+                  "perf5y",
+                  "baseAmount"
+                ],
+                "maxScore": 13,
+                "rounding": {
+                  "method": "truncate",
+                  "digits": 2
+                }
+              },
+              "notes": "행안부 30억~50억 기본값 (임시)",
+              "effectiveFrom": null,
+              "effectiveTo": null
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

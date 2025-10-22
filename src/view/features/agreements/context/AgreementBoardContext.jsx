@@ -262,6 +262,27 @@ export function AgreementBoardProvider({ children }) {
     appendCandidates(normalized);
   }, [appendCandidates]);
 
+  const removeCandidate = React.useCallback((candidateId) => {
+    if (!candidateId) return;
+    setBoardState((prev) => {
+      const existing = Array.isArray(prev.candidates) ? prev.candidates : [];
+      const nextCandidates = existing.filter((item) => item && item.id !== candidateId);
+      if (nextCandidates.length === existing.length) return prev;
+      const nextPinned = Array.isArray(prev.pinned)
+        ? prev.pinned.filter((id) => id !== candidateId)
+        : prev.pinned;
+      const nextExcluded = Array.isArray(prev.excluded)
+        ? prev.excluded.filter((id) => id !== candidateId)
+        : prev.excluded;
+      return {
+        ...prev,
+        candidates: nextCandidates,
+        pinned: nextPinned,
+        excluded: nextExcluded,
+      };
+    });
+  }, []);
+
   const closeBoard = React.useCallback(() => {
     setBoardState((prev) => ({ ...prev, open: false }));
   }, []);
@@ -294,8 +315,9 @@ export function AgreementBoardProvider({ children }) {
     updateBoard,
     appendCandidates,
     appendCandidatesFromSearch,
+    removeCandidate,
     closeBoard,
-  }), [boardState, openBoard, updateBoard, appendCandidates, closeBoard]);
+  }), [boardState, openBoard, updateBoard, appendCandidates, appendCandidatesFromSearch, removeCandidate, closeBoard]);
 
   return (
     <AgreementBoardContext.Provider value={value}>
@@ -311,7 +333,15 @@ export function AgreementBoardProvider({ children }) {
         title={boardState.title || '협정보드'}
         alwaysInclude={boardState.alwaysInclude || []}
         fileType={boardState.fileType || DEFAULT_FILE_TYPE}
+        ownerId={boardState.ownerId || DEFAULT_OWNER_ID}
+        rangeId={boardState.rangeId || null}
         onAddRepresentatives={appendCandidatesFromSearch}
+        onRemoveRepresentative={removeCandidate}
+        noticeNo={boardState.noticeNo || ''}
+        noticeTitle={boardState.noticeTitle || ''}
+        industryLabel={boardState.industryLabel || ''}
+        baseAmount={boardState.baseAmount || ''}
+        estimatedAmount={boardState.estimatedAmount || ''}
       />
     </AgreementBoardContext.Provider>
   );
