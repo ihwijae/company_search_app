@@ -1510,6 +1510,10 @@ try {
 
       const clearColumns = Array.isArray(config.clearColumns) ? config.clearColumns : [];
       const regionFill = config.regionFill || null;
+      const cloneFill = (fill) => {
+        if (!fill) return null;
+        return JSON.parse(JSON.stringify(fill));
+      };
       const endRow = config.maxRows || (config.startRow + availableRows - 1);
       for (let row = config.startRow; row <= endRow; row += 1) {
         clearColumns.forEach((col) => {
@@ -1594,15 +1598,20 @@ try {
 
           nameCell.value = member.name || '';
           if (shareCell) {
-            const shareValue = toExcelNumber(member.sharePercent);
-            shareCell.value = shareValue != null ? shareValue : null;
+            const shareValueRaw = toExcelNumber(member.sharePercent);
+            if (shareValueRaw != null) {
+              const normalizedShare = shareValueRaw >= 1 ? shareValueRaw / 100 : shareValueRaw;
+              shareCell.value = normalizedShare;
+            } else {
+              shareCell.value = null;
+            }
           }
           if (managementCell) managementCell.value = toExcelNumber(member.managementScore);
           if (performanceCell) performanceCell.value = toExcelNumber(member.performanceAmount);
           if (abilityCell) abilityCell.value = toExcelNumber(member.sipyung);
 
           if (member.isRegion && regionFill) {
-            nameCell.fill = regionFill;
+            nameCell.fill = cloneFill(regionFill);
           } else {
             nameCell.fill = undefined;
           }
