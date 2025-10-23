@@ -1509,6 +1509,20 @@ try {
         throw new Error('엑셀 템플릿 시트를 찾을 수 없습니다.');
       }
 
+      const preservedColumns = worksheet.columns.map((column) => ({
+        width: column?.width,
+        hidden: column?.hidden,
+        style: column?.style ? JSON.parse(JSON.stringify(column.style)) : null,
+      }));
+      const preservedRowHeights = new Map();
+      const maxRowToPreserve = config.maxRows || worksheet.rowCount;
+      for (let rowIdx = 1; rowIdx <= maxRowToPreserve; rowIdx += 1) {
+        const row = worksheet.getRow(rowIdx);
+        if (row && row.height != null) {
+          preservedRowHeights.set(rowIdx, row.height);
+        }
+      }
+
       const clearColumns = Array.isArray(config.clearColumns) ? config.clearColumns : [];
       const regionFill = config.regionFill || null;
       const cloneFill = (fill) => {
@@ -1621,6 +1635,23 @@ try {
           if (performanceCell) performanceCell.fill = undefined;
           if (abilityCell) abilityCell.fill = undefined;
         }
+      });
+
+      if (Array.isArray(preservedColumns) && preservedColumns.length > 0) {
+        worksheet.columns.forEach((column, index) => {
+          const preset = preservedColumns[index];
+          if (!preset) return;
+          if (preset.width != null) {
+            column.width = preset.width;
+            column.customWidth = true;
+          }
+          if (preset.hidden != null) column.hidden = preset.hidden;
+          if (preset.style) column.style = JSON.parse(JSON.stringify(preset.style));
+        });
+      }
+      preservedRowHeights.forEach((height, rowIdx) => {
+        const row = worksheet.getRow(rowIdx);
+        if (row) row.height = height;
       });
 
       await workbook.xlsx.writeFile(saveDialogResult.filePath);
