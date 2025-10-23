@@ -19,6 +19,13 @@ const initialState = {
   fileType: DEFAULT_FILE_TYPE,
   rangeId: null,
   alwaysInclude: [],
+  bidDeadline: '',
+  regionDutyRate: '',
+  noticeNo: '',
+  noticeTitle: '',
+  industryLabel: '',
+  baseAmount: '',
+  estimatedAmount: '',
 };
 
 const normalizeRuleEntry = (item = {}) => ({
@@ -342,6 +349,8 @@ export function AgreementBoardProvider({ children }) {
         industryLabel={boardState.industryLabel || ''}
         baseAmount={boardState.baseAmount || ''}
         estimatedAmount={boardState.estimatedAmount || ''}
+        bidDeadline={boardState.bidDeadline || ''}
+        regionDutyRate={boardState.regionDutyRate || ''}
       />
     </AgreementBoardContext.Provider>
   );

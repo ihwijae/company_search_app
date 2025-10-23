@@ -868,10 +868,12 @@ body {
   margin-top: 4px;
 }
 
+
 .group-meta {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .group-meta .tag-muted {
@@ -881,6 +883,46 @@ body {
   border-radius: 999px;
   padding: 4px 10px;
   border: 1px solid #e2e8f0;
+}
+
+.group-meta .score-pill {
+  font-size: 15px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.group-meta .score-pill-ok {
+  color: #0f172a;
+  background: #e0f2fe;
+  border-color: #bae6fd;
+}
+
+.group-meta .score-pill-alert {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.group-meta .detail-pill {
+  font-size: 13px;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.group-meta .detail-pill-ok {
+  color: #14532d;
+  background: #dcfce7;
+  border-color: #bbf7d0;
+}
+
+.group-meta .detail-pill-alert {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fecaca;
 }
 
 .group-body {

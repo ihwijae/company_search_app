@@ -9,14 +9,15 @@ import Modal from '../../../../components/Modal';
  * - onSave(rows)
  * - onRestore(), onReload()
  */
-export default function PerformanceModal({ open, onClose, onSave, onRestore, onReload, rows = [], mode = 'ratio-bands' }) {
+export default function PerformanceModal({ open, onClose, onSave, onRestore, onReload, rows = [], mode = 'ratio-bands', editable = true }) {
   const [items, setItems] = React.useState([]);
   const [error, setError] = React.useState('');
   const seededRef = React.useRef(false);
   const initialFocusRef = React.useRef(null);
   const noticeRef = React.useRef(null);
 
-  const isRatioMode = mode === 'ratio-bands';
+  const ratioRequested = mode === 'ratio-bands';
+  const isRatioMode = ratioRequested && editable;
 
   const clampRatio = React.useCallback((value) => {
     const num = Number(value);
@@ -276,7 +277,9 @@ export default function PerformanceModal({ open, onClose, onSave, onRestore, onR
           tabIndex={-1}
           style={{ marginTop: 0, outline: 'none' }}
         >
-          이 발주처는 등급제 실적점수 대신 별도의 계산식을 사용합니다. 현재 버전에서는 UI로 수정할 수 없으며, 향후 전용 설정 화면이 추가될 예정입니다.
+          {ratioRequested
+            ? '이 발주처 구간은 UI에서 편집할 수 없으며, 계산식 기반 규칙을 사용합니다.'
+            : '이 발주처는 등급제 실적점수 대신 별도의 계산식을 사용합니다. 현재 버전에서는 UI로 수정할 수 없으며, 향후 전용 설정 화면이 추가될 예정입니다.'}
         </p>
       </Modal>
     );

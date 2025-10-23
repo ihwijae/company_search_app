@@ -466,6 +466,8 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         industryLabel: form.industry || '',
                         baseAmount: form.baseAmount || '',
                         estimatedAmount: form.estimatedPrice || '',
+                        bidDeadline: form.bidDeadline || '',
+                        regionDutyRate: form.regionDutyRate || '',
                       });
                     }}
                   >

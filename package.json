@@ -48,7 +48,8 @@
       "src/main/**",
       "src/shared/**",
       "utils/**",
-      "config.js"
+      "config.js",
+      "template/**"
     ],
     "asar": true,
     "win": {

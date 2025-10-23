@@ -183,6 +183,9 @@ export default function SettingsPage() {
   const currentTier = tiers[tierIdx] || tiers[0];
   const currentAgencyId = (currentAgency?.id || '').toUpperCase();
   const isMois = currentAgencyId === 'MOIS';
+  const performanceEditable = performanceMode === 'ratio-bands'
+    && currentAgencyId === 'MOIS'
+    && (currentTier?.maxAmount || 0) <= 5000000000;
   const currentTierMinAmount = currentTier?.minAmount || 0;
   const showBizControls = !isMois
     ? (bizRows && bizRows.length > 0)
@@ -746,6 +749,7 @@ export default function SettingsPage() {
         open={openModal === 'performance'}
         mode={performanceMode}
         rows={performanceRows}
+        editable={performanceEditable}
         onClose={() => setOpenModal(null)}
         onReload={() => reloadSectionMerged('performance')}
         onRestore={() => restoreSectionDefaults('performance')}

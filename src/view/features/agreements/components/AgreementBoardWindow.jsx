@@ -17,6 +17,52 @@ const resolvePerformanceCap = (value) => {
   return PERFORMANCE_DEFAULT_MAX;
 };
 
+const resolveTemplateKey = (ownerId, rangeId) => {
+  const ownerKey = String(ownerId || '').toUpperCase();
+  const rangeKey = String(rangeId || '').toLowerCase();
+  if (ownerKey === 'MOIS' && rangeKey === 'mois-under30') return 'mois-under30';
+  return null;
+};
+
+const parseNumeric = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const cleaned = String(value).replace(/[^0-9.\-]/g, '');
+  if (!cleaned) return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const formatBidDeadline = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const pad = (num) => String(num).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = date.getHours();
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  const hourDisplay = pad(hour12);
+  return `${year}-${month}-${day}  ${hourDisplay}:${minutes}:${seconds} ${period}`;
+};
+
+const buildDutySummary = (regions = [], dutyRate = null, teamSize = null) => {
+  const normalizedRegions = (Array.isArray(regions) ? regions : [])
+    .map((entry) => (entry ? String(entry).trim() : ''))
+    .filter(Boolean);
+  const regionLabel = normalizedRegions.length === 0
+    ? ''
+    : normalizedRegions.join('/');
+  const rateText = dutyRate != null ? `${Number(dutyRate)}%` : '';
+  const regionPart = regionLabel ? `${regionLabel}${rateText ? `의무${rateText}` : ''}` : (rateText ? `의무${rateText}` : '의무지역 미지정');
+  const teamPart = Number.isFinite(teamSize) && teamSize > 0 ? `${teamSize}개사` : null;
+  return [regionPart, teamPart].filter(Boolean).join(', ');
+};
+
 const SHARE_DIRECT_KEYS = ['_share', '_pct', 'candidateShare', 'share', '지분', '기본지분'];
 const SHARE_KEYWORDS = [['지분', 'share', '비율']];
 
@@ -380,7 +426,10 @@ export default function AgreementBoardWindow({
   industryLabel = '',
   baseAmount = '',
   estimatedAmount = '',
+  bidDeadline = '',
+  regionDutyRate = '',
 }) {
+  const rangeId = _rangeId;
   const boardWindowRef = React.useRef(null);
   const [portalContainer, setPortalContainer] = React.useState(null);
   const [groupAssignments, setGroupAssignments] = React.useState([]);
@@ -399,6 +448,7 @@ export default function AgreementBoardWindow({
   const [candidateMetricsVersion, setCandidateMetricsVersion] = React.useState(0);
   const prevAssignmentsRef = React.useRef(groupAssignments);
   const [representativeSearchOpen, setRepresentativeSearchOpen] = React.useState(false);
+  const [exporting, setExporting] = React.useState(false);
 
   const getSharePercent = React.useCallback((groupIndex, slotIndex, candidate) => {
     const stored = groupShares[groupIndex]?.[slotIndex];
@@ -775,12 +825,168 @@ export default function AgreementBoardWindow({
     regionEntries.filter((entry) => !assignedIds.has(entry.uid))
   ), [regionEntries, assignedIds]);
 
+  const summaryByGroup = React.useMemo(() => {
+    const map = new Map();
+    groupSummaries.forEach((entry) => {
+      map.set(entry.groupIndex, entry);
+    });
+    return map;
+  }, [groupSummaries]);
+
   const summary = React.useMemo(() => ({
     representativeTotal: representativeEntries.length,
     pinnedRepresentatives: pinnedRepresentatives.length,
     selectedRegions: regionEntries.length,
     groups: groupAssignments.length,
   }), [representativeEntries.length, pinnedRepresentatives.length, regionEntries.length, groupAssignments.length]);
+
+  const handleExportExcel = React.useCallback(async () => {
+    if (exporting) return;
+    const api = typeof window !== 'undefined' ? window.electronAPI : null;
+    if (!api?.agreementsExportExcel) {
+      window.alert('엑셀 내보내기 채널이 준비되지 않았습니다. 데스크탑 앱에서만 실행 가능합니다.');
+      return;
+    }
+    const templateKey = resolveTemplateKey(ownerId, rangeId);
+    if (!templateKey) {
+      window.alert('현재 선택한 발주처/구간은 엑셀 템플릿이 아직 준비되지 않았습니다.');
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const estimatedValue = parseAmountValue(estimatedAmount);
+      const baseValue = parseAmountValue(baseAmount);
+      const amountForScore = (estimatedValue != null && estimatedValue > 0)
+        ? estimatedValue
+        : (baseValue != null && baseValue > 0 ? baseValue : null);
+      const dutyRateNumber = parseNumeric(regionDutyRate);
+      const dutySummaryText = buildDutySummary(dutyRegions, dutyRateNumber, safeGroupSize);
+      const formattedDeadline = formatBidDeadline(bidDeadline);
+
+      const groupPayloads = groupAssignments.map((memberIds, groupIndex) => {
+        const summaryEntry = summaryByGroup.get(groupIndex) || null;
+        const members = memberIds.map((uid, slotIndex) => {
+          if (!uid) {
+            return {
+              slotIndex,
+              role: slotIndex === 0 ? 'representative' : 'member',
+              empty: true,
+            };
+          }
+          const entry = participantMap.get(uid);
+          if (!entry || !entry.candidate) {
+            return {
+              slotIndex,
+              role: slotIndex === 0 ? 'representative' : 'member',
+              empty: true,
+            };
+          }
+          const candidate = entry.candidate;
+          const storedShare = groupShares[groupIndex]?.[slotIndex];
+          const shareSource = (storedShare !== undefined && storedShare !== null && storedShare !== '')
+            ? storedShare
+            : getSharePercent(groupIndex, slotIndex, candidate);
+          const sharePercent = parseNumeric(shareSource);
+          const managementScore = getCandidateManagementScore(candidate);
+          const performanceAmount = getCandidatePerformanceAmount(candidate);
+          const sipyungValue = candidate._sipyung ?? extractAmountValue(
+            candidate,
+            ['_sipyung', 'sipyung', '시평', '시평액', '시평액(원)', '시평금액', '기초금액', '기초금액(원)'],
+            [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']]
+          );
+          const sipyung = parseNumeric(sipyungValue);
+          const isRegionMember = entry.type === 'region' || isDutyRegionCompany(candidate);
+          return {
+            slotIndex,
+            role: slotIndex === 0 ? 'representative' : 'member',
+            type: entry.type,
+            isRegion: Boolean(isRegionMember),
+            name: getCompanyName(candidate),
+            region: getRegionLabel(candidate),
+            bizNo: normalizeBizNo(getBizNo(candidate)),
+            sharePercent,
+            managementScore: managementScore != null ? Number(managementScore) : null,
+            performanceAmount: performanceAmount != null ? Number(performanceAmount) : null,
+            sipyung,
+          };
+        });
+        return {
+          index: groupIndex + 1,
+          members,
+          summary: summaryEntry ? {
+            shareSum: summaryEntry.shareSum ?? null,
+            shareComplete: Boolean(summaryEntry.shareComplete),
+            shareReady: Boolean(summaryEntry.shareReady),
+            managementScore: summaryEntry.managementScore ?? null,
+            performanceScore: summaryEntry.performanceScore ?? null,
+            performanceAmount: summaryEntry.performanceAmount ?? null,
+            performanceBase: summaryEntry.performanceBase ?? null,
+            totalScore: summaryEntry.totalScore ?? null,
+            bidScore: summaryEntry.bidScore ?? null,
+            managementMax: summaryEntry.managementMax ?? null,
+            performanceMax: summaryEntry.performanceMax ?? null,
+            totalMax: summaryEntry.totalMax ?? null,
+          } : null,
+        };
+      });
+
+      const payload = {
+        templateKey,
+        context: {
+          ownerId,
+          rangeId,
+        },
+        header: {
+          noticeNo: noticeNo || '',
+          noticeTitle: noticeTitle || '',
+          industryLabel: industryLabel || '',
+          baseAmount: baseValue ?? null,
+          estimatedAmount: estimatedValue ?? null,
+          amountForScore,
+          bidDeadline: formattedDeadline,
+          rawBidDeadline: bidDeadline || '',
+          dutyRegions: Array.isArray(dutyRegions) ? dutyRegions : [],
+          dutyRegionRate: dutyRateNumber,
+          dutySummary: dutySummaryText,
+          teamSize: safeGroupSize,
+          summary,
+        },
+        groups: groupPayloads,
+      };
+
+      const response = await api.agreementsExportExcel(payload);
+      if (response?.success) {
+        window.alert('엑셀 파일을 저장했습니다.');
+      } else {
+        window.alert(response?.message || '엑셀 내보내기에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('[AgreementBoard] Excel export failed:', error);
+      window.alert('엑셀 내보내기 중 오류가 발생했습니다.');
+    } finally {
+      setExporting(false);
+    }
+  }, [
+    exporting,
+    ownerId,
+    rangeId,
+    baseAmount,
+    estimatedAmount,
+    bidDeadline,
+    regionDutyRate,
+    noticeNo,
+    noticeTitle,
+    industryLabel,
+    dutyRegions,
+    groupAssignments,
+    groupShares,
+    getSharePercent,
+    participantMap,
+    summaryByGroup,
+    summary,
+    safeGroupSize,
+  ]);
 
   React.useEffect(() => {
     setGroupShares((prevShares) => {
@@ -929,8 +1135,14 @@ export default function AgreementBoardWindow({
           }
         }
 
+        const perfCapCurrent = getPerformanceCap();
+        const managementMax = MANAGEMENT_SCORE_MAX;
+        const performanceMax = perfCapCurrent || PERFORMANCE_DEFAULT_MAX;
         const totalScore = (managementScore != null && performanceScore != null)
           ? managementScore + performanceScore + BID_SCORE
+          : null;
+        const totalMax = managementScore != null && performanceScore != null
+          ? managementMax + performanceMax + BID_SCORE
           : null;
 
         return {
@@ -946,6 +1158,9 @@ export default function AgreementBoardWindow({
           performanceBaseReady,
           totalScore,
           bidScore: metric.memberCount > 0 ? BID_SCORE : null,
+          managementMax,
+          performanceMax,
+          totalMax,
         };
       }));
       if (!canceled) setGroupSummaries(results);
@@ -1274,14 +1489,6 @@ export default function AgreementBoardWindow({
     });
   };
 
-  const summaryByGroup = React.useMemo(() => {
-    const map = new Map();
-    groupSummaries.forEach((entry) => {
-      map.set(entry.groupIndex, entry);
-    });
-    return map;
-  }, [groupSummaries]);
-
   const groups = React.useMemo(() => (
     groupAssignments.map((group, index) => ({
       id: index + 1,
@@ -1547,6 +1754,14 @@ export default function AgreementBoardWindow({
                 <div className="board-subtitle">팀당 최대 {safeGroupSize}인 기준으로 대표사/지역사를 배치하세요.</div>
               </div>
               <div className="board-actions">
+                <button
+                  type="button"
+                  className="btn-soft"
+                  onClick={handleExportExcel}
+                  disabled={exporting}
+                >
+                  {exporting ? '엑셀 내보내는 중...' : '엑셀로 내보내기'}
+                </button>
                 <button type="button" className="btn-soft" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="btn-soft" onClick={handleResetGroups}>초기화</button>
               </div>
@@ -1554,30 +1769,68 @@ export default function AgreementBoardWindow({
             <div className="board-groups">
               {groups.map((group, groupIndex) => {
                 const summaryInfo = group.summary;
-                let scoreText = '총점 미계산';
-                let breakdownText = '';
+                let scorePill = { text: '총점 미계산', className: 'tag-muted' };
+                const detailPills = [];
                 let shareText = '';
 
                 if (!summaryInfo || summaryInfo.memberCount === 0) {
-                  scoreText = '업체를 배치하세요';
+                  scorePill = { text: '업체를 배치하세요', className: 'tag-muted' };
                 } else if (!summaryInfo.shareReady) {
-                  scoreText = '지분을 입력하세요';
+                  scorePill = { text: '지분을 입력하세요', className: 'tag-muted' };
                   if (summaryInfo.shareSum != null) {
                     shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
                   }
                 } else if (summaryInfo.managementScore == null) {
-                  scoreText = '경영점수 데이터 확인';
+                  scorePill = { text: '경영점수 데이터 확인', className: 'tag-muted' };
                   if (summaryInfo.shareSum != null) {
                     shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
                   }
                 } else if (summaryInfo.performanceScore == null) {
-                  scoreText = summaryInfo.performanceBaseReady ? '실적 데이터 확인' : '실적 기준 금액 확인 필요';
+                  scorePill = { text: summaryInfo.performanceBaseReady ? '실적 데이터 확인' : '실적 기준 금액 확인 필요', className: 'tag-muted' };
                   if (summaryInfo.shareSum != null) {
                     shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
                   }
                 } else {
-                  scoreText = `총점 ${formatScore(summaryInfo.totalScore)}`;
-                  breakdownText = `경영 ${formatScore(summaryInfo.managementScore)} · 실적 ${formatScore(summaryInfo.performanceScore)} · 입찰 ${formatScore(summaryInfo.bidScore)}`;
+                  const managementMax = summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX;
+                  const performanceMax = summaryInfo.performanceMax ?? PERFORMANCE_DEFAULT_MAX;
+                  const totalMax = summaryInfo.totalMax ?? (managementMax + performanceMax + BID_SCORE);
+                  const totalScore = summaryInfo.totalScore ?? 0;
+                  const isPerfect = totalMax != null && totalScore >= (totalMax - 0.01);
+                  const totalLabel = totalMax != null
+                    ? `총점 ${formatScore(totalScore)} / ${formatScore(totalMax)}`
+                    : `총점 ${formatScore(totalScore)}`;
+                  scorePill = {
+                    text: totalLabel,
+                    className: `score-pill ${isPerfect ? 'score-pill-ok' : 'score-pill-alert'}`,
+                  };
+
+                  const pillConfigs = [
+                    {
+                      label: '경영',
+                      score: summaryInfo.managementScore,
+                      max: managementMax,
+                    },
+                    {
+                      label: '실적',
+                      score: summaryInfo.performanceScore,
+                      max: performanceMax,
+                    },
+                    {
+                      label: '입찰',
+                      score: summaryInfo.bidScore,
+                      max: BID_SCORE,
+                    },
+                  ];
+
+                  pillConfigs.forEach(({ label, score, max }) => {
+                    const isDefined = score != null && max != null;
+                    const isPerfect = isDefined && score >= (max - 0.01);
+                    const className = `detail-pill ${isPerfect ? 'detail-pill-ok' : 'detail-pill-alert'}`;
+                    const text = isDefined
+                      ? `${label} ${formatScore(score)} / ${formatScore(max)}`
+                      : `${label} 자료 확인`;
+                    detailPills.push({ text, className });
+                  });
                   if (summaryInfo.shareSum != null) {
                     shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
                   }
@@ -1591,8 +1844,10 @@ export default function AgreementBoardWindow({
                         <div className="group-subtitle">대표사와 지역사를 드래그해서 배치하세요.</div>
                       </div>
                       <div className="group-meta">
-                        <span className="tag-muted">{scoreText}</span>
-                        {breakdownText && <span className="tag-muted">{breakdownText}</span>}
+                        {scorePill && <span className={scorePill.className}>{scorePill.text}</span>}
+                        {detailPills.map((pill, pillIdx) => (
+                          <span key={pillIdx} className={pill.className}>{pill.text}</span>
+                        ))}
                         {shareText && <span className="tag-muted">{shareText}</span>}
                         <button type="button" className="btn-sm btn-muted" disabled>세부 설정</button>
                       </div>

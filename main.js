@@ -2,6 +2,7 @@
 const path = require('path');
 const fs = require('fs');
 const chokidar = require('chokidar');
+const ExcelJS = require('exceljs');
 const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
 const { evaluateScores } = require('./src/shared/evaluator.js');
 const { SearchLogic } = require('./searchLogic.js');
@@ -68,6 +69,51 @@ const FILE_TYPE_LABELS = {
 };
 
 const resolveFileTypeLabel = (type) => FILE_TYPE_LABELS[type] || String(type || '');
+
+const AGREEMENT_TEMPLATE_CONFIGS = {
+  'mois-under30': {
+    label: '행안부 30억 미만',
+    path: path.join(__dirname, 'template', '행안부_30억미만.xlsx'),
+    sheetName: '양식',
+    startRow: 5,
+    maxRows: 68,
+    slotColumns: {
+      name: ['C', 'D', 'E', 'F', 'G'],
+      share: ['I', 'J', 'K', 'L', 'M'],
+      management: ['P', 'Q', 'R', 'S', 'T'],
+      performance: ['W', 'X', 'Y', 'Z', 'AA'],
+      ability: ['AO', 'AP', 'AQ', 'AR', 'AS'],
+    },
+    clearColumns: [
+      'B', 'C', 'D', 'E', 'F', 'G', 'H',
+      'I', 'J', 'K', 'L', 'M',
+      'O', 'P', 'Q', 'R', 'S', 'T',
+      'W', 'X', 'Y', 'Z', 'AA',
+      'AN', 'AO', 'AP', 'AQ', 'AR', 'AS', 'AT',
+    ],
+    regionFill: {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFDE68A' },
+    },
+  },
+};
+
+const sanitizeFileName = (value, fallback = '협정보드') => {
+  const text = String(value || '').replace(/[\\/:*?"<>|]/g, '').trim();
+  if (!text) return fallback;
+  return text;
+};
+
+const toExcelNumber = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && value.trim() === '') return null;
+  const cleaned = String(value).replace(/[^0-9.\-]/g, '');
+  if (!cleaned) return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
 const isRunningInWSL = (() => {
     if (process.platform !== 'linux') return false;
@@ -1412,6 +1458,144 @@ try {
       return { success: true };
     } catch (e) {
       return { success: false, message: e?.message || '가져오기 실패' };
+    }
+  });
+
+  if (ipcMain.removeHandler) {
+    try { ipcMain.removeHandler('agreements-export-excel'); } catch {}
+  }
+
+  ipcMain.handle('agreements-export-excel', async (_event, payload = {}) => {
+    try {
+      const templateKey = payload.templateKey;
+      if (!templateKey || !AGREEMENT_TEMPLATE_CONFIGS[templateKey]) {
+        throw new Error('지원하지 않는 템플릿입니다.');
+      }
+      const config = AGREEMENT_TEMPLATE_CONFIGS[templateKey];
+      if (!config.path || !fs.existsSync(config.path)) {
+        throw new Error('템플릿 파일을 찾을 수 없습니다.');
+      }
+
+      const header = payload.header || {};
+      const groups = Array.isArray(payload.groups) ? payload.groups : [];
+      const availableRows = config.maxRows ? (config.maxRows - config.startRow + 1) : Infinity;
+      if (groups.length > availableRows) {
+        throw new Error(`템플릿이 지원하는 최대 협정 수(${availableRows}개)를 초과했습니다.`);
+      }
+
+      const baseFileSegments = [];
+      if (header.noticeNo) baseFileSegments.push(sanitizeFileName(header.noticeNo));
+      if (config.label) baseFileSegments.push(sanitizeFileName(config.label));
+      baseFileSegments.push('협정보드');
+      const defaultFileName = sanitizeFileName(baseFileSegments.filter(Boolean).join('_')) || '협정보드';
+
+      const targetWindow = BrowserWindow.getFocusedWindow();
+      const saveDialogResult = await dialog.showSaveDialog(targetWindow, {
+        title: '협정보드 엑셀 내보내기',
+        defaultPath: `${defaultFileName}.xlsx`,
+        filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }],
+      });
+      if (saveDialogResult.canceled || !saveDialogResult.filePath) {
+        return { success: false, message: '사용자 취소' };
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(config.path);
+      const worksheet = config.sheetName
+        ? workbook.getWorksheet(config.sheetName)
+        : workbook.worksheets[0];
+      if (!worksheet) {
+        throw new Error('엑셀 템플릿 시트를 찾을 수 없습니다.');
+      }
+
+      const clearColumns = Array.isArray(config.clearColumns) ? config.clearColumns : [];
+      const endRow = config.maxRows || (config.startRow + availableRows - 1);
+      for (let row = config.startRow; row <= endRow; row += 1) {
+        clearColumns.forEach((col) => {
+          const cell = worksheet.getCell(`${col}${row}`);
+          cell.value = null;
+          if (col >= 'C' && col <= 'G') {
+            cell.fill = undefined;
+          }
+        });
+      }
+
+      const amountForScore = (
+        toExcelNumber(header.amountForScore)
+        ?? toExcelNumber(header.estimatedAmount)
+        ?? toExcelNumber(header.baseAmount)
+      );
+      worksheet.getCell('D2').value = amountForScore != null ? amountForScore : null;
+      const compositeTitle = [header.noticeNo, header.noticeTitle]
+        .map((part) => (part ? String(part).trim() : ''))
+        .filter(Boolean)
+        .join(' ');
+      worksheet.getCell('M1').value = compositeTitle;
+      worksheet.getCell('P2').value = header.bidDeadline || header.rawBidDeadline || '';
+      worksheet.getCell('W2').value = header.dutySummary || '';
+
+      const slotColumns = config.slotColumns || {};
+      const slotCount = Array.isArray(slotColumns.name) ? slotColumns.name.length : 0;
+      groups.forEach((group, index) => {
+        const rowNumber = config.startRow + index;
+        if (rowNumber > endRow) return;
+        const members = Array.isArray(group.members) ? group.members : [];
+        const slotData = Array(slotCount).fill(null);
+        members.forEach((member) => {
+          if (!member || typeof member !== 'object') return;
+          const slotIndex = Number(member.slotIndex);
+          if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= slotCount) return;
+          slotData[slotIndex] = member;
+        });
+
+        const indexValue = Number(group.index);
+        if (Number.isFinite(indexValue)) {
+          worksheet.getCell(`A${rowNumber}`).value = indexValue;
+        }
+        worksheet.getCell(`B${rowNumber}`).value = '';
+
+        for (let slotIndex = 0; slotIndex < slotCount; slotIndex += 1) {
+          const member = slotData[slotIndex];
+          const nameColumn = slotColumns.name[slotIndex];
+          const shareColumn = slotColumns.share?.[slotIndex];
+          const managementColumn = slotColumns.management?.[slotIndex];
+          const performanceColumn = slotColumns.performance?.[slotIndex];
+          const abilityColumn = slotColumns.ability?.[slotIndex];
+
+          const nameCell = worksheet.getCell(`${nameColumn}${rowNumber}`);
+          const shareCell = shareColumn ? worksheet.getCell(`${shareColumn}${rowNumber}`) : null;
+          const managementCell = managementColumn ? worksheet.getCell(`${managementColumn}${rowNumber}`) : null;
+          const performanceCell = performanceColumn ? worksheet.getCell(`${performanceColumn}${rowNumber}`) : null;
+          const abilityCell = abilityColumn ? worksheet.getCell(`${abilityColumn}${rowNumber}`) : null;
+
+          if (!member || member.empty) {
+            nameCell.value = '';
+            if (shareCell) shareCell.value = null;
+            if (managementCell) managementCell.value = null;
+            if (performanceCell) performanceCell.value = null;
+            if (abilityCell) abilityCell.value = null;
+            nameCell.fill = undefined;
+            continue;
+          }
+
+          nameCell.value = member.name || '';
+          if (shareCell) shareCell.value = toExcelNumber(member.sharePercent);
+          if (managementCell) managementCell.value = toExcelNumber(member.managementScore);
+          if (performanceCell) performanceCell.value = toExcelNumber(member.performanceAmount);
+          if (abilityCell) abilityCell.value = toExcelNumber(member.sipyung);
+          if (member.isRegion && config.regionFill) {
+            nameCell.fill = config.regionFill;
+          } else {
+            nameCell.fill = undefined;
+          }
+        }
+      });
+
+      await workbook.xlsx.writeFile(saveDialogResult.filePath);
+      return { success: true, path: saveDialogResult.filePath };
+    } catch (error) {
+      console.error('[MAIN] agreements-export-excel failed:', error);
+      return { success: false, message: error?.message || '엑셀 내보내기에 실패했습니다.' };
     }
   });
 } catch {}
