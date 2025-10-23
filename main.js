@@ -2,7 +2,6 @@
 const path = require('path');
 const fs = require('fs');
 const chokidar = require('chokidar');
-const ExcelJS = require('exceljs');
 const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
 const { evaluateScores } = require('./src/shared/evaluator.js');
 const { SearchLogic } = require('./searchLogic.js');
@@ -100,21 +99,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
   },
 };
 
-const sanitizeFileName = (value, fallback = '협정보드') => {
-  const text = String(value || '').replace(/[\\/:*?"<>|]/g, '').trim();
-  if (!text) return fallback;
-  return text;
-};
-
-const toExcelNumber = (value) => {
-  if (value === null || value === undefined) return null;
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  if (typeof value === 'string' && value.trim() === '') return null;
-  const cleaned = String(value).replace(/[^0-9.\-]/g, '');
-  if (!cleaned) return null;
-  const parsed = Number(cleaned);
-  return Number.isFinite(parsed) ? parsed : null;
-};
+const { sanitizeFileName, exportAgreementExcel } = require('./src/main/features/agreements/exportExcel.js');
 
 const isRunningInWSL = (() => {
     if (process.platform !== 'linux') return false;
@@ -1478,12 +1463,6 @@ try {
       }
 
       const header = payload.header || {};
-      const groups = Array.isArray(payload.groups) ? payload.groups : [];
-      const availableRows = config.maxRows ? (config.maxRows - config.startRow + 1) : Infinity;
-      if (groups.length > availableRows) {
-        throw new Error(`템플릿이 지원하는 최대 협정 수(${availableRows}개)를 초과했습니다.`);
-      }
-
       const baseFileSegments = [];
       if (header.noticeNo) baseFileSegments.push(sanitizeFileName(header.noticeNo));
       if (config.label) baseFileSegments.push(sanitizeFileName(config.label));
@@ -1500,161 +1479,12 @@ try {
         return { success: false, message: '사용자 취소' };
       }
 
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.readFile(config.path);
-      const worksheet = config.sheetName
-        ? workbook.getWorksheet(config.sheetName)
-        : workbook.worksheets[0];
-      if (!worksheet) {
-        throw new Error('엑셀 템플릿 시트를 찾을 수 없습니다.');
-      }
-
-      const preservedColumns = worksheet.columns.map((column) => ({
-        width: column?.width,
-        hidden: column?.hidden,
-        style: column?.style ? JSON.parse(JSON.stringify(column.style)) : null,
-      }));
-      const preservedRowHeights = new Map();
-      const maxRowToPreserve = config.maxRows || worksheet.rowCount;
-      for (let rowIdx = 1; rowIdx <= maxRowToPreserve; rowIdx += 1) {
-        const row = worksheet.getRow(rowIdx);
-        if (row && row.height != null) {
-          preservedRowHeights.set(rowIdx, row.height);
-        }
-      }
-
-      const clearColumns = Array.isArray(config.clearColumns) ? config.clearColumns : [];
-      const regionFill = config.regionFill || null;
-      const cloneFill = (fill) => {
-        if (!fill) return null;
-        return JSON.parse(JSON.stringify(fill));
-      };
-      const endRow = config.maxRows || (config.startRow + availableRows - 1);
-      for (let row = config.startRow; row <= endRow; row += 1) {
-        clearColumns.forEach((col) => {
-          const cell = worksheet.getCell(`${col}${row}`);
-          cell.value = null;
-          if (col >= 'C' && col <= 'G') {
-            cell.fill = undefined;
-          }
-        });
-      }
-
-      const amountForScore = (
-        toExcelNumber(header.amountForScore)
-        ?? toExcelNumber(header.estimatedAmount)
-        ?? toExcelNumber(header.baseAmount)
-      );
-      worksheet.getCell('D2').value = amountForScore != null ? amountForScore : null;
-      const compositeTitle = [header.noticeNo, header.noticeTitle]
-        .map((part) => (part ? String(part).trim() : ''))
-        .filter(Boolean)
-        .join(' ');
-      worksheet.getCell('M1').value = compositeTitle;
-      const deadlineText = header.bidDeadline || header.rawBidDeadline || '';
-      worksheet.getCell('P2').value = deadlineText ? String(deadlineText) : '';
-      worksheet.getCell('W2').value = header.dutySummary || '';
-
-      const slotColumns = config.slotColumns || {};
-      const slotCount = Array.isArray(slotColumns.name) ? slotColumns.name.length : 0;
-      groups.forEach((group, index) => {
-        const rowNumber = config.startRow + index;
-        if (rowNumber > endRow) return;
-        const members = Array.isArray(group.members) ? group.members : [];
-        const slotData = Array(slotCount).fill(null);
-        members.forEach((member) => {
-          if (!member || typeof member !== 'object') return;
-          const slotIndex = Number(member.slotIndex);
-          if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= slotCount) return;
-          slotData[slotIndex] = member;
-        });
-
-        const indexValue = Number(group.index);
-        if (Number.isFinite(indexValue)) {
-          worksheet.getCell(`A${rowNumber}`).value = indexValue;
-        }
-        worksheet.getCell(`B${rowNumber}`).value = '';
-
-        for (let slotIndex = 0; slotIndex < slotCount; slotIndex += 1) {
-          const member = slotData[slotIndex];
-          const nameColumn = slotColumns.name[slotIndex];
-          const shareColumn = slotColumns.share?.[slotIndex];
-          const managementColumn = slotColumns.management?.[slotIndex];
-          const performanceColumn = slotColumns.performance?.[slotIndex];
-          const abilityColumn = slotColumns.ability?.[slotIndex];
-
-          const nameCell = worksheet.getCell(`${nameColumn}${rowNumber}`);
-          const shareCell = shareColumn ? worksheet.getCell(`${shareColumn}${rowNumber}`) : null;
-          const managementCell = managementColumn ? worksheet.getCell(`${managementColumn}${rowNumber}`) : null;
-          const performanceCell = performanceColumn ? worksheet.getCell(`${performanceColumn}${rowNumber}`) : null;
-          const abilityCell = abilityColumn ? worksheet.getCell(`${abilityColumn}${rowNumber}`) : null;
-
-          if (!member || member.empty) {
-            nameCell.value = '';
-            nameCell.fill = undefined;
-            if (shareCell) {
-              shareCell.value = null;
-              shareCell.fill = undefined;
-            }
-            if (managementCell) {
-              managementCell.value = null;
-              managementCell.fill = undefined;
-            }
-            if (performanceCell) {
-              performanceCell.value = null;
-              performanceCell.fill = undefined;
-            }
-            if (abilityCell) {
-              abilityCell.value = null;
-              abilityCell.fill = undefined;
-            }
-            continue;
-          }
-
-          nameCell.value = member.name || '';
-          if (shareCell) {
-            const shareValueRaw = toExcelNumber(member.sharePercent);
-            if (shareValueRaw != null) {
-              const normalizedShare = shareValueRaw >= 1 ? shareValueRaw / 100 : shareValueRaw;
-              shareCell.value = normalizedShare;
-            } else {
-              shareCell.value = null;
-            }
-          }
-          if (managementCell) managementCell.value = toExcelNumber(member.managementScore);
-          if (performanceCell) performanceCell.value = toExcelNumber(member.performanceAmount);
-          if (abilityCell) abilityCell.value = toExcelNumber(member.sipyung);
-
-          if (member.isRegion && regionFill) {
-            nameCell.fill = cloneFill(regionFill);
-          } else {
-            nameCell.fill = undefined;
-          }
-          if (shareCell) shareCell.fill = undefined;
-          if (managementCell) managementCell.fill = undefined;
-          if (performanceCell) performanceCell.fill = undefined;
-          if (abilityCell) abilityCell.fill = undefined;
-        }
+      await exportAgreementExcel({
+        config,
+        payload,
+        outputPath: saveDialogResult.filePath,
       });
 
-      if (Array.isArray(preservedColumns) && preservedColumns.length > 0) {
-        worksheet.columns.forEach((column, index) => {
-          const preset = preservedColumns[index];
-          if (!preset) return;
-          if (preset.width != null) {
-            column.width = preset.width;
-            column.customWidth = true;
-          }
-          if (preset.hidden != null) column.hidden = preset.hidden;
-          if (preset.style) column.style = JSON.parse(JSON.stringify(preset.style));
-        });
-      }
-      preservedRowHeights.forEach((height, rowIdx) => {
-        const row = worksheet.getRow(rowIdx);
-        if (row) row.height = height;
-      });
-
-      await workbook.xlsx.writeFile(saveDialogResult.filePath);
       return { success: true, path: saveDialogResult.filePath };
     } catch (error) {
       console.error('[MAIN] agreements-export-excel failed:', error);
