@@ -33,6 +33,8 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   if (!worksheet) {
     throw new Error('엑셀 템플릿 시트를 찾을 수 없습니다.');
   }
+  if (!workbook.calcProperties) workbook.calcProperties = {};
+  workbook.calcProperties.fullCalcOnLoad = true;
 
   const preservedColumns = worksheet.columns.map((column) => ({
     width: column?.width,
@@ -59,6 +61,13 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   const clearColumns = Array.isArray(config.clearColumns) ? config.clearColumns : [];
   const endRow = config.maxRows || (config.startRow + availableRows - 1);
   for (let row = config.startRow; row <= endRow; row += 1) {
+    const rowObj = worksheet.getRow(row);
+    if (rowObj && rowObj.style) {
+      rowObj.style = {
+        ...rowObj.style,
+        fill: { type: 'pattern', pattern: 'none' },
+      };
+    }
     clearColumns.forEach((col) => {
       const cell = worksheet.getCell(`${col}${row}`);
       cell.value = null;
@@ -127,7 +136,18 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
         continue;
       }
 
-      nameCell.value = member.name || '';
+      const rawName = typeof member.name === 'string' ? member.name : '';
+      const trimmedName = rawName.trim();
+      const isEmptySlot = !trimmedName && !member.isRegion;
+
+      if (isEmptySlot) {
+        nameCell.value = '';
+        nameCell.fill = { type: 'pattern', pattern: 'none' };
+        if (shareCell) { shareCell.value = null; }
+        continue;
+      }
+
+      nameCell.value = rawName;
       if (shareCell) {
         const shareValueRaw = toExcelNumber(member.sharePercent);
         if (shareValueRaw != null) {
@@ -144,21 +164,20 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
 
       if (member.isRegion && regionFillTemplate) {
         regionCells.push({ column: nameColumn, row: rowIndex });
-        nameCell.fill = cloneFill(regionFillTemplate);
+        const baseStyle = nameCell.style ? { ...nameCell.style } : {};
+        nameCell.style = {
+          ...baseStyle,
+          fill: cloneFill(regionFillTemplate),
+        };
         if (process.env.DEBUG_AGREEMENT_EXPORT === '1') {
           console.log('[exportExcel] set region fill', nameColumn, rowIndex);
         }
       } else {
         nonRegionCells.push({ column: nameColumn, row: rowIndex });
-        const whiteFill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFFFFFFF' },
-          bgColor: { argb: 'FFFFFFFF' },
-        };
+        const baseStyle = nameCell.style ? { ...nameCell.style } : {};
         nameCell.style = {
-          ...nameCell.style,
-          fill: cloneFill(whiteFill),
+          ...baseStyle,
+          fill: { type: 'pattern', pattern: 'none' },
         };
         if (process.env.DEBUG_AGREEMENT_EXPORT === '1') {
           console.log('[exportExcel] set non-region fill', nameColumn, rowIndex, nameCell.fill);
@@ -181,7 +200,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
 
   nameColumns.forEach((columnKey) => {
     const column = worksheet.getColumn(columnKey);
-    if (!column || !column.style) return;
+    if (!column) return;
     column.style = {
       ...column.style,
       fill: { type: 'pattern', pattern: 'none' },
@@ -195,27 +214,32 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
 
   nonRegionCells.forEach(({ column, row }) => {
     const cell = worksheet.getCell(`${column}${row}`);
-    const whiteFill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFFFFFFF' },
-      bgColor: { argb: 'FFFFFFFF' },
-    };
+    const baseStyle = cell.style ? { ...cell.style } : {};
     cell.style = {
-      ...cell.style,
-      fill: cloneFill(whiteFill),
+      ...baseStyle,
+      fill: { type: 'pattern', pattern: 'none' },
     };
+    if (process.env.DEBUG_AGREEMENT_EXPORT === '1') {
+      console.log('[exportExcel] applied non-region final fill', column, row, cell.fill);
+    }
   });
 
   regionCells.forEach(({ column, row }) => {
     const cell = worksheet.getCell(`${column}${row}`);
-    cell.fill = cloneFill(regionFillTemplate);
+    const baseStyle = cell.style ? { ...cell.style } : {};
+    cell.style = {
+      ...baseStyle,
+      fill: cloneFill(regionFillTemplate),
+    };
   });
 
   if (process.env.DEBUG_AGREEMENT_EXPORT === '1') {
     const debugCell = worksheet.getCell(`${slotColumns.name?.[1] || 'C'}${config.startRow}`);
     console.log('[exportExcel] debug fill', debugCell.fill, 'regionCells', regionCells);
-    console.log('[exportExcel] sample non-region fill', worksheet.getCell(`${slotColumns.name?.[0] || 'C'}${config.startRow}`).fill);
+    ['C','D','E','F','G'].forEach((col) => {
+      const cell = worksheet.getCell(`${col}${config.startRow}`);
+      console.log('[exportExcel] final cell state', col, cell.fill);
+    });
   }
 
   await workbook.xlsx.writeFile(outputPath);
