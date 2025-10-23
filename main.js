@@ -1531,7 +1531,8 @@ try {
         .filter(Boolean)
         .join(' ');
       worksheet.getCell('M1').value = compositeTitle;
-      worksheet.getCell('P2').value = header.bidDeadline || header.rawBidDeadline || '';
+      const deadlineText = header.bidDeadline || header.rawBidDeadline || '';
+      worksheet.getCell('P2').value = deadlineText ? String(deadlineText) : '';
       worksheet.getCell('W2').value = header.dutySummary || '';
 
       const slotColumns = config.slotColumns || {};
@@ -1570,24 +1571,42 @@ try {
 
           if (!member || member.empty) {
             nameCell.value = '';
-            if (shareCell) shareCell.value = null;
-            if (managementCell) managementCell.value = null;
-            if (performanceCell) performanceCell.value = null;
-            if (abilityCell) abilityCell.value = null;
             nameCell.fill = undefined;
+            if (shareCell) {
+              shareCell.value = null;
+              shareCell.fill = undefined;
+            }
+            if (managementCell) {
+              managementCell.value = null;
+              managementCell.fill = undefined;
+            }
+            if (performanceCell) {
+              performanceCell.value = null;
+              performanceCell.fill = undefined;
+            }
+            if (abilityCell) {
+              abilityCell.value = null;
+              abilityCell.fill = undefined;
+            }
             continue;
           }
 
           nameCell.value = member.name || '';
-          if (shareCell) shareCell.value = toExcelNumber(member.sharePercent);
+          if (shareCell) {
+            const shareValue = toExcelNumber(member.sharePercent);
+            shareCell.value = shareValue;
+            shareCell.numFmt = '0.####';
+          }
           if (managementCell) managementCell.value = toExcelNumber(member.managementScore);
           if (performanceCell) performanceCell.value = toExcelNumber(member.performanceAmount);
           if (abilityCell) abilityCell.value = toExcelNumber(member.sipyung);
-          if (member.isRegion && config.regionFill) {
-            nameCell.fill = config.regionFill;
-          } else {
-            nameCell.fill = undefined;
-          }
+
+          const regionFill = member.isRegion && config.regionFill ? config.regionFill : undefined;
+          nameCell.fill = regionFill;
+          if (shareCell) shareCell.fill = regionFill;
+          if (managementCell) managementCell.fill = regionFill;
+          if (performanceCell) performanceCell.fill = regionFill;
+          if (abilityCell) abilityCell.fill = regionFill;
         }
       });
 

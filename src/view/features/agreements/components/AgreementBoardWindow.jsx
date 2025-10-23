@@ -63,6 +63,16 @@ const buildDutySummary = (regions = [], dutyRate = null, teamSize = null) => {
   return [regionPart, teamPart].filter(Boolean).join(', ');
 };
 
+const sanitizeCompanyName = (value) => {
+  if (!value) return '';
+  let result = String(value).trim();
+  result = result.replace(/㈜/g, '');
+  result = result.replace(/\(주\)/g, '');
+  result = result.replace(/주식회사/g, '');
+  result = result.replace(/\s+/g, ' ').trim();
+  return result;
+};
+
 const SHARE_DIRECT_KEYS = ['_share', '_pct', 'candidateShare', 'share', '지분', '기본지분'];
 const SHARE_KEYWORDS = [['지분', 'share', '비율']];
 
@@ -897,12 +907,13 @@ export default function AgreementBoardWindow({
           );
           const sipyung = parseNumeric(sipyungValue);
           const isRegionMember = entry.type === 'region' || isDutyRegionCompany(candidate);
+          const companyName = sanitizeCompanyName(getCompanyName(candidate));
           return {
             slotIndex,
             role: slotIndex === 0 ? 'representative' : 'member',
             type: entry.type,
             isRegion: Boolean(isRegionMember),
-            name: getCompanyName(candidate),
+            name: companyName,
             region: getRegionLabel(candidate),
             bizNo: normalizeBizNo(getBizNo(candidate)),
             sharePercent,
