@@ -72,12 +72,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
     ?? toExcelNumber(header.baseAmount)
   );
   const d2Cell = worksheet.getCell('D2');
-  if (amountForScore != null) {
-    d2Cell.value = amountForScore;
-    d2Cell.numFmt = '0';
-  } else {
-    d2Cell.value = null;
-  }
+  d2Cell.value = amountForScore != null ? amountForScore : null;
   const compositeTitle = [header.noticeNo, header.noticeTitle]
     .map((part) => (part ? String(part).trim() : ''))
     .filter(Boolean)
@@ -155,12 +150,18 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
         }
       } else {
         nonRegionCells.push({ column: nameColumn, row: rowIndex });
+        const whiteFill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFFFF' },
+          bgColor: { argb: 'FFFFFFFF' },
+        };
         nameCell.style = {
           ...nameCell.style,
-          fill: { type: 'pattern', pattern: 'none' },
+          fill: cloneFill(whiteFill),
         };
         if (process.env.DEBUG_AGREEMENT_EXPORT === '1') {
-          console.log('[exportExcel] set non-region fill', nameColumn, rowIndex);
+          console.log('[exportExcel] set non-region fill', nameColumn, rowIndex, nameCell.fill);
         }
       }
     }
@@ -194,9 +195,15 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
 
   nonRegionCells.forEach(({ column, row }) => {
     const cell = worksheet.getCell(`${column}${row}`);
+    const whiteFill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFFFFF' },
+      bgColor: { argb: 'FFFFFFFF' },
+    };
     cell.style = {
       ...cell.style,
-      fill: { type: 'pattern', pattern: 'none' },
+      fill: cloneFill(whiteFill),
     };
   });
 
@@ -208,6 +215,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   if (process.env.DEBUG_AGREEMENT_EXPORT === '1') {
     const debugCell = worksheet.getCell(`${slotColumns.name?.[1] || 'C'}${config.startRow}`);
     console.log('[exportExcel] debug fill', debugCell.fill, 'regionCells', regionCells);
+    console.log('[exportExcel] sample non-region fill', worksheet.getCell(`${slotColumns.name?.[0] || 'C'}${config.startRow}`).fill);
   }
 
   await workbook.xlsx.writeFile(outputPath);
