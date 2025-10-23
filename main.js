@@ -94,7 +94,8 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     regionFill: {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FFFDE68A' },
+      fgColor: { argb: 'FFFFFF00' },
+      bgColor: { indexed: 64 },
     },
   },
 };
