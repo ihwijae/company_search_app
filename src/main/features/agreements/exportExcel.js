@@ -47,14 +47,16 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
     }
   }
 
-  const clearColumns = Array.isArray(config.clearColumns) ? config.clearColumns : [];
   const regionFillTemplate = config.regionFill ? cloneFill(config.regionFill) : null;
+  const slotColumns = config.slotColumns || {};
+  const nameColumns = Array.isArray(slotColumns.name) ? slotColumns.name : [];
+  const slotCount = nameColumns.length;
 
   const availableRows = config.maxRows ? (config.maxRows - config.startRow + 1) : Infinity;
   if (groups.length > availableRows) {
     throw new Error(`템플릿이 지원하는 최대 협정 수(${availableRows}개)를 초과했습니다.`);
   }
-
+  const clearColumns = Array.isArray(config.clearColumns) ? config.clearColumns : [];
   const endRow = config.maxRows || (config.startRow + availableRows - 1);
   for (let row = config.startRow; row <= endRow; row += 1) {
     clearColumns.forEach((col) => {
@@ -69,7 +71,13 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
     ?? toExcelNumber(header.estimatedAmount)
     ?? toExcelNumber(header.baseAmount)
   );
-  worksheet.getCell('D2').value = amountForScore != null ? amountForScore : null;
+  const d2Cell = worksheet.getCell('D2');
+  if (amountForScore != null) {
+    d2Cell.value = amountForScore;
+    d2Cell.numFmt = '0';
+  } else {
+    d2Cell.value = null;
+  }
   const compositeTitle = [header.noticeNo, header.noticeTitle]
     .map((part) => (part ? String(part).trim() : ''))
     .filter(Boolean)
@@ -79,10 +87,8 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   worksheet.getCell('P2').value = deadlineText ? String(deadlineText) : '';
   worksheet.getCell('W2').value = header.dutySummary || '';
 
-  const slotColumns = config.slotColumns || {};
-  const slotCount = Array.isArray(slotColumns.name) ? slotColumns.name.length : 0;
-
   const regionCells = [];
+  const nonRegionCells = [];
 
   groups.forEach((group, index) => {
     const rowNumber = config.startRow + index;
@@ -116,7 +122,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       const performanceCell = performanceColumn ? worksheet.getCell(`${performanceColumn}${rowIndex}`) : null;
       const abilityCell = abilityColumn ? worksheet.getCell(`${abilityColumn}${rowIndex}`) : null;
 
-     if (!member || member.empty) {
+      if (!member || member.empty) {
         nameCell.value = '';
         nameCell.fill = undefined;
         if (shareCell) { shareCell.value = null; shareCell.fill = undefined; }
@@ -144,8 +150,18 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       if (member.isRegion && regionFillTemplate) {
         regionCells.push({ column: nameColumn, row: rowIndex });
         nameCell.fill = cloneFill(regionFillTemplate);
+        if (process.env.DEBUG_AGREEMENT_EXPORT === '1') {
+          console.log('[exportExcel] set region fill', nameColumn, rowIndex);
+        }
       } else {
-        nameCell.fill = undefined;
+        nonRegionCells.push({ column: nameColumn, row: rowIndex });
+        nameCell.style = {
+          ...nameCell.style,
+          fill: { type: 'pattern', pattern: 'none' },
+        };
+        if (process.env.DEBUG_AGREEMENT_EXPORT === '1') {
+          console.log('[exportExcel] set non-region fill', nameColumn, rowIndex);
+        }
       }
     }
   });
@@ -161,9 +177,27 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       if (preset.hidden != null) column.hidden = preset.hidden;
     });
   }
+
+  nameColumns.forEach((columnKey) => {
+    const column = worksheet.getColumn(columnKey);
+    if (!column || !column.style) return;
+    column.style = {
+      ...column.style,
+      fill: { type: 'pattern', pattern: 'none' },
+    };
+  });
+
   preservedRowHeights.forEach((height, rowIdx) => {
     const row = worksheet.getRow(rowIdx);
     if (row) row.height = height;
+  });
+
+  nonRegionCells.forEach(({ column, row }) => {
+    const cell = worksheet.getCell(`${column}${row}`);
+    cell.style = {
+      ...cell.style,
+      fill: { type: 'pattern', pattern: 'none' },
+    };
   });
 
   regionCells.forEach(({ column, row }) => {
@@ -173,7 +207,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
 
   if (process.env.DEBUG_AGREEMENT_EXPORT === '1') {
     const debugCell = worksheet.getCell(`${slotColumns.name?.[1] || 'C'}${config.startRow}`);
-    console.log('[exportExcel] debug fill', debugCell.fill);
+    console.log('[exportExcel] debug fill', debugCell.fill, 'regionCells', regionCells);
   }
 
   await workbook.xlsx.writeFile(outputPath);
