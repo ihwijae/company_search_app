@@ -1509,6 +1509,7 @@ try {
       }
 
       const clearColumns = Array.isArray(config.clearColumns) ? config.clearColumns : [];
+      const regionFill = config.regionFill || null;
       const endRow = config.maxRows || (config.startRow + availableRows - 1);
       for (let row = config.startRow; row <= endRow; row += 1) {
         clearColumns.forEach((col) => {
@@ -1594,14 +1595,17 @@ try {
           nameCell.value = member.name || '';
           if (shareCell) {
             const shareValue = toExcelNumber(member.sharePercent);
-            shareCell.value = shareValue;
+            shareCell.value = shareValue != null ? shareValue : null;
           }
           if (managementCell) managementCell.value = toExcelNumber(member.managementScore);
           if (performanceCell) performanceCell.value = toExcelNumber(member.performanceAmount);
           if (abilityCell) abilityCell.value = toExcelNumber(member.sipyung);
 
-          const regionFill = member.isRegion && config.regionFill ? config.regionFill : undefined;
-          nameCell.fill = regionFill;
+          if (member.isRegion && regionFill) {
+            nameCell.fill = regionFill;
+          } else {
+            nameCell.fill = undefined;
+          }
           if (shareCell) shareCell.fill = undefined;
           if (managementCell) managementCell.fill = undefined;
           if (performanceCell) performanceCell.fill = undefined;
