@@ -73,6 +73,68 @@ const sanitizeCompanyName = (value) => {
   return result;
 };
 
+const MANAGER_KEYS = [
+  '담당자명', '담당자', '담당', '주담당자', '부담당자', '협력담당자', '현장담당자', '사무담당자',
+  'manager', 'managerName', 'manager_name', 'contactPerson', 'contact_person', 'contact',
+  '담당자1', '담당자2', '담당자3', '담당자 1', '담당자 2', '담당자 3',
+];
+const MANAGER_KEY_SET = new Set(MANAGER_KEYS.map((key) => key.replace(/\s+/g, '').toLowerCase()));
+
+const extractManagerNameToken = (raw) => {
+  if (!raw) return '';
+  let token = String(raw).trim();
+  if (!token) return '';
+  token = token.replace(/^[\[\(（【]([^\]\)）】]+)[\]\)】]?$/, '$1').trim();
+  token = token.replace(/(과장|팀장|차장|대리|사원|부장|대표|실장|소장|님)$/g, '').trim();
+  token = token.replace(/[0-9\-]+$/g, '').trim();
+  if (/^[가-힣]{2,4}$/.test(token)) return token;
+  return '';
+};
+
+const extractManagerNameFromText = (text) => {
+  if (!text) return '';
+  const normalized = String(text).replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  const firstToken = extractManagerNameToken(normalized.split(/[ ,\/\|·•∙ㆍ;:\-]+/).filter(Boolean)[0]);
+  if (firstToken) return firstToken;
+  const patterns = [
+    /담당자?\s*[:：-]?\s*([가-힣]{2,4})/,
+    /([가-힣]{2,4})\s*(과장|팀장|차장|대리|사원|부장|대표|실장|소장)/,
+    /\b(?!확인서|등록증|증명서|평가|서류)([가-힣]{2,4})\b/,
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match && match[1]) {
+      const token = extractManagerNameToken(match[1]);
+      if (token) return token;
+    }
+  }
+  return '';
+};
+
+const getCandidateManagerName = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return '';
+  const sources = [candidate, candidate.snapshot].filter(Boolean);
+  for (const source of sources) {
+    for (const [key, value] of Object.entries(source)) {
+      if (value == null || value === '') continue;
+      const normalizedKey = key.replace(/\s+/g, '').toLowerCase();
+      if (MANAGER_KEY_SET.has(normalizedKey) || normalizedKey.includes('담당') || normalizedKey.includes('manager')) {
+        const segments = String(value).split(/[\n,/·•∙ㆍ;|\\]/);
+        for (const segment of segments) {
+          const name = extractManagerNameToken(segment) || extractManagerNameFromText(segment);
+          if (name) return name;
+        }
+      }
+      if (normalizedKey === '비고') {
+        const name = extractManagerNameFromText(value);
+        if (name) return name;
+      }
+    }
+  }
+  return '';
+};
+
 const SHARE_DIRECT_KEYS = ['_share', '_pct', 'candidateShare', 'share', '지분', '기본지분'];
 const SHARE_KEYWORDS = [['지분', 'share', '비율']];
 
@@ -908,12 +970,15 @@ export default function AgreementBoardWindow({
           const sipyung = parseNumeric(sipyungValue);
           const isRegionMember = entry.type === 'region' || isDutyRegionCompany(candidate);
           const companyName = sanitizeCompanyName(getCompanyName(candidate));
+          const managerName = getCandidateManagerName(candidate);
+          const displayName = managerName ? `${companyName}\n${managerName}` : companyName;
           return {
             slotIndex,
             role: slotIndex === 0 ? 'representative' : 'member',
             type: entry.type,
             isRegion: Boolean(isRegionMember),
-            name: companyName,
+            name: displayName,
+            manager: managerName,
             region: getRegionLabel(candidate),
             bizNo: normalizeBizNo(getBizNo(candidate)),
             sharePercent,

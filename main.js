@@ -1595,7 +1595,6 @@ try {
           if (shareCell) {
             const shareValue = toExcelNumber(member.sharePercent);
             shareCell.value = shareValue;
-            shareCell.numFmt = '0.####';
           }
           if (managementCell) managementCell.value = toExcelNumber(member.managementScore);
           if (performanceCell) performanceCell.value = toExcelNumber(member.performanceAmount);
@@ -1603,10 +1602,10 @@ try {
 
           const regionFill = member.isRegion && config.regionFill ? config.regionFill : undefined;
           nameCell.fill = regionFill;
-          if (shareCell) shareCell.fill = regionFill;
-          if (managementCell) managementCell.fill = regionFill;
-          if (performanceCell) performanceCell.fill = regionFill;
-          if (abilityCell) abilityCell.fill = regionFill;
+          if (shareCell) shareCell.fill = undefined;
+          if (managementCell) managementCell.fill = undefined;
+          if (performanceCell) performanceCell.fill = undefined;
+          if (abilityCell) abilityCell.fill = undefined;
         }
       });
 
