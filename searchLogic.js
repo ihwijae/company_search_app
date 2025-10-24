@@ -21,6 +21,31 @@ const parseAmount = (value) => {
   }
 };
 
+const isWomenOwned = (company) => {
+  if (!company || typeof company !== 'object') return false;
+  const raw = company['여성기업'];
+  if (raw === null || raw === undefined) return false;
+  const text = String(raw).trim();
+  if (!text) return false;
+  const normalized = text.replace(/\s+/g, '').toLowerCase();
+  if (!normalized) return false;
+  if (normalized === '없음' || normalized === '-' || normalized === '무') return false;
+  return true;
+};
+
+const hasQualityEvaluation = (company) => {
+  if (!company || typeof company !== 'object') return false;
+  const raw = company['품질평가'];
+  if (raw === null || raw === undefined) return false;
+  const text = String(raw).trim();
+  if (!text) return false;
+  const normalized = text.replace(/\s+/g, '').toLowerCase();
+  if (!normalized) return false;
+  if (normalized.includes('없음')) return false;
+  if (normalized === '-' || normalized === '무') return false;
+  return /\d/.test(normalized);
+};
+
 const getStatusFromColor = (cell) => {
     // 1. 셀 스타일 정보나 fill 객체가 없는 경우 -> "1년 이상 경과"
     if (!cell || !cell.style || !cell.style.fill) {
@@ -289,11 +314,28 @@ class SearchLogic {
 
 SearchLogic.postProcessResults = function postProcessResults(inputResults, options = {}) {
   const base = Array.isArray(inputResults) ? [...inputResults] : [];
-  const { onlyLatest = false, sortKey = null, sortDir = 'desc', pagination = null } = options || {};
+  const {
+    onlyLatest = false,
+    onlyWomenOwned = false,
+    onlyLHQuality = false,
+    sortKey = null,
+    sortDir = 'desc',
+    pagination = null,
+  } = options || {};
 
-  let working = onlyLatest
-    ? base.filter((item) => (item?.['요약상태'] || '') === '최신')
-    : base;
+  let working = [...base];
+
+  if (onlyLatest) {
+    working = working.filter((item) => (item?.['요약상태'] || '') === '최신');
+  }
+
+  if (onlyWomenOwned) {
+    working = working.filter((item) => isWomenOwned(item));
+  }
+
+  if (onlyLHQuality) {
+    working = working.filter((item) => hasQualityEvaluation(item));
+  }
 
   const sortField = sortKey && SORT_FIELD_MAP[sortKey] ? SORT_FIELD_MAP[sortKey] : null;
   if (sortField) {

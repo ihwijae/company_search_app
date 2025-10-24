@@ -15,7 +15,7 @@ const formatPercentage = (value) => { if (!value && value !== 0) return ''; cons
 const getStatusClass = (statusText) => { if (statusText === '최신') return 'status-latest'; if (statusText === '1년 경과') return 'status-warning'; if (statusText === '1년 이상 경과') return 'status-old'; return 'status-unknown'; };
 
 const SEARCH_STORAGE_KEY = 'search:page';
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 12;
 
 const normalizeFileType = (value) => {
   const token = String(value ?? '').trim();
@@ -334,6 +334,8 @@ function App() {
   const [totalPages, setTotalPages] = useState(1);
   const [sortKey, setSortKey] = useState(() => persisted.sortKey || null); // 'sipyung' | '3y' | '5y'
   const [onlyLatest, setOnlyLatest] = useState(() => !!persisted.onlyLatest);
+  const [onlyLHQuality, setOnlyLHQuality] = useState(() => !!persisted.onlyLHQuality);
+  const [onlyWomenOwned, setOnlyWomenOwned] = useState(() => !!persisted.onlyWomenOwned);
   const [sortDir, setSortDir] = useState(() => (persisted.sortDir === 'asc' ? 'asc' : 'desc'));
   const [selectedIndex, setSelectedIndex] = useState(() => (
     typeof persisted.selectedIndex === 'number' ? persisted.selectedIndex : null
@@ -354,7 +356,7 @@ function App() {
   const latestQueryRef = useRef({ criteria: null, fileType });
   const lastRequestIdRef = useRef(0);
   const selectedCompanyKeyRef = useRef(selectedCompanyKey);
-  const lastAutoSearchRef = useRef({ fileType, sortKey, sortDir, onlyLatest });
+  const lastAutoSearchRef = useRef({ fileType, sortKey, sortDir, onlyLatest, onlyLHQuality, onlyWomenOwned });
 
   useEffect(() => {
     selectedCompanyKeyRef.current = selectedCompanyKey;
@@ -399,9 +401,13 @@ function App() {
     targetPage = 1,
     preserveSelection = false,
     skipScrollIntoView = false,
+    overrides = {},
   } = {}) => {
     const effectiveCriteria = criteria || buildSearchCriteria();
     const effectiveFileType = normalizeFileType(targetFileType || fileType);
+    const effectiveOnlyLatest = overrides.onlyLatest !== undefined ? overrides.onlyLatest : onlyLatest;
+    const effectiveOnlyLHQuality = overrides.onlyLHQuality !== undefined ? overrides.onlyLHQuality : onlyLHQuality;
+    const effectiveOnlyWomenOwned = overrides.onlyWomenOwned !== undefined ? overrides.onlyWomenOwned : onlyWomenOwned;
 
     let payloadCriteria;
     let criteriaJson;
@@ -415,7 +421,9 @@ function App() {
     }
 
     const payloadOptions = {
-      onlyLatest: !!onlyLatest,
+      onlyLatest: !!effectiveOnlyLatest,
+      onlyLHQuality: !!effectiveOnlyLHQuality,
+      onlyWomenOwned: !!effectiveOnlyWomenOwned,
       sortKey: sortKey || null,
       sortDir,
       pagination: { page: targetPage, pageSize: PAGE_SIZE },
@@ -460,20 +468,20 @@ function App() {
         throw new Error(response?.message || '검색 실패');
       }
 
-      const items = Array.isArray(response.data) ? response.data : [];
+      const itemsRaw = Array.isArray(response.data) ? response.data : [];
       const meta = response.meta || {};
-      const nextTotalCount = typeof meta.totalCount === 'number' ? meta.totalCount : items.length;
-      const nextPageSize = meta.pageSize && Number(meta.pageSize) > 0 ? Number(meta.pageSize) : PAGE_SIZE;
-      const derivedTotalPages = nextPageSize > 0
-        ? Math.max(1, Math.ceil((nextTotalCount || 0) / nextPageSize))
+      const requestedPageSize = PAGE_SIZE;
+      const nextTotalCount = typeof meta.totalCount === 'number' ? meta.totalCount : itemsRaw.length;
+      const pageSizeForDisplay = requestedPageSize > 0 ? requestedPageSize : 10;
+      const items = pageSizeForDisplay > 0 ? itemsRaw.slice(0, pageSizeForDisplay) : itemsRaw;
+      const derivedTotalPages = pageSizeForDisplay > 0
+        ? Math.max(1, Math.ceil((nextTotalCount || 0) / pageSizeForDisplay))
         : 1;
-      const nextTotalPages = typeof meta.totalPages === 'number' && meta.totalPages > 0
-        ? meta.totalPages
-        : derivedTotalPages;
+      const nextTotalPages = derivedTotalPages;
       const nextPage = typeof meta.page === 'number' && meta.page > 0
         ? meta.page
         : Math.min(Math.max(targetPage, 1), nextTotalPages || 1);
-      const globalOffset = (nextPage - 1) * nextPageSize;
+      const globalOffset = (nextPage - 1) * pageSizeForDisplay;
 
       setSearchResults(items);
       setTotalCount(nextTotalCount);
@@ -523,7 +531,7 @@ function App() {
         }
       }
     }
-  }, [buildSearchCriteria, fileType, handleCompanySelect, onlyLatest, sortDir, sortKey]);
+  }, [buildSearchCriteria, fileType, handleCompanySelect, onlyLatest, onlyLHQuality, onlyWomenOwned, sortDir, sortKey]);
 
   const handleSearch = React.useCallback(async (targetPage = 1, rawOptions = {}) => {
     let safeTargetPage = targetPage;
@@ -544,6 +552,19 @@ function App() {
 
     const { preserveSelection = false } = safeOptions || {};
 
+    let nextOnlyLatest = onlyLatest;
+    let nextOnlyLHQuality = onlyLHQuality;
+    let nextOnlyWomenOwned = onlyWomenOwned;
+
+    if (!preserveSelection) {
+      nextOnlyLatest = false;
+      nextOnlyLHQuality = false;
+      nextOnlyWomenOwned = false;
+      setOnlyLatest(false);
+      setOnlyLHQuality(false);
+      setOnlyWomenOwned(false);
+    }
+
     await executeSearch({
       criteria: buildSearchCriteria(),
       targetFileType: fileType,
@@ -552,14 +573,21 @@ function App() {
         : 1,
       preserveSelection,
       skipScrollIntoView: preserveSelection,
+      overrides: {
+        onlyLatest: nextOnlyLatest,
+        onlyLHQuality: nextOnlyLHQuality,
+        onlyWomenOwned: nextOnlyWomenOwned,
+      },
     });
     lastAutoSearchRef.current = {
       fileType,
       sortKey,
       sortDir,
-      onlyLatest,
+      onlyLatest: nextOnlyLatest,
+      onlyLHQuality: nextOnlyLHQuality,
+      onlyWomenOwned: nextOnlyWomenOwned,
     };
-  }, [buildSearchCriteria, executeSearch, fileType, onlyLatest, sortDir, sortKey]);
+  }, [buildSearchCriteria, executeSearch, fileType, onlyLatest, onlyLHQuality, onlyWomenOwned, sortDir, sortKey]);
 
   const currentPage = React.useMemo(() => {
     const safeTotal = totalPages && totalPages > 0 ? totalPages : 1;
@@ -867,12 +895,14 @@ function App() {
   };
 
   useEffect(() => {
-    const nextState = { fileType, sortKey, sortDir, onlyLatest };
+    const nextState = { fileType, sortKey, sortDir, onlyLatest, onlyLHQuality, onlyWomenOwned };
     const prevState = lastAutoSearchRef.current || {};
     const modifiersChanged = prevState.fileType !== nextState.fileType
       || prevState.sortKey !== nextState.sortKey
       || prevState.sortDir !== nextState.sortDir
-      || prevState.onlyLatest !== nextState.onlyLatest;
+      || prevState.onlyLatest !== nextState.onlyLatest
+      || prevState.onlyLHQuality !== nextState.onlyLHQuality
+      || prevState.onlyWomenOwned !== nextState.onlyWomenOwned;
     lastAutoSearchRef.current = nextState;
 
     if (!modifiersChanged) return;
@@ -890,7 +920,7 @@ function App() {
       preserveSelection: true,
       skipScrollIntoView: true,
     });
-  }, [executeSearch, fileType, onlyLatest, searchPerformed, sortDir, sortKey]);
+  }, [executeSearch, fileType, onlyLatest, onlyLHQuality, onlyWomenOwned, searchPerformed, sortDir, sortKey]);
 
   useEffect(() => {
     const sanitizedFilters = {
@@ -917,7 +947,7 @@ function App() {
       regions: sanitizedRegions.length > 0 ? sanitizedRegions : ['전체'],
     };
     savePersisted(SEARCH_STORAGE_KEY, snapshot);
-  }, [filters, fileType, searchedFileType, searchPerformed, sortKey, sortDir, onlyLatest, selectedIndex, selectedCompanyKey, regions, currentPage]);
+  }, [filters, fileType, searchedFileType, searchPerformed, sortKey, sortDir, onlyLatest, onlyLHQuality, onlyWomenOwned, selectedIndex, selectedCompanyKey, regions, currentPage]);
 
   return (
     <div className="app-shell">
@@ -992,8 +1022,22 @@ function App() {
                   <button className={`sort-btn ${sortKey==='5y' ? 'active':''}`} onClick={()=>toggleSort('5y')}>
                     5년 실적 {sortKey==='5y' ? (sortDir==='asc'?'▲':'▼') : ''}
                   </button>
-                  <button className={`sort-btn ${onlyLatest ? 'active' : ''}`} onClick={()=>setOnlyLatest(v => !v)} title="최신 자료만 보기">
+                  <button className={`sort-btn ${onlyLatest ? 'active' : ''}`} onClick={()=>setOnlyLatest((v) => !v)} title="최신 자료만 보기">
                     최신만 {onlyLatest ? '✔' : ''}
+                  </button>
+                  <button
+                    className={`sort-btn ${onlyLHQuality ? 'active' : ''}`}
+                    onClick={() => setOnlyLHQuality((v) => !v)}
+                    title="LH 품질평가 데이터가 있는 업체만 보기"
+                  >
+                    LH품질 {onlyLHQuality ? '✅' : ''}
+                  </button>
+                  <button
+                    className={`sort-btn ${onlyWomenOwned ? 'active' : ''}`}
+                    onClick={() => setOnlyWomenOwned((v) => !v)}
+                    title="여성기업만 보기"
+                  >
+                    여성기업 {onlyWomenOwned ? '✅' : ''}
                   </button>
                 </div>
               </div>

@@ -122,7 +122,27 @@ const extractManagerNames = (candidate) => {
   return names;
 };
 
-export default function CandidatesModal({ open, onClose, ownerId = 'LH', menuKey = '', fileType, entryAmount, baseAmount, estimatedAmount = '', perfectPerformanceAmount = 0, dutyRegions = [], ratioBaseAmount = '', defaultExcludeSingle = true, noticeNo = '', noticeTitle = '', industryLabel = '', onApply }) {
+export default function CandidatesModal({
+  open,
+  onClose,
+  ownerId = 'LH',
+  menuKey = '',
+  fileType,
+  entryAmount,
+  baseAmount,
+  estimatedAmount = '',
+  perfectPerformanceAmount = 0,
+  dutyRegions = [],
+  ratioBaseAmount = '',
+  defaultExcludeSingle = true,
+  noticeNo = '',
+  noticeTitle = '',
+  industryLabel = '',
+  initialCandidates = [],
+  initialPinned = [],
+  initialExcluded = [],
+  onApply,
+}) {
   const popupRef = useRef(null);
   const [portalContainer, setPortalContainer] = useState(null);
   const [applying, setApplying] = useState(false);
@@ -256,11 +276,17 @@ const industryToLabel = (type) => {
     if (!open) return;
     const initial = buildInitialParams();
     setParams(initial);
-    setList([]); setPinned(new Set()); setExcluded(new Set()); setError('');
+    const clonedCandidates = Array.isArray(initialCandidates)
+      ? initialCandidates.map((item) => (item && typeof item === 'object' ? { ...item } : item))
+      : [];
+    setList(clonedCandidates);
+    setPinned(new Set(Array.isArray(initialPinned) ? initialPinned : []));
+    setExcluded(new Set(Array.isArray(initialExcluded) ? initialExcluded : []));
+    setError('');
     setApplying(false);
     setOnlyLatest(false);
-    didInitFetch.current = false; // allow auto fetch again for new inputs
-  }, [open, initKey, buildInitialParams]);
+    didInitFetch.current = clonedCandidates.length > 0;
+  }, [open, initKey, buildInitialParams, initialCandidates, initialPinned, initialExcluded]);
 
   // Auto fetch on open with incoming values (once per open/inputs)
   useEffect(() => {

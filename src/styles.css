@@ -139,8 +139,8 @@ button.primary:hover { background: var(--accent-2); }
 .results-list li.active { background: #eef2ff; }
 
 /* 가운데 패널 정렬 툴바 */
-.results-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; justify-content: flex-end; width: 100%; }
-.results-toolbar .sort-btn { border: 1px solid #d0d5dd; background: #fff; color: var(--text); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; }
+.results-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; justify-content: flex-end; width: 100%; }
+.results-toolbar .sort-btn { border: 1px solid #d0d5dd; background: #fff; color: var(--text); padding: 4px 8px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .results-toolbar .sort-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(74,21,75,0.06); }
 
 /* 타이틀바 드래그 영역 (overlay 모드) */

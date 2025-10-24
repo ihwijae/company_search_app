@@ -3,7 +3,6 @@ import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import AmountInput from '../../../../components/AmountInput.jsx';
-import CandidatesModal from '../components/CandidatesModal.jsx';
 import { useAgreementBoard } from '../context/AgreementBoardContext.jsx';
 import { BASE_ROUTES, findMenuByKey } from '../../../../shared/navigation.js';
 import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
@@ -61,12 +60,12 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     const saved = loadPersisted(`${storageKey}:dutyRegions`, []);
     return Array.isArray(saved) ? saved.filter((name) => typeof name === 'string') : [];
   });
-  const [candidatesOpen, setCandidatesOpen] = React.useState(false);
   const [candidates, setCandidates] = React.useState([]);
   const [pinned, setPinned] = React.useState([]);
   const [excluded, setExcluded] = React.useState([]);
   const prevIndustryRef = React.useRef(form.industry);
   const prevDutyRegionsRef = React.useRef(dutyRegions);
+  const mountedRef = React.useRef(true);
 
   const toFileType = (industry) => {
     if (industry === '전기') return 'eung';
@@ -76,7 +75,14 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
 
   const currentFileType = React.useMemo(() => toFileType(form.industry), [form.industry]);
 
-  const { boardState, openBoard, updateBoard } = useAgreementBoard();
+  const { boardState, openBoard, updateBoard, openCandidatesModal } = useAgreementBoard();
+
+  React.useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!form || typeof form !== 'object' || Array.isArray(form)) return;
@@ -89,9 +95,11 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   }, [storageKey, dutyRegions]);
 
   React.useEffect(() => {
-    if (!boardState?.open) return;
     const groupSizeValue = Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3;
-    if (boardState.dutyRegions === dutyRegions && boardState.groupSize === groupSizeValue) return;
+    const boardDutyRegions = Array.isArray(boardState?.dutyRegions) ? boardState.dutyRegions : [];
+    const sameRegions = boardDutyRegions.length === dutyRegions.length
+      && boardDutyRegions.every((region, index) => region === dutyRegions[index]);
+    if (sameRegions && boardState?.groupSize === groupSizeValue) return;
     updateBoard({ dutyRegions, groupSize: groupSizeValue });
   }, [boardState, dutyRegions, form.teamSizeMax, updateBoard]);
 
@@ -123,8 +131,17 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     return true;
   }, [normalizeList]);
 
+  const shallowEqualArray = React.useCallback((left = [], right = []) => {
+    if (left === right) return true;
+    if (left.length !== right.length) return false;
+    for (let i = 0; i < left.length; i += 1) {
+      if (left[i] !== right[i]) return false;
+    }
+    return true;
+  }, []);
+
   React.useEffect(() => {
-    if (!boardState?.open) return;
+    if (!boardState) return;
     const boardCandidates = normalizeList(boardState.candidates);
     const boardPinned = normalizeList(boardState.pinned);
     const boardExcluded = normalizeList(boardState.excluded);
@@ -132,26 +149,25 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     if (!listEqualsByKey(boardCandidates, candidates)) {
       setCandidates(boardCandidates.slice());
     }
-    if (!listEqualsByKey(boardPinned, pinned)) {
+
+    if (!shallowEqualArray(boardPinned, pinned)) {
       setPinned(boardPinned.slice());
     }
-    if (!listEqualsByKey(boardExcluded, excluded)) {
+    if (!shallowEqualArray(boardExcluded, excluded)) {
       setExcluded(boardExcluded.slice());
     }
-  }, [boardState?.open, boardState?.candidates, boardState?.pinned, boardState?.excluded, candidates, pinned, excluded, normalizeList, listEqualsByKey]);
+  }, [boardState, candidates, excluded, listEqualsByKey, normalizeList, pinned, shallowEqualArray]);
 
   React.useEffect(() => {
-    if (!boardState?.open) return;
     const normalizedOwner = String(ownerId || 'LH').toUpperCase();
-    if (boardState.ownerId === normalizedOwner && boardState.fileType === currentFileType) return;
+    if (boardState?.ownerId === normalizedOwner && boardState?.fileType === currentFileType) return;
     updateBoard({ ownerId: normalizedOwner, fileType: currentFileType });
-  }, [boardState, ownerId, currentFileType, updateBoard]);
+  }, [boardState?.ownerId, boardState?.fileType, ownerId, currentFileType, updateBoard]);
 
   React.useEffect(() => {
-    if (!boardState?.open) return;
-    if (boardState.rangeId === menuKey) return;
+    if (boardState?.rangeId === menuKey) return;
     updateBoard({ rangeId: menuKey });
-  }, [boardState, menuKey, updateBoard]);
+  }, [boardState?.rangeId, menuKey, updateBoard]);
 
   const onChange = (key) => (event) => setForm((prev) => ({ ...prev, [key]: event.target.value }));
 
@@ -256,12 +272,13 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   }, [form.industry, dutyRegions, candidates.length, pinned.length, excluded.length, updateBoard]);
 
   React.useEffect(() => {
-    if (!boardState?.open) return;
-    const same = boardState.noticeNo === (form.noticeNo || '')
-      && boardState.noticeTitle === (form.title || '')
-      && boardState.industryLabel === (form.industry || '')
-      && boardState.baseAmount === (form.baseAmount || '')
-      && boardState.estimatedAmount === (form.estimatedPrice || '');
+    const same = boardState?.noticeNo === (form.noticeNo || '')
+      && boardState?.noticeTitle === (form.title || '')
+      && boardState?.industryLabel === (form.industry || '')
+      && boardState?.baseAmount === (form.baseAmount || '')
+      && boardState?.estimatedAmount === (form.estimatedPrice || '')
+      && boardState?.bidDeadline === (form.bidDeadline || '')
+      && boardState?.regionDutyRate === (form.regionDutyRate || '');
     if (same) return;
     updateBoard({
       noticeNo: form.noticeNo || '',
@@ -269,8 +286,26 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       industryLabel: form.industry || '',
       baseAmount: form.baseAmount || '',
       estimatedAmount: form.estimatedPrice || '',
+      bidDeadline: form.bidDeadline || '',
+      regionDutyRate: form.regionDutyRate || '',
     });
-  }, [boardState?.open, boardState?.noticeNo, boardState?.noticeTitle, boardState?.industryLabel, boardState?.baseAmount, boardState?.estimatedAmount, form.noticeNo, form.title, form.industry, form.baseAmount, form.estimatedPrice, updateBoard]);
+  }, [
+    boardState?.noticeNo,
+    boardState?.noticeTitle,
+    boardState?.industryLabel,
+    boardState?.baseAmount,
+    boardState?.estimatedAmount,
+    boardState?.bidDeadline,
+    boardState?.regionDutyRate,
+    form.noticeNo,
+    form.title,
+    form.industry,
+    form.baseAmount,
+    form.estimatedPrice,
+    form.bidDeadline,
+    form.regionDutyRate,
+    updateBoard,
+  ]);
 
   const evalSingleBid = (company) => {
     if (!company) return;
@@ -313,7 +348,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     if (key === 'search') { window.location.hash = BASE_ROUTES.search; return; }
     if (key === 'agreements') { window.location.hash = BASE_ROUTES.agreements; return; }
     if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
-    if (key === 'upload') { setCandidatesOpen(false); window.location.hash = BASE_ROUTES.agreements; return; }
+    if (key === 'upload') { window.location.hash = BASE_ROUTES.agreements; return; }
     const menu = findMenuByKey(key);
     if (menu) window.location.hash = menu.hash;
   };
@@ -444,7 +479,42 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ color: '#6b7280' }}>고정 {pinned.length} · 제외 {excluded.length} · 후보 {candidates.length}</div>
                 <div>
-                  <button className="btn-soft" onClick={() => setCandidatesOpen(true)} style={{ marginRight: 6 }}>지역사 찾기</button>
+                  <button
+                    className="btn-soft"
+                    onClick={() => {
+                      openCandidatesModal({
+                        ownerId,
+                        menuKey,
+                        rangeId: menuKey,
+                        fileType: currentFileType,
+                        noticeNo: form.noticeNo,
+                        noticeTitle: form.title,
+                        industryLabel: form.industry,
+                        entryAmount: form.entryQualificationAmount || form.estimatedPrice,
+                        baseAmount: form.baseAmount,
+                        estimatedAmount: form.estimatedPrice,
+                        bidDeadline: form.bidDeadline,
+                        regionDutyRate: form.regionDutyRate,
+                        perfectPerformanceAmount,
+                        dutyRegions,
+                        groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
+                        defaultExcludeSingle: true,
+                        initialCandidates: candidates,
+                        initialPinned: pinned,
+                        initialExcluded: excluded,
+                        onApply: ({ candidates: list, pinned: pinnedList, excluded: excludedList }) => {
+                          if (mountedRef.current) {
+                            setCandidates(list);
+                            setPinned(pinnedList);
+                            setExcluded(excludedList);
+                          }
+                        },
+                      });
+                    }}
+                    style={{ marginRight: 6 }}
+                  >
+                    지역사 찾기
+                  </button>
                   <button
                     className="primary"
                     onClick={() => {
@@ -502,40 +572,6 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
           </div>
         </div>
       </div>
-      <CandidatesModal
-        open={candidatesOpen}
-        onClose={() => setCandidatesOpen(false)}
-        ownerId={ownerId}
-        menuKey={menuKey}
-        fileType={toFileType(form.industry)}
-        noticeNo={form.noticeNo}
-        noticeTitle={form.title}
-        industryLabel={form.industry}
-        entryAmount={form.entryQualificationAmount || form.estimatedPrice}
-        baseAmount={form.baseAmount}
-        estimatedAmount={form.estimatedPrice}
-        perfectPerformanceAmount={perfectPerformanceAmount}
-        dutyRegions={dutyRegions}
-        defaultExcludeSingle
-        onApply={({ candidates: list, pinned: pinnedList, excluded: excludedList }) => {
-          setCandidates(list);
-          setPinned(pinnedList);
-          setExcluded(excludedList);
-          setCandidatesOpen(false);
-          if (boardState?.open) {
-            updateBoard({
-              candidates: list,
-              pinned: pinnedList,
-              excluded: excludedList,
-              dutyRegions,
-              groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
-              ownerId: (ownerId || 'LH').toUpperCase(),
-              fileType: currentFileType,
-              rangeId: menuKey,
-            });
-          }
-        }}
-      />
     </div>
   );
 }
