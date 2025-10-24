@@ -529,14 +529,7 @@ export default function AgreementBoardWindow({
       const parsedStored = toNumber(stored);
       if (parsedStored !== null) return parsedStored;
     }
-    if (!candidate || typeof candidate !== 'object') return null;
-    if (candidate._share != null) {
-      const parsedShare = toNumber(candidate._share);
-      if (parsedShare !== null) return parsedShare;
-    }
-    const extracted = extractAmountValue(candidate, SHARE_DIRECT_KEYS, SHARE_KEYWORDS);
-    const parsed = toNumber(extracted);
-    return parsed !== null ? parsed : null;
+    return 0;
   }, [groupShares]);
 
   const openRepresentativeSearch = React.useCallback(() => {
@@ -1123,21 +1116,23 @@ export default function AgreementBoardWindow({
       const missingShares = members.some((member) => member.sharePercent == null || Number.isNaN(Number(member.sharePercent)));
       const shareValid = shareSum > 0 && !missingShares;
       const shareComplete = shareValid && Math.abs(shareSum - 100) < 0.01;
-      const normalizedMembers = shareValid
-        ? members.map((member) => ({
+      const normalizedMembers = members.map((member) => {
+        const rawShare = Number(member.sharePercent);
+        const safeShare = Number.isFinite(rawShare) ? Math.max(rawShare, 0) : 0;
+        return {
           ...member,
-          weight: member.sharePercent > 0 ? (member.sharePercent / shareSum) : 0,
-        }))
-        : members.map((member) => ({ ...member, weight: 0 }));
+          weight: safeShare / 100,
+        };
+      });
 
       const managementMissing = normalizedMembers.some((member) => member.managementScore == null);
       const performanceMissing = normalizedMembers.some((member) => member.performanceAmount == null);
 
-      const aggregatedManagement = (!managementMissing && shareComplete)
+      const aggregatedManagement = (!managementMissing && shareValid)
         ? normalizedMembers.reduce((acc, member) => acc + (member.managementScore || 0) * member.weight, 0)
         : null;
 
-      const aggregatedPerformanceAmount = (!performanceMissing && shareComplete)
+      const aggregatedPerformanceAmount = (!performanceMissing && shareValid)
         ? normalizedMembers.reduce((acc, member) => acc + (member.performanceAmount || 0) * member.weight, 0)
         : null;
 
@@ -1197,7 +1192,7 @@ export default function AgreementBoardWindow({
 
     const run = async () => {
       const results = await Promise.all(metrics.map(async (metric) => {
-        const shareReady = metric.memberCount > 0 && metric.shareComplete;
+        const shareReady = metric.memberCount > 0 && metric.shareValid;
         const managementScore = shareReady && !metric.managementMissing
           ? clampScore(metric.managementScore)
           : null;
@@ -1826,12 +1821,12 @@ export default function AgreementBoardWindow({
               {renderEntryList(pinnedRepresentatives, '설정한 고정 업체가 없습니다.', 'pinned')}
             </section>
             <section className="sidebar-section">
-              <div className="board-sidebar-title">대표사 후보</div>
+              <div className="board-sidebar-title">대기 업체</div>
               <div className="board-sidebar-head">
                 <div className="board-sidebar-count">총 {freeRepresentatives.length}명</div>
                 {renderSearchButton()}
               </div>
-              {renderEntryList(freeRepresentatives, '대표사 후보가 없습니다.')}
+              {renderEntryList(freeRepresentatives, '대기 중인 업체가 없습니다.')}
             </section>
             <section className="sidebar-section">
               <div className="board-sidebar-title">확정된 지역사</div>
@@ -1864,22 +1859,26 @@ export default function AgreementBoardWindow({
                 let scorePill = { text: '총점 미계산', className: 'tag-muted' };
                 const detailPills = [];
                 let shareText = '';
+                let shareBadgeClass = '';
 
                 if (!summaryInfo || summaryInfo.memberCount === 0) {
                   scorePill = { text: '업체를 배치하세요', className: 'tag-muted' };
                 } else if (!summaryInfo.shareReady) {
                   scorePill = { text: '지분을 입력하세요', className: 'tag-muted' };
                   if (summaryInfo.shareSum != null) {
+                    shareBadgeClass = summaryInfo.shareComplete ? 'share-total-ok' : 'share-total-warn';
                     shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
                   }
                 } else if (summaryInfo.managementScore == null) {
                   scorePill = { text: '경영점수 데이터 확인', className: 'tag-muted' };
                   if (summaryInfo.shareSum != null) {
+                    shareBadgeClass = summaryInfo.shareComplete ? 'share-total-ok' : 'share-total-warn';
                     shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
                   }
                 } else if (summaryInfo.performanceScore == null) {
                   scorePill = { text: summaryInfo.performanceBaseReady ? '실적 데이터 확인' : '실적 기준 금액 확인 필요', className: 'tag-muted' };
                   if (summaryInfo.shareSum != null) {
+                    shareBadgeClass = summaryInfo.shareComplete ? 'share-total-ok' : 'share-total-warn';
                     shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
                   }
                 } else {
@@ -1924,6 +1923,7 @@ export default function AgreementBoardWindow({
                     detailPills.push({ text, className });
                   });
                   if (summaryInfo.shareSum != null) {
+                    shareBadgeClass = summaryInfo.shareComplete ? 'share-total-ok' : 'share-total-warn';
                     shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
                   }
                 }
@@ -1940,7 +1940,11 @@ export default function AgreementBoardWindow({
                         {detailPills.map((pill, pillIdx) => (
                           <span key={pillIdx} className={pill.className}>{pill.text}</span>
                         ))}
-                        {shareText && <span className="tag-muted">{shareText}</span>}
+                        {shareText && (
+                          <span className={`share-total ${shareBadgeClass || 'share-total-muted'}`}>
+                            {shareText}
+                          </span>
+                        )}
                         <button type="button" className="btn-sm btn-muted" disabled>세부 설정</button>
                       </div>
                     </header>

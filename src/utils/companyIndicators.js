@@ -34,10 +34,7 @@ export const isWomenOwnedCompany = (candidate) => {
   const text = normalize(raw);
   if (!text) return false;
   const normalized = text.replace(/\s+/g, '').toLowerCase();
-  if (!normalized) return false;
-  if (TEXT_FALSE_VALUES.some((token) => normalized === token || normalized.includes(token))) return false;
-  if (normalized === 'n') return false;
-  return true;
+  return normalized.length > 0;
 };
 
 export const getQualityBadgeText = (candidate) => {
