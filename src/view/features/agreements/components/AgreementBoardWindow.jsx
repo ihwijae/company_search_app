@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
+import { isWomenOwnedCompany, getQualityBadgeText } from '../../../../utils/companyIndicators.js';
 
 const DEFAULT_GROUP_SIZE = 3;
 const MIN_GROUPS = 4;
@@ -1640,6 +1641,15 @@ export default function AgreementBoardWindow({
       }
     }
 
+    if (isWomenOwnedCompany(candidate)) {
+      tags.push({ key: 'female', label: '女', className: 'female' });
+    }
+
+    const qualityBadge = getQualityBadgeText(candidate);
+    if (qualityBadge) {
+      tags.push({ key: 'quality', label: `품질 ${qualityBadge}`, className: 'quality' });
+    }
+
     return (
       <div
         key={uid}
@@ -1727,6 +1737,8 @@ export default function AgreementBoardWindow({
         const scoreDisplaySource = (baseScoreSource !== null && baseScoreSource !== undefined && baseScoreSource !== '')
           ? baseScoreSource
           : managementSidebarScore;
+        const femaleOwned = isWomenOwnedCompany(entry.candidate);
+        const qualityBadge = getQualityBadgeText(entry.candidate);
         return (
           <div
             key={entry.uid}
@@ -1735,7 +1747,11 @@ export default function AgreementBoardWindow({
             onDragStart={handleDragStart(entry.uid)}
             onDragEnd={handleDragEnd}
           >
-            <div className="name" title={getCompanyName(entry.candidate)}>{getCompanyName(entry.candidate)}</div>
+            <div className="name" title={getCompanyName(entry.candidate)}>
+              <span>{getCompanyName(entry.candidate)}</span>
+              {femaleOwned && <span className="badge-female badge-inline">女</span>}
+              {qualityBadge && <span className="badge-quality badge-inline">품질 {qualityBadge}</span>}
+            </div>
             <div className="meta">
               <span>{getRegionLabel(entry.candidate)}</span>
               <span className="score">{formatScore(scoreDisplaySource)}</span>

@@ -1190,6 +1190,8 @@ try {
           '최근5년실적합계': perf5y,
           '5년실적금액': perf5y,
           '최근5년시공실적': perf5y,
+          '여성기업': c['여성기업'],
+          '품질평가': c['품질평가'],
           summaryStatus,
           isLatest,
           '요약상태': summaryStatus,
@@ -1212,6 +1214,7 @@ try {
           moneyOk, perfOk, regionOk,
           singleBidEligible,
           wasAlwaysIncluded, wasAlwaysExcluded,
+          qualityEval,
           reasons: [
             wasAlwaysIncluded ? '항상 포함' : null,
             (shouldExcludeSingle && singleBidEligible) ? '단독 가능' : null,

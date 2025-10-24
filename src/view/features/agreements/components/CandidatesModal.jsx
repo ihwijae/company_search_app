@@ -2,6 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
+import {
+  isWomenOwnedCompany,
+  getQualityBadgeText,
+  getCandidateTextField,
+  extractManagerNames,
+} from '../../../../utils/companyIndicators.js';
 
 const DATE_PATTERN = /(\d{2,4})[.\-/년\s]*(\d{1,2})[.\-/월\s]*(\d{1,2})/;
 
@@ -56,72 +62,6 @@ const industryToLabel = (type) => {
   return normalized ? normalized.toUpperCase() : '';
 };
 
-const MANAGER_KEYS = [
-  '담당자명', '담당자', '담당자1', '담당자 1', '담당자2', '담당자 2', '담당자3', '담당자 3',
-  '담당자명1', '담당자명2', '담당자명3', '주담당자', '부담당자', '협력담당자', '업체담당자',
-  '현장담당자', '사무담당자', '담당', 'manager', 'managerName', 'manager_name',
-  'contactPerson', 'contact_person', 'contact',
-];
-const MANAGER_KEY_SET = new Set(MANAGER_KEYS.map((key) => key.replace(/\s+/g, '').toLowerCase()));
-
-const extractManagerNames = (candidate) => {
-  if (!candidate || typeof candidate !== 'object') return [];
-  const seen = new Set();
-  const names = [];
-
-  const addNameCandidate = (raw) => {
-    if (raw == null) return;
-    let token = String(raw).trim();
-    if (!token) return;
-    token = token.replace(/^[\[\(（【]([^\]\)）】]+)[\]\)】]?$/, '$1').trim();
-    token = token.replace(/(과장|팀장|차장|대리|사원|부장|대표|실장|소장|님)$/g, '').trim();
-    token = token.replace(/[0-9\-]+$/g, '').trim();
-    if (!/^[가-힣]{2,4}$/.test(token)) return;
-    const key = token.toLowerCase();
-    if (seen.has(key)) return;
-    seen.add(key);
-    names.push(token);
-  };
-
-  const collectFromSource = (source) => {
-    if (!source || typeof source !== 'object') return;
-    Object.entries(source).forEach(([key, value]) => {
-      if (value == null || value === '') return;
-      const normalizedKey = key.replace(/\s+/g, '').toLowerCase();
-      if (MANAGER_KEY_SET.has(normalizedKey)) {
-        String(value).split(/[\n,/·•∙ㆍ;|\\]/).forEach((part) => addNameCandidate(part));
-        return;
-      }
-      if (/담당/.test(normalizedKey) || normalizedKey.includes('manager')) {
-        String(value).split(/[\n,/·•∙ㆍ;|\\]/).forEach((part) => addNameCandidate(part));
-        return;
-      }
-      if (normalizedKey === '비고') {
-        const text = String(value).replace(/\s+/g, ' ').trim();
-        if (!text) return;
-        const firstToken = text.split(/[ ,\/\|·•∙ㆍ;:\-]+/).filter(Boolean)[0] || '';
-        addNameCandidate(firstToken);
-        const patterns = [
-          /담당자?\s*[:：-]?\s*([가-힣]{2,4})/g,
-          /([가-힣]{2,4})\s*(과장|팀장|차장|대리|사원|부장|대표|실장|소장)/g,
-          /\b(?!확인서|등록증|증명서|평가|서류)([가-힣]{2,4})\b\s*(?:,|\/|\(|\d|$)/g,
-        ];
-        patterns.forEach((re) => {
-          let match;
-          while ((match = re.exec(text)) !== null) {
-            addNameCandidate(match[1]);
-          }
-        });
-      }
-    });
-  };
-
-  collectFromSource(candidate);
-  collectFromSource(candidate?.snapshot);
-
-  return names;
-};
-
 export default function CandidatesModal({
   open,
   onClose,
@@ -152,9 +92,16 @@ export default function CandidatesModal({
   const [pinned, setPinned] = useState(new Set());
   const [excluded, setExcluded] = useState(new Set());
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortKey, setSortKey] = useState('share'); // 'share' | 'perf5y' | 'sipyung'
   const [sortDir, setSortDir] = useState('desc'); // 'desc' | 'asc'
   const [sortSeq, setSortSeq] = useState(0);      // force re-sort even if same dir clicked
-  const applySort = (dir) => { setSortDir(dir); setSortSeq((n)=>n+1); };
+  const applySort = (key, dir) => {
+    setSortKey(key);
+    setSortDir(dir);
+    setSortSeq((n)=>n+1);
+  };
+  const isActiveSort = useCallback((key, dir) => (sortKey === key && sortDir === dir), [sortKey, sortDir]);
   const [autoPin, setAutoPin] = useState(false);
   const [autoCount, setAutoCount] = useState(3);
   const [onlyLatest, setOnlyLatest] = useState(false);
@@ -276,6 +223,7 @@ const industryToLabel = (type) => {
     if (!open) return;
     const initial = buildInitialParams();
     setParams(initial);
+    setSearchQuery('');
     const clonedCandidates = Array.isArray(initialCandidates)
       ? initialCandidates.map((item) => (item && typeof item === 'object' ? { ...item } : item))
       : [];
@@ -549,6 +497,8 @@ const industryToLabel = (type) => {
     };
     const min = toFloat(params.minPct);
     const max = toFloat(params.maxPct);
+    const normalizedQuery = String(searchQuery || '').trim().toLowerCase();
+    const hasQuery = normalizedQuery.length > 0;
     return computed.map((c) => {
       const summaryStatus = (c.summaryStatus || c['요약상태'] || '').trim();
       return { ...c, summaryStatus };
@@ -559,26 +509,51 @@ const industryToLabel = (type) => {
       if (params.filterByRegion && Array.isArray(params.dutyRegions) && params.dutyRegions.length > 0 && c.regionOk === false && !c.wasAlwaysIncluded) return false;
       if (min !== null && (c._pct === null || c._pct < min)) return false;
       if (max !== null && (c._pct === null || c._pct > max)) return false;
+      if (hasQuery) {
+        const textFields = [
+          getCandidateTextField(c, ['name', '검색된 회사', '업체명']),
+          getCandidateTextField(c, ['대표자', '대표자명']),
+          getCandidateTextField(c, ['manager', '담당자', '담당자명']),
+          getCandidateTextField(c, ['region', '대표지역', '지역']),
+          getCandidateTextField(c, ['bizNo', '사업자번호']),
+        ];
+        const managerMatch = extractManagerNames(c).some((name) => name && name.toLowerCase().includes(normalizedQuery));
+        const textMatch = textFields.some((value) => value && String(value).toLowerCase().includes(normalizedQuery));
+        if (!textMatch && !managerMatch) return false;
+      }
       return true;
     });
-  }, [computed, params.minPct, params.maxPct, params.excludeSingleBidEligible, params.filterByRegion, params.dutyRegions, excluded, onlyLatest]);
+  }, [computed, params.minPct, params.maxPct, params.excludeSingleBidEligible, params.filterByRegion, params.dutyRegions, excluded, onlyLatest, searchQuery]);
 
   const sorted = useMemo(() => {
     const arr = filtered.slice();
+    const accessor = (item) => {
+      switch (sortKey) {
+        case 'perf5y':
+          return Number.isFinite(Number(item._performance5y)) ? Number(item._performance5y) : null;
+        case 'sipyung':
+          return Number.isFinite(Number(item._sipyung)) ? Number(item._sipyung) : null;
+        case 'share':
+        default:
+          return item._pctRaw != null && Number.isFinite(Number(item._pctRaw)) ? Number(item._pctRaw) : null;
+      }
+    };
     arr.sort((a, b) => {
-      const av = a._pctRaw; const bv = b._pctRaw;
-      // null(계산 불가)은 항상 맨 아래
-      const aNull = av == null; const bNull = bv == null;
-      if (aNull && bNull) return String(a.name||'').localeCompare(String(b.name||''), 'ko-KR');
+      const av = accessor(a);
+      const bv = accessor(b);
+      const aNull = av == null;
+      const bNull = bv == null;
+      if (aNull && bNull) {
+        return String(a.name || '').localeCompare(String(b.name || ''), 'ko-KR');
+      }
       if (aNull) return 1;
       if (bNull) return -1;
       const diff = sortDir === 'asc' ? (av - bv) : (bv - av);
       if (diff !== 0) return diff;
-      // 동률이면 이름으로 안정 정렬
-      return String(a.name||'').localeCompare(String(b.name||''), 'ko-KR');
+      return String(a.name || '').localeCompare(String(b.name || ''), 'ko-KR');
     });
     return arr;
-  }, [filtered, sortDir, sortSeq]);
+  }, [filtered, sortDir, sortSeq, sortKey]);
 
   const autoPinned = useMemo(() => {
     if (!autoPin) return new Set();
@@ -674,6 +649,27 @@ const industryToLabel = (type) => {
             </div>
           )}
           <div className="filter-item">
+            <label>업체 검색</label>
+            <div style={{ display:'flex', gap: 6 }}>
+              <input
+                className="filter-input"
+                placeholder="업체명/대표자 검색"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="btn-sm btn-muted"
+                  onClick={() => setSearchQuery('')}
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="filter-item">
             <label>의무지역({(params.dutyRegions||[]).length})</label>
             <div className="chips" style={{ marginTop: 6 }}>
               {(params.dutyRegions || []).map((r) => (<span key={r} className="chip">{r}</span>))}
@@ -702,8 +698,12 @@ const industryToLabel = (type) => {
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ color: '#6b7280' }}>총 {summary.total}개 · 선택 {summary.pinned} · 제외 {summary.excluded}</div>
             <div style={{ display:'flex', gap: 6, alignItems:'center', flexWrap: 'wrap' }}>
-              <button className={`btn-sm ${sortDir==='desc'?'primary':'btn-soft'}`} onClick={()=>applySort('desc')}>지분 높은순</button>
-              <button className={`btn-sm ${sortDir==='asc'?'primary':'btn-soft'}`} onClick={()=>applySort('asc')}>지분 낮은순</button>
+              <button className={`btn-sm ${isActiveSort('share','desc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('share','desc')}>지분 높은순</button>
+              <button className={`btn-sm ${isActiveSort('share','asc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('share','asc')}>지분 낮은순</button>
+              <button className={`btn-sm ${isActiveSort('perf5y','desc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('perf5y','desc')}>5년실적 높은순</button>
+              <button className={`btn-sm ${isActiveSort('perf5y','asc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('perf5y','asc')}>5년실적 낮은순</button>
+              <button className={`btn-sm ${isActiveSort('sipyung','desc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('sipyung','desc')}>시평액 높은순</button>
+              <button className={`btn-sm ${isActiveSort('sipyung','asc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('sipyung','asc')}>시평액 낮은순</button>
               <label style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
                 <input type="checkbox" checked={autoPin} onChange={(e)=>setAutoPin(!!e.target.checked)} /> 자동 선택 상위
               </label>
@@ -791,6 +791,9 @@ const industryToLabel = (type) => {
                     ? { background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }
                     : { background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' };
                   const managerNames = extractManagerNames(c);
+                  const femaleOwned = isWomenOwnedCompany(c);
+                  const qualityBadgeText = getQualityBadgeText(c);
+                  const showBadges = c.wasAlwaysIncluded || c.summaryStatus || femaleOwned || qualityBadgeText;
                   return (
                   <tr key={`${c.id}-${idx}`}>
                     <td>
@@ -805,10 +808,16 @@ const industryToLabel = (type) => {
                             ))}
                           </div>
                         )}
-                        {(c.wasAlwaysIncluded || c.summaryStatus) && (
+                        {showBadges && (
                           <div className="company-badges">
                             {c.wasAlwaysIncluded && (
                               <span className="fixed-badge">선택</span>
+                            )}
+                            {femaleOwned && (
+                              <span className="badge-female">女</span>
+                            )}
+                            {qualityBadgeText && (
+                              <span className="badge-quality">품질평가 {qualityBadgeText}</span>
                             )}
                             {c.summaryStatus && (
                               <span className={`summary-status-badge ${getStatusClass(c.summaryStatus)}`}>

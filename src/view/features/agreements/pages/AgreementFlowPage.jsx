@@ -490,7 +490,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         noticeNo: form.noticeNo,
                         noticeTitle: form.title,
                         industryLabel: form.industry,
-                        entryAmount: form.entryQualificationAmount || form.estimatedPrice,
+                        entryAmount: form.entryQualificationAmount || '',
                         baseAmount: form.baseAmount,
                         estimatedAmount: form.estimatedPrice,
                         bidDeadline: form.bidDeadline,

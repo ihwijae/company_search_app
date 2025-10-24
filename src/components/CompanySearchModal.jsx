@@ -1,4 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import {
+  isWomenOwnedCompany,
+  getQualityBadgeText,
+  extractManagerNames,
+  getCandidateTextField,
+} from '../utils/companyIndicators.js';
+
+const FILE_TYPE_LABELS = {
+  eung: '전기',
+  tongsin: '통신',
+  sobang: '소방',
+};
 
 export default function CompanySearchModal({ open, fileType, onClose, onPick, initialQuery = '' }) {
   const [q, setQ] = useState('');
@@ -66,30 +78,68 @@ export default function CompanySearchModal({ open, fileType, onClose, onPick, in
               </tr>
             </thead>
             <tbody>
-              {(results || []).map((c, idx) => (
-                <tr key={idx}>
-                  <td>{c['검색된 회사']}</td>
-                  <td>{c['대표자'] || ''}</td>
-                  <td>{c['대표지역'] || c['지역'] || ''}</td>
-                  <td>{c['사업자번호'] || ''}</td>
-                  <td style={{ textAlign: 'center' }}>
-                    <button
-                      className="btn-sm btn-soft"
-                      style={{ minWidth: 64, whiteSpace: 'nowrap', height: 32 }}
-                      onClick={() => {
-                        if (!onPick) return;
-                        const snapshot = { ...c };
-                        const payload = {
-                          bizNo: c['사업자번호'] || c.bizNo || '',
-                          name: c['검색된 회사'] || c.name || '',
-                          snapshot,
-                        };
-                        onPick(payload);
-                      }}
-                    >선택</button>
-                  </td>
-                </tr>
-              ))}
+              {(results || []).map((c, idx) => {
+                const companyName = getCandidateTextField(c, ['검색된 회사', '업체명', 'name'])
+                  || c['검색된 회사']
+                  || c.name
+                  || '';
+                const representative = getCandidateTextField(c, ['대표자', '대표자명']) || c['대표자'] || '';
+                const region = getCandidateTextField(c, ['대표지역', '지역']) || c['대표지역'] || c['지역'] || '';
+                const bizNo = getCandidateTextField(c, ['사업자번호', 'bizNo']) || c['사업자번호'] || '';
+                const managerNames = extractManagerNames(c);
+                const femaleOwned = isWomenOwnedCompany(c);
+                const qualityBadge = getQualityBadgeText(c);
+                let typeKey = String(c._file_type || '').toLowerCase();
+                if (!FILE_TYPE_LABELS[typeKey]) {
+                  const fallbackKey = String(fileType || '').toLowerCase();
+                  if (FILE_TYPE_LABELS[fallbackKey]) typeKey = fallbackKey;
+                }
+                const typeLabel = FILE_TYPE_LABELS[typeKey] || '';
+                return (
+                  <tr key={idx}>
+                    <td>
+                      <div className="company-cell">
+                        <div className="company-name-line">
+                          <span className="company-name-text">{companyName}</span>
+                          {typeLabel && (
+                            <span className={`file-type-badge-small file-type-${typeKey}`}>
+                              {typeLabel}
+                            </span>
+                          )}
+                          {femaleOwned && <span className="badge-female badge-inline">女</span>}
+                          {qualityBadge && <span className="badge-quality badge-inline">품질평가 {qualityBadge}</span>}
+                        </div>
+                        {managerNames.length > 0 && (
+                          <div className="company-manager-badges">
+                            {managerNames.map((name) => (
+                              <span key={`${idx}-${name}`} className="badge-person">{name}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>{representative}</td>
+                    <td>{region}</td>
+                    <td>{bizNo}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        className="btn-sm btn-soft"
+                        style={{ minWidth: 64, whiteSpace: 'nowrap', height: 32 }}
+                        onClick={() => {
+                          if (!onPick) return;
+                          const snapshot = { ...c };
+                          const payload = {
+                            bizNo,
+                            name: companyName,
+                            snapshot,
+                          };
+                          onPick(payload);
+                        }}
+                      >선택</button>
+                    </td>
+                  </tr>
+                );
+              })}
               {(!results || results.length === 0) && (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: 16, color: '#6b7280' }}>
