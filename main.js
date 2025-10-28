@@ -5,12 +5,17 @@ const chokidar = require('chokidar');
 const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
 const { evaluateScores } = require('./src/shared/evaluator.js');
 const { SearchLogic } = require('./searchLogic.js');
+const { ensureRecordsDatabase } = require('./src/main/features/records/recordsDatabase.js');
+const { RecordsService } = require('./src/main/features/records/recordsService.js');
+const { registerRecordsIpcHandlers } = require('./src/main/features/records/ipc.js');
 const industryAverages = require('./src/shared/industryAverages.json');
 const os = require('os');
 const { execSync } = require('child_process');
 const pkg = (() => { try { return require('./package.json'); } catch { return {}; } })();
 
 let formulasCache = null;
+let recordsDbInstance = null;
+let recordsServiceInstance = null;
 const loadMergedFormulasCached = () => {
   if (formulasCache) return formulasCache;
   try {
@@ -443,6 +448,17 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  try {
+    recordsDbInstance = ensureRecordsDatabase({ userDataDir });
+    if (recordsDbInstance?.path) {
+      console.log('[MAIN] Records database ready:', recordsDbInstance.path);
+    }
+    recordsServiceInstance = new RecordsService({ userDataDir });
+    registerRecordsIpcHandlers({ ipcMain, recordsService: recordsServiceInstance });
+  } catch (err) {
+    console.error('[MAIN] Failed to initialize records database:', err);
+  }
+
   console.log('[MAIN] 초기화 완료. 저장된 경로 자동 로딩 시작...');
   // 二쇨린???꾩떆 ?뚯씪 ?뺣━ ?쒖옉
   cleanOldTempFiles();

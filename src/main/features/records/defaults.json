@@ -1,0 +1,19 @@
+{
+  "categories": [
+    { "name": "공동주택" },
+    { "name": "의료" },
+    { "name": "철도" },
+    { "name": "기타" },
+    { "name": "전기차" },
+    { "name": "송전" },
+    { "name": "지중" }
+  ],
+  "companies": [
+    { "name": "지음이엔아이㈜", "alias": "지음이엔아이", "isPrimary": true },
+    { "name": "㈜대흥디씨티", "alias": "대흥디씨티", "isPrimary": true },
+    { "name": "아람이엔테크㈜", "alias": "아람이엔테크", "isPrimary": true },
+    { "name": "㈜우진일렉트", "alias": "우진일렉트", "isPrimary": true },
+    { "name": "에코엠이엔씨㈜", "alias": "에코엠이엔씨", "isPrimary": true },
+    { "name": "㈜지음쏠라테크", "alias": "지음쏠라테크", "isPrimary": true }
+  ]
+}

@@ -86,6 +86,7 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
       <div className="brand">{isCollapsed ? '' : 'Company Search'}</div>
       <nav className="nav">
         {item('search', '검색', '🔍')}
+        {item('records', '실적', '📊')}
         {item('agreements', '협정', '🤝')}
 
         {AGREEMENT_GROUPS.map((group) => {

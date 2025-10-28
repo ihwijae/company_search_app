@@ -3,6 +3,7 @@ import React from 'react';
 import SearchPage from './view/features/search/pages/SearchPage.jsx';
 import AgreementsPage from './view/features/agreements/pages/AgreementsPage.jsx';
 import SettingsPage from './view/features/settings/pages/SettingsPage.jsx';
+import RecordsPage from './view/features/records/pages/RecordsPage.jsx';
 import LHUnder50Page from './view/features/agreements/pages/LHUnder50Page.jsx';
 import LH50To100Page from './view/features/agreements/pages/LH50To100Page.jsx';
 import MOISUnder30Page from './view/features/agreements/pages/MOISUnder30Page.jsx';
@@ -42,6 +43,9 @@ export default function App() {
       break;
     case '/settings':
       Screen = SettingsPage;
+      break;
+    case '/records':
+      Screen = RecordsPage;
       break;
     case '/search':
     default:

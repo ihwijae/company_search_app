@@ -52,4 +52,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   stateSave: (key, value) => ipcRenderer.invoke('renderer-state-save', { key, value }),
   stateRemove: (key) => ipcRenderer.invoke('renderer-state-remove', key),
   stateClear: (prefix) => ipcRenderer.invoke('renderer-state-clear', prefix),
+
+  records: {
+    listProjects: (filters) => ipcRenderer.invoke('records:list-projects', filters),
+    getProject: (id) => ipcRenderer.invoke('records:get-project', { id }),
+    createProject: (payload) => ipcRenderer.invoke('records:create-project', payload),
+    updateProject: (id, data) => ipcRenderer.invoke('records:update-project', { id, data }),
+    deleteProject: (id) => ipcRenderer.invoke('records:delete-project', { id }),
+    removeAttachment: (projectId) => ipcRenderer.invoke('records:remove-attachment', { projectId }),
+    replaceAttachment: (projectId, attachment) => ipcRenderer.invoke('records:replace-attachment', { projectId, attachment }),
+    listCompanies: (options) => ipcRenderer.invoke('records:list-companies', options),
+    saveCompany: (payload) => ipcRenderer.invoke('records:save-company', payload),
+    deleteCompany: (id) => ipcRenderer.invoke('records:delete-company', { id }),
+    listCategories: (options) => ipcRenderer.invoke('records:list-categories', options),
+    saveCategory: (payload) => ipcRenderer.invoke('records:save-category', payload),
+    deleteCategory: (id) => ipcRenderer.invoke('records:delete-category', { id }),
+  },
 });
