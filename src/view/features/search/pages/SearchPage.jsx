@@ -14,6 +14,30 @@ const unformatNumber = (value) => String(value).replace(/,/g, '');
 const formatPercentage = (value) => { if (!value && value !== 0) return ''; const num = Number(String(value).replace(/,/g, '')); if (isNaN(num)) return String(value); return num.toFixed(2) + '%'; };
 const getStatusClass = (statusText) => { if (statusText === '최신') return 'status-latest'; if (statusText === '1년 경과') return 'status-warning'; if (statusText === '1년 이상 경과') return 'status-old'; return 'status-unknown'; };
 
+const normalizeFlagText = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+};
+
+const isWomenOwnedCompany = (company) => {
+  const text = normalizeFlagText(company?.['여성기업']);
+  if (!text) return false;
+  const normalized = text.replace(/\s+/g, '').toLowerCase();
+  if (!normalized) return false;
+  if (normalized === '없음' || normalized === '-' || normalized === '무') return false;
+  return true;
+};
+
+const hasQualityEvaluationData = (company) => {
+  const text = normalizeFlagText(company?.['품질평가']);
+  if (!text) return false;
+  const normalized = text.replace(/\s+/g, '').toLowerCase();
+  if (!normalized) return false;
+  if (normalized.includes('없음')) return false;
+  if (normalized === '-' || normalized === '무') return false;
+  return /\d/.test(normalized);
+};
+
 const SEARCH_STORAGE_KEY = 'search:page';
 const PAGE_SIZE = 12;
 
@@ -970,7 +994,7 @@ function App() {
         <div className="topbar" />
         <div className="stage">
           <div className="content">
-          <div className="panel">
+          <div className="panel panel-filters">
             <div className="search-filter-section" ref={topSectionRef}>
               <div className="file-type-selector">
                 <div className="radio-group">
@@ -1097,6 +1121,8 @@ function App() {
                       const summaryStatus = company['요약상태'] || '미지정';
                       const fileTypeLabel = searchedFileType === 'eung' ? '전기' : searchedFileType === 'tongsin' ? '통신' : '소방';
                       const listKey = composeCompanyKey(company, globalIndex) || `idx-${globalIndex}`;
+                      const womenOwned = isWomenOwnedCompany(company);
+                      const hasQualityEvaluation = hasQualityEvaluationData(company);
                       return (
                         <li key={listKey} onClick={() => handleCompanySelect(company, globalIndex)} className={`company-list-item ${searchedFileType === 'all' ? (selectedIndex === globalIndex ? 'active' : '') : (isActive ? 'active' : '')}`}>
                           <div className="company-info-wrapper">
@@ -1106,6 +1132,16 @@ function App() {
                                 : fileTypeLabel}
                             </span>
                             <span className="company-name">{company['검색된 회사']}</span>
+                            {womenOwned && (
+                              <span className="badge-female badge-inline" title="여성기업">
+                                女
+                              </span>
+                            )}
+                            {hasQualityEvaluation && (
+                              <span className="badge-quality badge-inline" title="LH 품질평가">
+                                LH
+                              </span>
+                            )}
                             {company['담당자명'] && <span className="badge-person">{company['담당자명']}</span>}
                           </div>
                           <span className={`summary-status-badge ${getStatusClass(summaryStatus)}`}>{summaryStatus}</span>
