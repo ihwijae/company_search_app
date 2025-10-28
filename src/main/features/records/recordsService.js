@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { RecordsRepository } = require('./recordsRepository');
+const { persistRecordsDatabase } = require('./recordsDatabase.js');
 
 const sanitizeFileName = (name) => {
   if (!name) return 'attachment';
@@ -47,12 +48,15 @@ class RecordsService {
     }
     const id = this.repository.upsertCompany(payload);
     if (!id) throw new Error('Failed to save company');
+    persistRecordsDatabase();
     return this.repository.getCompanyById(id);
   }
 
   deleteCompany(id) {
     if (!id) throw new Error('Company id is required');
-    return this.repository.deleteCompany(id);
+    const deleted = this.repository.deleteCompany(id);
+    if (deleted) persistRecordsDatabase();
+    return deleted;
   }
 
   listCategories(options = {}) {
@@ -69,12 +73,15 @@ class RecordsService {
     }
     const id = this.repository.upsertCategory(payload);
     if (!id) throw new Error('Failed to save category');
+    persistRecordsDatabase();
     return this.repository.getCategoryById(id);
   }
 
   deleteCategory(id) {
     if (!id) throw new Error('Category id is required');
-    return this.repository.deleteCategory(id);
+    const deleted = this.repository.deleteCategory(id);
+    if (deleted) persistRecordsDatabase();
+    return deleted;
   }
 
   listProjects(filters = {}) {
@@ -114,6 +121,8 @@ class RecordsService {
       this.replaceAttachment(projectId, payload.attachment);
     }
 
+    persistRecordsDatabase();
+
     return this.repository.getProjectById(projectId);
   }
 
@@ -139,6 +148,8 @@ class RecordsService {
       this.replaceAttachment(projectId, payload.attachment);
     }
 
+    persistRecordsDatabase();
+
     return this.repository.getProjectById(projectId);
   }
 
@@ -149,6 +160,7 @@ class RecordsService {
     if (deleted && existingPath && fs.existsSync(existingPath)) {
       try { fs.unlinkSync(existingPath); } catch {}
     }
+    if (deleted) persistRecordsDatabase();
     return deleted;
   }
 
@@ -194,6 +206,8 @@ class RecordsService {
       fileSize,
     });
 
+    persistRecordsDatabase();
+
     if (previousPath && previousPath !== filePath && fs.existsSync(previousPath)) {
       try { fs.unlinkSync(previousPath); } catch {}
     }
@@ -208,6 +222,7 @@ class RecordsService {
     if (removed && existingPath && fs.existsSync(existingPath)) {
       try { fs.unlinkSync(existingPath); } catch {}
     }
+    if (removed) persistRecordsDatabase();
     return removed;
   }
 }

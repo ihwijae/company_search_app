@@ -449,7 +449,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   try {
-    recordsDbInstance = ensureRecordsDatabase({ userDataDir });
+    recordsDbInstance = await ensureRecordsDatabase({ userDataDir });
     if (recordsDbInstance?.path) {
       console.log('[MAIN] Records database ready:', recordsDbInstance.path);
     }

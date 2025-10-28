@@ -1,9 +1,10 @@
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
+const initSqlJs = require('sql.js');
 const defaults = require('./defaults.json');
 
-let recordsInstance = null;
+let contextPromise = null;
+let context = null;
 
 const MIGRATIONS = [
   (db) => {
@@ -79,38 +80,71 @@ const MIGRATIONS = [
   }
 ];
 
+const wasmPath = require.resolve('sql.js/dist/sql-wasm.wasm');
+
+function getUserVersion(db) {
+  const result = db.exec('PRAGMA user_version');
+  if (!result || !result[0] || !result[0].values || !result[0].values.length) return 0;
+  return Number(result[0].values[0][0]) || 0;
+}
+
+function setUserVersion(db, version) {
+  db.exec(`PRAGMA user_version = ${version}`);
+}
+
 function runMigrations(db) {
-  let userVersion = db.pragma('user_version', { simple: true }) || 0;
-  const targetVersion = MIGRATIONS.length;
-  while (userVersion < targetVersion) {
-    const migration = MIGRATIONS[userVersion];
+  let current = getUserVersion(db);
+  const target = MIGRATIONS.length;
+  while (current < target) {
+    const migration = MIGRATIONS[current];
     if (typeof migration === 'function') {
       migration(db);
     }
-    userVersion += 1;
-    db.pragma(`user_version = ${userVersion}`);
+    current += 1;
+    setUserVersion(db, current);
   }
 }
 
+function prepare(db, sql) {
+  const stmt = db.prepare(sql);
+  return stmt;
+}
+
 function seedDefaults(db, seedConfig = defaults) {
-  if (!seedConfig) return;
+  if (!seedConfig) return false;
+  let mutated = false;
   const nowIso = new Date().toISOString();
 
-  const getCategory = db.prepare('SELECT id, parent_id FROM categories WHERE name = ?');
-  const insertCategory = db.prepare(`INSERT INTO categories (name, parent_id, active, sort_order, created_at, updated_at) VALUES (?, ?, 1, ?, ?, ?)`);
-  const updateCategoryParent = db.prepare('UPDATE categories SET parent_id = ?, updated_at = ? WHERE id = ?');
+  const getCategory = prepare(db, 'SELECT id, parent_id FROM categories WHERE name = ?');
+  const insertCategory = prepare(db, `INSERT INTO categories (name, parent_id, active, sort_order, created_at, updated_at)
+    VALUES (?, ?, 1, ?, ?, ?)`);
+  const updateCategoryParent = prepare(db, 'UPDATE categories SET parent_id = ?, updated_at = ? WHERE id = ?');
 
   const ensureCategory = (category, parentId = null, order = 0) => {
     if (!category || !category.name) return null;
-    const existing = getCategory.get(category.name);
-    if (existing) {
+    getCategory.bind([category.name]);
+    const hasExisting = getCategory.step();
+    if (hasExisting) {
+      const existing = getCategory.getAsObject();
       if ((existing.parent_id || null) !== (parentId || null)) {
-        updateCategoryParent.run(parentId, nowIso, existing.id);
+        updateCategoryParent.bind([parentId, nowIso, existing.id]);
+        updateCategoryParent.step();
+        updateCategoryParent.reset();
+        mutated = true;
       }
+      getCategory.reset();
       return existing.id;
     }
-    const info = insertCategory.run(category.name, parentId, order, nowIso, nowIso);
-    return info.lastInsertRowid;
+    getCategory.reset();
+    insertCategory.bind([category.name, parentId, order, nowIso, nowIso]);
+    insertCategory.step();
+    insertCategory.reset();
+    mutated = true;
+    const row = db.exec('SELECT last_insert_rowid() AS id');
+    if (row && row[0] && row[0].values.length) {
+      return Number(row[0].values[0][0]) || null;
+    }
+    return null;
   };
 
   const walkCategories = (items, parentId = null) => {
@@ -123,64 +157,110 @@ function seedDefaults(db, seedConfig = defaults) {
     });
   };
 
-  walkCategories(seedConfig.categories);
+  db.exec('BEGIN');
+  try {
+    walkCategories(seedConfig.categories);
 
-  const getCompany = db.prepare('SELECT id FROM companies WHERE name = ?');
-  const insertCompany = db.prepare(`INSERT INTO companies (name, alias, is_primary, active, sort_order, created_at, updated_at)
-    VALUES (?, ?, ?, 1, ?, ?, ?)`);
+    if (Array.isArray(seedConfig.companies)) {
+      const getCompany = prepare(db, 'SELECT id FROM companies WHERE name = ?');
+      const insertCompany = prepare(db, `INSERT INTO companies (name, alias, is_primary, active, sort_order, created_at, updated_at)
+        VALUES (?, ?, ?, 1, ?, ?, ?)`);
+      seedConfig.companies.forEach((company, idx) => {
+        if (!company || !company.name) return;
+        getCompany.bind([company.name]);
+        const exists = getCompany.step();
+        getCompany.reset();
+        if (exists) return;
+        insertCompany.bind([
+          company.name,
+          company.alias || null,
+          company.isPrimary ? 1 : 0,
+          idx,
+          nowIso,
+          nowIso,
+        ]);
+        insertCompany.step();
+        insertCompany.reset();
+        mutated = true;
+      });
+      insertCompany.free();
+      getCompany.free();
+    }
 
-  if (Array.isArray(seedConfig.companies)) {
-    seedConfig.companies.forEach((company, idx) => {
-      if (!company || !company.name) return;
-      const exists = getCompany.get(company.name);
-      if (exists) return;
-      insertCompany.run(
-        company.name,
-        company.alias || null,
-        company.isPrimary ? 1 : 0,
-        idx,
-        nowIso,
-        nowIso
-      );
-    });
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  } finally {
+    getCategory.free();
+    insertCategory.free();
+    updateCategoryParent.free();
   }
+
+  return mutated;
 }
 
-function ensureRecordsDatabase({ userDataDir } = {}) {
-  if (recordsInstance) return recordsInstance;
-  if (!userDataDir) throw new Error('userDataDir is required to initialize records database.');
-
-  const databasePath = path.join(userDataDir, 'records.db');
-  const directory = path.dirname(databasePath);
+function persistDatabase(db, targetPath) {
+  const directory = path.dirname(targetPath);
   if (!fs.existsSync(directory)) {
     fs.mkdirSync(directory, { recursive: true });
   }
+  const data = db.export();
+  fs.writeFileSync(targetPath, Buffer.from(data));
+}
 
-  const db = new Database(databasePath);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
+async function ensureRecordsDatabase({ userDataDir } = {}) {
+  if (context) return context;
+  if (!contextPromise) {
+    contextPromise = (async () => {
+      if (!userDataDir) throw new Error('userDataDir is required to initialize records database.');
 
-  runMigrations(db);
-  seedDefaults(db);
+      const SQL = await initSqlJs({
+        locateFile: (file) => (file === 'sql-wasm.wasm' ? wasmPath : file),
+      });
 
-  recordsInstance = { db, path: databasePath };
-  return recordsInstance;
+      const databasePath = path.join(userDataDir, 'records.sqlite');
+      const hasExistingFile = fs.existsSync(databasePath);
+      const fileBuffer = hasExistingFile ? fs.readFileSync(databasePath) : null;
+      const db = fileBuffer && fileBuffer.length ? new SQL.Database(fileBuffer) : new SQL.Database();
+
+      runMigrations(db);
+      const seeded = seedDefaults(db);
+      if (!hasExistingFile || seeded) {
+        persistDatabase(db, databasePath);
+      }
+
+      context = {
+        db,
+        path: databasePath,
+        save: () => persistDatabase(db, databasePath),
+      };
+      return context;
+    })();
+  }
+  return contextPromise;
 }
 
 function getRecordsDatabase() {
-  if (!recordsInstance) {
+  if (!context) {
     throw new Error('Records database has not been initialized yet. Call ensureRecordsDatabase first.');
   }
-  return recordsInstance.db;
+  return context.db;
 }
 
 function getRecordsDatabasePath() {
-  if (!recordsInstance) return null;
-  return recordsInstance.path;
+  if (!context) return null;
+  return context.path;
+}
+
+function persistRecordsDatabase() {
+  if (!context) return;
+  persistDatabase(context.db, context.path);
 }
 
 module.exports = {
   ensureRecordsDatabase,
   getRecordsDatabase,
   getRecordsDatabasePath,
+  persistRecordsDatabase,
 };

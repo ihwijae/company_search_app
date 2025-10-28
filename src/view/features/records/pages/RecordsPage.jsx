@@ -88,6 +88,12 @@ export default function RecordsPage() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [isModalOpen, setModalOpen] = React.useState(false);
+  const [selectedProjectId, setSelectedProjectId] = React.useState(null);
+
+  const selectedProject = React.useMemo(
+    () => projects.find((project) => project.id === selectedProjectId) || null,
+    [projects, selectedProjectId]
+  );
 
   const fetchTaxonomies = React.useCallback(async () => {
     try {
@@ -115,12 +121,18 @@ export default function RecordsPage() {
       };
       const list = await recordsClient.listProjects(payload);
       setProjects(list);
+      if (!selectedProjectId && list.length) {
+        setSelectedProjectId(list[0].id);
+      }
+      if (selectedProjectId && !list.some((item) => item.id === selectedProjectId)) {
+        setSelectedProjectId(list.length ? list[0].id : null);
+      }
     } catch (err) {
       setError(err?.message || '실적을 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, selectedProjectId]);
 
   React.useEffect(() => {
     fetchTaxonomies();
@@ -205,7 +217,12 @@ export default function RecordsPage() {
 
               <div className="records-list" role="list">
                 {projects.map((project) => (
-                  <div key={project.id} className="records-list-item">
+                  <button
+                    key={project.id}
+                    type="button"
+                    className={`records-list-item ${selectedProjectId === project.id ? 'active' : ''}`}
+                    onClick={() => setSelectedProjectId(project.id)}
+                  >
                     <div className="records-list-item__title-row">
                       <div className="records-list-item__title">{project.projectName}</div>
                       <div className="records-list-item__amount">{formatCurrency(project.contractAmount)} 원</div>
@@ -226,13 +243,59 @@ export default function RecordsPage() {
                         <span className="records-tag records-tag--company">{project.primaryCompanyName}</span>
                       )}
                     </div>
-                  </div>
+                  </button>
                 ))}
                 {!projects.length && !loading && (
                   <div className="records-list-empty">등록된 실적이 없습니다.</div>
                 )}
               </div>
             </section>
+
+            <aside className="records-panel records-panel--detail">
+              {selectedProject ? (
+                <div className="records-detail">
+                  <header className="records-detail__header">
+                    <h2>{selectedProject.projectName}</h2>
+                    <p>{selectedProject.corporationName}</p>
+                  </header>
+                  <dl className="records-detail__grid">
+                    <dt>발주처</dt>
+                    <dd>{selectedProject.clientName || '—'}</dd>
+                    <dt>계약금액</dt>
+                    <dd>{formatCurrency(selectedProject.contractAmount)} 원</dd>
+                    <dt>공사기간</dt>
+                    <dd>{selectedProject.startDate || '—'} ~ {selectedProject.endDate || '—'}</dd>
+                    <dt>공사 종류</dt>
+                    <dd>{(selectedProject.categories || []).map((category) => category.name).join(', ') || '—'}</dd>
+                    <dt>우리 업체</dt>
+                    <dd>{selectedProject.primaryCompanyName || '—'}</dd>
+                  </dl>
+                  <section className="records-detail__notes">
+                    <h3>시공규모 및 비고</h3>
+                    <p>{selectedProject.scopeNotes || '등록된 메모가 없습니다.'}</p>
+                  </section>
+                  <section className="records-detail__attachments">
+                    <h3>첨부</h3>
+                    {selectedProject.attachment ? (
+                      <div className="records-detail__attachment-row">
+                        <span>{selectedProject.attachment.displayName}</span>
+                        <button
+                          type="button"
+                          className="btn-primary btn-sm"
+                          onClick={() => window.electronAPI.records.openAttachment?.(selectedProject.id)}
+                        >
+                          실적증명서 보기
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="records-detail__attachment-empty">첨부된 파일이 없습니다.</p>
+                    )}
+                  </section>
+                </div>
+              ) : (
+                <div className="records-detail-empty">좌측 목록에서 실적을 선택하면 상세 정보를 확인할 수 있습니다.</div>
+              )}
+            </aside>
           </div>
         </div>
       </div>
