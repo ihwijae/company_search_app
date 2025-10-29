@@ -481,7 +481,13 @@ function AgreementsPage() {
                 </div>
 
                 <div style={{ marginTop: 12, textAlign: 'right' }}>
-                  <button className="primary" onClick={saveCurrentAsItem}>리스트에 추가</button>
+                  <button
+                    className="primary"
+                    onClick={saveCurrentAsItem}
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    리스트에 추가
+                  </button>
                 </div>
               </div>
             </div>

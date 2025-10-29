@@ -1615,17 +1615,17 @@ body {
 
 
 .records-table {
-  width: max(100%, 1280px);
+  width: max(100%, 1120px);
   border-collapse: collapse;
   font-size: 13px;
   table-layout: fixed;
 }
 
-.records-col-company { width: 160px; }
-.records-col-info { width: 420px; }
-.records-col-notes { width: 320px; }
-.records-col-elapsed { width: 160px; }
-.records-col-attachment { width: 220px; }
+.records-col-company { width: 150px; }
+.records-col-info { width: 340px; }
+.records-col-notes { width: 300px; }
+.records-col-elapsed { width: 130px; }
+.records-col-attachment { width: 200px; }
 
 .records-table thead th {
   position: sticky;
@@ -1644,13 +1644,13 @@ body {
 }
 
 .records-table__head--company {
-  width: 160px;
+  width: 150px;
   text-align: left;
 }
 
 .records-table__head--elapsed {
   text-align: center;
-  width: 150px;
+  width: 130px;
 }
 
 .records-table tbody td {
@@ -1686,26 +1686,26 @@ body {
 .records-table__info-cell {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .records-table__project-name {
   font-weight: 700;
   color: #111827;
-  font-size: 14px;
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 
 .records-table__info-row {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   font-size: 12px;
   color: #1f2937;
   overflow-wrap: anywhere;
 }
 
 .records-table__info-label {
-  min-width: 48px;
+  min-width: 44px;
   color: #475569;
   font-weight: 600;
 }

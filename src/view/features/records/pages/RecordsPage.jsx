@@ -395,7 +395,7 @@ export default function RecordsPage() {
                           >
                             <td className="records-table__company">{companyName}</td>
                             <td className="records-table__info-cell">
-                              <div className="records-table__project-name">{project.projectName}</div>
+                              <div className="records-table__project-name">공사명: {project.projectName}</div>
                               <div className="records-table__info-row">
                                 <span className="records-table__info-label">발주처</span>
                                 <span className="records-table__info-value">{project.clientName || '—'}</span>
