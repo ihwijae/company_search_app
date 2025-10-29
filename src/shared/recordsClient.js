@@ -35,6 +35,7 @@ export const recordsClient = {
   saveCategory: (payload) => wrapInvoke('saveCategory', payload),
   deleteCategory: (id) => wrapInvoke('deleteCategory', id),
   openAttachment: (projectId) => wrapInvoke('openAttachment', projectId),
+  exportDatabase: () => wrapInvoke('exportDatabase'),
 };
 
 export default recordsClient;

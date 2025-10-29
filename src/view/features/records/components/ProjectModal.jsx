@@ -12,6 +12,15 @@ const DEFAULT_FORM = {
   categoryIds: [],
 };
 
+const formatContractAmountInput = (value) => {
+  if (value === null || value === undefined) return '';
+  const digits = String(value).replace(/[^\d]/g, '');
+  if (!digits) return '';
+  const numeric = Number(digits);
+  if (!Number.isFinite(numeric)) return digits;
+  return numeric.toLocaleString();
+};
+
 export default function ProjectModal({
   open,
   mode = 'create',
@@ -48,7 +57,7 @@ export default function ProjectModal({
         clientName: initialProject.clientName || '',
         startDate: initialProject.startDate || '',
         endDate: initialProject.endDate || '',
-        contractAmount: initialProject.contractAmount ? String(initialProject.contractAmount) : '',
+        contractAmount: initialProject.contractAmount ? formatContractAmountInput(initialProject.contractAmount) : '',
         scopeNotes: initialProject.scopeNotes || '',
         categoryIds: (initialProject.categories || []).map((category) => category.id),
       });
@@ -94,6 +103,11 @@ export default function ProjectModal({
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+    if (name === 'contractAmount') {
+      const formatted = formatContractAmountInput(value);
+      setForm((prev) => ({ ...prev, contractAmount: formatted }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 

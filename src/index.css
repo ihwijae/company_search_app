@@ -1282,11 +1282,13 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
 }
 
 .records-panel--workspace {
   gap: 12px;
   flex: 1 1 auto;
+  min-width: 0;
 }
 
 .records-workspace {
@@ -1603,7 +1605,9 @@ body {
 .records-table-wrapper {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: auto;
   border-radius: 12px;
   background: #fff;
   border: 1px solid #d4d4d8;
@@ -1611,14 +1615,13 @@ body {
 
 
 .records-table {
-  width: 100%;
-  min-width: 940px;
+  width: max(100%, 1280px);
   border-collapse: collapse;
   font-size: 13px;
   table-layout: fixed;
 }
 
-.records-col-index { width: 60px; }
+.records-col-company { width: 160px; }
 .records-col-info { width: 420px; }
 .records-col-notes { width: 320px; }
 .records-col-elapsed { width: 160px; }
@@ -1640,9 +1643,9 @@ body {
   text-align: center;
 }
 
-.records-table__head--index {
-  width: 48px;
-  text-align: center;
+.records-table__head--company {
+  width: 160px;
+  text-align: left;
 }
 
 .records-table__head--elapsed {
@@ -1673,10 +1676,11 @@ body {
   background: #ede9fe;
 }
 
-.records-table__index {
-  text-align: center;
+.records-table__company {
   font-weight: 600;
   color: #111827;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
 }
 
 .records-table__info-cell {

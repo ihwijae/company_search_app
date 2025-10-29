@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { shell } = require('electron');
 const { RecordsRepository } = require('./recordsRepository');
-const { persistRecordsDatabase } = require('./recordsDatabase.js');
+const { persistRecordsDatabase, getRecordsDatabasePath } = require('./recordsDatabase.js');
 
 const sanitizeFileName = (name) => {
   if (!name) return 'attachment';
@@ -32,6 +32,10 @@ class RecordsService {
       fs.mkdirSync(projectDir, { recursive: true });
     }
     return projectDir;
+  }
+
+  getDatabasePath() {
+    return getRecordsDatabasePath();
   }
 
   listCompanies(options = {}) {
@@ -163,6 +167,21 @@ class RecordsService {
     }
     if (deleted) persistRecordsDatabase();
     return deleted;
+  }
+
+  exportDatabase(targetPath) {
+    if (!targetPath) throw new Error('targetPath is required');
+    persistRecordsDatabase();
+    const dbPath = getRecordsDatabasePath();
+    if (!dbPath || !fs.existsSync(dbPath)) {
+      throw new Error('Database file not found');
+    }
+    const directory = path.dirname(targetPath);
+    if (!fs.existsSync(directory)) {
+      fs.mkdirSync(directory, { recursive: true });
+    }
+    fs.copyFileSync(dbPath, targetPath);
+    return { sourcePath: dbPath, exportedPath: targetPath };
   }
 
   replaceAttachment(projectId, attachmentPayload) {

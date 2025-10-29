@@ -290,6 +290,19 @@ export default function RecordsPage() {
     fetchProjects();
   }, [fetchProjects]);
 
+  const handleExportDatabase = React.useCallback(async () => {
+    try {
+      const result = await recordsClient.exportDatabase();
+      if (!result || result.canceled) return;
+      const exportedPath = result.exportedPath || result.targetPath || result.path;
+      if (exportedPath) {
+        alert(`DB 파일을 내보냈습니다.\n${exportedPath}`);
+      }
+    } catch (err) {
+      alert(err?.message || 'DB 파일을 내보낼 수 없습니다.');
+    }
+  }, []);
+
   return (
     <div className="app-shell">
       <Sidebar
@@ -338,6 +351,7 @@ export default function RecordsPage() {
                   <button type="button" className="btn-muted" onClick={clearFilters} disabled={loading}>초기화</button>
                 </div>
                 <div className="records-toolbar__actions">
+                  <button type="button" className="btn-soft" onClick={handleExportDatabase}>DB 내보내기</button>
                   <button type="button" className="btn-soft" onClick={handleAddCompany}>법인 추가</button>
                   <button type="button" className="btn-primary" onClick={openCreateModal}>+ 실적 등록</button>
                 </div>
@@ -348,7 +362,7 @@ export default function RecordsPage() {
               <div className="records-table-wrapper">
                 <table className="records-table">
                   <colgroup>
-                    <col className="records-col-index" />
+                    <col className="records-col-company" />
                     <col className="records-col-info" />
                     <col className="records-col-notes" />
                     <col className="records-col-elapsed" />
@@ -356,7 +370,7 @@ export default function RecordsPage() {
                   </colgroup>
                   <thead>
                     <tr>
-                      <th className="records-table__head--index">No</th>
+                      <th className="records-table__head--company">법인</th>
                       <th>공사 정보</th>
                       <th>시공규모 및 비고</th>
                       <th className="records-table__head--elapsed">{baseDateLabel} 기준 경과일수</th>
@@ -365,29 +379,26 @@ export default function RecordsPage() {
                   </thead>
                   <tbody>
                     {projects.length ? (
-                      projects.map((project, index) => {
+                      projects.map((project) => {
                         const isSelected = selectedProjectId === project.id;
                         const hasAttachment = !!project.attachment;
                         const elapsedText = formatElapsedPeriod(project.endDate || project.startDate, baseDateRef.current);
                         const categoriesText = project.categories && project.categories.length > 0
                           ? project.categories.map((category) => category.name).join(' · ')
                           : '공사 종류 없음';
+                        const companyName = project.corporationName || project.primaryCompanyName || '—';
                         return (
                           <tr
                             key={project.id}
                             className={`records-table__row ${isSelected ? 'is-selected' : ''}`}
                             onClick={() => setSelectedProjectId(project.id)}
                           >
-                            <td className="records-table__index">{index + 1}</td>
+                            <td className="records-table__company">{companyName}</td>
                             <td className="records-table__info-cell">
                               <div className="records-table__project-name">{project.projectName}</div>
                               <div className="records-table__info-row">
                                 <span className="records-table__info-label">발주처</span>
                                 <span className="records-table__info-value">{project.clientName || '—'}</span>
-                              </div>
-                              <div className="records-table__info-row">
-                                <span className="records-table__info-label">법인</span>
-                                <span className="records-table__info-value">{project.corporationName || project.primaryCompanyName || '—'}</span>
                               </div>
                               <div className="records-table__info-row">
                                 <span className="records-table__info-label">기간</span>
@@ -441,7 +452,7 @@ export default function RecordsPage() {
                       })
                     ) : (
                       <tr>
-                        <td colSpan={6} className="records-table__empty">등록된 실적이 없습니다.</td>
+                        <td colSpan={5} className="records-table__empty">등록된 실적이 없습니다.</td>
                       </tr>
                     )}
                   </tbody>

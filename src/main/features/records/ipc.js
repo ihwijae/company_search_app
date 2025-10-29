@@ -1,3 +1,5 @@
+const { dialog, BrowserWindow } = require('electron');
+
 function createResponse(data) {
   return { success: true, data };
 }
@@ -48,6 +50,22 @@ function registerRecordsIpcHandlers({ ipcMain, recordsService }) {
   handle('records:open-attachment', (payload) => {
     if (!payload || !payload.projectId) throw new Error('projectId is required');
     return recordsService.openAttachment(payload.projectId);
+  });
+  handle('records:export-database', async (_payload, event) => {
+    const dbPath = recordsService.getDatabasePath();
+    if (!dbPath) throw new Error('DB 파일을 찾을 수 없습니다.');
+    const ownerWindow = (event && event.sender && BrowserWindow.fromWebContents(event.sender))
+      || BrowserWindow.getFocusedWindow();
+    const saveTo = await dialog.showSaveDialog(ownerWindow, {
+      title: '실적 DB 내보내기',
+      defaultPath: 'records.sqlite',
+      filters: [{ name: 'SQLite 파일', extensions: ['sqlite', 'db'] }],
+    });
+    if (saveTo.canceled || !saveTo.filePath) {
+      return { canceled: true };
+    }
+    const result = recordsService.exportDatabase(saveTo.filePath);
+    return result;
   });
 
   handle('records:list-companies', (payload) => recordsService.listCompanies(payload || {}));

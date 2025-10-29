@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
@@ -155,6 +155,7 @@ function AgreementsPage() {
     { name: '', share: '', bizNo: '' },
     { name: '', share: '', bizNo: '' },
   ]); // default 3 slots
+  const leaderNameRef = useRef(null);
   const [list, setList] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTarget, setModalTarget] = useState(null); // 'leader' or index of members
@@ -258,6 +259,15 @@ function AgreementsPage() {
       { name: '', share: '', bizNo: '' },
       { name: '', share: '', bizNo: '' },
     ]);
+    requestAnimationFrame(() => {
+      if (leaderNameRef.current) {
+        const input = leaderNameRef.current;
+        input.focus();
+        try {
+          input.setSelectionRange(0, input.value.length);
+        } catch {}
+      }
+    });
   };
 
   const removeItem = (idx) => {
@@ -419,7 +429,15 @@ function AgreementsPage() {
                 <div className="filter-item">
                   <label>대표사</label>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <input type="text" className="filter-input" value={leader.name} onChange={(e)=>setLeader(p=>({...p, name:e.target.value}))} onKeyDown={(e)=>{ if(e.key==='Enter'){ openModalFor('leader', leader.name); } }} placeholder="업체명" />
+                    <input
+                      ref={leaderNameRef}
+                      type="text"
+                      className="filter-input"
+                      value={leader.name}
+                      onChange={(e)=>setLeader(p=>({...p, name:e.target.value}))}
+                      onKeyDown={(e)=>{ if(e.key==='Enter'){ openModalFor('leader', leader.name); } }}
+                      placeholder="업체명"
+                    />
                     <button className="no-drag" onClick={()=>openModalFor('leader', leader.name)}>조회</button>
                   </div>
                 </div>
