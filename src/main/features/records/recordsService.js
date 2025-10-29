@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { shell } = require('electron');
 const { RecordsRepository } = require('./recordsRepository');
 const { persistRecordsDatabase } = require('./recordsDatabase.js');
 
@@ -178,7 +179,19 @@ class RecordsService {
     const mimeType = attachmentPayload.mimeType || null;
 
     if (attachmentPayload.buffer) {
-      const buffer = attachmentPayload.buffer;
+      let buffer = attachmentPayload.buffer;
+      if (buffer instanceof ArrayBuffer) {
+        buffer = Buffer.from(new Uint8Array(buffer));
+      } else if (ArrayBuffer.isView(buffer)) {
+        buffer = Buffer.from(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+      } else if (Array.isArray(buffer)) {
+        buffer = Buffer.from(buffer);
+      } else if (buffer && buffer.type === 'Buffer' && Array.isArray(buffer.data)) {
+        buffer = Buffer.from(buffer.data);
+      }
+      if (!(buffer instanceof Buffer)) {
+        buffer = Buffer.from(buffer);
+      }
       const projectDir = this.ensureAttachmentDirectory(projectId);
       const targetName = `${Date.now()}_${sanitizeFileName(displayName)}`;
       filePath = path.join(projectDir, targetName);
@@ -224,6 +237,24 @@ class RecordsService {
     }
     if (removed) persistRecordsDatabase();
     return removed;
+  }
+
+  async openAttachment(projectId) {
+    if (!projectId) throw new Error('Project id is required');
+    const project = this.repository.getProjectById(projectId);
+    const attachment = project?.attachment;
+    if (!attachment || !attachment.filePath) {
+      throw new Error('첨부 파일이 없습니다.');
+    }
+    const resolved = path.resolve(attachment.filePath);
+    if (!fs.existsSync(resolved)) {
+      throw new Error('첨부 파일을 찾을 수 없습니다.');
+    }
+    const result = await shell.openPath(resolved);
+    if (result) {
+      throw new Error(result);
+    }
+    return true;
   }
 }
 

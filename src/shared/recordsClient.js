@@ -34,6 +34,7 @@ export const recordsClient = {
   listCategories: (options) => wrapInvoke('listCategories', options),
   saveCategory: (payload) => wrapInvoke('saveCategory', payload),
   deleteCategory: (id) => wrapInvoke('deleteCategory', id),
+  openAttachment: (projectId) => wrapInvoke('openAttachment', projectId),
 };
 
 export default recordsClient;

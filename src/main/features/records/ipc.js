@@ -45,6 +45,10 @@ function registerRecordsIpcHandlers({ ipcMain, recordsService }) {
     if (!payload || !payload.projectId) throw new Error('projectId is required');
     return recordsService.replaceAttachment(payload.projectId, payload.attachment || {});
   });
+  handle('records:open-attachment', (payload) => {
+    if (!payload || !payload.projectId) throw new Error('projectId is required');
+    return recordsService.openAttachment(payload.projectId);
+  });
 
   handle('records:list-companies', (payload) => recordsService.listCompanies(payload || {}));
   handle('records:save-company', (payload) => recordsService.saveCompany(payload));

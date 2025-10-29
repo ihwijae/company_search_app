@@ -67,5 +67,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     listCategories: (options) => ipcRenderer.invoke('records:list-categories', options),
     saveCategory: (payload) => ipcRenderer.invoke('records:save-category', payload),
     deleteCategory: (id) => ipcRenderer.invoke('records:delete-category', { id }),
+    openAttachment: (projectId) => ipcRenderer.invoke('records:open-attachment', { projectId }),
   },
 });

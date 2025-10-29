@@ -12,6 +12,58 @@ const formatCurrency = (value) => {
   return num.toLocaleString();
 };
 
+const formatDateToken = (value) => {
+  if (!value) return '';
+  const str = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str.replace(/-/g, '.');
+  }
+  if (/^\d{4}\.\d{2}\.\d{2}$/.test(str)) {
+    return str;
+  }
+  if (/^\d{4}[.\-]\d{2}$/.test(str)) {
+    return str.replace(/-/g, '.');
+  }
+  return str;
+};
+
+const formatDateRange = (start, end) => {
+  const startText = start ? formatDateToken(start) : '';
+  const endText = end ? formatDateToken(end) : '';
+  if (!startText && !endText) return '—';
+  if (startText && !endText) return `${startText} ~ 진행 중`;
+  if (!startText && endText) return `~ ${endText}`;
+  return `${startText} ~ ${endText}`;
+};
+
+const toDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+};
+
+const formatElapsedPeriod = (targetDate, baseDate) => {
+  if (!(baseDate instanceof Date) || Number.isNaN(baseDate.getTime())) return '';
+  const parsedTarget = toDate(targetDate);
+  if (!parsedTarget) return '';
+  let years = baseDate.getFullYear() - parsedTarget.getFullYear();
+  let months = baseDate.getMonth() - parsedTarget.getMonth();
+  let days = baseDate.getDate() - parsedTarget.getDate();
+
+  if (days < 0) {
+    const prevMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 0);
+    days += prevMonth.getDate();
+    months -= 1;
+  }
+  if (months < 0) {
+    months += 12;
+    years -= 1;
+  }
+  if (years < 0) return '0년 0개월 0일';
+  return `${years}년 ${months}개월 ${days}일`;
+};
+
 const buildCategoryTree = (items) => {
   const map = new Map();
   const roots = [];
@@ -78,6 +130,8 @@ function CategoryTree({ items, activeId, onSelect }) {
   );
 }
 
+const DEFAULT_MODAL_STATE = { open: false, mode: 'create', project: null, defaultCompanyId: '' };
+
 export default function RecordsPage() {
   const [activeMenu, setActiveMenu] = React.useState('records');
   const [projects, setProjects] = React.useState([]);
@@ -87,13 +141,18 @@ export default function RecordsPage() {
   const [filters, setFilters] = React.useState({ keyword: '', companyId: '', categoryId: null });
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
-  const [isModalOpen, setModalOpen] = React.useState(false);
+  const [modalState, setModalState] = React.useState(DEFAULT_MODAL_STATE);
   const [selectedProjectId, setSelectedProjectId] = React.useState(null);
-
-  const selectedProject = React.useMemo(
-    () => projects.find((project) => project.id === selectedProjectId) || null,
-    [projects, selectedProjectId]
-  );
+  const [companyDialog, setCompanyDialog] = React.useState({ open: false, name: '', saving: false, error: '' });
+  const pendingSelectRef = React.useRef(null);
+  const baseDateRef = React.useRef(new Date());
+  const baseDateLabel = React.useMemo(() => {
+    const baseDate = baseDateRef.current;
+    const year = baseDate.getFullYear();
+    const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+    const day = String(baseDate.getDate()).padStart(2, '0');
+    return `${year}.${month}.${day}`;
+  }, []);
 
   const fetchTaxonomies = React.useCallback(async () => {
     try {
@@ -121,11 +180,14 @@ export default function RecordsPage() {
       };
       const list = await recordsClient.listProjects(payload);
       setProjects(list);
-      if (!selectedProjectId && list.length) {
-        setSelectedProjectId(list[0].id);
-      }
-      if (selectedProjectId && !list.some((item) => item.id === selectedProjectId)) {
+      const pendingId = pendingSelectRef.current;
+      if (pendingId && list.some((item) => item.id === pendingId)) {
+        setSelectedProjectId(pendingId);
+        pendingSelectRef.current = null;
+      } else if (selectedProjectId && !list.some((item) => item.id === selectedProjectId)) {
         setSelectedProjectId(list.length ? list[0].id : null);
+      } else if (!selectedProjectId && list.length) {
+        setSelectedProjectId(list[0].id);
       }
     } catch (err) {
       setError(err?.message || '실적을 불러오지 못했습니다.');
@@ -159,6 +221,75 @@ export default function RecordsPage() {
     setFilters({ keyword: '', companyId: '', categoryId: null });
   };
 
+  const closeModal = React.useCallback(() => {
+    setModalState({ ...DEFAULT_MODAL_STATE, defaultCompanyId: filters.companyId || '' });
+  }, [filters.companyId]);
+
+  const handleProjectSaved = React.useCallback((project) => {
+    if (project?.id) {
+      pendingSelectRef.current = project.id;
+      setSelectedProjectId(project.id);
+    }
+    closeModal();
+    fetchProjects();
+  }, [fetchProjects, closeModal]);
+
+  const handleOpenAttachment = React.useCallback(async (projectId) => {
+    try {
+      if (!projectId) return;
+      await recordsClient.openAttachment(projectId);
+    } catch (err) {
+      alert(err?.message || '첨부 파일을 열 수 없습니다.');
+    }
+  }, []);
+
+  const handleAddCompany = React.useCallback(() => {
+    setCompanyDialog({ open: true, name: '', saving: false, error: '' });
+  }, []);
+
+  const closeCompanyDialog = React.useCallback(() => {
+    setCompanyDialog({ open: false, name: '', saving: false, error: '' });
+  }, []);
+
+  const handleCompanyNameChange = (event) => {
+    const { value } = event.target;
+    setCompanyDialog((prev) => ({ ...prev, name: value, error: '' }));
+  };
+
+  const handleCompanyDialogSubmit = async (event) => {
+    event.preventDefault();
+    const trimmedName = companyDialog.name.trim();
+    if (!trimmedName) {
+      setCompanyDialog((prev) => ({ ...prev, error: '법인명을 입력해 주세요.' }));
+      return;
+    }
+    setCompanyDialog((prev) => ({ ...prev, saving: true, error: '' }));
+    try {
+      const saved = await recordsClient.saveCompany({ name: trimmedName, alias: trimmedName, isPrimary: false });
+      await fetchTaxonomies();
+      setFilters((prev) => ({ ...prev, companyId: String(saved.id) }));
+      setCompanyDialog({ open: false, name: '', saving: false, error: '' });
+    } catch (err) {
+      setCompanyDialog((prev) => ({ ...prev, saving: false, error: err?.message || '법인을 추가할 수 없습니다.' }));
+    }
+  };
+
+  const openCreateModal = React.useCallback(() => {
+    setModalState({ open: true, mode: 'create', project: null, defaultCompanyId: filters.companyId || '' });
+  }, [filters.companyId]);
+
+  const openEditModal = React.useCallback((project) => {
+    setSelectedProjectId(project.id);
+    setModalState({ open: true, mode: 'edit', project, defaultCompanyId: '' });
+  }, []);
+
+  const handleAttachmentRemoved = React.useCallback((projectId) => {
+    if (!projectId) return;
+    pendingSelectRef.current = projectId;
+    setSelectedProjectId(projectId);
+    fetchProjects();
+  }, [fetchProjects]);
+
   return (
     <div className="app-shell">
       <Sidebar
@@ -183,7 +314,7 @@ export default function RecordsPage() {
               />
             </aside>
 
-            <section className="records-panel records-panel--list">
+            <section className="records-panel records-panel--workspace">
               <header className="records-toolbar">
                 <div className="records-toolbar__filters">
                   <input
@@ -207,106 +338,165 @@ export default function RecordsPage() {
                   <button type="button" className="btn-muted" onClick={clearFilters} disabled={loading}>초기화</button>
                 </div>
                 <div className="records-toolbar__actions">
-                  <button type="button" className="btn-primary" onClick={() => setModalOpen(true)}>
-                    + 실적 등록
-                  </button>
+                  <button type="button" className="btn-soft" onClick={handleAddCompany}>법인 추가</button>
+                  <button type="button" className="btn-primary" onClick={openCreateModal}>+ 실적 등록</button>
                 </div>
               </header>
 
               {error && <p className="records-error">{error}</p>}
 
-              <div className="records-list" role="list">
-                {projects.map((project) => (
-                  <button
-                    key={project.id}
-                    type="button"
-                    className={`records-list-item ${selectedProjectId === project.id ? 'active' : ''}`}
-                    onClick={() => setSelectedProjectId(project.id)}
-                  >
-                    <div className="records-list-item__title-row">
-                      <div className="records-list-item__title">{project.projectName}</div>
-                      <div className="records-list-item__amount">{formatCurrency(project.contractAmount)} 원</div>
-                    </div>
-                    <div className="records-list-item__meta">
-                      <span className="records-list-item__corp">{project.corporationName}</span>
-                      <span>{project.clientName || '발주처 미정'}</span>
-                      <span>{project.startDate || '시작일 미정'} ~ {project.endDate || '종료일 미정'}</span>
-                    </div>
-                    <div className="records-list-item__notes">
-                      {project.scopeNotes ? project.scopeNotes.slice(0, 120) : '메모 없음'}
-                    </div>
-                    <div className="records-list-item__tags">
-                      {project.categories?.map((category) => (
-                        <span key={category.id} className="records-tag">{category.name}</span>
-                      ))}
-                      {project.primaryCompanyName && (
-                        <span className="records-tag records-tag--company">{project.primaryCompanyName}</span>
-                      )}
-                    </div>
-                  </button>
-                ))}
-                {!projects.length && !loading && (
-                  <div className="records-list-empty">등록된 실적이 없습니다.</div>
-                )}
+              <div className="records-table-wrapper">
+                <table className="records-table">
+                  <colgroup>
+                    <col className="records-col-index" />
+                    <col className="records-col-info" />
+                    <col className="records-col-notes" />
+                    <col className="records-col-elapsed" />
+                    <col className="records-col-attachment" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th className="records-table__head--index">No</th>
+                      <th>공사 정보</th>
+                      <th>시공규모 및 비고</th>
+                      <th className="records-table__head--elapsed">{baseDateLabel} 기준 경과일수</th>
+                      <th>첨부 / 작업</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projects.length ? (
+                      projects.map((project, index) => {
+                        const isSelected = selectedProjectId === project.id;
+                        const hasAttachment = !!project.attachment;
+                        const elapsedText = formatElapsedPeriod(project.endDate || project.startDate, baseDateRef.current);
+                        const categoriesText = project.categories && project.categories.length > 0
+                          ? project.categories.map((category) => category.name).join(' · ')
+                          : '공사 종류 없음';
+                        return (
+                          <tr
+                            key={project.id}
+                            className={`records-table__row ${isSelected ? 'is-selected' : ''}`}
+                            onClick={() => setSelectedProjectId(project.id)}
+                          >
+                            <td className="records-table__index">{index + 1}</td>
+                            <td className="records-table__info-cell">
+                              <div className="records-table__project-name">{project.projectName}</div>
+                              <div className="records-table__info-row">
+                                <span className="records-table__info-label">발주처</span>
+                                <span className="records-table__info-value">{project.clientName || '—'}</span>
+                              </div>
+                              <div className="records-table__info-row">
+                                <span className="records-table__info-label">법인</span>
+                                <span className="records-table__info-value">{project.corporationName || project.primaryCompanyName || '—'}</span>
+                              </div>
+                              <div className="records-table__info-row">
+                                <span className="records-table__info-label">기간</span>
+                                <span className="records-table__info-value">{formatDateRange(project.startDate, project.endDate)}</span>
+                              </div>
+                              <div className="records-table__info-row">
+                                <span className="records-table__info-label">금액</span>
+                                <span className="records-table__info-value records-table__info-value--amount">{formatCurrency(project.contractAmount)} 원</span>
+                              </div>
+                              <div className="records-table__info-row records-table__info-row--muted">
+                                <span className="records-table__info-label">공종</span>
+                                <span className="records-table__info-value">{categoriesText}</span>
+                              </div>
+                            </td>
+                            <td className="records-table__notes">{project.scopeNotes || '—'}</td>
+                            <td className="records-table__elapsed">{elapsedText || '—'}</td>
+                            <td className="records-table__attachment">
+                              <div className="records-table__attachment-summary">
+                                {hasAttachment ? (
+                                  <span className="records-table__attachment-name">{project.attachment.displayName}</span>
+                                ) : (
+                                  <span className="records-table__no-attachment">첨부 없음</span>
+                                )}
+                              </div>
+                              <div className="records-table__actions">
+                                <button
+                                  type="button"
+                                  className="btn-sm btn-primary"
+                                  disabled={!hasAttachment}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    if (hasAttachment) handleOpenAttachment(project.id);
+                                  }}
+                                >
+                                  실적증명서
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-sm btn-soft"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    openEditModal(project);
+                                  }}
+                                >
+                                  실적 수정
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="records-table__empty">등록된 실적이 없습니다.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </section>
-
-            <aside className="records-panel records-panel--detail">
-              {selectedProject ? (
-                <div className="records-detail">
-                  <header className="records-detail__header">
-                    <h2>{selectedProject.projectName}</h2>
-                    <p>{selectedProject.corporationName}</p>
-                  </header>
-                  <dl className="records-detail__grid">
-                    <dt>발주처</dt>
-                    <dd>{selectedProject.clientName || '—'}</dd>
-                    <dt>계약금액</dt>
-                    <dd>{formatCurrency(selectedProject.contractAmount)} 원</dd>
-                    <dt>공사기간</dt>
-                    <dd>{selectedProject.startDate || '—'} ~ {selectedProject.endDate || '—'}</dd>
-                    <dt>공사 종류</dt>
-                    <dd>{(selectedProject.categories || []).map((category) => category.name).join(', ') || '—'}</dd>
-                    <dt>우리 업체</dt>
-                    <dd>{selectedProject.primaryCompanyName || '—'}</dd>
-                  </dl>
-                  <section className="records-detail__notes">
-                    <h3>시공규모 및 비고</h3>
-                    <p>{selectedProject.scopeNotes || '등록된 메모가 없습니다.'}</p>
-                  </section>
-                  <section className="records-detail__attachments">
-                    <h3>첨부</h3>
-                    {selectedProject.attachment ? (
-                      <div className="records-detail__attachment-row">
-                        <span>{selectedProject.attachment.displayName}</span>
-                        <button
-                          type="button"
-                          className="btn-primary btn-sm"
-                          onClick={() => window.electronAPI.records.openAttachment?.(selectedProject.id)}
-                        >
-                          실적증명서 보기
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="records-detail__attachment-empty">첨부된 파일이 없습니다.</p>
-                    )}
-                  </section>
-                </div>
-              ) : (
-                <div className="records-detail-empty">좌측 목록에서 실적을 선택하면 상세 정보를 확인할 수 있습니다.</div>
-              )}
-            </aside>
           </div>
         </div>
       </div>
 
       <ProjectModal
-        open={isModalOpen}
-        onClose={() => setModalOpen(false)}
-        onSaved={fetchProjects}
+        open={modalState.open}
+        mode={modalState.mode}
+        initialProject={modalState.project}
+        onClose={closeModal}
+        onSaved={handleProjectSaved}
         companies={companies}
         categories={flatCategories}
+        defaultCompanyId={modalState.mode === 'create' ? (modalState.defaultCompanyId || filters.companyId || '') : ''}
+        onAttachmentRemoved={handleAttachmentRemoved}
       />
+
+      {companyDialog.open && (
+        <div className="records-dialog-overlay" role="presentation" onClick={closeCompanyDialog}>
+          <div
+            className="records-dialog"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3>법인 추가</h3>
+            <form onSubmit={handleCompanyDialogSubmit}>
+              <label>
+                새 법인명
+                <input
+                  type="text"
+                  value={companyDialog.name}
+                  onChange={handleCompanyNameChange}
+                  placeholder="예: 지음이엔아이㈜"
+                  autoFocus
+                />
+              </label>
+              {companyDialog.error && (
+                <p className="records-dialog__error">{companyDialog.error}</p>
+              )}
+              <div className="records-dialog__actions">
+                <button type="button" className="btn-muted" onClick={closeCompanyDialog} disabled={companyDialog.saving}>취소</button>
+                <button type="submit" className="btn-primary" disabled={companyDialog.saving}>
+                  {companyDialog.saving ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
