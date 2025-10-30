@@ -93,6 +93,7 @@ export default function CandidatesModal({
   const [excluded, setExcluded] = useState(new Set());
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [managerQuery, setManagerQuery] = useState('');
   const [sortKey, setSortKey] = useState('share'); // 'share' | 'perf5y' | 'sipyung'
   const [sortDir, setSortDir] = useState('desc'); // 'desc' | 'asc'
   const [sortSeq, setSortSeq] = useState(0);      // force re-sort even if same dir clicked
@@ -224,6 +225,7 @@ const industryToLabel = (type) => {
     const initial = buildInitialParams();
     setParams(initial);
     setSearchQuery('');
+    setManagerQuery('');
     const clonedCandidates = Array.isArray(initialCandidates)
       ? initialCandidates.map((item) => (item && typeof item === 'object' ? { ...item } : item))
       : [];
@@ -271,6 +273,36 @@ const industryToLabel = (type) => {
     const percent = n * 100;
     return `${percent.toFixed(1).replace(/\.0$/, '')}%`;
   };
+
+  const handleCopyCandidate = useCallback(async (candidate, pctValue) => {
+    if (typeof window === 'undefined' || !candidate) return;
+    const name = (() => {
+      const raw = String(candidate.name ?? '').trim();
+      let cleaned = raw.replace(/㈜|\(주\)/g, '');
+      cleaned = cleaned.replace(/^\s*주식회사\s*/i, '');
+      cleaned = cleaned.replace(/\s{2,}/g, ' ').trim();
+      return cleaned;
+    })();
+    const manager = String(candidate.manager ?? '').trim();
+    const share = Number.isFinite(pctValue) ? pctValue.toFixed(2) : '';
+    const block = [name, share, manager].join('\n');
+    try {
+      if (window.electronAPI?.copyCsvColumn) {
+        const result = await window.electronAPI.copyCsvColumn([block]);
+        if (!result?.success) {
+          throw new Error(result?.message || 'copy failed');
+        }
+      } else if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(block);
+      } else {
+        throw new Error('clipboard unavailable');
+      }
+      window.alert('업체 정보가 클립보드에 복사되었습니다.');
+    } catch (err) {
+      console.error('[CandidatesModal] copy failed', err);
+      window.alert('복사에 실패했습니다. 다시 시도해 주세요.');
+    }
+  }, []);
 
   const formatAmount = (value) => {
     if (value === null || value === undefined) return '-';
@@ -498,7 +530,9 @@ const industryToLabel = (type) => {
     const min = toFloat(params.minPct);
     const max = toFloat(params.maxPct);
     const normalizedQuery = String(searchQuery || '').trim().toLowerCase();
+    const normalizedManagerQuery = String(managerQuery || '').trim().toLowerCase();
     const hasQuery = normalizedQuery.length > 0;
+    const hasManagerQuery = normalizedManagerQuery.length > 0;
     return computed.map((c) => {
       const summaryStatus = (c.summaryStatus || c['요약상태'] || '').trim();
       return { ...c, summaryStatus };
@@ -521,9 +555,18 @@ const industryToLabel = (type) => {
         const textMatch = textFields.some((value) => value && String(value).toLowerCase().includes(normalizedQuery));
         if (!textMatch && !managerMatch) return false;
       }
+      if (hasManagerQuery) {
+        const directManagerFields = [
+          getCandidateTextField(c, ['manager', '담당자', '담당자명', '담당자1', '담당'])
+        ];
+        const listManagers = extractManagerNames(c);
+        const matchesDirect = directManagerFields.some((value) => value && String(value).toLowerCase().includes(normalizedManagerQuery));
+        const matchesList = listManagers.some((value) => value && String(value).toLowerCase().includes(normalizedManagerQuery));
+        if (!matchesDirect && !matchesList) return false;
+      }
       return true;
     });
-  }, [computed, params.minPct, params.maxPct, params.excludeSingleBidEligible, params.filterByRegion, params.dutyRegions, excluded, onlyLatest, searchQuery]);
+  }, [computed, params.minPct, params.maxPct, params.excludeSingleBidEligible, params.filterByRegion, params.dutyRegions, excluded, onlyLatest, searchQuery, managerQuery]);
 
   const sorted = useMemo(() => {
     const arr = filtered.slice();
@@ -663,6 +706,27 @@ const industryToLabel = (type) => {
                   type="button"
                   className="btn-sm btn-muted"
                   onClick={() => setSearchQuery('')}
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="filter-item" style={{ marginTop: -4 }}>
+            <label>담당자 검색</label>
+            <div style={{ display:'flex', gap: 6 }}>
+              <input
+                className="filter-input"
+                placeholder="담당자 이름 검색"
+                value={managerQuery}
+                onChange={(e) => setManagerQuery(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              {managerQuery && (
+                <button
+                  type="button"
+                  className="btn-sm btn-muted"
+                  onClick={() => setManagerQuery('')}
                 >
                   초기화
                 </button>
@@ -913,6 +977,7 @@ const industryToLabel = (type) => {
                         </div>
                       )}
                       <div className="details-actions" style={{ marginTop: 6 }}>
+                        <button className="btn-sm btn-soft" onClick={()=>handleCopyCandidate(c, pct)}>복사</button>
                         <button className={pinnedView.has(c.id) ? 'btn-sm primary' : 'btn-sm btn-soft'} onClick={()=>onTogglePin(c.id)} disabled={isAuto}>{pinnedView.has(c.id) ? (isAuto ? '선택(자동)' : '선택 해제') : '선택'}</button>
                         <button className={excluded.has(c.id) ? 'btn-sm btn-danger' : 'btn-sm btn-muted'} onClick={()=>onToggleExclude(c.id)}>{excluded.has(c.id) ? '제외 해제' : '제외'}</button>
                       </div>
