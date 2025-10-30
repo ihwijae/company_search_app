@@ -280,20 +280,21 @@ function AgreementsPage() {
     requestAnimationFrame(() => {
       const input = leaderNameRef.current;
       if (!input) return;
-      const alreadyFocused = document.activeElement === input;
-      if (!alreadyFocused) {
-        try {
-          input.focus({ preventScroll: true });
-        } catch {
-          input.focus();
-        }
-      }
+      if (document.activeElement !== input) return;
       if (input.value) {
         try {
           input.setSelectionRange(0, input.value.length);
         } catch {}
       }
     });
+  };
+
+  const handleAddClick = (event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    saveCurrentAsItem();
   };
 
   const removeItem = (idx) => {
@@ -510,9 +511,11 @@ function AgreementsPage() {
 
                 <div style={{ marginTop: 12, textAlign: 'right' }}>
                   <button
+                    type="button"
                     className="primary"
-                    onClick={saveCurrentAsItem}
+                    onClick={handleAddClick}
                     onMouseDown={(event) => event.preventDefault()}
+                    onPointerDown={(event) => event.preventDefault()}
                   >
                     리스트에 추가
                   </button>
