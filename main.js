@@ -859,6 +859,9 @@ try {
         const currentThresholds = Array.isArray(components.currentRatio && components.currentRatio.thresholds)
           ? components.currentRatio.thresholds
           : [];
+        const bizYearsThresholds = Array.isArray(components.bizYears && components.bizYears.thresholds)
+          ? components.bizYears.thresholds
+          : [];
         const maxByThresholds = (arr) => {
           if (!Array.isArray(arr) || arr.length === 0) return null;
           return arr.reduce((max, item) => {
@@ -876,8 +879,10 @@ try {
           creditTable,
           debtThresholds,
           currentThresholds,
+          bizYearsThresholds,
           debtMaxScore: maxByThresholds(debtThresholds),
           currentMaxScore: maxByThresholds(currentThresholds),
+          bizYearsMaxScore: maxByThresholds(bizYearsThresholds),
           creditMaxScore,
           tierAmountForEval: Number.isFinite(effectiveAmount) && effectiveAmount > 0 ? effectiveAmount : null,
         };
@@ -972,6 +977,7 @@ try {
       const currentMaxScoreBase = overrides.currentMaxScore != null ? overrides.currentMaxScore : null;
       const creditTableBase = overrides.creditTable || [];
       const creditMaxScoreBase = overrides.creditMaxScore != null ? overrides.creditMaxScore : null;
+      const bizYearsMaxScoreBase = overrides.bizYearsMaxScore != null ? overrides.bizYearsMaxScore : null;
 
       const evaluateThresholdScore = (value, thresholds = []) => {
         if (value == null || !Number.isFinite(value)) return null;
@@ -1047,15 +1053,19 @@ try {
         const wasAlwaysIncluded = (bizNo && includeBiz.has(bizNo)) || (!bizNo && includeName.has(name));
         if (wasAlwaysExcluded) continue;
 
-        let sbe = { ok: false, reasons: [], facts: {} };
-        try { sbe = isSingleBidEligible(c, { entryAmount, baseAmount, dutyRegions }); } catch {}
+        const isPpsOwner = normalizedOwnerId === 'pps';
+        let sbe = null;
+        if (!isPpsOwner) {
+          try { sbe = isSingleBidEligible(c, { entryAmount, baseAmount, dutyRegions }); } catch {}
+        }
 
         let moneyOk = null;
         let perfOk = null;
         let regionOk = matchesRegion(region);
-        let singleBidEligible = !!(sbe && sbe.ok);
+        let singleBidEligible = false;
         let debtScore = null;
         let currentScore = null;
+        let bizYearsScore = null;
         let debtAgainstAverage = null;
         let currentAgainstAverage = null;
 
@@ -1077,7 +1087,7 @@ try {
 
         deriveScoresFromRules();
 
-        if (debtScore == null || currentScore == null) {
+        if (debtScore == null || currentScore == null || bizYearsScore == null) {
           try {
             const evalResult = evaluateScores({
               agencyId: String(ownerId || '').toLowerCase(),
@@ -1096,6 +1106,7 @@ try {
             if (parts) {
               if (debtScore == null && parts.debtScore != null) debtScore = toScore(parts.debtScore);
               if (currentScore == null && parts.currentScore != null) currentScore = toScore(parts.currentScore);
+              if (bizYearsScore == null && parts.yearsScore != null) bizYearsScore = toScore(parts.yearsScore);
             }
           } catch (e) {
             console.warn('[MAIN] evaluateScores fallback failed:', e?.message || e);
@@ -1127,6 +1138,7 @@ try {
           if (parts) {
             if (debtScore == null && parts.debtScore != null) debtScore = toScore(parts.debtScore);
             if (currentScore == null && parts.currentScore != null) currentScore = toScore(parts.currentScore);
+            if (bizYearsScore == null && parts.yearsScore != null) bizYearsScore = toScore(parts.yearsScore);
           }
           const creditEval = evalResult && evalResult.management && evalResult.management.credit;
           if (creditEval) {
@@ -1161,16 +1173,83 @@ try {
 
         deriveScoresFromRules();
 
-        if (sbe && sbe.facts) {
-          const entryFact = toNumber(sbe.facts.entry);
-          const baseFact = toNumber(sbe.facts.base);
-          const sipFact = toNumber(sbe.facts.sipyung);
-          const perfFact = toNumber(sbe.facts.perf5y);
-          if (entryFact > 0) moneyOk = sipFact >= entryFact;
-          if (baseFact > 0) perfOk = perfFact >= baseFact;
-          const regionFact = sbe.facts.region ? String(sbe.facts.region).trim() : region;
-          regionOk = matchesRegion(regionFact);
+        const debtMax = Number.isFinite(Number(debtMaxScoreBase)) ? Number(debtMaxScoreBase) : 0;
+        const currentMax = Number.isFinite(Number(currentMaxScoreBase)) ? Number(currentMaxScoreBase) : 0;
+        const bizYearsMax = Number.isFinite(Number(bizYearsMaxScoreBase)) ? Number(bizYearsMaxScoreBase) : 0;
+        const creditMax = Number.isFinite(Number(creditMaxScoreBase)) ? Number(creditMaxScoreBase) : 0;
+        const debtScoreValue = Number.isFinite(Number(debtScore)) ? Number(debtScore) : 0;
+        const currentScoreValue = Number.isFinite(Number(currentScore)) ? Number(currentScore) : 0;
+        const bizYearsScoreValue = Number.isFinite(Number(bizYearsScore)) ? Number(bizYearsScore) : 0;
+        const combinedScoreValue = debtScoreValue + currentScoreValue + (bizYearsMax > 0 ? bizYearsScoreValue : 0);
+        const combinedMaxValue = (Number.isFinite(debtMax) ? debtMax : 0)
+          + (Number.isFinite(currentMax) ? currentMax : 0)
+          + (bizYearsMax > 0 ? bizYearsMax : 0);
+        let managementScore = combinedScoreValue;
+        let managementMax = combinedMaxValue;
+        if (Number.isFinite(creditScore)) {
+          if (creditScore > managementScore) managementScore = creditScore;
+          managementMax = Math.max(managementMax, creditMax);
         }
+        const managementIsPerfect = managementMax > 0 && Math.abs(managementScore - managementMax) < 1e-6;
+
+        if (isPpsOwner) {
+          const entryNum = toNumber(entryAmount);
+          const baseNum = toNumber(baseAmount);
+          const sipValue = rating;
+          const perfValue = perf5y;
+          const hasEntry = entryNum > 0;
+          const moneyCondition = hasEntry ? (sipValue >= entryNum) : true;
+          const perfCondition = baseNum > 0 && perfValue >= baseNum;
+          const managementCondition = managementIsPerfect;
+
+          moneyOk = hasEntry ? moneyCondition : null;
+          perfOk = perfCondition;
+
+          const reasons = [];
+          const toLocale = (num) => (Number.isFinite(num) ? num.toLocaleString() : String(num || '0'));
+          if (hasEntry && !moneyCondition) {
+            reasons.push(`시평 미달: ${toLocale(sipValue)} < 참가자격 ${toLocale(entryNum)}`);
+          }
+          if (!perfCondition) {
+            reasons.push(`5년 실적 미달: ${toLocale(perfValue)} < 기초금액 ${toLocale(baseNum)}`);
+          }
+          if (!managementCondition) {
+            reasons.push('경영점수 만점 미달');
+          }
+
+          sbe = {
+            ok: Boolean((!hasEntry || moneyCondition) && perfCondition && managementCondition),
+            reasons,
+            facts: {
+              sipyung: sipValue,
+              perf5y: perfValue,
+              entry: entryNum,
+              base: baseNum,
+              managementScore,
+              managementMax,
+            },
+          };
+        } else if (sbe) {
+          const facts = sbe.facts || {};
+          const entryFact = toNumber(facts.entry);
+          const baseFact = toNumber(facts.base);
+          const sipFact = toNumber(facts.sipyung);
+          const perfFact = toNumber(facts.perf5y);
+          if (entryFact > 0) {
+            moneyOk = sipFact >= entryFact;
+          }
+          if (baseFact > 0) {
+            perfOk = perfFact >= baseFact;
+          }
+          if (Array.isArray(dutyRegions) && dutyRegions.length > 0) {
+            const factRegion = facts.region != null ? String(facts.region).trim() : region;
+            if (factRegion) {
+              regionOk = matchesRegion(factRegion);
+            }
+          }
+        }
+
+        singleBidEligible = Boolean(sbe && sbe.ok);
 
         if (isMoisUnder30) {
           const perfTarget = perfectPerformanceNumber;
@@ -1215,6 +1294,9 @@ try {
           currentRatio,
           debtScore,
           currentScore,
+          bizYears,
+          bizYearsScore: Number.isFinite(Number(bizYearsScore)) ? Number(bizYearsScore) : null,
+          bizYearsMaxScore: bizYearsMax > 0 ? bizYearsMax : null,
           debtAgainstAverage,
           currentAgainstAverage,
           debtMaxScore: debtMaxScoreBase,
@@ -1224,10 +1306,23 @@ try {
           creditGrade: creditGradeResolved,
           creditNote,
           creditNoteText: creditNoteRawFull,
-          managementTotalScore: (debtScore != null || currentScore != null)
-            ? ((Number(debtScore) || 0) + (Number(currentScore) || 0))
+          managementTotalScore: (debtScore != null || currentScore != null || bizYearsScore != null)
+            ? ((Number(debtScore) || 0) + (Number(currentScore) || 0) + (Number(bizYearsScore) || 0))
             : null,
-          moneyOk, perfOk, regionOk,
+          managementScore,
+          managementMaxScore: managementMax,
+          managementIsPerfect,
+          moneyOk,
+          perfOk,
+          regionOk,
+          singleBidReasons: Array.isArray(sbe && sbe.reasons) ? sbe.reasons.filter(Boolean) : [],
+          singleBidFacts: sbe && sbe.facts ? {
+            sipyung: toNumber(sbe.facts.sipyung),
+            perf5y: toNumber(sbe.facts.perf5y),
+            entry: toNumber(sbe.facts.entry),
+            base: toNumber(sbe.facts.base),
+            region: sbe.facts.region || region,
+          } : null,
           singleBidEligible,
           wasAlwaysIncluded, wasAlwaysExcluded,
           qualityEval,

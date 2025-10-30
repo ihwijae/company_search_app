@@ -71,6 +71,9 @@ export default function CandidatesModal({
   entryAmount,
   baseAmount,
   estimatedAmount = '',
+  bidAmount = '',
+  bidRate = '',
+  adjustmentRate = '',
   perfectPerformanceAmount = 0,
   dutyRegions = [],
   ratioBaseAmount = '',
@@ -173,7 +176,11 @@ export default function CandidatesModal({
     }
   }, [onClose, portalContainer]);
 
-  const isMoisUnder30 = ownerId === 'MOIS' && menuKey === 'mois-under30';
+  const normalizedOwnerId = String(ownerId || '').toUpperCase();
+  const isPpsOwner = normalizedOwnerId === 'PPS';
+  const isLhOwner = normalizedOwnerId === 'LH';
+  const showBizYearsMetrics = isPpsOwner || isLhOwner;
+  const isMoisUnder30 = normalizedOwnerId === 'MOIS' && menuKey === 'mois-under30';
   const perfAmountValue = Number(perfectPerformanceAmount) > 0 ? String(perfectPerformanceAmount) : '';
 
   useEffect(() => {
@@ -205,7 +212,7 @@ const industryToLabel = (type) => {
     const initialBase = isMoisUnder30
       ? (perfAmountValue || estimatedAmount || entryAmount || '')
       : (baseAmount || '');
-    const initialRatio = isMoisUnder30 ? '' : (ratioBaseAmount || '');
+    const initialRatio = isMoisUnder30 ? '' : (ratioBaseAmount || bidAmount || '');
     return {
       entryAmount: entryAmount || '',
       baseAmount: initialBase,
@@ -216,9 +223,9 @@ const industryToLabel = (type) => {
       excludeSingleBidEligible: defaultExcludeSingle,
       filterByRegion: true,
     };
-  }, [isMoisUnder30, perfAmountValue, estimatedAmount, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, defaultExcludeSingle]);
+  }, [isMoisUnder30, perfAmountValue, estimatedAmount, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, bidAmount, defaultExcludeSingle]);
 
-  const initKey = JSON.stringify({ ownerId, menuKey, entryAmount, baseAmount, estimatedAmount, perfAmountValue, dutyRegions, ratioBaseAmount, defaultExcludeSingle, fileType });
+  const initKey = JSON.stringify({ ownerId, menuKey, entryAmount, baseAmount, estimatedAmount, perfAmountValue, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle, fileType });
   const didInitFetch = useRef(false);
   useEffect(() => {
     if (!open) return;
@@ -259,6 +266,14 @@ const industryToLabel = (type) => {
     return fixed.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
   };
 
+  const formatYears = (value) => {
+    if (value === null || value === undefined) return '-';
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '-';
+    const precision = Math.abs(n - Math.round(n)) < 0.01 ? 0 : 1;
+    return n.toFixed(precision).replace(/\.0$/, '');
+  };
+
   const formatRatio = (value) => {
     if (value === null || value === undefined) return '-';
     const n = Number(value);
@@ -273,6 +288,32 @@ const industryToLabel = (type) => {
     const percent = n * 100;
     return `${percent.toFixed(1).replace(/\.0$/, '')}%`;
   };
+
+  const formatPercentInput = (value) => {
+    if (value === null || value === undefined) return '';
+    const numeric = Number(String(value).replace(/[^0-9.\-]/g, ''));
+    if (!Number.isFinite(numeric)) return '';
+    const str = numeric.toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+    return `${str}%`;
+  };
+
+  const resolveSingleBidReasons = useCallback((candidate) => {
+    if (!candidate) return [];
+    const provided = Array.isArray(candidate.singleBidReasons)
+      ? candidate.singleBidReasons.filter(Boolean)
+      : [];
+    if (provided.length > 0) return provided;
+    const reasons = [];
+    if (candidate.moneyOk === false) reasons.push('입찰참가자격 금액부족');
+    if (candidate.perfOk === false) reasons.push('실적부족');
+    if (candidate.regionOk === false) reasons.push('의무지역 불일치');
+    if (candidate.managementIsPerfect === false
+      && candidate.moneyOk !== false
+      && candidate.perfOk !== false) {
+      reasons.push('경영점수 만점 미달');
+    }
+    return reasons;
+  }, []);
 
   const handleCopyCandidate = useCallback(async (candidate, pctValue) => {
     if (typeof window === 'undefined' || !candidate) return;
@@ -319,7 +360,10 @@ const industryToLabel = (type) => {
     industryLabel: industryLabel || industryToLabel(fileType),
     baseAmount: formatAmount(baseAmount),
     estimatedPrice: formatAmount(estimatedAmount),
-  }), [noticeNo, noticeTitle, industryLabel, fileType, baseAmount, estimatedAmount]);
+    bidAmount: formatAmount(bidAmount),
+    bidRate: formatPercentInput(bidRate),
+    adjustmentRate: formatPercentInput(adjustmentRate),
+  }), [noticeNo, noticeTitle, industryLabel, fileType, baseAmount, estimatedAmount, bidAmount, bidRate, adjustmentRate]);
 
   const isMaxScore = (score, maxScore) => {
     const scoreNum = Number(score);
@@ -383,6 +427,52 @@ const industryToLabel = (type) => {
         const creditGradeRaw = item.creditGrade ?? creditGradeSource;
         const creditNoteOriginal = item.creditNoteText ?? item['신용메모'] ?? '';
         const creditNoteStatus = item.creditNote ?? '';
+        const bizYearsValue = (() => {
+          const candidates = [
+            item.bizYears,
+            item['영업기간'],
+            snapshot.bizYears,
+            snapshot['영업기간'],
+          ];
+          for (const candidateValue of candidates) {
+            if (candidateValue === null || candidateValue === undefined || candidateValue === '') continue;
+            const parsed = parseNumeric(candidateValue);
+            if (Number.isFinite(parsed)) return parsed;
+          }
+          return null;
+        })();
+        const bizYearsScoreValue = (() => {
+          const raw = item.bizYearsScore;
+          if (raw === null || raw === undefined || raw === '') return null;
+          const num = Number(raw);
+          return Number.isFinite(num) ? num : null;
+        })();
+        const bizYearsMaxScoreValue = (() => {
+          const raw = item.bizYearsMaxScore;
+          if (raw === null || raw === undefined || raw === '') return null;
+          const num = Number(raw);
+          return Number.isFinite(num) ? num : null;
+        })();
+        const singleBidReasons = Array.isArray(item.singleBidReasons)
+          ? item.singleBidReasons.filter(Boolean)
+          : [];
+        const singleBidFacts = (() => {
+          const rawFacts = item.singleBidFacts;
+          if (!rawFacts || typeof rawFacts !== 'object') return null;
+          const regionRaw = rawFacts.region != null ? String(rawFacts.region).trim() : '';
+          const safeNumber = (v) => {
+            if (v === null || v === undefined || v === '') return null;
+            const num = parseNumeric(v);
+            return Number.isFinite(num) ? num : null;
+          };
+          return {
+            sipyung: safeNumber(rawFacts.sipyung),
+            perf5y: safeNumber(rawFacts.perf5y),
+            entry: safeNumber(rawFacts.entry),
+            base: safeNumber(rawFacts.base),
+            region: regionRaw,
+          };
+        })();
         return {
           ...item,
           snapshot,
@@ -400,6 +490,11 @@ const industryToLabel = (type) => {
           debtMaxScore: item.debtMaxScore ?? null,
           currentMaxScore: item.currentMaxScore ?? null,
           creditMaxScore: item.creditMaxScore ?? null,
+          bizYears: bizYearsValue,
+          bizYearsScore: bizYearsScoreValue,
+          bizYearsMaxScore: bizYearsMaxScoreValue,
+          singleBidReasons,
+          singleBidFacts,
           _sipyung: (() => {
             const candidates = [
               item.sipyung,
@@ -656,6 +751,15 @@ const industryToLabel = (type) => {
               <span><strong>공종</strong> {details.industryLabel || '-'}</span>
               <span><strong>기초금액</strong> {details.baseAmount || '-'}</span>
               <span><strong>추정금액</strong> {details.estimatedPrice || '-'}</span>
+              {details.adjustmentRate && (
+                <span><strong>사정율</strong> {details.adjustmentRate}</span>
+              )}
+              {details.bidRate && (
+                <span><strong>투찰율</strong> {details.bidRate}</span>
+              )}
+              {details.bidAmount && (
+                <span><strong>투찰금액</strong> {details.bidAmount}</span>
+              )}
             </div>
           </div>
           <p>총 {summary.total}개 · 선택 {summary.pinned} · 제외 {summary.excluded}</p>
@@ -678,7 +782,7 @@ const industryToLabel = (type) => {
           </div>
           {!isMoisUnder30 && (
             <div className="filter-item">
-              <label>시공비율 기준금액</label>
+              <label>{isPpsOwner ? '투찰금액(지분 기준)' : '시공비율 기준금액'}</label>
               <AmountInput value={params.ratioBase} onChange={(v)=>setParams(p=>({ ...p, ratioBase: v }))} placeholder="숫자" />
             </div>
           )}
@@ -850,10 +954,15 @@ const industryToLabel = (type) => {
                   const creditDataMissing = !creditExpired && !creditOverAge && (gradeIndicatesNone || noteSuggestsMissing) && !hasCreditScoreValue;
                   const managementScoreValue = hasManagementScores && Number.isFinite(managementScore) ? Number(managementScore) : null;
                   const managementScoreIs15 = managementScoreValue != null && Math.abs(managementScoreValue - 15) < 1e-3;
-                  const singleBidAllowed = !!c.singleBidEligible && managementScoreIs15;
+                  const singleBidAllowed = !!c.singleBidEligible;
                   const singleBidBadgeStyle = singleBidAllowed
                     ? { background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }
                     : { background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' };
+                  const singleBidReasons = resolveSingleBidReasons(c);
+                  const hasScoreBreakdown = (c.debtScore != null
+                    || c.currentScore != null
+                    || c.creditScore != null
+                    || (showBizYearsMetrics && (c.bizYearsScore != null || (c.bizYearsMaxScore && c.bizYearsMaxScore > 0))));
                   const managerNames = extractManagerNames(c);
                   const femaleOwned = isWomenOwnedCompany(c);
                   const qualityBadgeText = getQualityBadgeText(c);
@@ -905,7 +1014,7 @@ const industryToLabel = (type) => {
                         {c.regionOk && <span className="pill">지역OK</span>}
                         {isAuto && <span className="pill">자동선택</span>}
                       </div>
-                      {(c.debtScore != null || c.currentScore != null || c.creditScore != null) && (
+                      {hasScoreBreakdown && (
                         <div className="score-details" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {c.debtScore != null && (<span style={{ color: isMaxScore(c.debtScore, debtMax) ? '#166534' : '#b91c1c', fontWeight: isMaxScore(c.debtScore, debtMax) ? 600 : 500 }}>
                               부채 {formatRatio(c.debtRatio)}
@@ -919,6 +1028,14 @@ const industryToLabel = (type) => {
                               {c.currentAgainstAverage != null && ` (평균 대비 ${formatPercent(c.currentAgainstAverage)})`}
                               {` → ${formatScore(c.currentScore)}점`}
                               {currentMax ? ` / ${formatScore(currentMax)}점` : ''}
+                            </span>
+                          )}
+                          {showBizYearsMetrics && (c.bizYearsScore != null || (c.bizYearsMaxScore && c.bizYearsMaxScore > 0)) && (
+                            <span style={{ color: isMaxScore(c.bizYearsScore, c.bizYearsMaxScore) ? '#166534' : '#b91c1c', fontWeight: isMaxScore(c.bizYearsScore, c.bizYearsMaxScore) ? 600 : 500 }}>
+                              영업기간
+                              {c.bizYears != null && c.bizYears !== '' ? ` ${formatYears(c.bizYears)}년` : ''}
+                              {` → ${formatScore(c.bizYearsScore)}점`}
+                              {c.bizYearsMaxScore ? ` / ${formatScore(c.bizYearsMaxScore)}점` : ''}
                             </span>
                           )}
                           {(() => {
@@ -974,6 +1091,13 @@ const industryToLabel = (type) => {
                               {managementMax ? ` / ${formatScore(managementMax)}점` : ''}
                             </span>
                           )}
+                        </div>
+                      )}
+                      {!singleBidAllowed && singleBidReasons.length > 0 && (
+                        <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2, color: '#b91c1c', fontWeight: 500 }}>
+                          {singleBidReasons.map((reason, reasonIdx) => (
+                            <span key={`${c.id}-reason-${reasonIdx}`}>{reason}</span>
+                          ))}
                         </div>
                       )}
                       <div className="details-actions" style={{ marginTop: 6 }}>

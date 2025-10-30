@@ -27,6 +27,9 @@ const initialState = {
   industryLabel: '',
   baseAmount: '',
   estimatedAmount: '',
+  bidAmount: '',
+  bidRate: '',
+  adjustmentRate: '',
 };
 
 const initialCandidatesWindowState = {
@@ -41,6 +44,9 @@ const initialCandidatesWindowState = {
   entryAmount: '',
   baseAmount: '',
   estimatedAmount: '',
+  bidAmount: '',
+  bidRate: '',
+  adjustmentRate: '',
   perfectPerformanceAmount: 0,
   dutyRegions: [],
   ratioBaseAmount: '',
@@ -415,6 +421,9 @@ export function AgreementBoardProvider({ children }) {
       next.entryAmount = rest.entryAmount ?? base.entryAmount ?? '';
       next.baseAmount = rest.baseAmount ?? base.baseAmount ?? '';
       next.estimatedAmount = rest.estimatedAmount ?? base.estimatedAmount ?? '';
+      next.bidAmount = rest.bidAmount ?? base.bidAmount ?? '';
+      next.bidRate = rest.bidRate ?? base.bidRate ?? '';
+      next.adjustmentRate = rest.adjustmentRate ?? base.adjustmentRate ?? '';
       next.bidDeadline = rest.bidDeadline ?? base.bidDeadline ?? '';
       next.regionDutyRate = rest.regionDutyRate ?? base.regionDutyRate ?? '';
       next.perfectPerformanceAmount = rest.perfectPerformanceAmount ?? base.perfectPerformanceAmount ?? 0;
@@ -450,6 +459,9 @@ export function AgreementBoardProvider({ children }) {
       industryLabel: candidatesWindow.industryLabel,
       baseAmount: candidatesWindow.baseAmount,
       estimatedAmount: candidatesWindow.estimatedAmount,
+      bidAmount: candidatesWindow.bidAmount,
+      bidRate: candidatesWindow.bidRate,
+      adjustmentRate: candidatesWindow.adjustmentRate,
       bidDeadline: candidatesWindow.bidDeadline,
       regionDutyRate: candidatesWindow.regionDutyRate,
       dutyRegions: Array.isArray(candidatesWindow.dutyRegions) ? candidatesWindow.dutyRegions : undefined,
@@ -540,6 +552,9 @@ export function AgreementBoardProvider({ children }) {
         industryLabel={boardState.industryLabel || ''}
         baseAmount={boardState.baseAmount || ''}
         estimatedAmount={boardState.estimatedAmount || ''}
+        bidAmount={boardState.bidAmount || ''}
+        bidRate={boardState.bidRate || ''}
+        adjustmentRate={boardState.adjustmentRate || ''}
         bidDeadline={boardState.bidDeadline || ''}
         regionDutyRate={boardState.regionDutyRate || ''}
       />
@@ -555,6 +570,9 @@ export function AgreementBoardProvider({ children }) {
         entryAmount={candidatesWindow.entryAmount || ''}
         baseAmount={candidatesWindow.baseAmount || ''}
         estimatedAmount={candidatesWindow.estimatedAmount || ''}
+        bidAmount={candidatesWindow.bidAmount || ''}
+        bidRate={candidatesWindow.bidRate || ''}
+        adjustmentRate={candidatesWindow.adjustmentRate || ''}
         perfectPerformanceAmount={candidatesWindow.perfectPerformanceAmount || 0}
         dutyRegions={Array.isArray(candidatesWindow.dutyRegions) ? candidatesWindow.dutyRegions : []}
         ratioBaseAmount={candidatesWindow.ratioBaseAmount || ''}

@@ -183,6 +183,7 @@ export default function SettingsPage() {
   const currentTier = tiers[tierIdx] || tiers[0];
   const currentAgencyId = (currentAgency?.id || '').toUpperCase();
   const isMois = currentAgencyId === 'MOIS';
+  const isLH = currentAgencyId === 'LH';
   const performanceEditable = performanceMode === 'ratio-bands'
     && currentAgencyId === 'MOIS'
     && (currentTier?.maxAmount || 0) <= 5000000000;
@@ -190,9 +191,10 @@ export default function SettingsPage() {
   const showBizControls = !isMois
     ? (bizRows && bizRows.length > 0)
     : currentTierMinAmount >= 3000000000;
+  const showQualityControls = isLH;
 
   React.useEffect(() => {
-    if (isMois && openModal === 'quality') {
+    if (!isLH && openModal === 'quality') {
       setOpenModal(null);
     }
     if (!showBizControls && openModal === 'biz') {
@@ -300,18 +302,22 @@ export default function SettingsPage() {
     const effectiveFrom = prev.effectiveFrom || null;
     const effectiveTo = prev.effectiveTo || null;
 
+    const compositeComponents = {
+      debtRatio: { against: 'industryAverage', scale: 'lowerIsBetter', thresholds: debtRows.map(r => (r.op==='lt'?{ lt: Num(r.value), score: Num(r.score) }:{ gte: Num(r.value), score: Num(r.score) })) },
+      currentRatio: { against: 'industryAverage', scale: 'higherIsBetter', thresholds: currentRows.map(r => (r.op==='lt'?{ lt: Num(r.value), score: Num(r.score) }:{ gte: Num(r.value), score: Num(r.score) })) },
+      bizYears: { scale: 'higherIsBetter', thresholds: bizRows.map(r => (r.op==='ltYears'?{ ltYears: Num(r.value), score: Num(r.score) }:{ gteYears: Num(r.value), score: Num(r.score) })) },
+    };
+    if (isLH) {
+      compositeComponents.qualityEval = { scale: 'higherIsBetter', thresholds: qualityRows.map(r => (r.op==='lt'?{ lt: Num(r.value), score: Num(r.score) }:{ gte: Num(r.value), score: Num(r.score) })) };
+    }
+
     return {
       management: {
         methodSelection: mgMethodSelection || 'max',
         methods: [
           {
             id: 'composite', label: '요소합산', maxScore: 15,
-            components: {
-              debtRatio: { against: 'industryAverage', scale: 'lowerIsBetter', thresholds: debtRows.map(r => (r.op==='lt'?{ lt: Num(r.value), score: Num(r.score) }:{ gte: Num(r.value), score: Num(r.score) })) },
-              currentRatio: { against: 'industryAverage', scale: 'higherIsBetter', thresholds: currentRows.map(r => (r.op==='lt'?{ lt: Num(r.value), score: Num(r.score) }:{ gte: Num(r.value), score: Num(r.score) })) },
-              bizYears: { scale: 'higherIsBetter', thresholds: bizRows.map(r => (r.op==='ltYears'?{ ltYears: Num(r.value), score: Num(r.score) }:{ gteYears: Num(r.value), score: Num(r.score) })) },
-              qualityEval: { scale: 'higherIsBetter', thresholds: qualityRows.map(r => (r.op==='lt'?{ lt: Num(r.value), score: Num(r.score) }:{ gte: Num(r.value), score: Num(r.score) })) },
-            }
+            components: compositeComponents,
           },
           (() => {
             const prev = creditPrev || { id: 'credit', label: '신용등급환산', maxScore: 15, gradeTable: [] };
@@ -371,7 +377,9 @@ export default function SettingsPage() {
               debtRatio: { against: 'industryAverage', scale: 'lowerIsBetter', thresholds: (debtSrc || []).map(r => (r.op==='lt'?{ lt: Num(r.value), score: Num(r.score) }:{ gte: Num(r.value), score: Num(r.score) })) },
               currentRatio: { against: 'industryAverage', scale: 'higherIsBetter', thresholds: (currSrc || []).map(r => (r.op==='lt'?{ lt: Num(r.value), score: Num(r.score) }:{ gte: Num(r.value), score: Num(r.score) })) },
               bizYears: { scale: 'higherIsBetter', thresholds: (bizSrc || []).map(r => (r.op==='ltYears'?{ ltYears: Num(r.value), score: Num(r.score) }:{ gteYears: Num(r.value), score: Num(r.score) })) },
-              qualityEval: { scale: 'higherIsBetter', thresholds: (qualitySrc || []).map(r => (r.op==='lt'?{ lt: Num(r.value), score: Num(r.score) }:{ gte: Num(r.value), score: Num(r.score) })) },
+              ...(isLH ? {
+                qualityEval: { scale: 'higherIsBetter', thresholds: (qualitySrc || []).map(r => (r.op==='lt'?{ lt: Num(r.value), score: Num(r.score) }:{ gte: Num(r.value), score: Num(r.score) })) },
+              } : {}),
             }
           },
           (() => {
@@ -509,7 +517,7 @@ export default function SettingsPage() {
         currentRowsOverride: current || null,
         creditRowsOverride: credit || null,
         bizRowsOverride: biz || null,
-        qualityRowsOverride: quality || null,
+        qualityRowsOverride: isLH ? (quality || null) : null,
         performanceRowsOverride: performance || null,
       });
       const payload = {
@@ -591,6 +599,8 @@ export default function SettingsPage() {
           if (k === 'agreements') window.location.hash = '#/agreements';
           if (k === 'lh-under50') window.location.hash = '#/lh/under50';
           if (k === 'lh-50to100') window.location.hash = '#/lh/50to100';
+          if (k === 'pps-under50') window.location.hash = '#/pps/under50';
+          if (k === 'pps-50to100') window.location.hash = '#/pps/50to100';
           if (k === 'records') window.location.hash = '#/records';
           if (k === 'search') window.location.hash = '#/search';
           if (k === 'settings') window.location.hash = '#/settings';
@@ -641,7 +651,7 @@ export default function SettingsPage() {
                 {showBizControls && (
                   <button onClick={() => setOpenModal('biz')}>영업기간 기준 수정</button>
                 )}
-                {!isMois && (
+                {showQualityControls && (
                   <button onClick={() => setOpenModal('quality')}>품질평가 기준 수정</button>
                 )}
                 <button onClick={() => {
@@ -709,7 +719,9 @@ export default function SettingsPage() {
                 <div className="filter-item"><label>유동비율(%)</label><input className="filter-input" value={currentRatio} onChange={(e)=>setCurrentRatio(e.target.value)} /></div>
                 <div className="filter-item"><label>영업기간(년)</label><input className="filter-input" value={bizYears} onChange={(e)=>setBizYears(e.target.value)} /></div>
                 <div className="filter-item"><label>신용등급</label><input className="filter-input" value={creditGrade} onChange={(e)=>setCreditGrade(e.target.value)} /></div>
-                <div className="filter-item"><label>품질평가 점수</label><input className="filter-input" value={qualityEval} onChange={(e)=>setQualityEval(e.target.value)} /></div>
+                {showQualityControls && (
+                  <div className="filter-item"><label>품질평가 점수</label><input className="filter-input" value={qualityEval} onChange={(e)=>setQualityEval(e.target.value)} /></div>
+                )}
                 <div className="filter-item"><label>&nbsp;</label><button className="search-button" onClick={doPreview}>계산</button></div>
               </div>
               {preview && (
@@ -771,7 +783,7 @@ export default function SettingsPage() {
           }}
         />
       )}
-      {!isMois && (
+      {showQualityControls && (
         <QualityModal
           open={openModal === 'quality'}
           rows={qualityRows}

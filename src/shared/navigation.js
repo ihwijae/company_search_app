@@ -17,6 +17,17 @@ export const AGREEMENT_GROUPS = [
     ],
   },
   {
+    id: 'pps',
+    ownerId: 'PPS',
+    label: '조달청',
+    name: '조달청',
+    hashPrefix: '#/pps/',
+    items: [
+      { key: 'pps-under50', hash: '#/pps/under50', label: '50억 미만', rangeLabel: '50억 미만' },
+      { key: 'pps-50to100', hash: '#/pps/50to100', label: '50억~100억', rangeLabel: '50억~100억' },
+    ],
+  },
+  {
     id: 'mois',
     ownerId: 'MOIS',
     label: '행안부',

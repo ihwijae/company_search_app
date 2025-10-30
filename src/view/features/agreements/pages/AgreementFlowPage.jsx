@@ -21,6 +21,9 @@ const createDefaultForm = () => {
     title: '',
     baseAmount: '',
     estimatedPrice: '',
+    adjustmentRate: '',
+    bidRate: '',
+    bidAmount: '',
     noticeDate: formattedToday,
     bidDeadline: '',
     entryQualificationAmount: '',
@@ -55,6 +58,12 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     return base;
   });
 
+  const isPPS = ownerId === 'PPS';
+  const [baseTouched, setBaseTouched] = React.useState(false);
+  const [bidTouched, setBidTouched] = React.useState(false);
+  const baseAutoRef = React.useRef('');
+  const bidAutoRef = React.useRef('');
+
   const [regionList, setRegionList] = React.useState([]);
   const [dutyRegions, setDutyRegions] = React.useState(() => {
     const saved = loadPersisted(`${storageKey}:dutyRegions`, []);
@@ -85,6 +94,13 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   }, []);
 
   React.useEffect(() => {
+    setBaseTouched(false);
+    setBidTouched(false);
+    baseAutoRef.current = '';
+    bidAutoRef.current = '';
+  }, [ownerId]);
+
+  React.useEffect(() => {
     if (!form || typeof form !== 'object' || Array.isArray(form)) return;
     savePersisted(`${storageKey}:form`, form);
   }, [storageKey, form]);
@@ -93,6 +109,23 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     if (!Array.isArray(dutyRegions)) return;
     savePersisted(`${storageKey}:dutyRegions`, dutyRegions);
   }, [storageKey, dutyRegions]);
+
+  React.useEffect(() => {
+    if (!isPPS) return;
+    setForm((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (!String(prev.adjustmentRate || '').trim()) {
+        next.adjustmentRate = '86.745';
+        changed = true;
+      }
+      if (!String(prev.bidRate || '').trim()) {
+        next.bidRate = '101.4';
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [isPPS]);
 
   React.useEffect(() => {
     const groupSizeValue = Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3;
@@ -206,10 +239,31 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     return Number.isFinite(number) ? number : 0;
   };
 
+  const formatAmountString = (value) => {
+    if (!Number.isFinite(value) || value <= 0) return '';
+    try {
+      return Math.round(value).toLocaleString();
+    } catch {
+      return String(Math.round(value));
+    }
+  };
+
+  const parsePercent = (value) => {
+    if (value === null || value === undefined) return NaN;
+    const numeric = Number(String(value).replace(/[^0-9.]/g, ''));
+    return Number.isFinite(numeric) ? numeric / 100 : NaN;
+  };
+
   const { perfectPerformanceAmount, perfectPerformanceBasis } = React.useMemo(() => {
     const key = menuKey || '';
     const estimated = parseAmount(form.estimatedPrice);
     const base = parseAmount(form.baseAmount);
+
+    if (ownerId === 'PPS') {
+      return base > 0
+        ? { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' }
+        : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+    }
 
     if (ownerId === 'MOIS') {
       if (key === 'mois-under30' || key === 'mois-30to50') {
@@ -248,6 +302,38 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     : '';
 
   React.useEffect(() => {
+    if (!isPPS) return;
+    const estimated = parseAmount(form.estimatedPrice);
+    const autoValue = estimated > 0 ? Math.round(estimated * 1.1) : 0;
+    const autoFormatted = formatAmountString(autoValue);
+    const current = form.baseAmount || '';
+    const lastAuto = baseAutoRef.current;
+    baseAutoRef.current = autoFormatted;
+    if (baseTouched && current !== lastAuto) return;
+    if (current === (autoFormatted || '')) return;
+    if (!autoFormatted && current === '') return;
+    setForm((prev) => ({ ...prev, baseAmount: autoFormatted }));
+  }, [isPPS, form.estimatedPrice, form.baseAmount, baseTouched]);
+
+  React.useEffect(() => {
+    if (!isPPS) return;
+    const base = parseAmount(form.baseAmount);
+    const bidRateValue = parsePercent(form.bidRate);
+    const adjustmentValue = parsePercent(form.adjustmentRate);
+    const autoValue = base > 0 && Number.isFinite(bidRateValue) && Number.isFinite(adjustmentValue)
+      ? Math.round(base * bidRateValue * adjustmentValue)
+      : 0;
+    const autoFormatted = formatAmountString(autoValue);
+    const current = form.bidAmount || '';
+    const lastAuto = bidAutoRef.current;
+    bidAutoRef.current = autoFormatted;
+    if (bidTouched && current !== lastAuto) return;
+    if (current === (autoFormatted || '')) return;
+    if (!autoFormatted && current === '') return;
+    setForm((prev) => ({ ...prev, bidAmount: autoFormatted }));
+  }, [isPPS, form.baseAmount, form.bidRate, form.adjustmentRate, form.bidAmount, bidTouched]);
+
+  React.useEffect(() => {
     const prevIndustry = prevIndustryRef.current;
     const prevRegions = prevDutyRegionsRef.current || [];
     const currentRegions = dutyRegions || [];
@@ -278,7 +364,10 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       && boardState?.baseAmount === (form.baseAmount || '')
       && boardState?.estimatedAmount === (form.estimatedPrice || '')
       && boardState?.bidDeadline === (form.bidDeadline || '')
-      && boardState?.regionDutyRate === (form.regionDutyRate || '');
+      && boardState?.regionDutyRate === (form.regionDutyRate || '')
+      && boardState?.bidAmount === (form.bidAmount || '')
+      && boardState?.bidRate === (form.bidRate || '')
+      && boardState?.adjustmentRate === (form.adjustmentRate || '');
     if (same) return;
     updateBoard({
       noticeNo: form.noticeNo || '',
@@ -288,6 +377,9 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       estimatedAmount: form.estimatedPrice || '',
       bidDeadline: form.bidDeadline || '',
       regionDutyRate: form.regionDutyRate || '',
+      bidAmount: form.bidAmount || '',
+      bidRate: form.bidRate || '',
+      adjustmentRate: form.adjustmentRate || '',
     });
   }, [
     boardState?.noticeNo,
@@ -297,6 +389,9 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     boardState?.estimatedAmount,
     boardState?.bidDeadline,
     boardState?.regionDutyRate,
+    boardState?.bidAmount,
+    boardState?.bidRate,
+    boardState?.adjustmentRate,
     form.noticeNo,
     form.title,
     form.industry,
@@ -304,6 +399,9 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     form.estimatedPrice,
     form.bidDeadline,
     form.regionDutyRate,
+    form.bidAmount,
+    form.bidRate,
+    form.adjustmentRate,
     updateBoard,
   ]);
 
@@ -314,6 +412,28 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     const perf5y = parseAmount(company['5년 실적']);
     const sipyung = parseAmount(company['시평']);
     const region = String(company['대표지역'] || company['지역'] || '').trim();
+    if (isPPS) {
+      const hasEntry = entry > 0;
+      const moneyOk = hasEntry ? sipyung >= entry : true;
+      const perfOk = base > 0 && perf5y >= base;
+      const managementRaw = Number(String(
+        company['경영점수']
+        || company['경영상태점수']
+        || company['관리점수']
+        || company['경영상태 점수']
+        || ''
+      ).replace(/[^0-9.]/g, ''));
+      const managementOk = Number.isFinite(managementRaw) ? managementRaw >= 15 - 1e-3 : false;
+
+      const reasons = [];
+      const toLocale = (value) => (Number.isFinite(value) ? value.toLocaleString() : String(value || '0'));
+      if (hasEntry && !moneyOk) reasons.push(`시평 미달: ${toLocale(sipyung)} < 참가자격 ${toLocale(entry)}`);
+      if (!perfOk) reasons.push(`5년 실적 미달: ${toLocale(perf5y)} < 기초금액 ${toLocale(base)}`);
+      if (!managementOk) reasons.push('경영점수 만점이 아닙니다.');
+
+      setCheckEval({ ok: Boolean((!hasEntry || moneyOk) && perfOk && managementOk), reasons });
+      return;
+    }
 
     const moneyOk = sipyung >= entry && entry > 0;
     const perfOk = perf5y >= base && base > 0;
@@ -395,7 +515,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                 <h3 className="section-title">금액 / 일정</h3>
                 <div className="section-divider" />
                 <div className="grid-2">
-                  <Field label="기초금액"><AmountInput value={form.baseAmount} onChange={(value) => setForm((prev) => ({ ...prev, baseAmount: value }))} placeholder="원" /></Field>
+                  <Field label="기초금액"><AmountInput value={form.baseAmount} onChange={(value) => { setBaseTouched(true); setForm((prev) => ({ ...prev, baseAmount: value })); }} placeholder="원" /></Field>
                   <Field label="추정가격"><AmountInput value={form.estimatedPrice} onChange={(value) => setForm((prev) => ({ ...prev, estimatedPrice: value }))} placeholder="원" /></Field>
                   <Field label="공고일"><input type="date" className="filter-input" value={form.noticeDate} onChange={onChange('noticeDate')} /></Field>
                   <Field label="투찰마감일">
@@ -408,6 +528,30 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                     />
                   </Field>
                   <Field label="참가자격금액"><AmountInput value={form.entryQualificationAmount} onChange={(value) => setForm((prev) => ({ ...prev, entryQualificationAmount: value }))} placeholder="원(=추정가격)" /></Field>
+                  {isPPS && (
+                    <Field label="사정율(%)">
+                      <input
+                        className="filter-input"
+                        type="number"
+                        step="0.001"
+                        value={form.adjustmentRate}
+                        onChange={(e) => setForm((prev) => ({ ...prev, adjustmentRate: e.target.value }))}
+                        placeholder="예: 86.745"
+                      />
+                    </Field>
+                  )}
+                  {isPPS && (
+                    <Field label="투찰율(%)">
+                      <input
+                        className="filter-input"
+                        type="number"
+                        step="0.1"
+                        value={form.bidRate}
+                        onChange={(e) => setForm((prev) => ({ ...prev, bidRate: e.target.value }))}
+                        placeholder="예: 101.4"
+                      />
+                    </Field>
+                  )}
                   <Field label="실적만점금액">
                     <input
                       className="filter-input"
@@ -416,6 +560,15 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                       placeholder="금액 입력 시 자동 계산"
                     />
                   </Field>
+                  {isPPS && (
+                    <Field label="투찰금액" style={{ gridColumn: '1 / -1' }}>
+                      <AmountInput
+                        value={form.bidAmount}
+                        onChange={(value) => { setBidTouched(true); setForm((prev) => ({ ...prev, bidAmount: value })); }}
+                        placeholder="원"
+                      />
+                    </Field>
+                  )}
                 </div>
               </div>
 
@@ -493,6 +646,10 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         entryAmount: form.entryQualificationAmount || '',
                         baseAmount: form.baseAmount,
                         estimatedAmount: form.estimatedPrice,
+                        ratioBaseAmount: form.bidAmount,
+                        bidAmount: form.bidAmount,
+                        bidRate: form.bidRate,
+                        adjustmentRate: form.adjustmentRate,
                         bidDeadline: form.bidDeadline,
                         regionDutyRate: form.regionDutyRate,
                         perfectPerformanceAmount,

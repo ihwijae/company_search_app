@@ -228,6 +228,13 @@ const formatAmount = (value) => {
   try { return number.toLocaleString('ko-KR'); } catch (err) { return String(number); }
 };
 
+const formatPercentInput = (value) => {
+  const number = toNumber(value);
+  if (number === null) return '';
+  const fixed = Number(number).toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+  return `${fixed}%`;
+};
+
 const formatPercent = (value) => {
   if (value === null || value === undefined) return '-%';
   const number = Number(value);
@@ -499,6 +506,9 @@ export default function AgreementBoardWindow({
   industryLabel = '',
   baseAmount = '',
   estimatedAmount = '',
+  bidAmount = '',
+  bidRate = '',
+  adjustmentRate = '',
   bidDeadline = '',
   regionDutyRate = '',
 }) {
@@ -640,7 +650,10 @@ export default function AgreementBoardWindow({
     industryLabel,
     baseAmount: baseAmount ? formatAmount(baseAmount) : '',
     estimatedAmount: estimatedAmount ? formatAmount(estimatedAmount) : '',
-  }), [noticeNo, noticeTitle, industryLabel, baseAmount, estimatedAmount]);
+    bidAmount: bidAmount ? formatAmount(bidAmount) : '',
+    bidRate: formatPercentInput(bidRate),
+    adjustmentRate: formatPercentInput(adjustmentRate),
+  }), [noticeNo, noticeTitle, industryLabel, baseAmount, estimatedAmount, bidAmount, bidRate, adjustmentRate]);
 
   const pinnedSet = React.useMemo(() => new Set(pinned || []), [pinned]);
   const excludedSet = React.useMemo(() => new Set(excluded || []), [excluded]);
@@ -1800,11 +1813,14 @@ export default function AgreementBoardWindow({
             <div className="header-title-line">
               <h2>{title}</h2>
               <div className="agreement-board-header-meta">
-                <span><strong>공고명</strong> {boardDetails.noticeTitle || '-'}</span>
-                <span><strong>공고번호</strong> {boardDetails.noticeNo || '-'}</span>
-                <span><strong>공종</strong> {boardDetails.industryLabel || '-'}</span>
-                <span><strong>기초금액</strong> {boardDetails.baseAmount || '-'}</span>
-                <span><strong>추정금액</strong> {boardDetails.estimatedAmount || '-'}</span>
+              <span><strong>공고명</strong> {boardDetails.noticeTitle || '-'}</span>
+              <span><strong>공고번호</strong> {boardDetails.noticeNo || '-'}</span>
+              <span><strong>공종</strong> {boardDetails.industryLabel || '-'}</span>
+              <span><strong>기초금액</strong> {boardDetails.baseAmount || '-'}</span>
+              <span><strong>추정금액</strong> {boardDetails.estimatedAmount || '-'}</span>
+              {boardDetails.adjustmentRate && <span><strong>사정율</strong> {boardDetails.adjustmentRate}</span>}
+              {boardDetails.bidRate && <span><strong>투찰율</strong> {boardDetails.bidRate}</span>}
+              {boardDetails.bidAmount && <span><strong>투찰금액</strong> {boardDetails.bidAmount}</span>}
               </div>
             </div>
             <p>대표사 {summary.representativeTotal}명 · 확정 지역사 {summary.selectedRegions}명 · 협정 {summary.groups}개</p>

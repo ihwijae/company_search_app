@@ -983,6 +983,8 @@ function App() {
           if (k === 'agreements') window.location.hash = '#/agreements';
           if (k === 'lh-under50') window.location.hash = '#/lh/under50';
           if (k === 'lh-50to100') window.location.hash = '#/lh/50to100';
+          if (k === 'pps-under50') window.location.hash = '#/pps/under50';
+          if (k === 'pps-50to100') window.location.hash = '#/pps/50to100';
           if (k === 'records') window.location.hash = '#/records';
           if (k === 'search') window.location.hash = '#/search';
           if (k === 'settings') window.location.hash = '#/settings';

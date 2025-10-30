@@ -142,9 +142,22 @@ function EditAgreementModal({ open, value, onChange, onClose, onSave, onSearchLe
 }
 
 function AgreementsPage() {
-  const [active, setActive] = useState((window.location.hash || '').includes('/lh/') ? 'lh' : 'agreements');
+  const initialHash = window.location.hash || '';
+  const initialActive = (() => {
+    if (initialHash.includes('/lh/')) return 'lh';
+    if (initialHash.includes('/pps/')) return 'pps';
+    if (initialHash.includes('/mois/')) return 'mois';
+    return 'agreements';
+  })();
+  const initialOwner = (() => {
+    if (initialHash.includes('/lh/')) return '한국토지주택공사';
+    if (initialHash.includes('/pps/')) return '조달청';
+    return OWNERS[0];
+  })();
+
+  const [active, setActive] = useState(initialActive);
   const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false });
-  const [owner, setOwner] = useState((window.location.hash || '').includes('/lh/under50') ? '한국토지주택공사' : OWNERS[0]);
+  const [owner, setOwner] = useState(initialOwner);
   const [noticeNo, setNoticeNo] = useState('');
   const [title, setTitle] = useState('');
   const [typeKey, setTypeKey] = useState('');
@@ -198,6 +211,11 @@ function AgreementsPage() {
       if (h.includes('/lh/')) {
         setActive('lh');
         setOwner('한국토지주택공사');
+      } else if (h.includes('/pps/')) {
+        setActive('pps');
+        setOwner('조달청');
+      } else if (h.includes('/mois/')) {
+        setActive('mois');
       } else {
         setActive('agreements');
       }
@@ -390,6 +408,8 @@ function AgreementsPage() {
           if (k === 'agreements') window.location.hash = '#/agreements';
           if (k === 'lh-under50') window.location.hash = '#/lh/under50';
           if (k === 'lh-50to100') window.location.hash = '#/lh/50to100';
+          if (k === 'pps-under50') window.location.hash = '#/pps/under50';
+          if (k === 'pps-50to100') window.location.hash = '#/pps/50to100';
           if (k === 'records') window.location.hash = '#/records';
           if (k === 'search') window.location.hash = '#/search';
           if (k === 'settings') window.location.hash = '#/settings';

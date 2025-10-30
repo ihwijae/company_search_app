@@ -6,6 +6,8 @@ import SettingsPage from './view/features/settings/pages/SettingsPage.jsx';
 import RecordsPage from './view/features/records/pages/RecordsPage.jsx';
 import LHUnder50Page from './view/features/agreements/pages/LHUnder50Page.jsx';
 import LH50To100Page from './view/features/agreements/pages/LH50To100Page.jsx';
+import PPSUnder50Page from './view/features/agreements/pages/PPSUnder50Page.jsx';
+import PPS50To100Page from './view/features/agreements/pages/PPS50To100Page.jsx';
 import MOISUnder30Page from './view/features/agreements/pages/MOISUnder30Page.jsx';
 import MOIS30To50Page from './view/features/agreements/pages/MOIS30To50Page.jsx';
 import MOIS50To100Page from './view/features/agreements/pages/MOIS50To100Page.jsx';
@@ -28,6 +30,12 @@ export default function App() {
       break;
     case '/lh/50to100':
       Screen = LH50To100Page;
+      break;
+    case '/pps/under50':
+      Screen = PPSUnder50Page;
+      break;
+    case '/pps/50to100':
+      Screen = PPS50To100Page;
       break;
     case '/mois/under30':
       Screen = MOISUnder30Page;
