@@ -370,8 +370,9 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       && boardState?.adjustmentRate === (form.adjustmentRate || '');
     if (same) return;
     updateBoard({
-      noticeNo: form.noticeNo || '',
-      noticeTitle: form.title || '',
+                      noticeNo: form.noticeNo || '',
+                      noticeTitle: form.title || '',
+                      noticeDate: form.noticeDate || '',
       industryLabel: form.industry || '',
       baseAmount: form.baseAmount || '',
       estimatedAmount: form.estimatedPrice || '',
@@ -642,6 +643,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         fileType: currentFileType,
                         noticeNo: form.noticeNo,
                         noticeTitle: form.title,
+                        noticeDate: form.noticeDate,
                         industryLabel: form.industry,
                         entryAmount: form.entryQualificationAmount || '',
                         baseAmount: form.baseAmount,

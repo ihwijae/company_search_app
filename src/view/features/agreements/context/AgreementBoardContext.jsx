@@ -417,6 +417,7 @@ export function AgreementBoardProvider({ children }) {
       next.fileType = rest.fileType || base.fileType || DEFAULT_FILE_TYPE;
       next.noticeNo = rest.noticeNo ?? base.noticeNo ?? '';
       next.noticeTitle = rest.noticeTitle ?? base.noticeTitle ?? '';
+      next.noticeDate = rest.noticeDate ?? base.noticeDate ?? '';
       next.industryLabel = rest.industryLabel ?? base.industryLabel ?? '';
       next.entryAmount = rest.entryAmount ?? base.entryAmount ?? '';
       next.baseAmount = rest.baseAmount ?? base.baseAmount ?? '';
@@ -549,6 +550,7 @@ export function AgreementBoardProvider({ children }) {
         onRemoveRepresentative={removeCandidate}
         noticeNo={boardState.noticeNo || ''}
         noticeTitle={boardState.noticeTitle || ''}
+        noticeDate={boardState.noticeDate || ''}
         industryLabel={boardState.industryLabel || ''}
         baseAmount={boardState.baseAmount || ''}
         estimatedAmount={boardState.estimatedAmount || ''}
@@ -566,6 +568,7 @@ export function AgreementBoardProvider({ children }) {
         fileType={candidatesWindow.fileType || DEFAULT_FILE_TYPE}
         noticeNo={candidatesWindow.noticeNo || ''}
         noticeTitle={candidatesWindow.noticeTitle || ''}
+        noticeDate={candidatesWindow.noticeDate || ''}
         industryLabel={candidatesWindow.industryLabel || ''}
         entryAmount={candidatesWindow.entryAmount || ''}
         baseAmount={candidatesWindow.baseAmount || ''}

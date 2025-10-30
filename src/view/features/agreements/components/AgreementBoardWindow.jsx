@@ -51,6 +51,14 @@ const formatBidDeadline = (value) => {
   return `${year}-${month}-${day}  ${hourDisplay}:${minutes}:${seconds} ${period}`;
 };
 
+const formatNoticeDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const pad = (num) => String(num).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
 const buildDutySummary = (regions = [], dutyRate = null, teamSize = null) => {
   const normalizedRegions = (Array.isArray(regions) ? regions : [])
     .map((entry) => (entry ? String(entry).trim() : ''))
@@ -503,6 +511,7 @@ export default function AgreementBoardWindow({
   onRemoveRepresentative = () => {},
   noticeNo = '',
   noticeTitle = '',
+  noticeDate = '',
   industryLabel = '',
   baseAmount = '',
   estimatedAmount = '',
@@ -520,6 +529,15 @@ export default function AgreementBoardWindow({
   const [dropTarget, setDropTarget] = React.useState(null);
   const [groupShares, setGroupShares] = React.useState([]);
   const [groupSummaries, setGroupSummaries] = React.useState([]);
+  const [groupCredibility, setGroupCredibility] = React.useState([]);
+  const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
+  const credibilityConfig = React.useMemo(() => {
+    if (ownerKeyUpper === 'LH') return { enabled: true, max: 1.5 };
+    if (ownerKeyUpper === 'PPS') return { enabled: true, max: 3 };
+    return { enabled: false, max: 0 };
+  }, [ownerKeyUpper]);
+  const credibilityEnabled = credibilityConfig.enabled;
+  const ownerCredibilityMax = credibilityConfig.max;
   const candidateScoreCacheRef = React.useRef(new Map());
   const performanceCapRef = React.useRef(PERFORMANCE_DEFAULT_MAX);
   const getPerformanceCap = () => resolvePerformanceCap(performanceCapRef.current);
@@ -541,6 +559,13 @@ export default function AgreementBoardWindow({
     }
     return 0;
   }, [groupShares]);
+
+  const getCredibilityValue = React.useCallback((groupIndex, slotIndex) => {
+    const stored = groupCredibility[groupIndex]?.[slotIndex];
+    if (stored === undefined || stored === null || stored === '') return 0;
+    const parsed = Number(stored);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }, [groupCredibility]);
 
   const openRepresentativeSearch = React.useCallback(() => {
     setRepresentativeSearchOpen(true);
@@ -648,12 +673,13 @@ export default function AgreementBoardWindow({
     noticeNo,
     noticeTitle,
     industryLabel,
+    noticeDate: noticeDate ? formatNoticeDate(noticeDate) : '',
     baseAmount: baseAmount ? formatAmount(baseAmount) : '',
     estimatedAmount: estimatedAmount ? formatAmount(estimatedAmount) : '',
     bidAmount: bidAmount ? formatAmount(bidAmount) : '',
     bidRate: formatPercentInput(bidRate),
     adjustmentRate: formatPercentInput(adjustmentRate),
-  }), [noticeNo, noticeTitle, industryLabel, baseAmount, estimatedAmount, bidAmount, bidRate, adjustmentRate]);
+  }), [noticeNo, noticeTitle, industryLabel, noticeDate, baseAmount, estimatedAmount, bidAmount, bidRate, adjustmentRate]);
 
   const pinnedSet = React.useMemo(() => new Set(pinned || []), [pinned]);
   const excludedSet = React.useMemo(() => new Set(excluded || []), [excluded]);
@@ -975,6 +1001,8 @@ export default function AgreementBoardWindow({
             [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']]
           );
           const sipyung = parseNumeric(sipyungValue);
+          const credibilitySource = credibilityEnabled ? groupCredibility[groupIndex]?.[slotIndex] : null;
+          const credibilityBonus = credibilityEnabled ? parseNumeric(credibilitySource) : null;
           const isRegionMember = entry.type === 'region' || isDutyRegionCompany(candidate);
           const companyName = sanitizeCompanyName(getCompanyName(candidate));
           const managerName = getCandidateManagerName(candidate);
@@ -992,6 +1020,7 @@ export default function AgreementBoardWindow({
             managementScore: managementScore != null ? Number(managementScore) : null,
             performanceAmount: performanceAmount != null ? Number(performanceAmount) : null,
             sipyung,
+            credibilityBonus: credibilityBonus != null ? Number(credibilityBonus) : null,
           };
         });
         return {
@@ -1005,11 +1034,17 @@ export default function AgreementBoardWindow({
             performanceScore: summaryEntry.performanceScore ?? null,
             performanceAmount: summaryEntry.performanceAmount ?? null,
             performanceBase: summaryEntry.performanceBase ?? null,
-            totalScore: summaryEntry.totalScore ?? null,
+            credibilityScore: summaryEntry.credibilityScore ?? null,
+            credibilityMax: summaryEntry.credibilityMax ?? null,
+            totalScoreBase: summaryEntry.totalScoreBase ?? null,
+            totalScoreWithCred: summaryEntry.totalScoreWithCred ?? null,
+            totalScore: summaryEntry.totalScoreWithCred ?? null,
             bidScore: summaryEntry.bidScore ?? null,
             managementMax: summaryEntry.managementMax ?? null,
             performanceMax: summaryEntry.performanceMax ?? null,
-            totalMax: summaryEntry.totalMax ?? null,
+            totalMaxBase: summaryEntry.totalMaxBase ?? null,
+            totalMaxWithCred: summaryEntry.totalMaxWithCred ?? null,
+            totalMax: summaryEntry.totalMaxBase ?? null,
           } : null,
         };
       });
@@ -1115,10 +1150,12 @@ export default function AgreementBoardWindow({
         const sharePercent = getSharePercent(groupIndex, slotIndex, candidate);
         const managementScore = getCandidateManagementScore(candidate);
         const performanceAmount = getCandidatePerformanceAmount(candidate);
+        const credibilityBonus = credibilityEnabled ? getCredibilityValue(groupIndex, slotIndex) : 0;
         return {
           sharePercent,
           managementScore,
           performanceAmount,
+          credibility: credibilityBonus,
         };
       }).filter(Boolean);
 
@@ -1135,11 +1172,17 @@ export default function AgreementBoardWindow({
         return {
           ...member,
           weight: safeShare / 100,
+          credibility: Number.isFinite(member.credibility) ? Math.max(member.credibility, 0) : 0,
         };
       });
 
       const managementMissing = normalizedMembers.some((member) => member.managementScore == null);
       const performanceMissing = normalizedMembers.some((member) => member.performanceAmount == null);
+      const aggregatedCredibility = credibilityEnabled
+        ? (shareValid
+          ? normalizedMembers.reduce((acc, member) => acc + (member.credibility || 0) * member.weight, 0)
+          : null)
+        : null;
 
       const aggregatedManagement = (!managementMissing && shareValid)
         ? normalizedMembers.reduce((acc, member) => acc + (member.managementScore || 0) * member.weight, 0)
@@ -1160,6 +1203,7 @@ export default function AgreementBoardWindow({
         managementMissing,
         performanceAmount: aggregatedPerformanceAmount,
         performanceMissing,
+        credibilityScore: aggregatedCredibility,
       };
     });
 
@@ -1223,12 +1267,18 @@ export default function AgreementBoardWindow({
         const perfCapCurrent = getPerformanceCap();
         const managementMax = MANAGEMENT_SCORE_MAX;
         const performanceMax = perfCapCurrent || PERFORMANCE_DEFAULT_MAX;
-        const totalScore = (managementScore != null && performanceScore != null)
+        const credibilityScore = (credibilityEnabled && shareReady && metric.credibilityScore != null)
+          ? clampScore(metric.credibilityScore, ownerCredibilityMax)
+          : (credibilityEnabled && shareReady ? 0 : (credibilityEnabled ? null : null));
+        const credibilityMax = credibilityEnabled ? ownerCredibilityMax : null;
+        const totalScoreBase = (managementScore != null && performanceScore != null)
           ? managementScore + performanceScore + BID_SCORE
           : null;
-        const totalMax = managementScore != null && performanceScore != null
-          ? managementMax + performanceMax + BID_SCORE
+        const totalScoreWithCred = (totalScoreBase != null)
+          ? totalScoreBase + (credibilityScore != null ? credibilityScore : 0)
           : null;
+        const totalMaxBase = managementMax + performanceMax + BID_SCORE;
+        const totalMaxWithCred = credibilityEnabled ? totalMaxBase + (credibilityMax || 0) : totalMaxBase;
 
         return {
           ...metric,
@@ -1241,11 +1291,17 @@ export default function AgreementBoardWindow({
           performanceRatio,
           performanceBase: perfBase,
           performanceBaseReady,
-          totalScore,
+          credibilityScore,
+          credibilityMax,
+          totalScoreBase,
+          totalScoreWithCred,
+          totalMaxBase,
+          totalMaxWithCred,
+          totalScore: totalScoreWithCred,
           bidScore: metric.memberCount > 0 ? BID_SCORE : null,
           managementMax,
           performanceMax,
-          totalMax,
+          totalMax: totalMaxBase,
         };
       }));
       if (!canceled) setGroupSummaries(results);
@@ -1256,7 +1312,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, participantMap, ownerId, estimatedAmount, baseAmount, getSharePercent, candidateMetricsVersion]);
+  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, estimatedAmount, baseAmount, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -1511,6 +1567,20 @@ export default function AgreementBoardWindow({
       if (next[groupIndex]) next[groupIndex][slotIndex] = null;
       return next;
     });
+    setGroupShares((prev) => {
+      const next = prev.map((row) => row.slice());
+      if (next[groupIndex] && next[groupIndex][slotIndex] !== undefined) {
+        next[groupIndex][slotIndex] = '';
+      }
+      return next;
+    });
+    setGroupCredibility((prev) => {
+      const next = prev.map((row) => row.slice());
+      if (next[groupIndex] && next[groupIndex][slotIndex] !== undefined) {
+        next[groupIndex][slotIndex] = '';
+      }
+      return next;
+    });
   };
 
   const handleDropInternal = (groupIndex, slotIndex, id) => {
@@ -1560,12 +1630,26 @@ export default function AgreementBoardWindow({
   const handleResetGroups = () => {
     setGroupAssignments(buildInitialAssignments());
     setDropTarget(null);
+    setGroupShares([]);
+    setGroupCredibility([]);
   };
 
   const handleShareInput = (groupIndex, slotIndex, rawValue) => {
     const sanitized = rawValue.replace(/[^0-9.]/g, '');
     if ((sanitized.match(/\./g) || []).length > 1) return;
     setGroupShares((prev) => {
+      const next = prev.map((row) => row.slice());
+      while (next.length <= groupIndex) next.push([]);
+      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
+      next[groupIndex][slotIndex] = sanitized;
+      return next;
+    });
+  };
+
+  const handleCredibilityInput = (groupIndex, slotIndex, rawValue) => {
+    const sanitized = rawValue.replace(/[^0-9.]/g, '');
+    if ((sanitized.match(/\./g) || []).length > 1) return;
+    setGroupCredibility((prev) => {
       const next = prev.map((row) => row.slice());
       while (next.length <= groupIndex) next.push([]);
       while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
@@ -1608,6 +1692,8 @@ export default function AgreementBoardWindow({
     const sharePercent = getSharePercent(groupIndex, slotIndex, candidate);
     const storedShare = groupShares[groupIndex]?.[slotIndex];
     const shareValue = storedShare !== undefined ? storedShare : (sharePercent != null ? String(sharePercent) : '');
+    const storedCredibility = groupCredibility[groupIndex]?.[slotIndex];
+    const credibilityValue = storedCredibility !== undefined ? storedCredibility : '';
 
     const managementScoreForMember = getCandidateManagementScore(candidate);
 
@@ -1696,6 +1782,18 @@ export default function AgreementBoardWindow({
           />
           {shareValue === '' && <span className="share-hint">지분을 입력하세요</span>}
         </div>
+        {credibilityEnabled && (
+          <div className="member-credibility">
+            <label>신인도 가점</label>
+            <input
+              type="text"
+              value={credibilityValue}
+              onChange={(e) => handleCredibilityInput(groupIndex, slotIndex, e.target.value)}
+              placeholder={`0 ~ ${ownerCredibilityMax}`}
+            />
+            {credibilityValue === '' && <span className="credibility-hint">가점이 없으면 0으로 입력하세요</span>}
+          </div>
+        )}
         <div className="member-stats">
           <div className="member-stat-row">
             <span className="stat-label">시평</span>
@@ -1816,6 +1914,9 @@ export default function AgreementBoardWindow({
               <span><strong>공고명</strong> {boardDetails.noticeTitle || '-'}</span>
               <span><strong>공고번호</strong> {boardDetails.noticeNo || '-'}</span>
               <span><strong>공종</strong> {boardDetails.industryLabel || '-'}</span>
+              {boardDetails.noticeDate && (
+                <span><strong>공고일</strong> {boardDetails.noticeDate}</span>
+              )}
               <span><strong>기초금액</strong> {boardDetails.baseAmount || '-'}</span>
               <span><strong>추정금액</strong> {boardDetails.estimatedAmount || '-'}</span>
               {boardDetails.adjustmentRate && <span><strong>사정율</strong> {boardDetails.adjustmentRate}</span>}
@@ -1900,12 +2001,14 @@ export default function AgreementBoardWindow({
                 } else {
                   const managementMax = summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX;
                   const performanceMax = summaryInfo.performanceMax ?? PERFORMANCE_DEFAULT_MAX;
-                  const totalMax = summaryInfo.totalMax ?? (managementMax + performanceMax + BID_SCORE);
-                  const totalScore = summaryInfo.totalScore ?? 0;
-                  const isPerfect = totalMax != null && totalScore >= (totalMax - 0.01);
-                  const totalLabel = totalMax != null
-                    ? `총점 ${formatScore(totalScore)} / ${formatScore(totalMax)}`
-                    : `총점 ${formatScore(totalScore)}`;
+                  const totalMaxBase = summaryInfo.totalMaxBase ?? (managementMax + performanceMax + BID_SCORE);
+                  const totalScoreBase = summaryInfo.totalScoreBase ?? null;
+                  const totalScoreWithCred = summaryInfo.totalScoreWithCred ?? totalScoreBase;
+                  const displayScore = totalScoreWithCred != null ? totalScoreWithCred : (totalScoreBase != null ? totalScoreBase : 0);
+                  const isPerfect = totalMaxBase != null && totalScoreWithCred != null && totalScoreWithCred >= (totalMaxBase - 0.01);
+                  const totalLabel = totalMaxBase != null
+                    ? `총점 ${formatScore(displayScore)} / ${formatScore(totalMaxBase)}`
+                    : `총점 ${formatScore(displayScore)}`;
                   scorePill = {
                     text: totalLabel,
                     className: `score-pill ${isPerfect ? 'score-pill-ok' : 'score-pill-alert'}`,
@@ -1916,26 +2019,38 @@ export default function AgreementBoardWindow({
                       label: '경영',
                       score: summaryInfo.managementScore,
                       max: managementMax,
+                      pendingText: '경영 자료 확인',
                     },
                     {
                       label: '실적',
                       score: summaryInfo.performanceScore,
                       max: performanceMax,
+                      pendingText: summaryInfo.performanceBaseReady ? '실적 자료 확인' : '실적 기준 금액 확인 필요',
                     },
                     {
                       label: '입찰',
                       score: summaryInfo.bidScore,
                       max: BID_SCORE,
+                      pendingText: '입찰 점수 확인',
                     },
                   ];
 
-                  pillConfigs.forEach(({ label, score, max }) => {
+                  if (credibilityEnabled) {
+                    pillConfigs.push({
+                      label: '신인도',
+                      score: summaryInfo.credibilityScore,
+                      max: summaryInfo.credibilityMax ?? ownerCredibilityMax,
+                      pendingText: '신인도 입력',
+                    });
+                  }
+
+                  pillConfigs.forEach(({ label, score, max, pendingText }) => {
                     const isDefined = score != null && max != null;
                     const isPerfect = isDefined && score >= (max - 0.01);
                     const className = `detail-pill ${isPerfect ? 'detail-pill-ok' : 'detail-pill-alert'}`;
                     const text = isDefined
                       ? `${label} ${formatScore(score)} / ${formatScore(max)}`
-                      : `${label} 자료 확인`;
+                      : (pendingText || `${label} 자료 확인`);
                     detailPills.push({ text, className });
                   });
                   if (summaryInfo.shareSum != null) {

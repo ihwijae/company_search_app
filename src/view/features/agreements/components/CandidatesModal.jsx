@@ -80,6 +80,7 @@ export default function CandidatesModal({
   defaultExcludeSingle = true,
   noticeNo = '',
   noticeTitle = '',
+  noticeDate = '',
   industryLabel = '',
   initialCandidates = [],
   initialPinned = [],
@@ -274,6 +275,35 @@ const industryToLabel = (type) => {
     return n.toFixed(precision).replace(/\.0$/, '');
   };
 
+  const formatDate = (value) => {
+    if (!value) return '';
+    let date = null;
+    if (value instanceof Date) {
+      date = value;
+    } else if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        const [y, m, d] = trimmed.split('-').map(Number);
+        if (y && m && d) date = new Date(y, m - 1, d);
+      } else if (/^\d{4}\.\d{2}\.\d{2}$/.test(trimmed)) {
+        const [y, m, d] = trimmed.split('.').map(Number);
+        if (y && m && d) date = new Date(y, m - 1, d);
+      } else {
+        const guess = new Date(trimmed);
+        if (!Number.isNaN(guess.getTime())) date = guess;
+      }
+    } else {
+      const fallback = new Date(value);
+      if (!Number.isNaN(fallback.getTime())) date = fallback;
+    }
+    if (!date || Number.isNaN(date.getTime())) return '';
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}.${mm}.${dd}`;
+  };
+
   const formatRatio = (value) => {
     if (value === null || value === undefined) return '-';
     const n = Number(value);
@@ -363,7 +393,8 @@ const industryToLabel = (type) => {
     bidAmount: formatAmount(bidAmount),
     bidRate: formatPercentInput(bidRate),
     adjustmentRate: formatPercentInput(adjustmentRate),
-  }), [noticeNo, noticeTitle, industryLabel, fileType, baseAmount, estimatedAmount, bidAmount, bidRate, adjustmentRate]);
+    noticeDate: noticeDate ? formatDate(noticeDate) : '',
+  }), [noticeNo, noticeTitle, industryLabel, fileType, baseAmount, estimatedAmount, bidAmount, bidRate, adjustmentRate, noticeDate]);
 
   const isMaxScore = (score, maxScore) => {
     const scoreNum = Number(score);
@@ -413,6 +444,7 @@ const industryToLabel = (type) => {
         dutyRegions: requestParams.dutyRegions,
         excludeSingleBidEligible: requestParams.excludeSingleBidEligible,
         filterByRegion: !!requestParams.filterByRegion,
+        evaluationDate: noticeDate,
       });
       if (!r?.success) throw new Error(r?.message || '후보 요청 실패');
 
@@ -452,6 +484,12 @@ const industryToLabel = (type) => {
           if (raw === null || raw === undefined || raw === '') return null;
           const num = Number(raw);
           return Number.isFinite(num) ? num : null;
+        })();
+        const bizYearsStartDate = (() => {
+          const raw = item.bizYearsStartDate || snapshot.bizYearsStartDate;
+          if (!raw) return null;
+          const date = new Date(raw);
+          return Number.isNaN(date.getTime()) ? null : date;
         })();
         const singleBidReasons = Array.isArray(item.singleBidReasons)
           ? item.singleBidReasons.filter(Boolean)
@@ -493,6 +531,7 @@ const industryToLabel = (type) => {
           bizYears: bizYearsValue,
           bizYearsScore: bizYearsScoreValue,
           bizYearsMaxScore: bizYearsMaxScoreValue,
+          bizYearsStartDate,
           singleBidReasons,
           singleBidFacts,
           _sipyung: (() => {
@@ -749,6 +788,9 @@ const industryToLabel = (type) => {
               <span><strong>공고명</strong> {details.title || '-'}</span>
               <span><strong>공고번호</strong> {details.noticeNo || '-'}</span>
               <span><strong>공종</strong> {details.industryLabel || '-'}</span>
+              {details.noticeDate && (
+                <span><strong>공고일</strong> {details.noticeDate}</span>
+              )}
               <span><strong>기초금액</strong> {details.baseAmount || '-'}</span>
               <span><strong>추정금액</strong> {details.estimatedPrice || '-'}</span>
               {details.adjustmentRate && (
@@ -1034,6 +1076,7 @@ const industryToLabel = (type) => {
                             <span style={{ color: isMaxScore(c.bizYearsScore, c.bizYearsMaxScore) ? '#166534' : '#b91c1c', fontWeight: isMaxScore(c.bizYearsScore, c.bizYearsMaxScore) ? 600 : 500 }}>
                               영업기간
                               {c.bizYears != null && c.bizYears !== '' ? ` ${formatYears(c.bizYears)}년` : ''}
+                              {c.bizYearsStartDate ? ` (면허취득일 ${formatDate(c.bizYearsStartDate)})` : ''}
                               {` → ${formatScore(c.bizYearsScore)}점`}
                               {c.bizYearsMaxScore ? ` / ${formatScore(c.bizYearsMaxScore)}점` : ''}
                             </span>

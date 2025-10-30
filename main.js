@@ -847,6 +847,124 @@ try {
         return Number.isFinite(num) ? num : 0;
       };
 
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+      const MS_PER_YEAR = 365.2425 * MS_PER_DAY;
+      const EXCEL_DATE_EPOCH = new Date(Date.UTC(1899, 11, 30));
+
+      const isValidDate = (value) => value instanceof Date && !Number.isNaN(value.getTime());
+
+      const fromExcelSerial = (serial) => {
+        const num = Number(serial);
+        if (!Number.isFinite(num)) return null;
+        if (num <= 0) return null;
+        const milliseconds = Math.round(num * MS_PER_DAY);
+        const date = new Date(EXCEL_DATE_EPOCH.getTime() + milliseconds);
+        if (!isValidDate(date)) return null;
+        return date;
+      };
+
+      const parseDateLike = (raw) => {
+        if (!raw && raw !== 0) return null;
+        if (raw instanceof Date) {
+          return isValidDate(raw) ? raw : null;
+        }
+        if (typeof raw === 'number') {
+          if (raw > 1000) {
+            const excelDate = fromExcelSerial(raw);
+            if (excelDate) return excelDate;
+          }
+          return null;
+        }
+        const text = String(raw || '').trim();
+        if (!text) return null;
+
+        const matchFourDigit = text.match(/(19|20)\d{2}/);
+        if (matchFourDigit) {
+          const dateMatch = text.match(/(\d{4})[^0-9]*(\d{1,2})[^0-9]*(\d{1,2})/);
+          if (dateMatch) {
+            const year = Number(dateMatch[1]);
+            const month = Number(dateMatch[2]);
+            const day = Number(dateMatch[3]);
+            if (year >= 1900 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+              const date = new Date(year, month - 1, day);
+              if (isValidDate(date)) return date;
+            }
+          }
+        }
+
+        const digitsOnly = text.replace(/[^0-9]/g, '');
+        if (digitsOnly.length === 8) {
+          const year = Number(digitsOnly.slice(0, 4));
+          const month = Number(digitsOnly.slice(4, 6));
+          const day = Number(digitsOnly.slice(6, 8));
+          if (year >= 1900 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            const date = new Date(year, month - 1, day);
+            if (isValidDate(date)) return date;
+          }
+        }
+
+        return null;
+      };
+
+      const parseBizYearsFromText = (text) => {
+        const normalized = String(text || '').trim();
+        if (!normalized) return null;
+        const yearMonthMatch = normalized.match(/(\d+(?:\.\d+)?)\s*년\s*(\d+(?:\.\d+)?)?\s*개월?/);
+        if (yearMonthMatch) {
+          const yearsPart = Number(yearMonthMatch[1]);
+          const monthsPart = yearMonthMatch[2] != null ? Number(yearMonthMatch[2]) : 0;
+          const total = (Number.isFinite(yearsPart) ? yearsPart : 0) + (Number.isFinite(monthsPart) ? monthsPart / 12 : 0);
+          return Number.isFinite(total) && total > 0 ? total : null;
+        }
+        const monthsOnlyMatch = normalized.match(/(\d+(?:\.\d+)?)\s*개월/);
+        if (monthsOnlyMatch) {
+          const months = Number(monthsOnlyMatch[1]);
+          if (Number.isFinite(months) && months > 0) return months / 12;
+        }
+        return null;
+      };
+
+      const computeBizYears = (rawValue, baseDate) => {
+        if (!rawValue && rawValue !== 0) return { years: null, startDate: null };
+
+        const base = isValidDate(baseDate) ? baseDate : todayMidnight;
+        const startDate = parseDateLike(rawValue);
+        if (startDate && base && isValidDate(base)) {
+          const diff = base.getTime() - startDate.getTime();
+          const years = diff > 0 ? (diff / MS_PER_YEAR) : 0;
+          return { years: Number.isFinite(years) ? Number(years.toFixed(4)) : 0, startDate };
+        }
+
+        if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+          if (rawValue > 0 && rawValue <= 200) {
+            return { years: Number(rawValue.toFixed(4)), startDate: null };
+          }
+        }
+
+        const fromText = parseBizYearsFromText(rawValue);
+        if (Number.isFinite(fromText) && fromText > 0) {
+          return { years: Number(fromText.toFixed(4)), startDate: null };
+        }
+
+        const numericString = Number(parseNumeric(rawValue));
+        if (Number.isFinite(numericString) && numericString > 0 && numericString <= 200) {
+          return { years: Number(numericString.toFixed(4)), startDate: null };
+        }
+
+        return { years: null, startDate: null };
+      };
+
+      const evaluationDateRaw = params.evaluationDate || params.noticeDate || null;
+      const evaluationDateParsed = parseDateLike(evaluationDateRaw);
+      const bizEvaluationDate = (() => {
+        if (evaluationDateParsed && isValidDate(evaluationDateParsed)) {
+          const copy = new Date(evaluationDateParsed.getTime());
+          copy.setHours(0, 0, 0, 0);
+          return copy;
+        }
+        return todayMidnight;
+      })();
+
       const buildOverridesFromTier = (tier, effectiveAmount) => {
         if (!tier || !tier.rules) return null;
         const mgRules = tier.rules.management || {};
@@ -1034,7 +1152,9 @@ try {
         const perf5y = toNumber(c['5년 실적']);
         const debtRatio = parseNumeric(c['부채비율']);
         const currentRatio = parseNumeric(c['유동비율']);
-        const bizYears = parseNumeric(c['영업기간']);
+        const bizYearsInfo = computeBizYears(c['영업기간'], bizEvaluationDate);
+        const bizYears = bizYearsInfo.years;
+        const bizYearsStartDate = bizYearsInfo.startDate;
         const qualityEval = parseNumeric(c['품질평가']);
         const creditRawFull = norm(c['신용평가']);
         const creditNoteRawFull = norm(c['신용메모']);
@@ -1295,6 +1415,7 @@ try {
           debtScore,
           currentScore,
           bizYears,
+          bizYearsStartDate: bizYearsStartDate && isValidDate(bizYearsStartDate) ? bizYearsStartDate.toISOString().slice(0, 10) : null,
           bizYearsScore: Number.isFinite(Number(bizYearsScore)) ? Number(bizYearsScore) : null,
           bizYearsMaxScore: bizYearsMax > 0 ? bizYearsMax : null,
           debtAgainstAverage,

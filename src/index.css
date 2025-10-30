@@ -619,11 +619,13 @@ body {
 /* 협정보드 독립 창 */
 .agreement-board-root {
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   background: #f3f4f6;
   display: flex;
   flex-direction: column;
   font-family: inherit;
+  overflow: hidden;
 }
 
 .agreement-board-header {
@@ -700,14 +702,18 @@ body {
   background: #f8fafc;
   min-height: 0;
   overflow: hidden;
+  align-items: flex-start;
 }
 
 .agreement-board-sidebar {
   width: 290px;
+  flex: 0 0 290px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  flex: 0 0 290px;
+  position: sticky;
+  top: 18px;
+  align-self: flex-start;
 }
 
 .agreement-board-sidebar .sidebar-section {
@@ -861,6 +867,9 @@ body {
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 .board-header {
@@ -895,8 +904,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  overflow-y: auto;
-  padding-right: 4px;
+  min-height: 0;
 }
 
 .board-group-card {
@@ -1144,6 +1152,35 @@ body {
 }
 
 .agreement-board-member .member-share .share-hint {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.agreement-board-member .member-credibility {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.agreement-board-member .member-credibility label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.agreement-board-member .member-credibility input {
+  width: 82px;
+  height: 30px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 13px;
+  text-align: right;
+  color: #111827;
+}
+
+.agreement-board-member .member-credibility .credibility-hint {
   font-size: 11px;
   color: #94a3b8;
 }
