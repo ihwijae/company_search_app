@@ -1681,6 +1681,18 @@ body {
   color: #111827;
   vertical-align: middle;
   overflow-wrap: anywhere;
+  padding: 0;
+}
+.records-table__company-cell {
+  display: table;
+  width: 100%;
+  height: 100%;
+}
+.records-table__company-text {
+  display: table-cell;
+  vertical-align: middle;
+  text-align: center;
+  padding: 12px;
 }
 
 .records-table__info-cell {
@@ -1782,6 +1794,187 @@ body {
 .records-table__empty {
   text-align: center;
   padding: 32px 12px;
+  color: #94a3b8;
+}
+
+/* --- Records grid layout (tableless) --- */
+.records-grid-wrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #d4d4d8;
+  display: flex;
+  flex-direction: column;
+}
+
+.records-grid {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 1040px;
+  overflow: auto;
+}
+
+.records-grid__header {
+  display: grid;
+  grid-template-columns: 160px minmax(360px, 1.2fr) minmax(250px, 0.8fr) 180px 220px;
+  background: #fff4d4;
+  color: #7a4900;
+  font-weight: 700;
+  border-bottom: 1px solid #d4d4d8;
+}
+
+.records-grid__header-cell {
+  padding: 14px 16px;
+  border-right: 1px solid #ead19c;
+}
+
+.records-grid__header-cell--actions,
+.records-grid__header-cell--elapsed {
+  text-align: center;
+}
+
+.records-grid__row {
+  display: grid;
+  grid-template-columns: 160px minmax(360px, 1.2fr) minmax(250px, 0.8fr) 180px 220px;
+  border-bottom: 1px solid #d9dee8;
+  background: #fff;
+  transition: background 0.16s ease;
+  cursor: pointer;
+}
+
+.records-grid__row:hover { background: #fff7d1; }
+.records-grid__row.is-selected { background: #ede9fe; }
+
+.records-grid__cell {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+  border-right: 1px solid #e4e7ef;
+}
+
+.records-grid__cell:last-child {
+  border-right: none;
+}
+
+.records-grid__cell--company {
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+}
+
+.records-grid__company-text {
+  display: inline-block;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.4;
+}
+
+.records-grid__cell--info {
+  gap: 12px;
+}
+
+.records-grid__project-name {
+  font-weight: 700;
+  color: #111827;
+  font-size: 15px;
+  padding-left: 76px;
+}
+
+.records-grid__info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.records-grid__info-item {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.records-grid__info-label {
+  width: 70px;
+  text-align: right;
+  font-weight: 600;
+  color: #475569;
+  position: relative;
+  padding-right: 6px;
+}
+
+.records-grid__info-label::after {
+  content: ':';
+  position: absolute;
+  right: 0;
+}
+
+.records-grid__info-value {
+  flex: 1;
+  color: #1f2937;
+  word-break: break-word;
+}
+
+.records-grid__info-value--amount {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.records-grid__info-item--muted .records-grid__info-value {
+  color: #4c1d95;
+  font-weight: 600;
+}
+
+.records-grid__cell--notes .records-grid__notes {
+  font-size: 13px;
+  color: #1f2937;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.records-grid__cell--elapsed {
+  justify-content: center;
+  align-items: center;
+}
+
+.records-grid__elapsed {
+  color: #b91c1c;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.records-grid__cell--actions {
+  gap: 12px;
+}
+
+.records-grid__attachment-summary {
+  font-size: 13px;
+  color: #475569;
+  text-align: center;
+}
+
+.records-grid__attachment-name { word-break: break-word; }
+.records-grid__no-attachment { font-size: 13px; color: #9ca3af; }
+
+.records-grid__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.records-grid__actions .btn-sm {
+  flex: 1 1 100px;
+  min-width: 0;
+}
+
+.records-grid__empty {
+  padding: 48px 12px;
+  text-align: center;
   color: #94a3b8;
 }
 

@@ -253,10 +253,10 @@ export default function ProjectModal({
             {isEdit && initialProject?.attachment && !attachmentRemoved && (
               <button
                 type="button"
-                className="btn-muted records-modal__remove-attachment"
+                className="btn-danger records-modal__remove-attachment"
                 onClick={handleRemoveExistingAttachment}
               >
-                첨부 삭제
+                실적증명서 삭제
               </button>
             )}
             {isEdit && attachmentRemoved && (

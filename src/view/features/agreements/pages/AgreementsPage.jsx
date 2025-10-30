@@ -260,9 +260,17 @@ function AgreementsPage() {
       { name: '', share: '', bizNo: '' },
     ]);
     requestAnimationFrame(() => {
-      if (leaderNameRef.current) {
-        const input = leaderNameRef.current;
-        input.focus();
+      const input = leaderNameRef.current;
+      if (!input) return;
+      const alreadyFocused = document.activeElement === input;
+      if (!alreadyFocused) {
+        try {
+          input.focus({ preventScroll: true });
+        } catch {
+          input.focus();
+        }
+      }
+      if (input.value) {
         try {
           input.setSelectionRange(0, input.value.length);
         } catch {}

@@ -359,104 +359,109 @@ export default function RecordsPage() {
 
               {error && <p className="records-error">{error}</p>}
 
-              <div className="records-table-wrapper">
-                <table className="records-table">
-                  <colgroup>
-                    <col className="records-col-company" />
-                    <col className="records-col-info" />
-                    <col className="records-col-notes" />
-                    <col className="records-col-elapsed" />
-                    <col className="records-col-attachment" />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th className="records-table__head--company">법인</th>
-                      <th>공사 정보</th>
-                      <th>시공규모 및 비고</th>
-                      <th className="records-table__head--elapsed">{baseDateLabel} 기준 경과일수</th>
-                      <th>첨부 / 작업</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {projects.length ? (
-                      projects.map((project) => {
-                        const isSelected = selectedProjectId === project.id;
-                        const hasAttachment = !!project.attachment;
-                        const elapsedText = formatElapsedPeriod(project.endDate || project.startDate, baseDateRef.current);
-                        const categoriesText = project.categories && project.categories.length > 0
-                          ? project.categories.map((category) => category.name).join(' · ')
-                          : '공사 종류 없음';
-                        const companyName = project.corporationName || project.primaryCompanyName || '—';
-                        return (
-                          <tr
-                            key={project.id}
-                            className={`records-table__row ${isSelected ? 'is-selected' : ''}`}
-                            onClick={() => setSelectedProjectId(project.id)}
-                          >
-                            <td className="records-table__company">{companyName}</td>
-                            <td className="records-table__info-cell">
-                              <div className="records-table__project-name">공사명: {project.projectName}</div>
-                              <div className="records-table__info-row">
-                                <span className="records-table__info-label">발주처</span>
-                                <span className="records-table__info-value">{project.clientName || '—'}</span>
+              <div className="records-grid-wrapper">
+                <div className="records-grid">
+                  <div className="records-grid__header">
+                    <div className="records-grid__header-cell records-grid__header-cell--company">법인</div>
+                    <div className="records-grid__header-cell">공사 정보</div>
+                    <div className="records-grid__header-cell">시공규모 및 비고</div>
+                    <div className="records-grid__header-cell records-grid__header-cell--elapsed">{baseDateLabel} 기준 경과일수</div>
+                    <div className="records-grid__header-cell records-grid__header-cell--actions">첨부 / 작업</div>
+                  </div>
+                  {projects.length ? (
+                    projects.map((project) => {
+                      const isSelected = selectedProjectId === project.id;
+                      const hasAttachment = !!project.attachment;
+                      const elapsedText = formatElapsedPeriod(project.endDate || project.startDate, baseDateRef.current);
+                      const categoriesText = project.categories && project.categories.length > 0
+                        ? project.categories.map((category) => category.name).join(' · ')
+                        : '공사 종류 없음';
+                      const companyName = project.corporationName || project.primaryCompanyName || '—';
+                      return (
+                        <div
+                          key={project.id}
+                          className={`records-grid__row ${isSelected ? 'is-selected' : ''}`}
+                          onClick={() => setSelectedProjectId(project.id)}
+                        >
+                          <div className="records-grid__cell records-grid__cell--company">
+                            <span className="records-grid__company-text">{companyName}</span>
+                          </div>
+                          <div className="records-grid__cell records-grid__cell--info">
+                            <div className="records-grid__project-name">공사명: {project.projectName}</div>
+                            <div className="records-grid__info">
+                              <div className="records-grid__info-item">
+                                <span className="records-grid__info-label">발주처</span>
+                                <span className="records-grid__info-value">{project.clientName || '—'}</span>
                               </div>
-                              <div className="records-table__info-row">
-                                <span className="records-table__info-label">기간</span>
-                                <span className="records-table__info-value">{formatDateRange(project.startDate, project.endDate)}</span>
+                              <div className="records-grid__info-item">
+                                <span className="records-grid__info-label">기간</span>
+                                <span className="records-grid__info-value">{formatDateRange(project.startDate, project.endDate)}</span>
                               </div>
-                              <div className="records-table__info-row">
-                                <span className="records-table__info-label">금액</span>
-                                <span className="records-table__info-value records-table__info-value--amount">{formatCurrency(project.contractAmount)} 원</span>
+                              <div className="records-grid__info-item">
+                                <span className="records-grid__info-label">금액</span>
+                                <span className="records-grid__info-value records-grid__info-value--amount">{formatCurrency(project.contractAmount)} 원</span>
                               </div>
-                              <div className="records-table__info-row records-table__info-row--muted">
-                                <span className="records-table__info-label">공종</span>
-                                <span className="records-table__info-value">{categoriesText}</span>
+                              <div className="records-grid__info-item records-grid__info-item--muted">
+                                <span className="records-grid__info-label">공종</span>
+                                <span className="records-grid__info-value">{categoriesText}</span>
                               </div>
-                            </td>
-                            <td className="records-table__notes">{project.scopeNotes || '—'}</td>
-                            <td className="records-table__elapsed">{elapsedText || '—'}</td>
-                            <td className="records-table__attachment">
-                              <div className="records-table__attachment-summary">
-                                {hasAttachment ? (
-                                  <span className="records-table__attachment-name">{project.attachment.displayName}</span>
-                                ) : (
-                                  <span className="records-table__no-attachment">첨부 없음</span>
-                                )}
-                              </div>
-                              <div className="records-table__actions">
-                                <button
-                                  type="button"
-                                  className="btn-sm btn-primary"
-                                  disabled={!hasAttachment}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    if (hasAttachment) handleOpenAttachment(project.id);
-                                  }}
-                                >
-                                  실적증명서
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn-sm btn-soft"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    openEditModal(project);
-                                  }}
-                                >
-                                  실적 수정
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="records-table__empty">등록된 실적이 없습니다.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                            </div>
+                          </div>
+                          <div className="records-grid__cell records-grid__cell--notes">
+                            <div className="records-grid__notes">{project.scopeNotes || '—'}</div>
+                          </div>
+                          <div className="records-grid__cell records-grid__cell--elapsed">
+                            <div className="records-grid__elapsed">{elapsedText || '—'}</div>
+                          </div>
+                          <div className="records-grid__cell records-grid__cell--actions">
+                            <div className="records-grid__attachment-summary">
+                              {hasAttachment ? (
+                                <span className="records-grid__attachment-name">{project.attachment.displayName}</span>
+                              ) : (
+                                <span className="records-grid__no-attachment">첨부 없음</span>
+                              )}
+                            </div>
+                            <div className="records-grid__actions">
+                              <button
+                                type="button"
+                                className="btn-sm btn-primary"
+                                disabled={!hasAttachment}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  if (hasAttachment) handleOpenAttachment(project.id);
+                                }}
+                              >
+                                실적증명서
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-sm btn-soft"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openEditModal(project);
+                                }}
+                              >
+                                실적 수정
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-sm btn-danger"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleDeleteProject(project);
+                                }}
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="records-grid__empty">등록된 실적이 없습니다.</div>
+                  )}
+                </div>
               </div>
             </section>
           </div>
