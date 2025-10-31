@@ -432,7 +432,22 @@ function createWindow() {
   ['resize', 'move', 'maximize', 'unmaximize', 'restore'].forEach(evt => {
     mainWindow.on(evt, saveWindowStateDebounced);
   });
-  mainWindow.on('close', () => saveWindowState(mainWindow));
+  mainWindow.on('close', (event) => {
+    event.preventDefault();
+    dialog.showMessageBox(mainWindow, {
+      type: 'question',
+      buttons: ['예', '아니오'],
+      title: '프로그램 종료',
+      message: '프로그램을 종료하시겠습니까?',
+      defaultId: 0,
+      cancelId: 1
+    }).then(response => {
+      if (response.response === 0) {
+        saveWindowState(mainWindow);
+        mainWindow.destroy();
+      }
+    });
+  });
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
