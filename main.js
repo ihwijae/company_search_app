@@ -786,19 +786,11 @@ try {
       }
 
       const norm = (s) => String(s || '').trim();
-      const includeBiz = new Set();
-      const includeName = new Set();
       const excludeBiz = new Set();
       const excludeName = new Set();
 
       const applyRuleSet = (ruleSet) => {
         if (!ruleSet || typeof ruleSet !== 'object') return;
-        (ruleSet.alwaysInclude || []).forEach((entry) => {
-          const biz = norm(entry?.bizNo);
-          const name = norm(entry?.name);
-          if (biz) includeBiz.add(biz);
-          if (name) includeName.add(name);
-        });
         (ruleSet.alwaysExclude || []).forEach((entry) => {
           const biz = norm(entry?.bizNo);
           const name = norm(entry?.name);
@@ -1184,7 +1176,6 @@ try {
         const creditGradeRaw = extractCreditGrade(creditRawFull);
 
         const wasAlwaysExcluded = (bizNo && excludeBiz.has(bizNo)) || (!bizNo && excludeName.has(name));
-        const wasAlwaysIncluded = (bizNo && includeBiz.has(bizNo)) || (!bizNo && includeName.has(name));
         if (wasAlwaysExcluded) continue;
 
         const isPpsOwner = normalizedOwnerId === 'pps';
@@ -1393,8 +1384,8 @@ try {
           singleBidEligible = perfOk === true && regionOk !== false;
         }
 
-        if (shouldExcludeSingle && singleBidEligible && !wasAlwaysIncluded) continue;
-        if (filterByRegion && dutyRegions.length > 0 && regionOk === false && !wasAlwaysIncluded) continue;
+        if (shouldExcludeSingle && singleBidEligible) continue;
+        if (filterByRegion && dutyRegions.length > 0 && regionOk === false) continue;
 
         out.push({
           id: bizNo || name,
@@ -1459,10 +1450,9 @@ try {
             region: sbe.facts.region || region,
           } : null,
           singleBidEligible,
-          wasAlwaysIncluded, wasAlwaysExcluded,
+          wasAlwaysExcluded,
           qualityEval,
           reasons: [
-            wasAlwaysIncluded ? '항상 포함' : null,
             (shouldExcludeSingle && singleBidEligible) ? '단독 가능' : null,
             moneyOk === false ? '시평 미달' : null,
             perfOk === false ? '실적 미달' : null,

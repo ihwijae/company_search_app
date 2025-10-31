@@ -793,12 +793,8 @@ const industryToLabel = (type) => {
               )}
               <span><strong>기초금액</strong> {details.baseAmount || '-'}</span>
               <span><strong>추정금액</strong> {details.estimatedPrice || '-'}</span>
-              {details.adjustmentRate && (
-                <span><strong>사정율</strong> {details.adjustmentRate}</span>
-              )}
-              {details.bidRate && (
-                <span><strong>투찰율</strong> {details.bidRate}</span>
-              )}
+              {details.adjustmentRate && <span><strong>투찰율</strong> {details.adjustmentRate}</span>}
+              {details.bidRate && <span><strong>사정율</strong> {details.bidRate}</span>}
               {details.bidAmount && (
                 <span><strong>투찰금액</strong> {details.bidAmount}</span>
               )}

@@ -116,11 +116,11 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       const next = { ...prev };
       let changed = false;
       if (!String(prev.adjustmentRate || '').trim()) {
-        next.adjustmentRate = '86.745';
+        next.adjustmentRate = '101.4';
         changed = true;
       }
       if (!String(prev.bidRate || '').trim()) {
-        next.bidRate = '101.4';
+        next.bidRate = '86.745';
         changed = true;
       }
       return changed ? next : prev;
@@ -530,26 +530,26 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                   </Field>
                   <Field label="참가자격금액"><AmountInput value={form.entryQualificationAmount} onChange={(value) => setForm((prev) => ({ ...prev, entryQualificationAmount: value }))} placeholder="원(=추정가격)" /></Field>
                   {isPPS && (
-                    <Field label="사정율(%)">
+                    <Field label="투찰율(%)">
                       <input
                         className="filter-input"
                         type="number"
                         step="0.001"
                         value={form.adjustmentRate}
                         onChange={(e) => setForm((prev) => ({ ...prev, adjustmentRate: e.target.value }))}
-                        placeholder="예: 86.745"
+                        placeholder="예: 101.4"
                       />
                     </Field>
                   )}
                   {isPPS && (
-                    <Field label="투찰율(%)">
+                    <Field label="사정율(%)">
                       <input
                         className="filter-input"
                         type="number"
                         step="0.1"
                         value={form.bidRate}
                         onChange={(e) => setForm((prev) => ({ ...prev, bidRate: e.target.value }))}
-                        placeholder="예: 101.4"
+                        placeholder="예: 86.745"
                       />
                     </Field>
                   )}
