@@ -13,6 +13,14 @@ function normalizeShare(v) {
   return Number.isFinite(n) ? n : NaN;
 }
 
+function formatBizNo(bizNo) {
+  const cleaned = String(bizNo || '').replace(/[^0-9]/g, '');
+  if (cleaned.length === 10) {
+    return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 5)}-${cleaned.slice(5)}`;
+  }
+  return cleaned;
+}
+
 function computeSumShare(item) {
   const l = normalizeShare(item?.leader?.share);
   const ms = (item?.members || []).map(m => normalizeShare(m?.share));
@@ -63,8 +71,13 @@ function isLH(owner) {
   return /주택공사|LH/.test(s);
 }
 
+function isPPS(owner) {
+  const s = String(owner || '');
+  return /조달청|PPS/.test(s);
+}
+
 function needsHeader(owner) {
-  return !isMOIS(owner); // MOIS only: no header
+  return !isMOIS(owner) && !isPPS(owner);
 }
 
 function leaderNeedsBizNo(owner) {
@@ -80,14 +93,16 @@ function memberNeedsBizNo(owner) {
 export function generateOne(item) {
   const lines = [];
   const owner = String(item.owner || '').trim();
-  if (needsHeader(owner)) lines.push(`[${owner}]`);
+  const ownerDisplayName = owner === 'LH' ? '한국토지주택공사' : owner;
+
+  if (needsHeader(owner)) lines.push(`[${ownerDisplayName}]`);
   lines.push(`${item.noticeNo} ${item.title}`);
   lines.push('');
 
   const leaderName = String(item.leader?.name || '').trim();
   const leaderShare = String(item.leader?.share || '').trim();
   if (leaderName && leaderShare) {
-    const leaderBiz = leaderNeedsBizNo(owner) && item.leader?.bizNo ? ` [${item.leader.bizNo}]` : '';
+    const leaderBiz = leaderNeedsBizNo(owner) && item.leader?.bizNo ? ` [${formatBizNo(item.leader.bizNo)}]` : '';
     lines.push(`${leaderName} ${leaderShare}%${leaderBiz}`);
   }
 
@@ -96,7 +111,7 @@ export function generateOne(item) {
   effectiveMembers.forEach(m => {
     const n = String(m?.name || '').trim();
     const s = String(m?.share || '').trim();
-    const biz = memberNeedsBizNo(owner) && m?.bizNo ? ` [${m.bizNo}]` : '';
+    const biz = memberNeedsBizNo(owner) && m?.bizNo ? ` [${formatBizNo(m.bizNo)}]` : '';
     lines.push(`${n} ${s}%${biz}`);
   });
   lines.push('');

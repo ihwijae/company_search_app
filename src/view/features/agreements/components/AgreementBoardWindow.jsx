@@ -1141,8 +1141,12 @@ export default function AgreementBoardWindow({
 
     try {
       const text = generateMany(items);
-      await navigator.clipboard.writeText(text);
-      window.alert('협정 문자 내용이 클립보드에 복사되었습니다.');
+      const result = await window.electronAPI.clipboardWriteText(text);
+      if (result.success) {
+        window.alert('협정 문자 내용이 클립보드에 복사되었습니다.');
+      } else {
+        throw new Error(result.message || 'Clipboard write failed');
+      }
     } catch (err) {
       console.error('Failed to copy text: ', err);
       window.alert('클립보드 복사에 실패했습니다.');

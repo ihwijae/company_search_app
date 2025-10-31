@@ -674,6 +674,20 @@ try {
   });
 } catch {}
 
+try {
+  if (ipcMain.removeHandler) ipcMain.removeHandler('clipboard:writeText');
+  ipcMain.handle('clipboard:writeText', async (_event, text) => {
+    try {
+      clipboard.writeText(String(text || ''));
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Clipboard write failed' };
+    }
+  });
+} catch (e) {
+  console.error('[MAIN] clipboard:writeText IPC wiring failed:', e);
+}
+
 // Agreements: Fetch candidates (skeleton implementation)
 try {
   const { isSingleBidEligible } = require('./src/shared/agreements/rules/lh.js');

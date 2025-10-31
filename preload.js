@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fetchCandidates: (params) => ipcRenderer.invoke('agreements-fetch-candidates', params),
   // Clipboard helper: write as 1-column CSV
   copyCsvColumn: (rows) => ipcRenderer.invoke('copy-csv-column', { rows }),
+  clipboardWriteText: (text) => ipcRenderer.invoke('clipboard:writeText', text),
   agreementsExportExcel: (payload) => ipcRenderer.invoke('agreements-export-excel', payload),
   // Renderer persistence fallback
   stateLoadSync: (key) => ipcRenderer.sendSync('renderer-state-load-sync', key),
