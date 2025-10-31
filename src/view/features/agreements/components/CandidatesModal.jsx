@@ -263,7 +263,8 @@ const industryToLabel = (type) => {
     if (value === null || value === undefined) return '-';
     const n = Number(value);
     if (!Number.isFinite(n)) return '-';
-    return n.toFixed(3);
+    const fixed = n.toFixed(2);
+    return fixed.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
   };
 
   const formatYears = (value) => {
