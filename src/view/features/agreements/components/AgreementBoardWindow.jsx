@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
 import { isWomenOwnedCompany, getQualityBadgeText } from '../../../../utils/companyIndicators.js';
+import { generateMany } from '../../../../shared/agreements/generator.js';
 
 const DEFAULT_GROUP_SIZE = 3;
 const MIN_GROUPS = 4;
@@ -898,7 +899,7 @@ export default function AgreementBoardWindow({
       if (!prev || prev.length === 0) {
         return buildInitialAssignments();
       }
-      const groupCount = Math.max(MIN_GROUPS, Math.ceil(representativeEntries.length / safeGroupSize));
+      const groupCount = Math.max(MIN_GROUPS, Math.ceil(representativeEntries.length / safeGroupSize), prev.length);
       const trimmed = prev.slice(0, groupCount).map((group) => group.slice(0, safeGroupSize));
       while (trimmed.length < groupCount) {
         trimmed.push(Array(safeGroupSize).fill(null));
@@ -1105,6 +1106,48 @@ export default function AgreementBoardWindow({
     summary,
     safeGroupSize,
   ]);
+
+  const handleGenerateText = React.useCallback(async () => {
+    const items = groupAssignments
+      .map((memberIds, groupIndex) => {
+        const members = memberIds.map((uid) => (uid ? participantMap.get(uid) : null)).filter(Boolean);
+        if (members.length === 0) return null;
+
+        const leaderEntry = members[0];
+        const memberEntries = members.slice(1);
+
+        return {
+          owner: ownerId,
+          noticeNo,
+          title: noticeTitle,
+          leader: {
+            name: getCompanyName(leaderEntry.candidate),
+            bizNo: normalizeBizNo(getBizNo(leaderEntry.candidate)),
+            share: groupShares[groupIndex]?.[0] || '0',
+          },
+          members: memberEntries.map((entry, memberIndex) => ({
+            name: getCompanyName(entry.candidate),
+            bizNo: normalizeBizNo(getBizNo(entry.candidate)),
+            share: groupShares[groupIndex]?.[memberIndex + 1] || '0',
+          })),
+        };
+      })
+      .filter(Boolean);
+
+    if (items.length === 0) {
+      window.alert('문자를 생성할 협정 정보가 없습니다. 업체를 배치하고 지분율을 입력해주세요.');
+      return;
+    }
+
+    try {
+      const text = generateMany(items);
+      await navigator.clipboard.writeText(text);
+      window.alert('협정 문자 내용이 클립보드에 복사되었습니다.');
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      window.alert('클립보드 복사에 실패했습니다.');
+    }
+  }, [groupAssignments, participantMap, groupShares, ownerId, noticeNo, noticeTitle]);
 
   React.useEffect(() => {
     setGroupShares((prevShares) => {
@@ -1966,6 +2009,7 @@ export default function AgreementBoardWindow({
                 >
                   {exporting ? '엑셀 내보내는 중...' : '엑셀로 내보내기'}
                 </button>
+                <button type="button" className="btn-soft" onClick={handleGenerateText}>협정 문자 생성</button>
                 <button type="button" className="btn-soft" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="btn-soft" onClick={handleResetGroups}>초기화</button>
               </div>
