@@ -1840,7 +1840,7 @@ body {
   min-height: 0;
   overflow: hidden;
   border-radius: 12px;
-  background: #fff;
+  background: linear-gradient(#fff4d4 0 64px, #fff 64px 100%);
   border: 1px solid #d4d4d8;
   display: flex;
   flex-direction: column;
@@ -1850,17 +1850,20 @@ body {
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-width: 1040px;
+  min-width: 1080px;
   overflow: auto;
 }
 
 .records-grid__header {
   display: grid;
-  grid-template-columns: 160px minmax(360px, 1.2fr) minmax(250px, 0.8fr) 180px 220px;
+  grid-template-columns: 150px minmax(320px, 1.15fr) minmax(220px, 0.85fr) 160px 190px;
   background: #fff4d4;
   color: #7a4900;
   font-weight: 700;
   border-bottom: 1px solid #d4d4d8;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  overflow: hidden;
 }
 
 .records-grid__header-cell {
@@ -1875,21 +1878,28 @@ body {
 
 .records-grid__row {
   display: grid;
-  grid-template-columns: 160px minmax(360px, 1.2fr) minmax(250px, 0.8fr) 180px 220px;
+  grid-template-columns: 150px minmax(320px, 1.15fr) minmax(220px, 0.85fr) 160px 190px;
   border-bottom: 1px solid #d9dee8;
   background: #fff;
   transition: background 0.16s ease;
   cursor: pointer;
+  position: relative;
 }
 
 .records-grid__row:hover { background: #fff7d1; }
 .records-grid__row.is-selected { background: #ede9fe; }
 
+.records-grid__row:last-child {
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  overflow: hidden;
+}
+
 .records-grid__cell {
-  padding: 16px 18px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-height: 100%;
   border-right: 1px solid #e4e7ef;
 }
@@ -1911,48 +1921,43 @@ body {
   line-height: 1.4;
 }
 
+
 .records-grid__cell--info {
-  gap: 12px;
+  gap: 10px;
 }
 
 .records-grid__project-name {
   font-weight: 700;
   color: #111827;
   font-size: 15px;
-  padding-left: 76px;
+  padding-left: 0;
 }
 
 .records-grid__info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: minmax(72px, max-content) 1fr;
+  column-gap: 10px;
+  row-gap: 4px;
   font-size: 13px;
   color: #1f2937;
 }
 
 .records-grid__info-item {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
+  display: contents;
 }
 
 .records-grid__info-label {
-  width: 70px;
-  text-align: right;
   font-weight: 600;
   color: #475569;
-  position: relative;
-  padding-right: 6px;
+  text-align: left;
+  padding: 0;
 }
 
 .records-grid__info-label::after {
-  content: ':';
-  position: absolute;
-  right: 0;
+  content: '';
 }
 
 .records-grid__info-value {
-  flex: 1;
   color: #1f2937;
   word-break: break-word;
 }

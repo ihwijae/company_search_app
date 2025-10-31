@@ -28,6 +28,7 @@ const initialState = {
   baseAmount: '',
   estimatedAmount: '',
   bidAmount: '',
+  ratioBaseAmount: '',
   bidRate: '',
   adjustmentRate: '',
 };
@@ -548,6 +549,7 @@ export function AgreementBoardProvider({ children }) {
         rangeId={boardState.rangeId || null}
         onAddRepresentatives={appendCandidatesFromSearch}
         onRemoveRepresentative={removeCandidate}
+        onUpdateBoard={updateBoard}
         noticeNo={boardState.noticeNo || ''}
         noticeTitle={boardState.noticeTitle || ''}
         noticeDate={boardState.noticeDate || ''}
@@ -555,6 +557,7 @@ export function AgreementBoardProvider({ children }) {
         baseAmount={boardState.baseAmount || ''}
         estimatedAmount={boardState.estimatedAmount || ''}
         bidAmount={boardState.bidAmount || ''}
+        ratioBaseAmount={boardState.ratioBaseAmount || ''}
         bidRate={boardState.bidRate || ''}
         adjustmentRate={boardState.adjustmentRate || ''}
         bidDeadline={boardState.bidDeadline || ''}

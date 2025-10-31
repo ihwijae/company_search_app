@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
+import AmountInput from '../../../../components/AmountInput.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
 import { isWomenOwnedCompany, getQualityBadgeText } from '../../../../utils/companyIndicators.js';
 import { generateMany } from '../../../../shared/agreements/generator.js';
@@ -11,6 +12,14 @@ const BID_SCORE = 65;
 const MANAGEMENT_SCORE_MAX = 15;
 const PERFORMANCE_DEFAULT_MAX = 13;
 const PERFORMANCE_CAP_VERSION = 2;
+function Field({ label, children, style = {} }) {
+  return (
+    <div className="filter-item" style={style}>
+      <label>{label}</label>
+      {children}
+    </div>
+  );
+}
 
 const resolvePerformanceCap = (value) => {
   if (value === null || value === undefined) return PERFORMANCE_DEFAULT_MAX;
@@ -510,6 +519,7 @@ export default function AgreementBoardWindow({
   rangeId: _rangeId = null,
   onAddRepresentatives = () => {},
   onRemoveRepresentative = () => {},
+  onUpdateBoard = () => {},
   noticeNo = '',
   noticeTitle = '',
   noticeDate = '',
@@ -517,6 +527,7 @@ export default function AgreementBoardWindow({
   baseAmount = '',
   estimatedAmount = '',
   bidAmount = '',
+  ratioBaseAmount = '',
   bidRate = '',
   adjustmentRate = '',
   bidDeadline = '',
@@ -551,6 +562,22 @@ export default function AgreementBoardWindow({
   const prevAssignmentsRef = React.useRef(groupAssignments);
   const [representativeSearchOpen, setRepresentativeSearchOpen] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
+  const [editableBidAmount, setEditableBidAmount] = React.useState(bidAmount);
+
+  const isLH = ownerId === 'LH';
+
+  React.useEffect(() => {
+    if (open) {
+      setEditableBidAmount(bidAmount);
+    }
+  }, [bidAmount, open]);
+
+  const handleBidAmountChange = (value) => {
+    setEditableBidAmount(value);
+    if (onUpdateBoard) {
+      onUpdateBoard({ bidAmount: value });
+    }
+  };
 
   const getSharePercent = React.useCallback((groupIndex, slotIndex, candidate) => {
     const stored = groupShares[groupIndex]?.[slotIndex];
@@ -1766,6 +1793,16 @@ export default function AgreementBoardWindow({
       ? managementScoreForMember
       : ((ratingRaw != null && ratingRaw !== '') ? ratingRaw : (candidate.score ?? candidate.totalScore ?? null));
 
+    const sipyungAmount = parseAmountValue(sipyung);
+    const calculationBase = isLH
+      ? parseAmountValue(ratioBaseAmount)
+      : parseAmountValue(editableBidAmount);
+
+    let possibleShare = null;
+    if (calculationBase !== null && calculationBase > 0 && sipyungAmount !== null && sipyungAmount > 0) {
+      possibleShare = (sipyungAmount / calculationBase) * 100;
+    }
+
     const classes = ['agreement-board-member', 'assigned'];
     if (matchesDutyRegion || type === 'region') classes.push('region');
     if (draggingId === uid) classes.push('dragging');
@@ -1811,7 +1848,14 @@ export default function AgreementBoardWindow({
             <span key={`${uid}-${tag.key}`} className={`member-tag ${tag.className}`}>{tag.label}</span>
           ))}
         </div>
-        <div className="member-name" title={getCompanyName(candidate)}>{getCompanyName(candidate)}</div>
+        <div className="member-name" title={getCompanyName(candidate)}>
+          {getCompanyName(candidate)}
+          {possibleShare !== null && (
+            <span style={{ color: '#059669', marginLeft: 8, fontSize: 13, fontWeight: 500 }}>
+              가능지분 {possibleShare.toFixed(2)}%
+            </span>
+          )}
+        </div>
         <div className="member-meta">
           <span>{getRegionLabel(candidate)}</span>
         </div>
@@ -1966,9 +2010,15 @@ export default function AgreementBoardWindow({
               )}
               <span><strong>기초금액</strong> {boardDetails.baseAmount || '-'}</span>
               <span><strong>추정금액</strong> {boardDetails.estimatedAmount || '-'}</span>
+              {isLH ? (
+                <span><strong>시공비율기준금액</strong> {formatAmount(ratioBaseAmount)}</span>
+              ) : (
+                <Field label="투찰금액">
+                  <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
+                </Field>
+              )}
               {boardDetails.adjustmentRate && <span><strong>사정율</strong> {boardDetails.adjustmentRate}</span>}
               {boardDetails.bidRate && <span><strong>투찰율</strong> {boardDetails.bidRate}</span>}
-              {boardDetails.bidAmount && <span><strong>투찰금액</strong> {boardDetails.bidAmount}</span>}
               </div>
             </div>
             <p>대표사 {summary.representativeTotal}명 · 확정 지역사 {summary.selectedRegions}명 · 협정 {summary.groups}개</p>

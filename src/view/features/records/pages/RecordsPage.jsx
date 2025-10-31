@@ -243,6 +243,23 @@ export default function RecordsPage() {
     }
   }, []);
 
+  const handleDeleteProject = React.useCallback(async (project) => {
+    if (!project?.id) return;
+    const title = project.projectName || project.name || project.clientName || '해당 실적';
+    const confirmed = window.confirm(`정말로 삭제하시겠습니까?\n${title}`);
+    if (!confirmed) return;
+    try {
+      await recordsClient.deleteProject(project.id);
+      setSelectedProjectId((prev) => (prev === project.id ? null : prev));
+      if (pendingSelectRef.current === project.id) {
+        pendingSelectRef.current = null;
+      }
+      fetchProjects();
+    } catch (err) {
+      alert(err?.message || '실적을 삭제할 수 없습니다.');
+    }
+  }, [fetchProjects]);
+
   const handleAddCompany = React.useCallback(() => {
     setCompanyDialog({ open: true, name: '', saving: false, error: '' });
   }, []);

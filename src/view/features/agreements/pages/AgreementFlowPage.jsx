@@ -24,6 +24,7 @@ const createDefaultForm = () => {
     adjustmentRate: '',
     bidRate: '',
     bidAmount: '',
+    ratioBaseAmount: '',
     noticeDate: formattedToday,
     bidDeadline: '',
     entryQualificationAmount: '',
@@ -58,7 +59,9 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     return base;
   });
 
-  const isPPS = ownerId === 'PPS';
+  const normalizedOwner = String(ownerId || 'LH').toUpperCase();
+  const isPPS = normalizedOwner === 'PPS';
+  const isLH = normalizedOwner === 'LH';
   const [baseTouched, setBaseTouched] = React.useState(false);
   const [bidTouched, setBidTouched] = React.useState(false);
   const baseAutoRef = React.useRef('');
@@ -358,39 +361,47 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   }, [form.industry, dutyRegions, candidates.length, pinned.length, excluded.length, updateBoard]);
 
   React.useEffect(() => {
+    if (boardState?.open) return;
+
     const same = boardState?.noticeNo === (form.noticeNo || '')
       && boardState?.noticeTitle === (form.title || '')
       && boardState?.industryLabel === (form.industry || '')
       && boardState?.baseAmount === (form.baseAmount || '')
       && boardState?.estimatedAmount === (form.estimatedPrice || '')
+      && boardState?.noticeDate === (form.noticeDate || '')
       && boardState?.bidDeadline === (form.bidDeadline || '')
       && boardState?.regionDutyRate === (form.regionDutyRate || '')
       && boardState?.bidAmount === (form.bidAmount || '')
+      && boardState?.ratioBaseAmount === (form.ratioBaseAmount || '')
       && boardState?.bidRate === (form.bidRate || '')
       && boardState?.adjustmentRate === (form.adjustmentRate || '');
     if (same) return;
     updateBoard({
-                      noticeNo: form.noticeNo || '',
-                      noticeTitle: form.title || '',
-                      noticeDate: form.noticeDate || '',
+      noticeNo: form.noticeNo || '',
+      noticeTitle: form.title || '',
+      noticeDate: form.noticeDate || '',
       industryLabel: form.industry || '',
       baseAmount: form.baseAmount || '',
       estimatedAmount: form.estimatedPrice || '',
       bidDeadline: form.bidDeadline || '',
       regionDutyRate: form.regionDutyRate || '',
       bidAmount: form.bidAmount || '',
+      ratioBaseAmount: form.ratioBaseAmount || '',
       bidRate: form.bidRate || '',
       adjustmentRate: form.adjustmentRate || '',
     });
   }, [
+    boardState?.open,
     boardState?.noticeNo,
     boardState?.noticeTitle,
     boardState?.industryLabel,
     boardState?.baseAmount,
     boardState?.estimatedAmount,
+    boardState?.noticeDate,
     boardState?.bidDeadline,
     boardState?.regionDutyRate,
     boardState?.bidAmount,
+    boardState?.ratioBaseAmount,
     boardState?.bidRate,
     boardState?.adjustmentRate,
     form.noticeNo,
@@ -398,13 +409,28 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     form.industry,
     form.baseAmount,
     form.estimatedPrice,
+    form.noticeDate,
     form.bidDeadline,
     form.regionDutyRate,
     form.bidAmount,
+    form.ratioBaseAmount,
     form.bidRate,
     form.adjustmentRate,
     updateBoard,
   ]);
+
+  React.useEffect(() => {
+    if (!boardState?.open) return;
+    const bidFromBoard = boardState.bidAmount || '';
+    if (bidFromBoard !== (form.bidAmount || '')) {
+      setBidTouched(true);
+      setForm((prev) => ({ ...prev, bidAmount: bidFromBoard }));
+    }
+    const ratioFromBoard = boardState.ratioBaseAmount || '';
+    if (ratioFromBoard !== (form.ratioBaseAmount || '')) {
+      setForm((prev) => ({ ...prev, ratioBaseAmount: ratioFromBoard }));
+    }
+  }, [boardState?.open, boardState?.bidAmount, boardState?.ratioBaseAmount, form.bidAmount, form.ratioBaseAmount]);
 
   const evalSingleBid = (company) => {
     if (!company) return;
@@ -529,6 +555,15 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                     />
                   </Field>
                   <Field label="참가자격금액"><AmountInput value={form.entryQualificationAmount} onChange={(value) => setForm((prev) => ({ ...prev, entryQualificationAmount: value }))} placeholder="원(=추정가격)" /></Field>
+                  {isLH && (
+                    <Field label="시공비율기준금액" style={{ gridColumn: '1 / -1' }}>
+                      <AmountInput
+                        value={form.ratioBaseAmount}
+                        onChange={(value) => setForm((prev) => ({ ...prev, ratioBaseAmount: value }))}
+                        placeholder="원"
+                      />
+                    </Field>
+                  )}
                   {isPPS && (
                     <Field label="투찰율(%)">
                       <input
@@ -648,7 +683,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         entryAmount: form.entryQualificationAmount || '',
                         baseAmount: form.baseAmount,
                         estimatedAmount: form.estimatedPrice,
-                        ratioBaseAmount: form.bidAmount,
+                        ratioBaseAmount: form.ratioBaseAmount || form.bidAmount,
                         bidAmount: form.bidAmount,
                         bidRate: form.bidRate,
                         adjustmentRate: form.adjustmentRate,
@@ -695,6 +730,8 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         industryLabel: form.industry || '',
                         baseAmount: form.baseAmount || '',
                         estimatedAmount: form.estimatedPrice || '',
+                        bidAmount: form.bidAmount || '',
+                        ratioBaseAmount: form.ratioBaseAmount || form.bidAmount || '',
                         bidDeadline: form.bidDeadline || '',
                         regionDutyRate: form.regionDutyRate || '',
                       });
