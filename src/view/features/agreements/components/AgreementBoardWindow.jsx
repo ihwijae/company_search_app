@@ -228,7 +228,7 @@ const formatScore = (score) => {
   if (Math.abs(value) >= 1000) {
     try { return value.toLocaleString('ko-KR'); } catch (err) { return String(value); }
   }
-  return value.toFixed(2).replace(/\.00$/, '');
+  return value.toFixed(3);
 };
 
 const formatAmount = (value) => {
