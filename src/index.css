@@ -2108,56 +2108,6 @@ body {
   height: 16px;
   margin: 0;
 }
-
-.rte-container {
-  border: 1px solid #d4d4d8;
-  border-radius: 8px;
-  background: #fefefe;
-  display: flex;
-  flex-direction: column;
-  min-height: 160px;
-}
-
-.rte-toolbar {
-  display: flex;
-  gap: 6px;
-  padding: 8px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f9fafb;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-}
-
-.rte-toolbar button {
-  border: 1px solid #cbd5f5;
-  background: #fff;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.rte-toolbar button:hover {
-  background: #f1f5f9;
-}
-
-.rte-editor {
-  flex: 1;
-  padding: 12px;
-  font-size: 14px;
-  min-height: 120px;
-  outline: none;
-  line-height: 1.6;
-}
-
-.rte-editor:empty:before {
-  content: attr(data-placeholder);
-  color: #94a3b8;
-}
-
-.records-modal__notes .rte-container {
-  margin-top: 8px;
-}
 .records-modal-overlay {
   position: fixed;
   inset: 0;
@@ -2230,13 +2180,21 @@ body {
   font-size: 14px;
 }
 
-.records-modal__notes textarea {
-  width: 100%;
+.records-modal__notes .ql-container {
   border-radius: 8px;
   border: 1px solid #cbd5e1;
-  padding: 10px 12px;
+  min-height: 180px;
+}
+
+.records-modal__notes .ql-editor {
+  min-height: 150px;
+  line-height: 1.6;
   font-size: 14px;
-  resize: vertical;
+}
+
+.records-modal__notes .ql-toolbar.ql-snow {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
 }
 
 .records-modal__attachment-hint {

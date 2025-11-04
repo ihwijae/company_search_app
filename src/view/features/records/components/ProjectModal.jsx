@@ -1,6 +1,7 @@
 import React from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { recordsClient } from '../../../../shared/recordsClient.js';
-import RichTextEditor from '../../../../shared/RichTextEditor.jsx';
 
 const DEFAULT_FORM = {
   companyType: 'our',
@@ -18,8 +19,30 @@ const ensureHtml = (value) => {
   if (!value) return '';
   const trimmed = String(value);
   if (/<[a-z][\s\S]*>/i.test(trimmed)) return trimmed;
-  return trimmed.replace(/\n/g, '<br />');
+  return `<p>${trimmed.replace(/\n/g, '<br />')}</p>`;
 };
+
+const quillModules = {
+  toolbar: [
+    [{ font: [] }],
+    [{ size: ['small', false, 'large', 'huge'] }],
+    ['bold', 'italic', 'underline'],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    [{ align: [] }],
+    ['clean'],
+  ],
+};
+
+const quillFormats = [
+  'font',
+  'size',
+  'bold',
+  'italic',
+  'underline',
+  'list',
+  'bullet',
+  'align',
+];
 
 const formatContractAmountInput = (value) => {
   if (value === null || value === undefined) return '';
@@ -271,9 +294,12 @@ export default function ProjectModal({
 
           <label className="records-modal__notes">
             시공규모 및 비고
-            <RichTextEditor
+            <ReactQuill
+              theme="snow"
               value={form.scopeNotes}
               onChange={handleScopeNotesChange}
+              modules={quillModules}
+              formats={quillFormats}
               placeholder="프로젝트 메모를 입력하세요"
             />
           </label>
