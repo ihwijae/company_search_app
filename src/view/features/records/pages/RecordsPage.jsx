@@ -13,6 +13,9 @@ const formatCurrency = (value) => {
   return num.toLocaleString();
 };
 
+const ITEMS_PER_PAGE = 3;
+const TEN_YEARS_MS = 10 * 365 * 24 * 60 * 60 * 1000;
+
 const formatDateToken = (value) => {
   if (!value) return '';
   const str = String(value);
@@ -145,6 +148,7 @@ export default function RecordsPage() {
   const [modalState, setModalState] = React.useState(DEFAULT_MODAL_STATE);
   const [selectedProjectId, setSelectedProjectId] = React.useState(null);
   const [companyDialog, setCompanyDialog] = React.useState({ open: false, name: '', isMisc: false, saving: false, error: '' });
+  const [currentPage, setCurrentPage] = React.useState(1);
   const [categoryDialog, setCategoryDialog] = React.useState({ open: false, name: '', saving: false, error: '' });
   const pendingSelectRef = React.useRef(null);
   const baseDateRef = React.useRef(new Date());
@@ -189,14 +193,28 @@ export default function RecordsPage() {
       const list = await recordsClient.listProjects(payload);
       setProjects(list);
       const pendingId = pendingSelectRef.current;
+      let resolvedSelectedId = selectedProjectId;
       if (pendingId && list.some((item) => item.id === pendingId)) {
-        setSelectedProjectId(pendingId);
+        resolvedSelectedId = pendingId;
         pendingSelectRef.current = null;
-      } else if (selectedProjectId && !list.some((item) => item.id === selectedProjectId)) {
-        setSelectedProjectId(list.length ? list[0].id : null);
-      } else if (!selectedProjectId && list.length) {
-        setSelectedProjectId(list[0].id);
+      } else if (resolvedSelectedId && !list.some((item) => item.id === resolvedSelectedId)) {
+        resolvedSelectedId = list.length ? list[0].id : null;
+      } else if (!resolvedSelectedId && list.length) {
+        resolvedSelectedId = list[0].id;
       }
+      setSelectedProjectId(resolvedSelectedId);
+
+      const totalPages = Math.max(1, Math.ceil((list.length || 0) / ITEMS_PER_PAGE));
+      setCurrentPage((prev) => {
+        if (resolvedSelectedId) {
+          const index = list.findIndex((item) => item.id === resolvedSelectedId);
+          if (index >= 0) {
+            return Math.floor(index / ITEMS_PER_PAGE) + 1;
+          }
+        }
+        const next = Math.min(prev, totalPages);
+        return next > 0 ? next : 1;
+      });
     } catch (err) {
       setError(err?.message || '실적을 불러오지 못했습니다.');
     } finally {
@@ -233,6 +251,10 @@ export default function RecordsPage() {
     const { value } = event.target;
     setFilters((prev) => ({ ...prev, companyType: value, companyId: '' }));
   };
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filters.keyword, filters.companyId, filters.categoryId, filters.companyType]);
 
   const closeModal = React.useCallback(() => {
     setModalState({
@@ -386,6 +408,36 @@ export default function RecordsPage() {
     }
   };
 
+  const totalPages = React.useMemo(() => (
+    projects.length
+      ? Math.max(1, Math.ceil(projects.length / ITEMS_PER_PAGE))
+      : 1
+  ), [projects]);
+
+  const paginatedProjects = React.useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return projects.slice(start, start + ITEMS_PER_PAGE);
+  }, [projects, currentPage]);
+
+  React.useEffect(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const slice = projects.slice(start, start + ITEMS_PER_PAGE);
+    if (!slice.length && currentPage > 1) {
+      const adjusted = Math.max(1, Math.ceil((projects.length || 0) / ITEMS_PER_PAGE));
+      if (adjusted !== currentPage) {
+        setCurrentPage(adjusted);
+      }
+      return;
+    }
+    if (slice.length && (!selectedProjectId || !slice.some((item) => item.id === selectedProjectId))) {
+      setSelectedProjectId(slice[0].id);
+    }
+  }, [projects, currentPage, selectedProjectId]);
+
+  const handlePageChange = React.useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
   const openCreateModal = React.useCallback(() => {
     setModalState({
       open: true,
@@ -529,10 +581,19 @@ export default function RecordsPage() {
                     <div className="records-grid__header-cell records-grid__header-cell--actions">첨부 / 작업</div>
                   </div>
                   {projects.length ? (
-                    projects.map((project) => {
+                    paginatedProjects.map((project) => {
                       const isSelected = selectedProjectId === project.id;
                       const hasAttachment = !!project.attachment;
                       const sanitizedNotes = sanitizeHtml(project.scopeNotes);
+                      let isExpired = false;
+                      const expirySource = project.endDate || project.startDate;
+                      const expiryDate = toDate(expirySource);
+                      if (expiryDate) {
+                        const diff = baseDateRef.current.getTime() - expiryDate.getTime();
+                        if (diff >= TEN_YEARS_MS) {
+                          isExpired = true;
+                        }
+                      }
                       const elapsedText = formatElapsedPeriod(project.endDate || project.startDate, baseDateRef.current);
                       const categoriesText = project.categories && project.categories.length > 0
                         ? project.categories.map((category) => category.name).join(' · ')
@@ -541,7 +602,7 @@ export default function RecordsPage() {
                       return (
                         <div
                           key={project.id}
-                          className={`records-grid__row ${isSelected ? 'is-selected' : ''}`}
+                          className={`records-grid__row ${isSelected ? 'is-selected' : ''} ${isExpired ? 'records-grid__row--expired' : ''}`}
                           onClick={() => setSelectedProjectId(project.id)}
                         >
                           <div className="records-grid__cell records-grid__cell--company">
@@ -628,6 +689,36 @@ export default function RecordsPage() {
                   )}
                 </div>
               </div>
+              {projects.length > 0 && (
+                <div className="records-pagination">
+                  <button
+                    type="button"
+                    className="records-pagination__nav"
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    이전
+                  </button>
+                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      className={`records-pagination__page ${currentPage === page ? 'is-active' : ''}`}
+                      onClick={() => handlePageChange(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="records-pagination__nav"
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    다음
+                  </button>
+                </div>
+              )}
             </section>
           </div>
         </div>

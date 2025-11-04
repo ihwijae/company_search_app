@@ -1366,11 +1366,12 @@ body {
   text-align: left;
   background: transparent;
   border: none;
-  padding: 6px 10px;
+  padding: 10px 14px;
   border-radius: 8px;
   cursor: pointer;
   color: #1f2937;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .records-category:hover {
@@ -1891,6 +1892,33 @@ body {
 .records-grid__row:hover { background: #fff7d1; }
 .records-grid__row.is-selected { background: #ede9fe; }
 
+.records-grid__row--expired {
+  background: #f4f4f5;
+  color: #6b7280;
+}
+
+.records-grid__row--expired::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 50%;
+  border-top: 2px solid rgba(107, 114, 128, 0.5);
+  pointer-events: none;
+}
+
+.records-grid__row--expired .records-grid__project-name,
+.records-grid__row--expired .records-grid__company-text,
+.records-grid__row--expired .records-grid__info-value,
+.records-grid__row--expired .records-grid__notes,
+.records-grid__row--expired .records-grid__elapsed {
+  color: inherit;
+}
+
+.records-grid__row--expired .records-grid__actions button {
+  opacity: 0.7;
+}
+
 .records-grid__row:last-child {
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
@@ -1994,6 +2022,18 @@ body {
   padding-left: 18px;
 }
 
+.records-grid__cell--notes .records-grid__notes .ql-align-center {
+  text-align: center;
+}
+
+.records-grid__cell--notes .records-grid__notes .ql-align-right {
+  text-align: right;
+}
+
+.records-grid__cell--notes .records-grid__notes .ql-align-justify {
+  text-align: justify;
+}
+
 .records-grid__cell--elapsed {
   justify-content: center;
   align-items: center;
@@ -2013,6 +2053,43 @@ body {
   font-size: 13px;
   color: #475569;
   text-align: center;
+}
+
+.records-pagination {
+  margin: 16px 0 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.records-pagination__page,
+.records-pagination__nav {
+  border: 1px solid #d4d4d8;
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 36px;
+}
+
+.records-pagination__page:hover,
+.records-pagination__nav:hover {
+  background: #f1f5f9;
+}
+
+.records-pagination__page.is-active {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+  font-weight: 600;
+}
+
+.records-pagination__nav:disabled,
+.records-pagination__page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .records-grid__attachment-name { word-break: break-word; }
