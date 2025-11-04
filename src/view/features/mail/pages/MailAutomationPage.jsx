@@ -1,6 +1,7 @@
 import React from 'react';
 import Sidebar from '../../../../components/Sidebar';
 import * as XLSX from 'xlsx';
+import 'xlsx/dist/cpexcel.js';
 
 const DEFAULT_PROJECT_INFO = {
   announcementNumber: '공고번호를 불러오세요',
@@ -11,31 +12,50 @@ const DEFAULT_PROJECT_INFO = {
 };
 
 const SEED_RECIPIENTS = [
-  { id: 1, vendorName: '㈜한빛건설', contactName: '김현수 차장', email: 'hs.kim@example.com', attachments: [], status: '대기' },
-  { id: 2, vendorName: '빛돌ENG', contactName: '이서준 팀장', email: 'sj.lee@example.com', attachments: [], status: '대기' },
-  { id: 3, vendorName: '세광이엔씨', contactName: '박민아 대리', email: 'mina.park@example.com', attachments: [], status: '대기' },
-  { id: 4, vendorName: '하람산업', contactName: '정우성 부장', email: 'ws.jung@example.com', attachments: [], status: '대기' },
-  { id: 5, vendorName: '가람기술', contactName: '최은지 과장', email: 'ej.choi@example.com', attachments: [], status: '대기' },
+  { id: 1, vendorName: '㈜한빛건설', contactName: '김현수 차장', email: 'hs.kim@example.com', tenderAmount: '', attachments: [], status: '대기' },
+  { id: 2, vendorName: '빛돌ENG', contactName: '이서준 팀장', email: 'sj.lee@example.com', tenderAmount: '', attachments: [], status: '대기' },
+  { id: 3, vendorName: '세광이엔씨', contactName: '박민아 대리', email: 'mina.park@example.com', tenderAmount: '', attachments: [], status: '대기' },
+  { id: 4, vendorName: '하람산업', contactName: '정우성 부장', email: 'ws.jung@example.com', tenderAmount: '', attachments: [], status: '대기' },
+  { id: 5, vendorName: '가람기술', contactName: '최은지 과장', email: 'ej.choi@example.com', tenderAmount: '', attachments: [], status: '대기' },
 ];
 
-const ITEMS_PER_PAGE = 3;
+const SEED_CONTACTS = [
+  { id: 1, vendorName: '㈜한빛건설', contactName: '김현수 차장', email: 'hs.kim@example.com' },
+  { id: 2, vendorName: '빛돌ENG', contactName: '이서준 팀장', email: 'sj.lee@example.com' },
+  { id: 3, vendorName: '세광이엔씨', contactName: '박민아 대리', email: 'mina.park@example.com' },
+  { id: 4, vendorName: '하람산업', contactName: '정우성 부장', email: 'ws.jung@example.com' },
+  { id: 5, vendorName: '가람기술', contactName: '최은지 과장', email: 'ej.choi@example.com' },
+];
+
+const ITEMS_PER_PAGE = 10;
+const normalizeVendorName = (name = '') => name.replace(/\s+/g, '').toLowerCase();
 
 export default function MailAutomationPage() {
   const [activeMenu, setActiveMenu] = React.useState('mail');
   const [excelFile, setExcelFile] = React.useState(null);
   const [projectInfo, setProjectInfo] = React.useState(DEFAULT_PROJECT_INFO);
   const [recipients, setRecipients] = React.useState(SEED_RECIPIENTS);
+  const [contacts, setContacts] = React.useState(SEED_CONTACTS);
+  const [vendorAmounts, setVendorAmounts] = React.useState({});
   const [subjectTemplate, setSubjectTemplate] = React.useState('[{{announcementName}}] 투찰 자료 전달드립니다.');
-  const [bodyTemplate, setBodyTemplate] = React.useState('안녕하세요, {{vendorName}} 담당자님.\n\n공고번호: {{announcementNumber}}\n발주처: {{owner}}\n입찰마감: {{closingDate}}\n기초금액: {{baseAmount}}\n\n첨부된 자료 확인 부탁드립니다.\n감사합니다.');
+  const [bodyTemplate, setBodyTemplate] = React.useState('안녕하세요, {{vendorName}} 담당자님.\n\n공고번호: {{announcementNumber}}\n발주처: {{owner}}\n입찰마감: {{closingDate}}\n기초금액: {{baseAmount}}\n투찰금액: {{tenderAmount}}\n\n첨부된 자료 확인 부탁드립니다.\n감사합니다.');
   const [smtpProfile, setSmtpProfile] = React.useState('gmail');
-  const [customProfile, setCustomProfile] = React.useState({ senderName: '', senderEmail: '', host: '', port: '587', secure: true });
+  const [senderName, setSenderName] = React.useState('');
+  const [senderEmail, setSenderEmail] = React.useState('');
+  const [replyTo, setReplyTo] = React.useState('');
+  const [gmailPassword, setGmailPassword] = React.useState('');
+  const [naverPassword, setNaverPassword] = React.useState('');
+  const [customProfile, setCustomProfile] = React.useState({ host: '', port: '587', secure: true, username: '', password: '' });
   const [sendDelay, setSendDelay] = React.useState(1);
   const [statusMessage, setStatusMessage] = React.useState('');
   const [currentPage, setCurrentPageState] = React.useState(1);
+  const [addressBookOpen, setAddressBookOpen] = React.useState(false);
 
   const excelInputRef = React.useRef(null);
   const attachmentInputs = React.useRef({});
   const recipientIdRef = React.useRef(SEED_RECIPIENTS.length + 1);
+  const contactIdRef = React.useRef(SEED_CONTACTS.length + 1);
+  const contactsFileInputRef = React.useRef(null);
 
   React.useEffect(() => {
     window.location.hash = '#/mail';
@@ -60,6 +80,7 @@ export default function MailAutomationPage() {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
     setExcelFile(file);
+    setStatusMessage('엑셀 데이터를 분석 중입니다...');
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -135,8 +156,36 @@ export default function MailAutomationPage() {
           baseAmount: formatAmount(getCell('C5')) || DEFAULT_PROJECT_INFO.baseAmount,
         };
 
+        const amountMap = {};
+        let emptyStreak = 0;
+        for (let row = 8; row < 1000; row += 1) {
+          const vendor = getText(`C${row}`);
+          const amountCell = getCell(`D${row}`);
+          if (!vendor) {
+            emptyStreak += 1;
+            if (emptyStreak >= 3) break;
+            continue;
+          }
+          emptyStreak = 0;
+          const normalized = normalizeVendorName(vendor);
+          if (!normalized) continue;
+          amountMap[normalized] = formatAmount(amountCell);
+        }
+
+        setVendorAmounts(amountMap);
+        const updatedRecipients = recipients.map((item) => {
+          const normalized = normalizeVendorName(item.vendorName);
+          const amount = normalized ? amountMap[normalized] : '';
+          if (amount) {
+            return { ...item, tenderAmount: amount };
+          }
+          return item;
+        });
+        const matched = updatedRecipients.filter((item) => !!item.tenderAmount).length;
+        setRecipients(updatedRecipients);
+
         setProjectInfo(extracted);
-        setStatusMessage(`엑셀에서 공고 정보를 불러왔습니다. (공고번호: ${extracted.announcementNumber})`);
+        setStatusMessage(`엑셀에서 공고 정보를 불러왔습니다. (공고번호: ${extracted.announcementNumber}, 업체 매칭 ${matched}건)`);
       } catch (error) {
         console.error('[mail] excel parsing failed', error);
         setProjectInfo(DEFAULT_PROJECT_INFO);
@@ -144,12 +193,28 @@ export default function MailAutomationPage() {
       }
     };
     reader.onerror = () => {
+      setProjectInfo(DEFAULT_PROJECT_INFO);
       setStatusMessage('엑셀 파일을 읽는 중 오류가 발생했습니다.');
     };
     reader.readAsArrayBuffer(file);
   };
 
   const handleRecipientFieldChange = (id, field, value) => {
+    if (field === 'tenderAmount') {
+      const formatted = formatTenderAmountInput(value);
+      setRecipients((prev) => prev.map((item) => (item.id === id ? { ...item, tenderAmount: formatted } : item)));
+      return;
+    }
+    if (field === 'vendorName') {
+      setRecipients((prev) => prev.map((item) => {
+        if (item.id !== id) return item;
+        const updated = { ...item, vendorName: value };
+        const match = vendorAmounts[normalizeVendorName(value)];
+        if (match) updated.tenderAmount = match;
+        return updated;
+      }));
+      return;
+    }
     setRecipients((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
   };
 
@@ -167,6 +232,119 @@ export default function MailAutomationPage() {
     setRecipients((prev) => prev.map((item) => (item.id === id ? { ...item, attachments: [] } : item)));
   };
 
+  const formatTenderAmountInput = React.useCallback((rawValue) => {
+    if (!rawValue) return '';
+    const digits = String(rawValue).replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    const numeric = Number(digits);
+    if (!Number.isFinite(numeric)) return digits;
+    return `${numeric.toLocaleString()} 원`;
+  }, []);
+
+  const handleAddContact = () => {
+    const nextId = contactIdRef.current;
+    contactIdRef.current += 1;
+    setContacts((prev) => ([
+      ...prev,
+      { id: nextId, vendorName: '', contactName: '', email: '' },
+    ]));
+    setStatusMessage('주소록에 빈 항목을 추가했습니다. 정보를 입력해 주세요.');
+  };
+
+  const handleContactFieldChange = (id, field, value) => {
+    setContacts((prev) => prev.map((contact) => (contact.id === id ? { ...contact, [field]: value } : contact)));
+  };
+
+  const handleRemoveContact = (id) => {
+    setContacts((prev) => prev.filter((contact) => contact.id !== id));
+    setStatusMessage('주소록에서 항목을 삭제했습니다.');
+  };
+
+  const handleImportContacts = (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result;
+        if (!text) throw new Error('파일이 비어 있습니다.');
+        const parsed = JSON.parse(text);
+        if (!Array.isArray(parsed)) throw new Error('배열 형태의 JSON이 아닙니다.');
+        let importedCount = 0;
+        const imported = parsed.map((item) => {
+          importedCount += 1;
+          return {
+            id: contactIdRef.current++,
+            vendorName: item.vendorName || '',
+            contactName: item.contactName || '',
+            email: item.email || '',
+          };
+        });
+        setContacts((prev) => [...prev, ...imported]);
+        setStatusMessage(`주소록 ${importedCount}건을 가져왔습니다.`);
+      } catch (error) {
+        console.error('[mail] contacts import failed', error);
+        setStatusMessage('주소록 파일을 읽지 못했습니다. JSON 형식을 확인해 주세요.');
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+    if (event.target) event.target.value = '';
+  };
+
+  const handleExportContacts = () => {
+    if (!contacts.length) {
+      alert('내보낼 주소록이 없습니다.');
+      return;
+    }
+    const data = contacts.map(({ id, ...rest }) => rest);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `mail-addressbook-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setStatusMessage(`주소록 ${contacts.length}건을 내보냈습니다.`);
+  };
+
+  const handleUseContact = (contact) => {
+    if (!contact.email && !contact.vendorName) return;
+    setRecipients((prev) => {
+      if (prev.some((item) => item.email && contact.email && item.email === contact.email)) {
+        setStatusMessage('이미 동일한 이메일이 수신자 목록에 있습니다.');
+        return prev;
+      }
+      const nextId = recipientIdRef.current;
+      recipientIdRef.current += 1;
+      const normalized = normalizeVendorName(contact.vendorName);
+      const tenderAmount = normalized ? (vendorAmounts[normalized] || '') : '';
+      const nextRecipient = {
+        id: nextId,
+        vendorName: contact.vendorName || '',
+        contactName: contact.contactName || '',
+        email: contact.email || '',
+        tenderAmount,
+        attachments: [],
+        status: '대기',
+      };
+      const nextList = [...prev, nextRecipient];
+      const lastPage = Math.max(1, Math.ceil(nextList.length / ITEMS_PER_PAGE));
+      setCurrentPageState(lastPage);
+      setStatusMessage(`주소록에서 '${contact.vendorName || '업체'}'를 수신자 목록에 추가했습니다.`);
+      return nextList;
+    });
+  };
+
+  const handleRemoveRecipient = (id) => {
+    setRecipients((prev) => {
+      const nextList = prev.filter((item) => item.id !== id);
+      const totalPages = Math.max(1, Math.ceil((nextList.length || 0) / ITEMS_PER_PAGE));
+      setCurrentPageState((prevPage) => Math.min(prevPage, totalPages));
+      return nextList;
+    });
+    setStatusMessage('수신자 목록에서 항목을 삭제했습니다.');
+  };
+
   const handleAddRecipient = () => {
     const nextId = recipientIdRef.current;
     recipientIdRef.current += 1;
@@ -175,6 +353,7 @@ export default function MailAutomationPage() {
       vendorName: '',
       contactName: '',
       email: '',
+      tenderAmount: '',
       attachments: [],
       status: '대기',
     };
@@ -184,6 +363,7 @@ export default function MailAutomationPage() {
       setCurrentPageState(lastPage);
       return nextList;
     });
+    setStatusMessage('새 수신자를 추가했습니다. 업체명과 이메일을 입력해 주세요.');
   };
 
   const handleSendAll = () => {
@@ -192,11 +372,11 @@ export default function MailAutomationPage() {
       alert('발송 대상이 없습니다. 이메일과 첨부를 확인해 주세요.');
       return;
     }
-    setStatusMessage(`총 ${ready.length}건 발송 준비 완료 (데모). SMTP 연동 후 이 영역에 진행 상황을 표시합니다.`);
+    setStatusMessage(`총 ${ready.length}건 발송 준비 완료 (발신: ${senderEmail || '미입력'}, 회신: ${replyTo || '미지정'}, 프로필: ${smtpProfile}). SMTP 연동 후 실제 발송 로직을 연결합니다.`);
   };
 
   const handleTestMail = () => {
-    setStatusMessage('SMTP 설정 테스트 요청을 전송했습니다. (데모)');
+    setStatusMessage(`SMTP 테스트: 프로필=${smtpProfile}, 발신=${senderEmail || '미입력'}. 실제 발송 로직을 연결하면 결과가 표시됩니다.`);
   };
 
   const handleTemplatePreview = () => {
@@ -239,7 +419,7 @@ export default function MailAutomationPage() {
                 <input
                   ref={excelInputRef}
                   type="file"
-                  accept=".xlsx,.xlsm"
+                  accept=".xlsx,.xlsm,.xls"
                   style={{ display: 'none' }}
                   onChange={handleExcelChange}
                 />
@@ -315,16 +495,46 @@ export default function MailAutomationPage() {
                     기타 SMTP 직접 입력
                   </label>
                 </div>
+                <div className="mail-smtp-sender">
+                  <label>
+                    발신자 이름
+                    <input value={senderName} onChange={(event) => setSenderName(event.target.value)} placeholder="예: 홍길동" />
+                  </label>
+                  <label>
+                    발신 이메일
+                    <input value={senderEmail} onChange={(event) => setSenderEmail(event.target.value)} placeholder="example@company.com" />
+                  </label>
+                  <label>
+                    회신 이메일 (선택)
+                    <input value={replyTo} onChange={(event) => setReplyTo(event.target.value)} placeholder="reply@example.com" />
+                  </label>
+                </div>
+                {smtpProfile === 'gmail' && (
+                  <label>
+                    Gmail 앱 비밀번호
+                    <input
+                      type="password"
+                      value={gmailPassword}
+                      onChange={(event) => setGmailPassword(event.target.value)}
+                      placeholder="16자리 앱 비밀번호"
+                    />
+                    <span className="mail-hint">Google 계정 보안 설정에서 앱 비밀번호를 발급해야 합니다.</span>
+                  </label>
+                )}
+                {smtpProfile === 'naver' && (
+                  <label>
+                    SMTP 비밀번호
+                    <input
+                      type="password"
+                      value={naverPassword}
+                      onChange={(event) => setNaverPassword(event.target.value)}
+                      placeholder="네이버 메일 비밀번호 또는 SMTP 전용 비밀번호"
+                    />
+                    <span className="mail-hint">네이버 메일 환경설정에서 SMTP/IMAP 사용을 허용해야 합니다.</span>
+                  </label>
+                )}
                 {smtpProfile === 'custom' && (
                   <div className="mail-smtp-custom">
-                    <label>
-                      발신자 이름
-                      <input value={customProfile.senderName} onChange={(event) => setCustomProfile((prev) => ({ ...prev, senderName: event.target.value }))} placeholder="예: 홍길동" />
-                    </label>
-                    <label>
-                      발신 이메일 주소
-                      <input value={customProfile.senderEmail} onChange={(event) => setCustomProfile((prev) => ({ ...prev, senderEmail: event.target.value }))} placeholder="user@example.com" />
-                    </label>
                     <div className="mail-smtp-grid">
                       <label>
                         SMTP 호스트
@@ -341,8 +551,18 @@ export default function MailAutomationPage() {
                         checked={customProfile.secure}
                         onChange={(event) => setCustomProfile((prev) => ({ ...prev, secure: event.target.checked }))}
                       />
-                      TLS/SSL 사용 (기본값)
+                      TLS/SSL 사용
                     </label>
+                    <div className="mail-smtp-grid">
+                      <label>
+                        사용자명
+                        <input value={customProfile.username} onChange={(event) => setCustomProfile((prev) => ({ ...prev, username: event.target.value }))} placeholder="SMTP 로그인 아이디" />
+                      </label>
+                      <label>
+                        암호
+                        <input type="password" value={customProfile.password} onChange={(event) => setCustomProfile((prev) => ({ ...prev, password: event.target.value }))} placeholder="SMTP 비밀번호" />
+                      </label>
+                    </div>
                   </div>
                 )}
                 <button type="button" className="btn-soft" onClick={handleTestMail}>테스트 메일 보내기</button>
@@ -375,25 +595,28 @@ export default function MailAutomationPage() {
               <header className="mail-panel__header">
                 <h2>업체 목록</h2>
                 <div className="mail-recipient-actions">
+                  <button type="button" className="btn-soft" onClick={() => setAddressBookOpen(true)}>주소록</button>
                   <button type="button" className="btn-soft" onClick={handleAddRecipient}>업체 추가</button>
                   <button type="button" className="btn-primary" onClick={handleSendAll}>전체 발송</button>
                 </div>
               </header>
 
-              <div className="mail-recipients-table">
-                <div className="mail-recipients-header">
-                  <span>#</span>
-                  <span>업체명</span>
-                  <span>담당자</span>
-                  <span>이메일</span>
-                  <span>첨부</span>
-                  <span>상태</span>
-                </div>
-                {paginatedRecipients.length ? paginatedRecipients.map((recipient) => (
-                  <div key={recipient.id} className="mail-recipients-row">
-                    <span>{recipient.id}</span>
-                    <span>
-                      <input
+                <div className="mail-recipients-table">
+                  <div className="mail-recipients-header">
+                    <span>#</span>
+                    <span>업체명</span>
+                    <span>담당자</span>
+                    <span>이메일</span>
+                    <span>투찰금액</span>
+                    <span>첨부</span>
+                    <span>상태</span>
+                    <span>작업</span>
+                  </div>
+                  {paginatedRecipients.length ? paginatedRecipients.map((recipient) => (
+                    <div key={recipient.id} className="mail-recipients-row">
+                      <span>{recipient.id}</span>
+                      <span>
+                        <input
                         value={recipient.vendorName}
                         onChange={(event) => handleRecipientFieldChange(recipient.id, 'vendorName', event.target.value)}
                         placeholder="업체명"
@@ -411,6 +634,13 @@ export default function MailAutomationPage() {
                         value={recipient.email}
                         onChange={(event) => handleRecipientFieldChange(recipient.id, 'email', event.target.value)}
                         placeholder="example@company.com"
+                      />
+                    </span>
+                    <span>
+                      <input
+                        value={recipient.tenderAmount || ''}
+                        onChange={(event) => handleRecipientFieldChange(recipient.id, 'tenderAmount', event.target.value)}
+                        placeholder="예: 123,456,789 원"
                       />
                     </span>
                     <span className="mail-recipient-attachments">
@@ -435,6 +665,9 @@ export default function MailAutomationPage() {
                     </span>
                     <span className={`mail-recipient-status mail-recipient-status--${recipient.status}`}>
                       {recipient.status}
+                    </span>
+                    <span className="mail-recipient-actions-cell">
+                      <button type="button" className="btn-sm btn-muted" onClick={() => handleRemoveRecipient(recipient.id)}>삭제</button>
                     </span>
                   </div>
                 )) : (
@@ -481,6 +714,60 @@ export default function MailAutomationPage() {
           </div>
         </div>
       </div>
+      {addressBookOpen && (
+        <div className="mail-addressbook-overlay" role="presentation" onClick={() => setAddressBookOpen(false)}>
+          <div
+            className="mail-addressbook-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="mail-addressbook-modal__header">
+              <h2>주소록 ({contacts.length})</h2>
+              <div className="mail-addressbook-modal__actions">
+                <button type="button" className="btn-sm btn-soft" onClick={handleAddContact}>주소 추가</button>
+                <button type="button" className="btn-sm btn-soft" onClick={() => contactsFileInputRef.current?.click()}>가져오기</button>
+                <button type="button" className="btn-sm btn-soft" onClick={handleExportContacts} disabled={!contacts.length}>내보내기</button>
+                <button type="button" className="btn-sm btn-muted" onClick={() => setAddressBookOpen(false)}>닫기</button>
+              </div>
+              <input
+                ref={contactsFileInputRef}
+                type="file"
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={handleImportContacts}
+              />
+            </header>
+            <div className="mail-addressbook-modal__body">
+              {contacts.length ? contacts.map((contact) => (
+                <div key={contact.id} className="mail-addressbook-modal__row">
+                  <input
+                    value={contact.vendorName}
+                    onChange={(event) => handleContactFieldChange(contact.id, 'vendorName', event.target.value)}
+                    placeholder="업체명"
+                  />
+                  <input
+                    value={contact.contactName}
+                    onChange={(event) => handleContactFieldChange(contact.id, 'contactName', event.target.value)}
+                    placeholder="담당자"
+                  />
+                  <input
+                    value={contact.email}
+                    onChange={(event) => handleContactFieldChange(contact.id, 'email', event.target.value)}
+                    placeholder="example@company.com"
+                  />
+                  <div className="mail-addressbook-modal__row-actions">
+                    <button type="button" className="btn-sm btn-soft" onClick={() => handleUseContact(contact)}>추가</button>
+                    <button type="button" className="btn-sm btn-muted" onClick={() => handleRemoveContact(contact.id)}>삭제</button>
+                  </div>
+                </div>
+              )) : (
+                <div className="mail-addressbook-modal__empty">주소록이 비어 있습니다. 주소를 추가하거나 가져오세요.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

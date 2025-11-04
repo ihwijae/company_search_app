@@ -2182,6 +2182,8 @@ body {
   font-size: 13px;
 }
 
+
+
 .mail-section textarea {
   resize: vertical;
 }
@@ -2192,6 +2194,33 @@ body {
   gap: 6px;
   font-size: 13px;
   color: #1f2937;
+}
+
+.mail-smtp-options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mail-smtp-options input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.mail-smtp-sender {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+
+.mail-hint {
+  display: block;
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #64748b;
 }
 
 .mail-smtp-custom {
@@ -2218,12 +2247,6 @@ body {
   font-size: 13px;
 }
 
-.mail-hint {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: #64748b;
-}
-
 .mail-recipient-actions {
   display: flex;
   gap: 8px;
@@ -2241,7 +2264,7 @@ body {
 .mail-recipients-header,
 .mail-recipients-row {
   display: grid;
-  grid-template-columns: 48px 1.3fr 1fr 1.2fr 1.4fr 90px;
+  grid-template-columns: 48px 1.2fr 1fr 1.2fr 1fr 1.4fr 90px 90px;
   align-items: center;
   padding: 10px 12px;
   gap: 12px;
@@ -2303,6 +2326,16 @@ body {
   background: #f1f5f9;
   color: #1e293b;
   text-align: center;
+}
+
+.mail-recipient-actions-cell {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mail-recipient-status--대기 {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .mail-recipient-status--완료 {
@@ -2369,6 +2402,88 @@ body {
   font-size: 13px;
   display: flex;
   gap: 10px;
+}
+
+.mail-addressbook-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2500;
+  padding: 24px;
+}
+
+.mail-addressbook-modal {
+  background: #ffffff;
+  width: min(760px, 90vw);
+  max-height: 90vh;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mail-addressbook-modal__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.mail-addressbook-modal__header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #111827;
+}
+
+.mail-addressbook-modal__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mail-addressbook-modal__body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.mail-addressbook-modal__row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1.2fr 130px;
+  gap: 8px 10px;
+  align-items: center;
+}
+
+.mail-addressbook-modal__row input {
+  width: 100%;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.mail-addressbook-modal__row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.mail-addressbook-modal__empty {
+  padding: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: #94a3b8;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
 }
 
 .records-pagination {
