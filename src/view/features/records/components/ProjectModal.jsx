@@ -229,6 +229,7 @@ export default function ProjectModal({
         });
       }
       if (onSaved) onSaved(result);
+      alert(isEdit ? '실적을 수정했습니다.' : '실적을 등록했습니다.');
       onClose();
     } catch (err) {
       setError(err?.message || '저장에 실패했습니다.');

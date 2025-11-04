@@ -339,6 +339,7 @@ export default function RecordsPage() {
         companyId: String(saved.id),
       }));
       setCompanyDialog({ open: false, name: '', isMisc: false, saving: false, error: '' });
+      alert('법인을 등록했습니다.');
     } catch (err) {
       setCompanyDialog((prev) => ({ ...prev, saving: false, error: err?.message || '법인을 추가할 수 없습니다.' }));
     }
@@ -403,6 +404,7 @@ export default function RecordsPage() {
       await recordsClient.saveCategory({ name: trimmed });
       await fetchTaxonomies();
       setCategoryDialog({ open: false, name: '', saving: false, error: '' });
+      alert('공사 종류를 등록했습니다.');
     } catch (err) {
       setCategoryDialog((prev) => ({ ...prev, saving: false, error: err?.message || '공사 종류를 추가할 수 없습니다.' }));
     }
