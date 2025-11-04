@@ -412,6 +412,7 @@ function AgreementsPage() {
           if (k === 'pps-under50') window.location.hash = '#/pps/under50';
           if (k === 'pps-50to100') window.location.hash = '#/pps/50to100';
           if (k === 'records') window.location.hash = '#/records';
+          if (k === 'mail') window.location.hash = '#/mail';
           if (k === 'search') window.location.hash = '#/search';
           if (k === 'settings') window.location.hash = '#/settings';
         }}

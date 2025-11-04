@@ -87,6 +87,7 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
       <nav className="nav">
         {item('search', '검색', '🔍')}
         {item('records', '실적', '📊')}
+        {item('mail', '메일', '✉️')}
         {item('agreements', '협정', '🤝')}
 
         {AGREEMENT_GROUPS.map((group) => {

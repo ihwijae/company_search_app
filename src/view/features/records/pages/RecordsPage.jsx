@@ -236,6 +236,8 @@ export default function RecordsPage() {
       window.location.hash = '#/records';
     } else if (key === 'search') {
       window.location.hash = '#/search';
+    } else if (key === 'mail') {
+      window.location.hash = '#/mail';
     } else if (key === 'agreements') {
       window.location.hash = '#/agreements';
     } else if (key === 'settings') {
