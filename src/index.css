@@ -1980,8 +1980,18 @@ body {
 .records-grid__cell--notes .records-grid__notes {
   font-size: 13px;
   color: #1f2937;
-  white-space: pre-wrap;
   line-height: 1.5;
+}
+
+.records-grid__cell--notes .records-grid__notes p,
+.records-grid__cell--notes .records-grid__notes ul,
+.records-grid__cell--notes .records-grid__notes ol {
+  margin: 0 0 6px 0;
+}
+
+.records-grid__cell--notes .records-grid__notes ul,
+.records-grid__cell--notes .records-grid__notes ol {
+  padding-left: 18px;
 }
 
 .records-grid__cell--elapsed {
@@ -2084,6 +2094,70 @@ body {
   gap: 8px;
 }
 
+.records-dialog__option-row {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.records-dialog__option-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.rte-container {
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  background: #fefefe;
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+}
+
+.rte-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f9fafb;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.rte-toolbar button {
+  border: 1px solid #cbd5f5;
+  background: #fff;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rte-toolbar button:hover {
+  background: #f1f5f9;
+}
+
+.rte-editor {
+  flex: 1;
+  padding: 12px;
+  font-size: 14px;
+  min-height: 120px;
+  outline: none;
+  line-height: 1.6;
+}
+
+.rte-editor:empty:before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+}
+
+.records-modal__notes .rte-container {
+  margin-top: 8px;
+}
 .records-modal-overlay {
   position: fixed;
   inset: 0;

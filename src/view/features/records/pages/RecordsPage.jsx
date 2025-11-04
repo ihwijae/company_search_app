@@ -3,6 +3,7 @@ import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import { recordsClient } from '../../../../shared/recordsClient.js';
+import sanitizeHtml from '../../../../shared/sanitizeHtml.js';
 import ProjectModal from '../components/ProjectModal.jsx';
 
 const formatCurrency = (value) => {
@@ -531,6 +532,7 @@ export default function RecordsPage() {
                     projects.map((project) => {
                       const isSelected = selectedProjectId === project.id;
                       const hasAttachment = !!project.attachment;
+                      const sanitizedNotes = sanitizeHtml(project.scopeNotes);
                       const elapsedText = formatElapsedPeriod(project.endDate || project.startDate, baseDateRef.current);
                       const categoriesText = project.categories && project.categories.length > 0
                         ? project.categories.map((category) => category.name).join(' · ')
@@ -567,7 +569,11 @@ export default function RecordsPage() {
                             </div>
                           </div>
                           <div className="records-grid__cell records-grid__cell--notes">
-                            <div className="records-grid__notes">{project.scopeNotes || '—'}</div>
+                            {sanitizedNotes ? (
+                              <div className="records-grid__notes" dangerouslySetInnerHTML={{ __html: sanitizedNotes }} />
+                            ) : (
+                              <div className="records-grid__notes">—</div>
+                            )}
                           </div>
                           <div className="records-grid__cell records-grid__cell--elapsed">
                             <div className="records-grid__elapsed">{elapsedText || '—'}</div>
@@ -660,14 +666,15 @@ export default function RecordsPage() {
                   autoFocus
                 />
               </label>
-              <label className="records-dialog__checkbox">
+              <div className="records-dialog__option-row">
                 <input
+                  id="company-dialog-misc"
                   type="checkbox"
                   checked={companyDialog.isMisc}
                   onChange={handleCompanyMiscChange}
                 />
-                기타로 등록
-              </label>
+                <label htmlFor="company-dialog-misc">기타로 등록</label>
+              </div>
               {companyDialog.error && (
                 <p className="records-dialog__error">{companyDialog.error}</p>
               )}

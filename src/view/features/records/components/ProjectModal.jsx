@@ -1,5 +1,6 @@
 import React from 'react';
 import { recordsClient } from '../../../../shared/recordsClient.js';
+import RichTextEditor from '../../../../shared/RichTextEditor.jsx';
 
 const DEFAULT_FORM = {
   companyType: 'our',
@@ -11,6 +12,13 @@ const DEFAULT_FORM = {
   contractAmount: '',
   scopeNotes: '',
   categoryIds: [],
+};
+
+const ensureHtml = (value) => {
+  if (!value) return '';
+  const trimmed = String(value);
+  if (/<[a-z][\s\S]*>/i.test(trimmed)) return trimmed;
+  return trimmed.replace(/\n/g, '<br />');
 };
 
 const formatContractAmountInput = (value) => {
@@ -82,7 +90,7 @@ export default function ProjectModal({
         startDate: initialProject.startDate || '',
         endDate: initialProject.endDate || '',
         contractAmount: initialProject.contractAmount ? formatContractAmountInput(initialProject.contractAmount) : '',
-        scopeNotes: initialProject.scopeNotes || '',
+        scopeNotes: ensureHtml(initialProject.scopeNotes || ''),
         categoryIds: (initialProject.categories || []).map((category) => category.id),
       });
     } else {
@@ -97,6 +105,7 @@ export default function ProjectModal({
         ...DEFAULT_FORM,
         companyType: normalizedType,
         companyId: defaultCompanyId ? String(defaultCompanyId) : '',
+        scopeNotes: '',
       });
     }
     setFile(null);
@@ -145,6 +154,10 @@ export default function ProjectModal({
       return;
     }
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleScopeNotesChange = (html) => {
+    setForm((prev) => ({ ...prev, scopeNotes: html }));
   };
 
   const handleSubmit = async (event) => {
@@ -258,11 +271,9 @@ export default function ProjectModal({
 
           <label className="records-modal__notes">
             시공규모 및 비고
-            <textarea
-              name="scopeNotes"
+            <RichTextEditor
               value={form.scopeNotes}
-              onChange={handleChange}
-              rows={4}
+              onChange={handleScopeNotesChange}
               placeholder="프로젝트 메모를 입력하세요"
             />
           </label>
