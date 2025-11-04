@@ -618,7 +618,7 @@ export default function RecordsPage() {
                                 <span className="records-grid__info-value">{project.clientName || '—'}</span>
                               </div>
                               <div className="records-grid__info-item">
-                                <span className="records-grid__info-label">기간</span>
+                                <span className="records-grid__info-label">공사기간</span>
                                 <span className="records-grid__info-value">{formatDateRange(project.startDate, project.endDate)}</span>
                               </div>
                               <div className="records-grid__info-item">

@@ -1966,10 +1966,10 @@ body {
 
 .records-grid__info {
   display: grid;
-  grid-template-columns: minmax(72px, max-content) 1fr;
-  column-gap: 10px;
-  row-gap: 4px;
-  font-size: 14px;
+  grid-template-columns: minmax(80px, max-content) 1fr;
+  column-gap: 12px;
+  row-gap: 6px;
+  font-size: 15px;
   color: #1f2937;
   margin-top: 12px;
 }
@@ -1983,7 +1983,7 @@ body {
   color: #475569;
   text-align: left;
   padding: 0;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .records-grid__info-label::after {
@@ -1993,6 +1993,7 @@ body {
 .records-grid__info-value {
   color: #1f2937;
   word-break: break-word;
+  font-size: 15px;
 }
 
 .records-grid__info-value--amount {
@@ -2001,8 +2002,12 @@ body {
 }
 
 .records-grid__info-item--muted .records-grid__info-value {
-  color: #4c1d95;
-  font-weight: 600;
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+.records-grid__info-item--muted .records-grid__info-label {
+  color: #4338ca;
 }
 
 .records-grid__cell--notes .records-grid__notes {
