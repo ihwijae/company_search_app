@@ -361,6 +361,27 @@ class RecordsRepository {
     return row ? row.file_path : null;
   }
 
+  listAttachmentRecords() {
+    this.refreshDb();
+    const stmt = this.db.prepare('SELECT project_id, file_path FROM attachments');
+    const rows = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      rows.push({ projectId: row.project_id, filePath: row.file_path });
+    }
+    stmt.free();
+    return rows;
+  }
+
+  updateAttachmentPath(projectId, filePath) {
+    this.refreshDb();
+    const stmt = this.db.prepare('UPDATE attachments SET file_path = ?, uploaded_at = datetime(\'now\') WHERE project_id = ?');
+    stmt.bind([filePath, projectId]);
+    stmt.step();
+    stmt.free();
+    return getScalar(this.db, 'SELECT changes()') > 0;
+  }
+
   getProjectById(projectId) {
     this.refreshDb();
     const db = this.db;

@@ -1838,7 +1838,8 @@ body {
 .records-grid-wrapper {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-radius: 12px;
   background: linear-gradient(#fff4d4 0 64px, #fff 64px 100%);
   border: 1px solid #d4d4d8;
@@ -1851,7 +1852,8 @@ body {
   flex-direction: column;
   width: 100%;
   min-width: 1080px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .records-grid__header {
@@ -1923,13 +1925,14 @@ body {
 
 
 .records-grid__cell--info {
-  gap: 10px;
+  gap: 0;
+  font-size: 14px;
 }
 
 .records-grid__project-name {
   font-weight: 700;
   color: #111827;
-  font-size: 15px;
+  font-size: 18px;
   padding-left: 0;
 }
 
@@ -1938,8 +1941,9 @@ body {
   grid-template-columns: minmax(72px, max-content) 1fr;
   column-gap: 10px;
   row-gap: 4px;
-  font-size: 13px;
+  font-size: 14px;
   color: #1f2937;
+  margin-top: 12px;
 }
 
 .records-grid__info-item {
@@ -1951,6 +1955,7 @@ body {
   color: #475569;
   text-align: left;
   padding: 0;
+  font-size: 14px;
 }
 
 .records-grid__info-label::after {

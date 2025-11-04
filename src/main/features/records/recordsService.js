@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { shell } = require('electron');
+const AdmZip = require('adm-zip');
 const { RecordsRepository } = require('./recordsRepository');
 const { persistRecordsDatabase, getRecordsDatabasePath } = require('./recordsDatabase.js');
 
@@ -23,7 +24,68 @@ class RecordsService {
   constructor({ userDataDir }) {
     if (!userDataDir) throw new Error('userDataDir is required for RecordsService');
     this.repository = new RecordsRepository();
+    this.userDataDir = userDataDir;
     this.attachmentsRoot = path.join(userDataDir, 'attachments');
+    this.migrateLegacyAttachmentPaths();
+  }
+
+  resolveAttachmentPath(storedPath) {
+    if (!storedPath) return null;
+    if (path.isAbsolute(storedPath)) return storedPath;
+    return path.join(this.attachmentsRoot, storedPath);
+  }
+
+  toAttachmentRelative(absolutePath) {
+    if (!absolutePath) return null;
+    const normalizedRoot = path.normalize(`${this.attachmentsRoot}${path.sep}`);
+    const normalizedPath = path.normalize(absolutePath);
+    if (normalizedPath.startsWith(normalizedRoot)) {
+      return path.relative(this.attachmentsRoot, normalizedPath);
+    }
+    return normalizedPath;
+  }
+
+  hydrateAttachment(attachment) {
+    if (!attachment) return null;
+    const resolvedPath = this.resolveAttachmentPath(attachment.filePath);
+    return {
+      ...attachment,
+      filePath: resolvedPath,
+      relativePath: this.toAttachmentRelative(resolvedPath),
+    };
+  }
+
+  hydrateProject(project) {
+    if (!project) return project;
+    return {
+      ...project,
+      attachment: this.hydrateAttachment(project.attachment),
+    };
+  }
+
+  migrateLegacyAttachmentPaths() {
+    try {
+      if (!fs.existsSync(this.attachmentsRoot)) return;
+      const records = this.repository.listAttachmentRecords();
+      if (!Array.isArray(records) || records.length === 0) return;
+      const rootPrefix = path.normalize(`${this.attachmentsRoot}${path.sep}`);
+      let mutated = false;
+      records.forEach(({ projectId, filePath }) => {
+        if (!projectId || !filePath || typeof filePath !== 'string') return;
+        if (!path.isAbsolute(filePath)) return;
+        const normalizedPath = path.normalize(filePath);
+        if (!normalizedPath.startsWith(rootPrefix)) return;
+        const relativePath = path.relative(this.attachmentsRoot, normalizedPath);
+        if (!relativePath || relativePath === filePath) return;
+        const updated = this.repository.updateAttachmentPath(projectId, relativePath);
+        if (updated) mutated = true;
+      });
+      if (mutated) {
+        persistRecordsDatabase();
+      }
+    } catch (error) {
+      console.error('[MAIN][records] Failed to normalize attachment paths:', error);
+    }
   }
 
   ensureAttachmentDirectory(projectId) {
@@ -97,12 +159,14 @@ class RecordsService {
       startDateFrom: filters.startDateFrom || undefined,
       startDateTo: filters.startDateTo || undefined,
     };
-    return this.repository.listProjects(normalizedFilters);
+    return this.repository.listProjects(normalizedFilters)
+      .map((project) => this.hydrateProject(project));
   }
 
   getProject(projectId) {
     if (!projectId) throw new Error('Project id is required');
-    return this.repository.getProjectById(projectId);
+    const project = this.repository.getProjectById(projectId);
+    return this.hydrateProject(project);
   }
 
   createProject(payload) {
@@ -128,7 +192,7 @@ class RecordsService {
 
     persistRecordsDatabase();
 
-    return this.repository.getProjectById(projectId);
+    return this.hydrateProject(this.repository.getProjectById(projectId));
   }
 
   updateProject(projectId, payload) {
@@ -155,12 +219,13 @@ class RecordsService {
 
     persistRecordsDatabase();
 
-    return this.repository.getProjectById(projectId);
+    return this.hydrateProject(this.repository.getProjectById(projectId));
   }
 
   deleteProject(projectId) {
     if (!projectId) throw new Error('Project id is required');
-    const existingPath = this.repository.getAttachmentPath(projectId);
+    const previousStoredPath = this.repository.getAttachmentPath(projectId);
+    const existingPath = this.resolveAttachmentPath(previousStoredPath);
     const deleted = this.repository.deleteProject(projectId);
     if (deleted && existingPath && fs.existsSync(existingPath)) {
       try { fs.unlinkSync(existingPath); } catch {}
@@ -180,8 +245,27 @@ class RecordsService {
     if (!fs.existsSync(directory)) {
       fs.mkdirSync(directory, { recursive: true });
     }
-    fs.copyFileSync(dbPath, targetPath);
-    return { sourcePath: dbPath, exportedPath: targetPath };
+
+    const zip = new AdmZip();
+    const dbName = 'records.sqlite';
+    zip.addFile(dbName, fs.readFileSync(dbPath));
+
+    if (fs.existsSync(this.attachmentsRoot)) {
+      zip.addLocalFolder(this.attachmentsRoot, 'attachments');
+    }
+
+    const metaPath = path.join(this.userDataDir, 'meta.json');
+    if (fs.existsSync(metaPath)) {
+      zip.addLocalFile(metaPath, '', 'meta.json');
+    }
+
+    zip.writeZip(targetPath);
+
+    return {
+      sourcePath: dbPath,
+      exportedPath: targetPath,
+      includedAttachments: fs.existsSync(this.attachmentsRoot),
+    };
   }
 
   replaceAttachment(projectId, attachmentPayload) {
@@ -190,7 +274,8 @@ class RecordsService {
       throw new Error('Attachment payload must include sourcePath or buffer');
     }
 
-    const previousPath = this.repository.getAttachmentPath(projectId);
+    const previousStoredPath = this.repository.getAttachmentPath(projectId);
+    const previousPath = this.resolveAttachmentPath(previousStoredPath);
 
     let filePath;
     let fileSize = null;
@@ -233,7 +318,7 @@ class RecordsService {
 
     this.repository.upsertAttachment(projectId, {
       displayName,
-      filePath,
+      filePath: this.toAttachmentRelative(filePath),
       mimeType,
       fileSize,
     });
@@ -244,12 +329,14 @@ class RecordsService {
       try { fs.unlinkSync(previousPath); } catch {}
     }
 
-    return this.repository.getProjectById(projectId)?.attachment;
+    const attachment = this.repository.getProjectById(projectId)?.attachment;
+    return this.hydrateAttachment(attachment);
   }
 
   removeAttachment(projectId) {
     if (!projectId) throw new Error('Project id is required');
-    const existingPath = this.repository.getAttachmentPath(projectId);
+    const storedPath = this.repository.getAttachmentPath(projectId);
+    const existingPath = this.resolveAttachmentPath(storedPath);
     const removed = this.repository.deleteAttachment(projectId);
     if (removed && existingPath && fs.existsSync(existingPath)) {
       try { fs.unlinkSync(existingPath); } catch {}
@@ -261,7 +348,7 @@ class RecordsService {
   async openAttachment(projectId) {
     if (!projectId) throw new Error('Project id is required');
     const project = this.repository.getProjectById(projectId);
-    const attachment = project?.attachment;
+    const attachment = this.hydrateAttachment(project?.attachment);
     if (!attachment || !attachment.filePath) {
       throw new Error('첨부 파일이 없습니다.');
     }

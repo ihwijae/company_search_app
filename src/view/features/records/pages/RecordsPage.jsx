@@ -313,7 +313,8 @@ export default function RecordsPage() {
       if (!result || result.canceled) return;
       const exportedPath = result.exportedPath || result.targetPath || result.path;
       if (exportedPath) {
-        alert(`DB 파일을 내보냈습니다.\n${exportedPath}`);
+        const attachmentNote = result.includedAttachments ? ' (첨부 포함)' : ' (첨부 없음)';
+        alert(`실적 데이터 패키지를 내보냈습니다.\n${exportedPath}${attachmentNote}`);
       }
     } catch (err) {
       alert(err?.message || 'DB 파일을 내보낼 수 없습니다.');
