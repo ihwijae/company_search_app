@@ -130,7 +130,7 @@ function CategoryTree({ items, activeId, onSelect }) {
   );
 }
 
-const DEFAULT_MODAL_STATE = { open: false, mode: 'create', project: null, defaultCompanyId: '' };
+const DEFAULT_MODAL_STATE = { open: false, mode: 'create', project: null, defaultCompanyId: '', defaultCompanyType: 'our' };
 
 export default function RecordsPage() {
   const [activeMenu, setActiveMenu] = React.useState('records');
@@ -138,12 +138,13 @@ export default function RecordsPage() {
   const [categories, setCategories] = React.useState([]);
   const [companies, setCompanies] = React.useState([]);
   const [flatCategories, setFlatCategories] = React.useState([]);
-  const [filters, setFilters] = React.useState({ keyword: '', companyId: '', categoryId: null });
+  const [filters, setFilters] = React.useState({ keyword: '', companyType: 'our', companyId: '', categoryId: null });
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [modalState, setModalState] = React.useState(DEFAULT_MODAL_STATE);
   const [selectedProjectId, setSelectedProjectId] = React.useState(null);
-  const [companyDialog, setCompanyDialog] = React.useState({ open: false, name: '', saving: false, error: '' });
+  const [companyDialog, setCompanyDialog] = React.useState({ open: false, name: '', isMisc: false, saving: false, error: '' });
+  const [categoryDialog, setCategoryDialog] = React.useState({ open: false, name: '', saving: false, error: '' });
   const pendingSelectRef = React.useRef(null);
   const baseDateRef = React.useRef(new Date());
   const baseDateLabel = React.useMemo(() => {
@@ -169,6 +170,11 @@ export default function RecordsPage() {
     }
   }, []);
 
+  const visibleCompanies = React.useMemo(() => {
+    if (!Array.isArray(companies)) return [];
+    return companies.filter((company) => (filters.companyType === 'misc' ? company.isMisc : !company.isMisc));
+  }, [companies, filters.companyType]);
+
   const fetchProjects = React.useCallback(async () => {
     setLoading(true);
     setError('');
@@ -177,6 +183,7 @@ export default function RecordsPage() {
         keyword: filters.keyword || undefined,
         companyIds: filters.companyId ? [Number(filters.companyId)] : undefined,
         categoryIds: filters.categoryId ? [filters.categoryId] : undefined,
+        companyType: filters.companyType || undefined,
       };
       const list = await recordsClient.listProjects(payload);
       setProjects(list);
@@ -218,12 +225,21 @@ export default function RecordsPage() {
   };
 
   const clearFilters = () => {
-    setFilters({ keyword: '', companyId: '', categoryId: null });
+    setFilters({ keyword: '', companyType: 'our', companyId: '', categoryId: null });
+  };
+
+  const handleCompanyTypeChange = (event) => {
+    const { value } = event.target;
+    setFilters((prev) => ({ ...prev, companyType: value, companyId: '' }));
   };
 
   const closeModal = React.useCallback(() => {
-    setModalState({ ...DEFAULT_MODAL_STATE, defaultCompanyId: filters.companyId || '' });
-  }, [filters.companyId]);
+    setModalState({
+      ...DEFAULT_MODAL_STATE,
+      defaultCompanyId: filters.companyId || '',
+      defaultCompanyType: filters.companyType || 'our',
+    });
+  }, [filters.companyId, filters.companyType]);
 
   const handleProjectSaved = React.useCallback((project) => {
     if (project?.id) {
@@ -261,16 +277,21 @@ export default function RecordsPage() {
   }, [fetchProjects]);
 
   const handleAddCompany = React.useCallback(() => {
-    setCompanyDialog({ open: true, name: '', saving: false, error: '' });
-  }, []);
+    setCompanyDialog({ open: true, name: '', isMisc: filters.companyType === 'misc', saving: false, error: '' });
+  }, [filters.companyType]);
 
   const closeCompanyDialog = React.useCallback(() => {
-    setCompanyDialog({ open: false, name: '', saving: false, error: '' });
+    setCompanyDialog({ open: false, name: '', isMisc: false, saving: false, error: '' });
   }, []);
 
   const handleCompanyNameChange = (event) => {
     const { value } = event.target;
     setCompanyDialog((prev) => ({ ...prev, name: value, error: '' }));
+  };
+
+  const handleCompanyMiscChange = (event) => {
+    const { checked } = event.target;
+    setCompanyDialog((prev) => ({ ...prev, isMisc: checked }));
   };
 
   const handleCompanyDialogSubmit = async (event) => {
@@ -282,22 +303,107 @@ export default function RecordsPage() {
     }
     setCompanyDialog((prev) => ({ ...prev, saving: true, error: '' }));
     try {
-      const saved = await recordsClient.saveCompany({ name: trimmedName, alias: trimmedName, isPrimary: false });
+      const saved = await recordsClient.saveCompany({
+        name: trimmedName,
+        alias: trimmedName,
+        isPrimary: false,
+        isMisc: companyDialog.isMisc,
+      });
       await fetchTaxonomies();
-      setFilters((prev) => ({ ...prev, companyId: String(saved.id) }));
-      setCompanyDialog({ open: false, name: '', saving: false, error: '' });
+      setFilters((prev) => ({
+        ...prev,
+        companyType: saved.isMisc ? 'misc' : 'our',
+        companyId: String(saved.id),
+      }));
+      setCompanyDialog({ open: false, name: '', isMisc: false, saving: false, error: '' });
     } catch (err) {
       setCompanyDialog((prev) => ({ ...prev, saving: false, error: err?.message || '법인을 추가할 수 없습니다.' }));
     }
   };
 
+  const handleDeleteCompany = React.useCallback(async () => {
+    if (!filters.companyId) return;
+    const company = companies.find((item) => String(item.id) === String(filters.companyId));
+    const label = company?.name || '선택한 법인';
+    const confirmed = window.confirm(`'${label}' 법인을 삭제할까요?\n실적과 연결된 경우 기본값(미지정)으로 변경됩니다.`);
+    if (!confirmed) return;
+    try {
+      await recordsClient.deleteCompany(Number(filters.companyId));
+      await fetchTaxonomies();
+      setFilters((prev) => ({ ...prev, companyId: '' }));
+      await fetchProjects();
+      alert('법인을 삭제했습니다.');
+    } catch (err) {
+      alert(err?.message || '법인을 삭제할 수 없습니다.');
+    }
+  }, [filters.companyId, companies, fetchTaxonomies, fetchProjects]);
+
+  const handleDeleteCategory = React.useCallback(async () => {
+    if (!filters.categoryId) return;
+    const category = flatCategories.find((item) => item.id === filters.categoryId);
+    const label = category?.name || '선택한 공사 종류';
+    const confirmed = window.confirm(`'${label}' 공사 종류를 삭제할까요?\n하위 항목과 실적 연결 정보가 함께 제거됩니다.`);
+    if (!confirmed) return;
+    try {
+      await recordsClient.deleteCategory(filters.categoryId);
+      await fetchTaxonomies();
+      setFilters((prev) => ({ ...prev, categoryId: null }));
+      await fetchProjects();
+      alert('공사 종류를 삭제했습니다.');
+    } catch (err) {
+      alert(err?.message || '공사 종류를 삭제할 수 없습니다.');
+    }
+  }, [filters.categoryId, flatCategories, fetchTaxonomies, fetchProjects]);
+
+  const handleAddCategory = React.useCallback(() => {
+    setCategoryDialog({ open: true, name: '', saving: false, error: '' });
+  }, []);
+
+  const closeCategoryDialog = React.useCallback(() => {
+    setCategoryDialog({ open: false, name: '', saving: false, error: '' });
+  }, []);
+
+  const handleCategoryNameChange = (event) => {
+    const { value } = event.target;
+    setCategoryDialog((prev) => ({ ...prev, name: value, error: '' }));
+  };
+
+  const handleCategoryDialogSubmit = async (event) => {
+    event.preventDefault();
+    const trimmed = categoryDialog.name.trim();
+    if (!trimmed) {
+      setCategoryDialog((prev) => ({ ...prev, error: '공사 종류명을 입력해 주세요.' }));
+      return;
+    }
+    setCategoryDialog((prev) => ({ ...prev, saving: true, error: '' }));
+    try {
+      await recordsClient.saveCategory({ name: trimmed });
+      await fetchTaxonomies();
+      setCategoryDialog({ open: false, name: '', saving: false, error: '' });
+    } catch (err) {
+      setCategoryDialog((prev) => ({ ...prev, saving: false, error: err?.message || '공사 종류를 추가할 수 없습니다.' }));
+    }
+  };
+
   const openCreateModal = React.useCallback(() => {
-    setModalState({ open: true, mode: 'create', project: null, defaultCompanyId: filters.companyId || '' });
-  }, [filters.companyId]);
+    setModalState({
+      open: true,
+      mode: 'create',
+      project: null,
+      defaultCompanyId: filters.companyId || '',
+      defaultCompanyType: filters.companyType || 'our',
+    });
+  }, [filters.companyId, filters.companyType]);
 
   const openEditModal = React.useCallback((project) => {
     setSelectedProjectId(project.id);
-    setModalState({ open: true, mode: 'edit', project, defaultCompanyId: '' });
+    setModalState({
+      open: true,
+      mode: 'edit',
+      project,
+      defaultCompanyId: '',
+      defaultCompanyType: project?.primaryCompanyIsMisc ? 'misc' : 'our',
+    });
   }, []);
 
   const handleAttachmentRemoved = React.useCallback((projectId) => {
@@ -352,6 +458,10 @@ export default function RecordsPage() {
             <aside className="records-panel records-panel--categories">
               <header className="records-panel__header">
                 <h2>공사 종류</h2>
+                <button type="button" className="btn-soft" onClick={handleAddCategory}>+ 추가</button>
+                {filters.categoryId && (
+                  <button type="button" className="btn-muted" onClick={handleDeleteCategory}>삭제</button>
+                )}
               </header>
               <CategoryTree
                 items={categories}
@@ -370,14 +480,29 @@ export default function RecordsPage() {
                     onChange={(event) => setFilters((prev) => ({ ...prev, keyword: event.target.value }))}
                   />
                   <select
+                    value={filters.companyType}
+                    onChange={handleCompanyTypeChange}
+                  >
+                    <option value="our">우리법인</option>
+                    <option value="misc">기타</option>
+                  </select>
+                  <select
                     value={filters.companyId}
                     onChange={(event) => setFilters((prev) => ({ ...prev, companyId: event.target.value }))}
                   >
-                    <option value="">전체 업체</option>
-                    {companies.map((company) => (
+                    <option value="">{filters.companyType === 'misc' ? '전체 기타 법인' : '전체 우리 법인'}</option>
+                    {visibleCompanies.map((company) => (
                       <option key={company.id} value={company.id}>{company.name}</option>
                     ))}
                   </select>
+                  <button
+                    type="button"
+                    className="btn-muted"
+                    onClick={handleDeleteCompany}
+                    disabled={!filters.companyId}
+                  >
+                    법인 삭제
+                  </button>
                   <button type="button" onClick={fetchProjects} disabled={loading}>
                     {loading ? '불러오는 중...' : '필터 적용'}
                   </button>
@@ -511,6 +636,7 @@ export default function RecordsPage() {
         companies={companies}
         categories={flatCategories}
         defaultCompanyId={modalState.mode === 'create' ? (modalState.defaultCompanyId || filters.companyId || '') : ''}
+        defaultCompanyType={modalState.mode === 'create' ? (modalState.defaultCompanyType || filters.companyType || 'our') : (modalState.project?.primaryCompanyIsMisc ? 'misc' : 'our')}
         onAttachmentRemoved={handleAttachmentRemoved}
       />
 
@@ -534,6 +660,14 @@ export default function RecordsPage() {
                   autoFocus
                 />
               </label>
+              <label className="records-dialog__checkbox">
+                <input
+                  type="checkbox"
+                  checked={companyDialog.isMisc}
+                  onChange={handleCompanyMiscChange}
+                />
+                기타로 등록
+              </label>
               {companyDialog.error && (
                 <p className="records-dialog__error">{companyDialog.error}</p>
               )}
@@ -541,6 +675,40 @@ export default function RecordsPage() {
                 <button type="button" className="btn-muted" onClick={closeCompanyDialog} disabled={companyDialog.saving}>취소</button>
                 <button type="submit" className="btn-primary" disabled={companyDialog.saving}>
                   {companyDialog.saving ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {categoryDialog.open && (
+        <div className="records-dialog-overlay" role="presentation" onClick={closeCategoryDialog}>
+          <div
+            className="records-dialog"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3>공사 종류 추가</h3>
+            <form onSubmit={handleCategoryDialogSubmit}>
+              <label>
+                새 공사 종류명
+                <input
+                  type="text"
+                  value={categoryDialog.name}
+                  onChange={handleCategoryNameChange}
+                  placeholder="예: 전기 공사"
+                  autoFocus
+                />
+              </label>
+              {categoryDialog.error && (
+                <p className="records-dialog__error">{categoryDialog.error}</p>
+              )}
+              <div className="records-dialog__actions">
+                <button type="button" className="btn-muted" onClick={closeCategoryDialog} disabled={categoryDialog.saving}>취소</button>
+                <button type="submit" className="btn-primary" disabled={categoryDialog.saving}>
+                  {categoryDialog.saving ? '저장 중...' : '저장'}
                 </button>
               </div>
             </form>

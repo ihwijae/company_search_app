@@ -14,6 +14,7 @@ const MIGRATIONS = [
         name TEXT NOT NULL,
         alias TEXT,
         is_primary INTEGER NOT NULL DEFAULT 0,
+        is_misc INTEGER NOT NULL DEFAULT 0,
         active INTEGER NOT NULL DEFAULT 1,
         sort_order INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -77,6 +78,19 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_projects_company ON projects(primary_company_id);
       CREATE INDEX IF NOT EXISTS idx_projects_dates ON projects(start_date, end_date);
     COMMIT;`);
+  },
+  (db) => {
+    try {
+      const info = db.exec("PRAGMA table_info('companies')");
+      const hasColumn = Array.isArray(info) && info.length > 0 && Array.isArray(info[0].values)
+        && info[0].values.some((row) => row && row.length > 1 && row[1] === 'is_misc');
+      if (!hasColumn) {
+        db.exec("ALTER TABLE companies ADD COLUMN is_misc INTEGER NOT NULL DEFAULT 0;");
+      }
+    } catch (error) {
+      console.error('[DB][records] Failed to ensure companies.is_misc column:', error);
+      throw error;
+    }
   }
 ];
 
@@ -163,8 +177,8 @@ function seedDefaults(db, seedConfig = defaults) {
 
     if (Array.isArray(seedConfig.companies)) {
       const getCompany = prepare(db, 'SELECT id FROM companies WHERE name = ?');
-      const insertCompany = prepare(db, `INSERT INTO companies (name, alias, is_primary, active, sort_order, created_at, updated_at)
-        VALUES (?, ?, ?, 1, ?, ?, ?)`);
+      const insertCompany = prepare(db, `INSERT INTO companies (name, alias, is_primary, is_misc, active, sort_order, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 1, ?, ?, ?)`);
       seedConfig.companies.forEach((company, idx) => {
         if (!company || !company.name) return;
         getCompany.bind([company.name]);
@@ -175,6 +189,7 @@ function seedDefaults(db, seedConfig = defaults) {
           company.name,
           company.alias || null,
           company.isPrimary ? 1 : 0,
+          company.isMisc ? 1 : 0,
           idx,
           nowIso,
           nowIso,

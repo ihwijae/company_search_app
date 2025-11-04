@@ -2,6 +2,7 @@ import React from 'react';
 import { recordsClient } from '../../../../shared/recordsClient.js';
 
 const DEFAULT_FORM = {
+  companyType: 'our',
   companyId: '',
   projectName: '',
   clientName: '',
@@ -30,6 +31,7 @@ export default function ProjectModal({
   companies,
   categories,
   defaultCompanyId = '',
+  defaultCompanyType = 'our',
   onAttachmentRemoved,
 }) {
   const isEdit = mode === 'edit';
@@ -38,20 +40,42 @@ export default function ProjectModal({
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState('');
   const [attachmentRemoved, setAttachmentRemoved] = React.useState(false);
-  const companyOptions = React.useMemo(
+  const allCompanies = React.useMemo(
     () => (Array.isArray(companies) ? companies : []),
     [companies],
+  );
+  const ourCompanies = React.useMemo(
+    () => allCompanies.filter((company) => !company.isMisc),
+    [allCompanies],
+  );
+  const miscCompanies = React.useMemo(
+    () => allCompanies.filter((company) => company.isMisc),
+    [allCompanies],
+  );
+  const visibleCompanies = React.useMemo(
+    () => (form.companyType === 'misc' ? miscCompanies : ourCompanies),
+    [form.companyType, miscCompanies, ourCompanies],
   );
 
   React.useEffect(() => {
     if (!open) return;
     if (isEdit && initialProject) {
       let resolvedCompanyId = initialProject.primaryCompanyId ? String(initialProject.primaryCompanyId) : '';
+      let resolvedCompanyType = initialProject.primaryCompanyIsMisc ? 'misc' : 'our';
       if (!resolvedCompanyId && initialProject.corporationName) {
-        const matched = companyOptions.find((company) => company.name === initialProject.corporationName);
-        if (matched) resolvedCompanyId = String(matched.id);
+        const matched = allCompanies.find((company) => company.name === initialProject.corporationName);
+        if (matched) {
+          resolvedCompanyId = String(matched.id);
+          resolvedCompanyType = matched.isMisc ? 'misc' : 'our';
+        }
+      } else if (resolvedCompanyId) {
+        const matched = allCompanies.find((company) => String(company.id) === resolvedCompanyId);
+        if (matched) {
+          resolvedCompanyType = matched.isMisc ? 'misc' : 'our';
+        }
       }
       setForm({
+        companyType: resolvedCompanyType,
         companyId: resolvedCompanyId,
         projectName: initialProject.projectName || '',
         clientName: initialProject.clientName || '',
@@ -62,15 +86,23 @@ export default function ProjectModal({
         categoryIds: (initialProject.categories || []).map((category) => category.id),
       });
     } else {
+      let normalizedType = defaultCompanyType === 'misc' ? 'misc' : 'our';
+      if (defaultCompanyId) {
+        const matched = allCompanies.find((company) => String(company.id) === String(defaultCompanyId));
+        if (matched) {
+          normalizedType = matched.isMisc ? 'misc' : 'our';
+        }
+      }
       setForm({
         ...DEFAULT_FORM,
+        companyType: normalizedType,
         companyId: defaultCompanyId ? String(defaultCompanyId) : '',
       });
     }
     setFile(null);
     setError('');
     setAttachmentRemoved(false);
-  }, [open, isEdit, initialProject, companyOptions, defaultCompanyId]);
+  }, [open, isEdit, initialProject, allCompanies, defaultCompanyId, defaultCompanyType]);
 
   const handleRemoveExistingAttachment = async () => {
     if (!isEdit || !initialProject?.id || attachmentRemoved || !initialProject.attachment) return;
@@ -108,6 +140,10 @@ export default function ProjectModal({
       setForm((prev) => ({ ...prev, contractAmount: formatted }));
       return;
     }
+    if (name === 'companyType') {
+      setForm((prev) => ({ ...prev, companyType: value, companyId: '' }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -130,7 +166,7 @@ export default function ProjectModal({
         };
       }
 
-      const selectedCompany = companyOptions.find((company) => String(company.id) === form.companyId);
+      const selectedCompany = allCompanies.find((company) => String(company.id) === form.companyId);
       const corporationName = selectedCompany?.name || initialProject?.corporationName || '';
       if (!corporationName) {
         setError('선택한 법인을 확인할 수 없습니다.');
@@ -180,10 +216,17 @@ export default function ProjectModal({
         <form className="records-modal__body" onSubmit={handleSubmit}>
           <div className="records-form-grid">
             <label>
+              법인 종류
+              <select name="companyType" value={form.companyType} onChange={handleChange}>
+                <option value="our">우리법인</option>
+                <option value="misc">기타</option>
+              </select>
+            </label>
+            <label>
               법인명
               <select name="companyId" value={form.companyId} onChange={handleChange} required>
-                <option value="">법인을 선택하세요</option>
-                {companyOptions.map((company) => (
+                <option value="">{form.companyType === 'misc' ? '기타 법인 선택' : '우리 법인을 선택하세요'}</option>
+                {visibleCompanies.map((company) => (
                   <option key={company.id} value={company.id}>{company.name}</option>
                 ))}
               </select>

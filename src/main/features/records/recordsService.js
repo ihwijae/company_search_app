@@ -60,6 +60,7 @@ class RecordsService {
     if (!project) return project;
     return {
       ...project,
+      primaryCompanyIsMisc: !!project.primaryCompanyIsMisc,
       attachment: this.hydrateAttachment(project.attachment),
     };
   }
@@ -106,6 +107,7 @@ class RecordsService {
       .map((row) => ({
         ...row,
         isPrimary: !!row.isPrimary,
+        isMisc: !!row.isMisc,
         active: row.active !== false,
       }));
   }
@@ -114,7 +116,12 @@ class RecordsService {
     if (!payload || !payload.name) {
       throw new Error('Company name is required');
     }
-    const id = this.repository.upsertCompany(payload);
+    const normalized = {
+      ...payload,
+      isPrimary: !!payload.isPrimary,
+      isMisc: !!payload.isMisc,
+    };
+    const id = this.repository.upsertCompany(normalized);
     if (!id) throw new Error('Failed to save company');
     persistRecordsDatabase();
     return this.repository.getCompanyById(id);
@@ -153,12 +160,18 @@ class RecordsService {
   }
 
   listProjects(filters = {}) {
+    const companyType = filters.companyType === 'misc'
+      ? 'misc'
+      : filters.companyType === 'our'
+        ? 'our'
+        : undefined;
     const normalizedFilters = {
       keyword: filters.keyword ? String(filters.keyword).trim() : undefined,
       categoryIds: normalizeIdArray(filters.categoryIds),
       companyIds: normalizeIdArray(filters.companyIds),
       startDateFrom: filters.startDateFrom || undefined,
       startDateTo: filters.startDateTo || undefined,
+      companyType,
     };
     return this.repository.listProjects(normalizedFilters)
       .map((project) => this.hydrateProject(project));

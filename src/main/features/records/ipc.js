@@ -58,7 +58,7 @@ function registerRecordsIpcHandlers({ ipcMain, recordsService }) {
       || BrowserWindow.getFocusedWindow();
     const saveTo = await dialog.showSaveDialog(ownerWindow, {
       title: '실적 DB 내보내기',
-      defaultPath: 'records-export.zip',
+      defaultPath: '실적관리.zip',
       filters: [{ name: '실적 데이터 묶음', extensions: ['zip'] }],
     });
     if (saveTo.canceled || !saveTo.filePath) {

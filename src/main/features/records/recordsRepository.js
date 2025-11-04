@@ -42,6 +42,7 @@ class RecordsRepository {
       name: row.name,
       alias: row.alias,
       isPrimary: toBoolean(row.is_primary),
+      isMisc: toBoolean(row.is_misc),
       active: toBoolean(row.active),
       sortOrder: row.sort_order,
       createdAt: row.created_at,
@@ -61,6 +62,7 @@ class RecordsRepository {
       name: row.name,
       alias: row.alias,
       isPrimary: toBoolean(row.is_primary),
+      isMisc: toBoolean(row.is_misc),
       active: toBoolean(row.active),
       sortOrder: row.sort_order,
       createdAt: row.created_at,
@@ -76,6 +78,7 @@ class RecordsRepository {
         name = ?,
         alias = ?,
         is_primary = ?,
+        is_misc = ?,
         active = ?,
         sort_order = ?,
         updated_at = datetime('now')
@@ -87,6 +90,7 @@ class RecordsRepository {
         payload.name,
         payload.alias || null,
         payload.isPrimary ? 1 : 0,
+        payload.isMisc ? 1 : 0,
         payload.active === false ? 0 : 1,
         sortOrder,
         payload.id,
@@ -100,12 +104,13 @@ class RecordsRepository {
     const nextOrder = Number.isFinite(payload.sortOrder)
       ? payload.sortOrder
       : getScalar(db, 'SELECT IFNULL(MAX(sort_order), -1) + 1 FROM companies');
-    const stmt = db.prepare(`INSERT INTO companies (name, alias, is_primary, active, sort_order, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`);
+    const stmt = db.prepare(`INSERT INTO companies (name, alias, is_primary, is_misc, active, sort_order, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`);
     stmt.bind([
       payload.name,
       payload.alias || null,
       payload.isPrimary ? 1 : 0,
+      payload.isMisc ? 1 : 0,
       payload.active === false ? 0 : 1,
       nextOrder,
     ]);
@@ -385,7 +390,7 @@ class RecordsRepository {
   getProjectById(projectId) {
     this.refreshDb();
     const db = this.db;
-    const stmt = db.prepare(`SELECT p.*, c.name AS primary_company_name
+    const stmt = db.prepare(`SELECT p.*, c.name AS primary_company_name, c.is_misc AS primary_company_is_misc
       FROM projects p
       LEFT JOIN companies c ON c.id = p.primary_company_id
       WHERE p.id = ?`);
@@ -426,6 +431,7 @@ class RecordsRepository {
       scopeNotes: row.scope_notes,
       primaryCompanyId: row.primary_company_id,
       primaryCompanyName: row.primary_company_name,
+      primaryCompanyIsMisc: toBoolean(row.primary_company_is_misc),
       categories,
       attachment: attachmentRow ? {
         displayName: attachmentRow.display_name,
@@ -457,6 +463,12 @@ class RecordsRepository {
       bindings.push(...filters.companyIds);
     }
 
+    if (filters.companyType === 'misc') {
+      whereParts.push('c.is_misc = 1');
+    } else if (filters.companyType === 'our') {
+      whereParts.push('(c.is_misc = 0 OR c.is_misc IS NULL)');
+    }
+
     if (Array.isArray(filters.categoryIds) && filters.categoryIds.length > 0) {
       const placeholders = filters.categoryIds.map(() => '?').join(', ');
       whereParts.push(`EXISTS (SELECT 1 FROM project_categories pc WHERE pc.project_id = p.id AND pc.category_id IN (${placeholders}))`);
@@ -473,7 +485,7 @@ class RecordsRepository {
       bindings.push(filters.startDateTo);
     }
 
-    let sql = `SELECT p.*, c.name AS primary_company_name
+    let sql = `SELECT p.*, c.name AS primary_company_name, c.is_misc AS primary_company_is_misc
       FROM projects p
       LEFT JOIN companies c ON c.id = p.primary_company_id`;
     if (whereParts.length > 0) {
@@ -498,6 +510,7 @@ class RecordsRepository {
       scopeNotes: row.scope_notes,
       primaryCompanyId: row.primary_company_id,
       primaryCompanyName: row.primary_company_name,
+      primaryCompanyIsMisc: toBoolean(row.primary_company_is_misc),
       categories: [],
       attachment: null,
       createdAt: row.created_at,
