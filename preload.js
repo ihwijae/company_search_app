@@ -70,5 +70,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     deleteCategory: (id) => ipcRenderer.invoke('records:delete-category', { id }),
     openAttachment: (projectId) => ipcRenderer.invoke('records:open-attachment', { projectId }),
     exportDatabase: () => ipcRenderer.invoke('records:export-database'),
+    importDatabase: () => ipcRenderer.invoke('records:import-database'),
   },
 });

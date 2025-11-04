@@ -321,6 +321,21 @@ export default function RecordsPage() {
     }
   }, []);
 
+  const handleImportDatabase = React.useCallback(async () => {
+    const confirmed = window.confirm('가져오기를 실행하면 현재 실적 데이터가 덮어써집니다. 계속할까요?');
+    if (!confirmed) return;
+    try {
+      const result = await recordsClient.importDatabase();
+      if (!result || result.canceled) return;
+      await fetchTaxonomies();
+      await fetchProjects();
+      const importedNote = result.attachmentsImported ? ' (첨부 포함)' : '';
+      alert(`실적 데이터를 가져왔습니다.${importedNote}`);
+    } catch (err) {
+      alert(err?.message || 'DB 파일을 가져올 수 없습니다.');
+    }
+  }, [fetchProjects, fetchTaxonomies]);
+
   return (
     <div className="app-shell">
       <Sidebar
@@ -369,6 +384,7 @@ export default function RecordsPage() {
                   <button type="button" className="btn-muted" onClick={clearFilters} disabled={loading}>초기화</button>
                 </div>
                 <div className="records-toolbar__actions">
+                  <button type="button" className="btn-soft" onClick={handleImportDatabase}>DB 가져오기</button>
                   <button type="button" className="btn-soft" onClick={handleExportDatabase}>DB 내보내기</button>
                   <button type="button" className="btn-soft" onClick={handleAddCompany}>법인 추가</button>
                   <button type="button" className="btn-primary" onClick={openCreateModal}>+ 실적 등록</button>

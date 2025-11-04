@@ -68,6 +68,22 @@ function registerRecordsIpcHandlers({ ipcMain, recordsService }) {
     return result;
   });
 
+  handle('records:import-database', async (_payload, event) => {
+    const ownerWindow = (event && event.sender && BrowserWindow.fromWebContents(event.sender))
+      || BrowserWindow.getFocusedWindow();
+    const selection = await dialog.showOpenDialog(ownerWindow, {
+      title: '실적 DB 가져오기',
+      filters: [{ name: '실적 데이터 묶음', extensions: ['zip'] }],
+      properties: ['openFile', 'openDirectory'],
+    });
+    if (selection.canceled || !selection.filePaths || !selection.filePaths.length) {
+      return { canceled: true };
+    }
+    const importPath = selection.filePaths[0];
+    const result = await recordsService.importDatabase(importPath);
+    return result;
+  });
+
   handle('records:list-companies', (payload) => recordsService.listCompanies(payload || {}));
   handle('records:save-company', (payload) => recordsService.saveCompany(payload));
   handle('records:delete-company', (payload) => {

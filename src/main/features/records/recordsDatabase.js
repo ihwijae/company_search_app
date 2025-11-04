@@ -258,9 +258,28 @@ function persistRecordsDatabase() {
   persistDatabase(context.db, context.path);
 }
 
+function disposeRecordsDatabase() {
+  if (context && context.db) {
+    try { context.db.close(); } catch (error) {
+      console.error('[MAIN][records] Failed to close records database:', error);
+    }
+  }
+  context = null;
+  contextPromise = null;
+}
+
+async function resetRecordsDatabase({ userDataDir } = {}) {
+  if (!userDataDir) {
+    throw new Error('userDataDir is required to reset records database.');
+  }
+  disposeRecordsDatabase();
+  return ensureRecordsDatabase({ userDataDir });
+}
+
 module.exports = {
   ensureRecordsDatabase,
   getRecordsDatabase,
   getRecordsDatabasePath,
   persistRecordsDatabase,
+  resetRecordsDatabase,
 };

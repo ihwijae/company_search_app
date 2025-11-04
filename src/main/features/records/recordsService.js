@@ -1,9 +1,10 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { shell } = require('electron');
 const AdmZip = require('adm-zip');
 const { RecordsRepository } = require('./recordsRepository');
-const { persistRecordsDatabase, getRecordsDatabasePath } = require('./recordsDatabase.js');
+const { persistRecordsDatabase, getRecordsDatabasePath, resetRecordsDatabase } = require('./recordsDatabase.js');
 
 const sanitizeFileName = (name) => {
   if (!name) return 'attachment';
@@ -266,6 +267,113 @@ class RecordsService {
       exportedPath: targetPath,
       includedAttachments: fs.existsSync(this.attachmentsRoot),
     };
+  }
+
+  async importDatabase(importPath) {
+    if (!importPath) throw new Error('importPath is required');
+    if (!fs.existsSync(importPath)) {
+      throw new Error('선택한 파일을 찾을 수 없습니다.');
+    }
+
+    const stat = fs.statSync(importPath);
+    let workingDir = importPath;
+    let cleanupDir = null;
+
+    const findFileRecursive = (baseDir, fileName) => {
+      const queue = [baseDir];
+      while (queue.length) {
+        const current = queue.shift();
+        const entries = fs.readdirSync(current, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(current, entry.name);
+          if (entry.isFile() && entry.name === fileName) {
+            return fullPath;
+          }
+          if (entry.isDirectory()) {
+            queue.push(fullPath);
+          }
+        }
+      }
+      return null;
+    };
+
+    const copyDirectory = (source, destination) => {
+      fs.mkdirSync(destination, { recursive: true });
+      const entries = fs.readdirSync(source, { withFileTypes: true });
+      entries.forEach((entry) => {
+        const srcPath = path.join(source, entry.name);
+        const destPath = path.join(destination, entry.name);
+        if (entry.isDirectory()) {
+          copyDirectory(srcPath, destPath);
+        } else if (entry.isFile()) {
+          fs.mkdirSync(path.dirname(destPath), { recursive: true });
+          fs.copyFileSync(srcPath, destPath);
+        }
+      });
+    };
+
+    try {
+      if (stat.isFile()) {
+        const zip = new AdmZip(importPath);
+        cleanupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'records-import-'));
+        zip.extractAllTo(cleanupDir, true);
+        workingDir = cleanupDir;
+      } else if (!stat.isDirectory()) {
+        throw new Error('지원하지 않는 가져오기 형식입니다.');
+      }
+
+      const sourceDbPath = findFileRecursive(workingDir, 'records.sqlite');
+      if (!sourceDbPath) {
+        throw new Error('가져오기 데이터에서 records.sqlite를 찾을 수 없습니다.');
+      }
+
+      const sourceRoot = path.dirname(sourceDbPath);
+      const sourceAttachmentsPath = path.join(sourceRoot, 'attachments');
+      const sourceMetaPath = path.join(sourceRoot, 'meta.json');
+
+      persistRecordsDatabase();
+
+      const targetDbPath = path.join(this.userDataDir, 'records.sqlite');
+      fs.mkdirSync(path.dirname(targetDbPath), { recursive: true });
+      fs.copyFileSync(sourceDbPath, targetDbPath);
+
+      if (fs.existsSync(this.attachmentsRoot)) {
+        fs.rmSync(this.attachmentsRoot, { recursive: true, force: true });
+      }
+      if (fs.existsSync(sourceAttachmentsPath)) {
+        copyDirectory(sourceAttachmentsPath, this.attachmentsRoot);
+      } else {
+        fs.mkdirSync(this.attachmentsRoot, { recursive: true });
+      }
+
+      const targetMetaPath = path.join(this.userDataDir, 'meta.json');
+      if (fs.existsSync(sourceMetaPath)) {
+        fs.copyFileSync(sourceMetaPath, targetMetaPath);
+      } else if (fs.existsSync(targetMetaPath)) {
+        fs.rmSync(targetMetaPath, { force: true });
+      }
+
+      await resetRecordsDatabase({ userDataDir: this.userDataDir });
+      this.migrateLegacyAttachmentPaths();
+
+      let attachmentsImported = false;
+      if (fs.existsSync(this.attachmentsRoot)) {
+        try {
+          attachmentsImported = fs.readdirSync(this.attachmentsRoot).length > 0;
+        } catch (error) {
+          console.warn('[MAIN][records] Failed to inspect attachments after import:', error);
+        }
+      }
+
+      return {
+        importedPath: importPath,
+        attachmentsImported,
+      };
+    } finally {
+      if (cleanupDir && fs.existsSync(cleanupDir)) {
+        try { fs.rmSync(cleanupDir, { recursive: true, force: true }); } catch {}
+      }
+    }
   }
 
   replaceAttachment(projectId, attachmentPayload) {
