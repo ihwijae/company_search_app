@@ -599,6 +599,7 @@ export function AgreementBoardProvider({ children }) {
         noticeDate={candidatesWindow.noticeDate || ''}
         industryLabel={candidatesWindow.industryLabel || ''}
         entryAmount={candidatesWindow.entryAmount || ''}
+        entryMode={candidatesWindow.entryMode || 'ratio'}
         baseAmount={candidatesWindow.baseAmount || ''}
         estimatedAmount={candidatesWindow.estimatedAmount || ''}
         bidAmount={candidatesWindow.bidAmount || ''}

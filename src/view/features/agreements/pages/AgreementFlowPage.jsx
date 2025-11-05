@@ -65,8 +65,10 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   const isLH = normalizedOwner === 'LH';
   const isMOIS = normalizedOwner === 'MOIS';
   const isMoisShareRange = isMOIS && menuKey === 'mois-30to50';
-  const entryMode = form.entryQualificationMode === 'sum' ? 'sum' : 'ratio';
-  const showTenderFields = isPPS || isMoisShareRange;
+  const entryMode = form.entryQualificationMode === 'sum'
+    ? 'sum'
+    : (form.entryQualificationMode === 'none' ? 'none' : 'ratio');
+  const showTenderFields = (isPPS || isMoisShareRange) && entryMode !== 'none';
   const [baseTouched, setBaseTouched] = React.useState(false);
   const [bidTouched, setBidTouched] = React.useState(false);
   const baseAutoRef = React.useRef('');
@@ -120,6 +122,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
 
   React.useEffect(() => {
     if (!(isPPS || isMoisShareRange)) return;
+    if (entryMode === 'none') return;
     setForm((prev) => {
       const next = { ...prev };
       let changed = false;
@@ -135,7 +138,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       }
       return changed ? next : prev;
     });
-  }, [isPPS, isMoisShareRange]);
+  }, [isPPS, isMoisShareRange, entryMode]);
 
   React.useEffect(() => {
     const groupSizeValue = Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3;
@@ -215,10 +218,12 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   const onChange = (key) => (event) => setForm((prev) => ({ ...prev, [key]: event.target.value }));
 
   const handleEntryModeSelect = (mode) => {
-    const normalized = mode === 'sum' ? 'sum' : 'ratio';
+    const normalized = mode === 'sum' ? 'sum' : (mode === 'none' ? 'none' : 'ratio');
     setForm((prev) => {
-      const current = prev.entryQualificationMode === 'sum' ? 'sum' : 'ratio';
-      if (current === normalized) return prev;
+      const currentResolved = prev.entryQualificationMode === 'sum'
+        ? 'sum'
+        : (prev.entryQualificationMode === 'none' ? 'none' : 'ratio');
+      if (currentResolved === normalized) return prev;
       return { ...prev, entryQualificationMode: normalized };
     });
   };
@@ -448,7 +453,9 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     const bidFromBoard = boardState.bidAmount || '';
     const ratioFromBoard = boardState.ratioBaseAmount || '';
     const entryFromBoard = boardState.entryAmount || '';
-    const modeFromBoard = boardState.entryMode === 'sum' ? 'sum' : 'ratio';
+    const modeFromBoard = boardState.entryMode === 'sum'
+      ? 'sum'
+      : (boardState.entryMode === 'none' ? 'none' : 'ratio');
     const bidRateFromBoard = boardState.bidRate || '';
     const adjustmentFromBoard = boardState.adjustmentRate || '';
 
@@ -599,7 +606,17 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                       step="60"
                     />
                   </Field>
-                  <Field label="참가자격금액"><AmountInput value={form.entryQualificationAmount} onChange={(value) => setForm((prev) => ({ ...prev, entryQualificationAmount: value }))} placeholder="원(=추정가격)" /></Field>
+                  <Field label="참가자격금액">
+                    {entryMode === 'none' ? (
+                      <span className="entry-amount-placeholder">참가자격 없음</span>
+                    ) : (
+                      <AmountInput
+                        value={form.entryQualificationAmount}
+                        onChange={(value) => setForm((prev) => ({ ...prev, entryQualificationAmount: value }))}
+                        placeholder="원(=추정가격)"
+                      />
+                    )}
+                  </Field>
                   <Field label="참가자격 산출 방식">
                     <div className="entry-mode-toggle">
                       <button
@@ -612,9 +629,14 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         className={`btn-sm ${entryMode === 'sum' ? 'btn-primary' : 'btn-soft'}`}
                         onClick={() => handleEntryModeSelect('sum')}
                       >단순합산제</button>
+                      <button
+                        type="button"
+                        className={`btn-sm ${entryMode === 'none' ? 'btn-primary' : 'btn-soft'}`}
+                        onClick={() => handleEntryModeSelect('none')}
+                      >없음</button>
                     </div>
                     <small style={{ display: 'block', marginTop: 6, color: '#64748b' }}>
-                      비율제는 지분을 곱해 합산하고, 단순합산제는 지분과 무관하게 시평액을 더합니다.
+                      비율제는 지분을 곱해 합산하고, 단순합산제는 지분과 무관하게 시평액을 더합니다. 참가자격이 없다면 없음 옵션을 선택하세요.
                     </small>
                   </Field>
                   {isLH && (

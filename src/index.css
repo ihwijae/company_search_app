@@ -677,7 +677,7 @@ body {
   flex-wrap: wrap;
   gap: 8px 12px;
   font-size: 13px;
-  color: #475569;
+  color: #64748b;
 }
 
 .agreement-board-header .entry-field,
@@ -689,6 +689,11 @@ body {
 
 .agreement-board-header .entry-field .filter-input {
   width: 140px;
+}
+
+.agreement-board-header .entry-field .entry-amount-placeholder {
+  width: 140px;
+  justify-content: center;
 }
 
 .entry-mode-toggle {
@@ -1251,6 +1256,10 @@ body {
 .agreement-board-member .member-empty {
   text-align: center;
   color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .pill-soft {
@@ -2804,4 +2813,18 @@ body {
   justify-content: flex-end;
   gap: 8px;
   padding-top: 8px;
+}
+
+.entry-amount-placeholder {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.4;
 }

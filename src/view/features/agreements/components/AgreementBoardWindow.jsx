@@ -607,9 +607,52 @@ export default function AgreementBoardWindow({
   const [exporting, setExporting] = React.useState(false);
   const [editableBidAmount, setEditableBidAmount] = React.useState(bidAmount);
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
+  const searchTargetRef = React.useRef(null);
+  const pendingPlacementRef = React.useRef(null);
+
+  const derivePendingPlacementHint = React.useCallback((picked) => {
+    if (!picked || typeof picked !== 'object') {
+      return { candidateId: null, matchBizNo: '', matchNameKey: '' };
+    }
+    const snapshot = picked.snapshot && typeof picked.snapshot === 'object' ? picked.snapshot : {};
+    const bizRaw = picked.bizNo
+      || snapshot.bizNo
+      || snapshot.BizNo
+      || snapshot['사업자번호']
+      || snapshot['사업자 번호']
+      || snapshot['사업자등록번호']
+      || '';
+    const matchBizNo = normalizeBizNo(bizRaw);
+    const candidateName = sanitizeCompanyName(
+      picked.name
+      || snapshot['검색된 회사']
+      || snapshot['업체명']
+      || snapshot['회사명']
+      || snapshot.companyName
+      || '',
+    );
+    let candidateId = picked.id || null;
+    if (!candidateId) {
+      if (matchBizNo) {
+        candidateId = `search:${matchBizNo}`;
+      } else if (candidateName) {
+        candidateId = `search:${candidateName}`;
+      }
+    }
+    return {
+      candidateId,
+      matchBizNo,
+      matchNameKey: candidateName ? candidateName.toLowerCase() : '',
+    };
+  }, []);
 
   const isLH = ownerId === 'LH';
-  const entryModeResolved = entryMode === 'sum' ? 'sum' : 'ratio';
+  const entryModeResolved = entryMode === 'sum' ? 'sum' : (entryMode === 'none' ? 'none' : 'ratio');
+  const safeGroupSize = React.useMemo(() => {
+    const parsed = Number(groupSize);
+    if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_GROUP_SIZE;
+    return Math.max(1, Math.floor(parsed));
+  }, [groupSize]);
 
   React.useEffect(() => {
     if (open) {
@@ -626,6 +669,7 @@ export default function AgreementBoardWindow({
   };
 
   const handleEntryAmountChange = (value) => {
+    if (entryMode === 'none') return;
     setEditableEntryAmount(value);
     if (onUpdateBoard) {
       onUpdateBoard({ entryAmount: value });
@@ -633,10 +677,17 @@ export default function AgreementBoardWindow({
   };
 
   const handleEntryModeChange = (mode) => {
-    if (mode !== 'ratio' && mode !== 'sum') return;
-    if (mode === entryModeResolved) return;
+    const normalized = mode === 'sum'
+      ? 'sum'
+      : (mode === 'none' ? 'none' : 'ratio');
+    if (normalized === entryModeResolved) return;
+    if (normalized === 'none') {
+      setEditableEntryAmount('');
+    }
     if (onUpdateBoard) {
-      onUpdateBoard({ entryMode: mode });
+      const payload = { entryMode: normalized };
+      if (normalized === 'none') payload.entryAmount = '';
+      onUpdateBoard(payload);
     }
   };
 
@@ -656,12 +707,14 @@ export default function AgreementBoardWindow({
     return Number.isFinite(parsed) ? parsed : 0;
   }, [groupCredibility]);
 
-  const openRepresentativeSearch = React.useCallback(() => {
+  const openRepresentativeSearch = React.useCallback((target = null) => {
+    searchTargetRef.current = target;
     setRepresentativeSearchOpen(true);
   }, []);
 
   const closeRepresentativeSearch = React.useCallback(() => {
     setRepresentativeSearchOpen(false);
+    searchTargetRef.current = null;
   }, []);
 
   React.useEffect(() => {
@@ -670,11 +723,48 @@ export default function AgreementBoardWindow({
     }
   }, [open]);
 
+  const placeEntryInSlot = React.useCallback((uid, groupIndex, slotIndex) => {
+    if (groupIndex == null || slotIndex == null) return;
+    setGroupAssignments((prev) => {
+      const next = prev.map((group) => group.slice());
+      next.forEach((group) => {
+        for (let i = 0; i < group.length; i += 1) {
+          if (group[i] === uid) group[i] = null;
+        }
+      });
+      while (next.length <= groupIndex) {
+        next.push(Array(safeGroupSize).fill(null));
+      }
+      const targetRow = next[groupIndex];
+      while (targetRow.length < safeGroupSize) targetRow.push(null);
+      targetRow[slotIndex] = uid;
+      return next;
+    });
+    setGroupShares((prev) => {
+      const next = prev.map((row) => row.slice());
+      while (next.length <= groupIndex) next.push([]);
+      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
+      next[groupIndex][slotIndex] = '';
+      return next;
+    });
+  }, [safeGroupSize]);
+
   const handleRepresentativePicked = React.useCallback((picked) => {
     if (!picked) return;
+    const target = searchTargetRef.current;
+    if (target) {
+      const hints = derivePendingPlacementHint(picked);
+      pendingPlacementRef.current = {
+        candidateId: hints.candidateId,
+        matchBizNo: hints.matchBizNo,
+        matchNameKey: hints.matchNameKey,
+        groupIndex: target.groupIndex,
+        slotIndex: target.slotIndex,
+      };
+    }
     onAddRepresentatives?.([picked]);
     closeRepresentativeSearch();
-  }, [onAddRepresentatives, closeRepresentativeSearch]);
+  }, [onAddRepresentatives, closeRepresentativeSearch, derivePendingPlacementHint]);
 
   const closeWindow = React.useCallback(() => {
     const win = boardWindowRef.current;
@@ -772,11 +862,6 @@ export default function AgreementBoardWindow({
 
   const pinnedSet = React.useMemo(() => new Set(pinned || []), [pinned]);
   const excludedSet = React.useMemo(() => new Set(excluded || []), [excluded]);
-  const safeGroupSize = React.useMemo(() => {
-    const parsed = Number(groupSize);
-    if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_GROUP_SIZE;
-    return Math.max(1, Math.floor(parsed));
-  }, [groupSize]);
 
   const representativeCandidatesRaw = React.useMemo(
     () => (candidates || []).filter((candidate) => candidate && !excludedSet.has(candidate.id)),
@@ -1352,12 +1437,18 @@ export default function AgreementBoardWindow({
         }, 0);
       }
 
-      const qualificationValue = entryModeForCalc === 'sum' ? sipyungSum : sipyungWeighted;
-      const qualificationReady = entryModeForCalc === 'sum'
-        ? (sipyungSum != null)
-        : (sipyungWeighted != null);
-      const qualificationLimit = entryLimitValue != null ? entryLimitValue : null;
-      const qualificationSatisfied = (qualificationLimit != null && qualificationLimit >= 0 && qualificationValue != null)
+      let qualificationValue = null;
+      let qualificationReady = false;
+      if (entryModeForCalc === 'sum') {
+        qualificationValue = sipyungSum;
+        qualificationReady = sipyungSum != null;
+      } else if (entryModeForCalc === 'ratio') {
+        qualificationValue = sipyungWeighted;
+        qualificationReady = sipyungWeighted != null;
+      }
+      const qualificationLimit = entryModeForCalc !== 'none' && entryLimitValue != null ? entryLimitValue : null;
+      const qualificationSatisfied = (entryModeForCalc !== 'none'
+        && qualificationLimit != null && qualificationLimit >= 0 && qualificationValue != null)
         ? qualificationValue >= (qualificationLimit - 1e-6)
         : null;
 
@@ -1457,37 +1548,37 @@ export default function AgreementBoardWindow({
         const totalMaxBase = managementMax + performanceMax + BID_SCORE;
         const totalMaxWithCred = credibilityEnabled ? totalMaxBase + (credibilityMax || 0) : totalMaxBase;
 
-        return {
-          ...metric,
-          shareReady,
-          shareComplete: metric.shareComplete,
-          managementScore,
-          managementMissing: metric.managementMissing,
-          performanceScore,
-          performanceMissing: metric.performanceMissing,
-          performanceRatio,
-          performanceBase: perfBase,
-          performanceBaseReady,
-          credibilityScore,
-          credibilityMax,
-          totalScoreBase,
-          totalScoreWithCred,
-          totalMaxBase,
-          totalMaxWithCred,
-          totalScore: totalScoreWithCred,
-          bidScore: metric.memberCount > 0 ? BID_SCORE : null,
-          managementMax,
-          performanceMax,
-          totalMax: totalMaxBase,
-          entryMode: metric.entryModeResolved,
-          entryLimit: metric.qualificationLimit,
-          entryValue: metric.qualificationValue,
-          entryReady: metric.qualificationReady,
-          entrySatisfied: metric.qualificationSatisfied,
-          sipyungSum: metric.sipyungSum,
-          sipyungWeighted: metric.sipyungWeighted,
-          sipyungMissing: metric.sipyungMissing,
-        };
+      return {
+        ...metric,
+        shareReady,
+        shareComplete: metric.shareComplete,
+        managementScore,
+        managementMissing: metric.managementMissing,
+        performanceScore,
+        performanceMissing: metric.performanceMissing,
+        performanceRatio,
+        performanceBase: perfBase,
+        performanceBaseReady,
+        credibilityScore,
+        credibilityMax,
+        totalScoreBase,
+        totalScoreWithCred,
+        totalMaxBase,
+        totalMaxWithCred,
+        totalScore: totalScoreWithCred,
+        bidScore: metric.memberCount > 0 ? BID_SCORE : null,
+        managementMax,
+        performanceMax,
+        totalMax: totalMaxBase,
+        entryMode: metric.entryModeResolved,
+        entryLimit: metric.qualificationLimit,
+        entryValue: metric.qualificationValue,
+        entryReady: metric.qualificationReady,
+        entrySatisfied: metric.qualificationSatisfied,
+        sipyungSum: metric.sipyungSum,
+        sipyungWeighted: metric.sipyungWeighted,
+        sipyungMissing: metric.sipyungMissing,
+      };
       }));
       if (!canceled) setGroupSummaries(results);
     };
@@ -1498,6 +1589,43 @@ export default function AgreementBoardWindow({
       canceled = true;
     };
   }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion]);
+
+  React.useEffect(() => {
+    const pending = pendingPlacementRef.current;
+    if (!pending) return;
+    const {
+      candidateId,
+      groupIndex,
+      slotIndex,
+      matchBizNo,
+      matchNameKey,
+    } = pending;
+    let targetUid = null;
+    for (const [uid, entry] of participantMap.entries()) {
+      if (candidateId && entry?.candidate?.id === candidateId) {
+        targetUid = uid;
+        break;
+      }
+      if (!entry?.candidate) continue;
+      if (!targetUid && matchBizNo) {
+        const candidateBiz = normalizeBizNo(getBizNo(entry.candidate));
+        if (candidateBiz && candidateBiz === matchBizNo) {
+          targetUid = uid;
+          break;
+        }
+      }
+      if (!targetUid && matchNameKey) {
+        const candidateNameKey = sanitizeCompanyName(getCompanyName(entry.candidate) || '').toLowerCase();
+        if (candidateNameKey && candidateNameKey === matchNameKey) {
+          targetUid = uid;
+          break;
+        }
+      }
+    }
+    if (!targetUid) return;
+    placeEntryInSlot(targetUid, groupIndex, slotIndex);
+    pendingPlacementRef.current = null;
+  }, [participantMap, placeEntryInSlot]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -1920,7 +2048,18 @@ export default function AgreementBoardWindow({
           onDragEnterCapture={handleDragOver(groupIndex, slotIndex)}
           onDropCapture={handleDropFromEvent(groupIndex, slotIndex)}
         >
-          <div className="member-empty">대표사/지역사를 끌어다 놓으세요</div>
+          <div className="member-empty">
+            <span>대표사/지역사를 끌어다 놓으세요</span>
+            <button
+              type="button"
+              className="btn-sm btn-soft"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                openRepresentativeSearch({ groupIndex, slotIndex });
+              }}
+            >업체 검색</button>
+          </div>
         </div>
       );
     }
@@ -1991,6 +2130,7 @@ export default function AgreementBoardWindow({
     if (qualityBadge) {
       tags.push({ key: 'quality', label: `품질 ${qualityBadge}`, className: 'quality' });
     }
+    const managerName = getCandidateManagerName(candidate);
 
     return (
       <div
@@ -2022,6 +2162,9 @@ export default function AgreementBoardWindow({
         </div>
         <div className="member-meta">
           <span>{getRegionLabel(candidate)}</span>
+          {managerName && (
+            <span className="badge-person" style={{ marginLeft: 8 }}>{managerName}</span>
+          )}
         </div>
         <div className="member-share">
           <label>지분(%)</label>
@@ -2150,7 +2293,7 @@ export default function AgreementBoardWindow({
       <button
         type="button"
         className="btn-sm btn-soft"
-        onClick={openRepresentativeSearch}
+        onClick={() => openRepresentativeSearch(null)}
         disabled={disabled}
       >대표사 찾기</button>
     );
@@ -2176,11 +2319,15 @@ export default function AgreementBoardWindow({
               <span><strong>추정금액</strong> {boardDetails.estimatedAmount || '-'}</span>
               <span className="entry-field">
                 <strong>참가자격</strong>
-                <AmountInput
-                  value={editableEntryAmount}
-                  onChange={handleEntryAmountChange}
-                  placeholder="0"
-                />
+                {entryModeResolved === 'none'
+                  ? <span className="entry-amount-placeholder">없음</span>
+                  : (
+                    <AmountInput
+                      value={editableEntryAmount}
+                      onChange={handleEntryAmountChange}
+                      placeholder="0"
+                    />
+                  )}
               </span>
               <span className="entry-mode-field">
                 <strong>산출방식</strong>
@@ -2195,6 +2342,11 @@ export default function AgreementBoardWindow({
                     className={`btn-sm ${entryModeResolved === 'sum' ? 'btn-primary' : 'btn-soft'}`}
                     onClick={() => handleEntryModeChange('sum')}
                   >단순합산제</button>
+                  <button
+                    type="button"
+                    className={`btn-sm ${entryModeResolved === 'none' ? 'btn-primary' : 'btn-soft'}`}
+                    onClick={() => handleEntryModeChange('none')}
+                  >없음</button>
                 </div>
               </span>
               {isLH ? (
@@ -2339,27 +2491,34 @@ export default function AgreementBoardWindow({
                     detailPills.push({ text, className });
                   });
 
-                  const entryModeLabel = summaryInfo.entryMode === 'sum' ? '합산제' : '비율제';
-                  if (summaryInfo.entryLimit != null && summaryInfo.entryLimit > 0) {
-                    if (!summaryInfo.entryReady) {
-                      detailPills.push({
-                        text: `참가자격 자료 확인 (${entryModeLabel})`,
-                        className: 'detail-pill detail-pill-alert',
-                      });
-                    } else if (summaryInfo.entryValue != null) {
-                      const satisfied = Boolean(summaryInfo.entrySatisfied);
-                      const symbol = satisfied ? '≥' : '<';
-                      const labelText = satisfied ? '참가자격 충족' : '참가자격 부족';
-                      detailPills.push({
-                        text: `${labelText} ${formatAmount(summaryInfo.entryValue)} ${symbol} ${formatAmount(summaryInfo.entryLimit)} (${entryModeLabel})`,
-                        className: `detail-pill ${satisfied ? 'detail-pill-ok' : 'detail-pill-alert'}`,
-                      });
-                    }
-                  } else if (summaryInfo.entryValue != null && summaryInfo.entryReady) {
+                  if (summaryInfo.entryMode === 'none') {
                     detailPills.push({
-                      text: `시평 합산 ${formatAmount(summaryInfo.entryValue)} (${entryModeLabel})`,
+                      text: '참가자격 없음',
                       className: 'detail-pill detail-pill-neutral',
                     });
+                  } else {
+                    const entryModeLabel = summaryInfo.entryMode === 'sum' ? '합산제' : '비율제';
+                    if (summaryInfo.entryLimit != null && summaryInfo.entryLimit > 0) {
+                      if (!summaryInfo.entryReady) {
+                        detailPills.push({
+                          text: `참가자격 자료 확인 (${entryModeLabel})`,
+                          className: 'detail-pill detail-pill-alert',
+                        });
+                      } else if (summaryInfo.entryValue != null) {
+                        const satisfied = Boolean(summaryInfo.entrySatisfied);
+                        const symbol = satisfied ? '≥' : '<';
+                        const labelText = satisfied ? '참가자격 충족' : '참가자격 부족';
+                        detailPills.push({
+                          text: `${labelText} ${formatAmount(summaryInfo.entryValue)} ${symbol} ${formatAmount(summaryInfo.entryLimit)} (${entryModeLabel})`,
+                          className: `detail-pill ${satisfied ? 'detail-pill-ok' : 'detail-pill-alert'}`,
+                        });
+                      }
+                    } else if (summaryInfo.entryValue != null && summaryInfo.entryReady) {
+                      detailPills.push({
+                        text: `시평 합산 ${formatAmount(summaryInfo.entryValue)} (${entryModeLabel})`,
+                        className: 'detail-pill detail-pill-neutral',
+                      });
+                    }
                   }
                   if (summaryInfo.shareSum != null) {
                     shareBadgeClass = summaryInfo.shareComplete ? 'share-total-ok' : 'share-total-warn';

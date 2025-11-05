@@ -120,6 +120,7 @@ export default function CandidatesModal({
   menuKey = '',
   fileType,
   entryAmount,
+  entryMode = 'ratio',
   baseAmount,
   estimatedAmount = '',
   bidAmount = '',
@@ -245,7 +246,8 @@ export default function CandidatesModal({
   const isLhOwner = normalizedOwnerId === 'LH';
   const isMoisOwner = normalizedOwnerId === 'MOIS';
   const isMoisShareRange = isMoisOwner && menuKey === 'mois-30to50';
-  const showTenderFields = isPpsOwner || isMoisShareRange;
+  const hasEntryLimit = entryMode !== 'none';
+  const showTenderFields = (isPpsOwner || isMoisShareRange) && hasEntryLimit;
   const showBizYearsMetrics = isPpsOwner || isLhOwner;
   const isMoisUnder30 = normalizedOwnerId === 'MOIS' && menuKey === 'mois-under30';
   const perfAmountValue = Number(perfectPerformanceAmount) > 0 ? String(perfectPerformanceAmount) : '';
@@ -279,11 +281,11 @@ const industryToLabel = (type) => {
     const initialBase = isMoisUnder30
       ? (perfAmountValue || estimatedAmount || entryAmount || '')
       : (baseAmount || '');
-    const initialRatio = isMoisUnder30 ? '' : (ratioBaseAmount || bidAmount || '');
-    const normalizedBidRate = bidRate || '';
-    const normalizedAdjustmentRate = adjustmentRate || '';
+    const initialRatio = (!hasEntryLimit || isMoisUnder30) ? '' : (ratioBaseAmount || bidAmount || '');
+    const normalizedBidRate = hasEntryLimit ? (bidRate || '') : '';
+    const normalizedAdjustmentRate = hasEntryLimit ? (adjustmentRate || '') : '';
     return {
-      entryAmount: entryAmount || '',
+      entryAmount: hasEntryLimit ? (entryAmount || '') : '',
       baseAmount: initialBase,
       dutyRegions: dutyRegions || [],
       ratioBase: initialRatio,
@@ -295,18 +297,20 @@ const industryToLabel = (type) => {
       excludeSingleBidEligible: defaultExcludeSingle,
       filterByRegion: true,
     };
-  }, [isMoisUnder30, perfAmountValue, estimatedAmount, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle]);
+  }, [isMoisUnder30, perfAmountValue, estimatedAmount, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle, hasEntryLimit]);
 
   const initKey = JSON.stringify({ ownerId, menuKey, entryAmount, baseAmount, estimatedAmount, perfAmountValue, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle, fileType });
   const didInitFetch = useRef(false);
   const ratioLabel = showTenderFields ? '투찰금액(지분 기준)' : '시공비율 기준금액';
   const displayEntryAmountRaw = formatAmount(params.entryAmount || entryAmount);
-  const displayEntryAmount = displayEntryAmountRaw !== '-' ? displayEntryAmountRaw : '';
+  const displayEntryAmount = hasEntryLimit
+    ? (displayEntryAmountRaw !== '-' ? displayEntryAmountRaw : '')
+    : '없음';
   const displayBaseAmountRaw = formatAmount(params.baseAmount || baseAmount);
   const displayBaseAmount = displayBaseAmountRaw !== '-' ? displayBaseAmountRaw : '';
-  const displayAdjustmentRate = formatPercentInput(params.adjustmentRate || adjustmentRate);
-  const displayBidRate = formatPercentInput(params.bidRate || bidRate);
-  const bidAmountSource = params.ratioBase || params.bidAmount || bidAmount;
+  const displayAdjustmentRate = hasEntryLimit ? formatPercentInput(params.adjustmentRate || adjustmentRate) : '';
+  const displayBidRate = hasEntryLimit ? formatPercentInput(params.bidRate || bidRate) : '';
+  const bidAmountSource = hasEntryLimit ? (params.ratioBase || params.bidAmount || bidAmount) : '';
   const displayBidAmountRaw = bidAmountSource ? formatAmount(bidAmountSource) : '';
   const displayBidAmount = displayBidAmountRaw !== '-' ? displayBidAmountRaw : '';
   useEffect(() => {
@@ -332,7 +336,8 @@ const industryToLabel = (type) => {
     if (!open) return;
     if (didInitFetch.current) return;
     const initial = buildInitialParams();
-    const hasAmounts = String(initial.entryAmount || '').trim() || String(initial.baseAmount || '').trim() || String(estimatedAmount || '').trim();
+    const entryAmountToken = hasEntryLimit ? String(initial.entryAmount || '').trim() : '';
+    const hasAmounts = entryAmountToken || String(initial.baseAmount || '').trim() || String(estimatedAmount || '').trim();
     const hasRegions = Array.isArray(initial.dutyRegions) && initial.dutyRegions.length > 0;
     if (hasAmounts || hasRegions) {
       didInitFetch.current = true;
@@ -525,9 +530,9 @@ const industryToLabel = (type) => {
     noticeDate: noticeDate ? formatDate(noticeDate) : '',
   }), [noticeNo, noticeTitle, industryLabel, fileType, baseAmount, estimatedAmount, bidAmount, bidRate, adjustmentRate, noticeDate]);
 
-  const headerAdjustmentRate = displayAdjustmentRate || details.adjustmentRate;
-  const headerBidRate = displayBidRate || details.bidRate;
-  const headerBidAmount = displayBidAmount || details.bidAmount;
+  const headerAdjustmentRate = hasEntryLimit ? (displayAdjustmentRate || details.adjustmentRate) : '';
+  const headerBidRate = hasEntryLimit ? (displayBidRate || details.bidRate) : '';
+  const headerBidAmount = hasEntryLimit ? (displayBidAmount || details.bidAmount) : '';
 
   const isMaxScore = (score, maxScore) => {
     const scoreNum = Number(score);
@@ -954,13 +959,21 @@ const industryToLabel = (type) => {
         <div className="panel candidates-window__filters" style={{ padding: 12, fontSize: 14 }}>
           <div className="filter-item">
             <label>입찰참가자격금액</label>
-            <AmountInput value={params.entryAmount} onChange={(v)=>setParams(p=>({ ...p, entryAmount: v }))} placeholder="숫자" />
+            <AmountInput
+              value={params.entryAmount}
+              onChange={(v)=>{
+                if (!hasEntryLimit) return;
+                setParams((p)=>({ ...p, entryAmount: v }));
+              }}
+              placeholder="숫자"
+              style={{ opacity: hasEntryLimit ? 1 : 0.5 }}
+            />
           </div>
           <div className="filter-item">
             <label>{isMoisUnder30 ? '실적만점금액' : '기초금액'}</label>
             <AmountInput value={params.baseAmount} onChange={(v)=>setParams(p=>({ ...p, baseAmount: v }))} placeholder="숫자" />
           </div>
-          {!isMoisUnder30 && (
+          {!isMoisUnder30 && hasEntryLimit && (
             <div className="filter-item">
               <label>{ratioLabel}</label>
               <AmountInput
