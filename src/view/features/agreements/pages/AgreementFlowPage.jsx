@@ -28,6 +28,7 @@ const createDefaultForm = () => {
     noticeDate: formattedToday,
     bidDeadline: '',
     entryQualificationAmount: '',
+    entryQualificationMode: 'ratio',
     regionDutyRate: '',
     teamSizeMax: '3',
   };
@@ -62,6 +63,10 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   const normalizedOwner = String(ownerId || 'LH').toUpperCase();
   const isPPS = normalizedOwner === 'PPS';
   const isLH = normalizedOwner === 'LH';
+  const isMOIS = normalizedOwner === 'MOIS';
+  const isMoisShareRange = isMOIS && menuKey === 'mois-30to50';
+  const entryMode = form.entryQualificationMode === 'sum' ? 'sum' : 'ratio';
+  const showTenderFields = isPPS || isMoisShareRange;
   const [baseTouched, setBaseTouched] = React.useState(false);
   const [bidTouched, setBidTouched] = React.useState(false);
   const baseAutoRef = React.useRef('');
@@ -114,21 +119,23 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   }, [storageKey, dutyRegions]);
 
   React.useEffect(() => {
-    if (!isPPS) return;
+    if (!(isPPS || isMoisShareRange)) return;
     setForm((prev) => {
       const next = { ...prev };
       let changed = false;
+      const defaultAdjustment = isPPS ? '101.4' : '88.745';
+      const defaultBid = isPPS ? '86.745' : '101.8';
       if (!String(prev.adjustmentRate || '').trim()) {
-        next.adjustmentRate = '101.4';
+        next.adjustmentRate = defaultAdjustment;
         changed = true;
       }
       if (!String(prev.bidRate || '').trim()) {
-        next.bidRate = '86.745';
+        next.bidRate = defaultBid;
         changed = true;
       }
       return changed ? next : prev;
     });
-  }, [isPPS]);
+  }, [isPPS, isMoisShareRange]);
 
   React.useEffect(() => {
     const groupSizeValue = Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3;
@@ -206,6 +213,15 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   }, [boardState?.rangeId, menuKey, updateBoard]);
 
   const onChange = (key) => (event) => setForm((prev) => ({ ...prev, [key]: event.target.value }));
+
+  const handleEntryModeSelect = (mode) => {
+    const normalized = mode === 'sum' ? 'sum' : 'ratio';
+    setForm((prev) => {
+      const current = prev.entryQualificationMode === 'sum' ? 'sum' : 'ratio';
+      if (current === normalized) return prev;
+      return { ...prev, entryQualificationMode: normalized };
+    });
+  };
 
   React.useEffect(() => {
     let canceled = false;
@@ -319,7 +335,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   }, [isPPS, form.estimatedPrice, form.baseAmount, baseTouched]);
 
   React.useEffect(() => {
-    if (!isPPS) return;
+    if (!showTenderFields) return;
     const base = parseAmount(form.baseAmount);
     const bidRateValue = parsePercent(form.bidRate);
     const adjustmentValue = parsePercent(form.adjustmentRate);
@@ -334,7 +350,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     if (current === (autoFormatted || '')) return;
     if (!autoFormatted && current === '') return;
     setForm((prev) => ({ ...prev, bidAmount: autoFormatted }));
-  }, [isPPS, form.baseAmount, form.bidRate, form.adjustmentRate, form.bidAmount, bidTouched]);
+  }, [showTenderFields, form.baseAmount, form.bidRate, form.adjustmentRate, form.bidAmount, bidTouched]);
 
   React.useEffect(() => {
     const prevIndustry = prevIndustryRef.current;
@@ -374,7 +390,9 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       && boardState?.bidAmount === (form.bidAmount || '')
       && boardState?.ratioBaseAmount === (form.ratioBaseAmount || '')
       && boardState?.bidRate === (form.bidRate || '')
-      && boardState?.adjustmentRate === (form.adjustmentRate || '');
+      && boardState?.adjustmentRate === (form.adjustmentRate || '')
+      && boardState?.entryAmount === (form.entryQualificationAmount || '')
+      && (boardState?.entryMode || 'ratio') === entryMode;
     if (same) return;
     updateBoard({
       noticeNo: form.noticeNo || '',
@@ -389,6 +407,8 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       ratioBaseAmount: form.ratioBaseAmount || '',
       bidRate: form.bidRate || '',
       adjustmentRate: form.adjustmentRate || '',
+      entryAmount: form.entryQualificationAmount || '',
+      entryMode,
     });
   }, [
     boardState?.open,
@@ -404,6 +424,8 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     boardState?.ratioBaseAmount,
     boardState?.bidRate,
     boardState?.adjustmentRate,
+    boardState?.entryAmount,
+    boardState?.entryMode,
     form.noticeNo,
     form.title,
     form.industry,
@@ -416,21 +438,44 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     form.ratioBaseAmount,
     form.bidRate,
     form.adjustmentRate,
+    form.entryQualificationAmount,
+    entryMode,
     updateBoard,
   ]);
 
   React.useEffect(() => {
     if (!boardState?.open) return;
     const bidFromBoard = boardState.bidAmount || '';
+    const ratioFromBoard = boardState.ratioBaseAmount || '';
+    const entryFromBoard = boardState.entryAmount || '';
+    const modeFromBoard = boardState.entryMode === 'sum' ? 'sum' : 'ratio';
+    const bidRateFromBoard = boardState.bidRate || '';
+    const adjustmentFromBoard = boardState.adjustmentRate || '';
+
+    const updates = {};
     if (bidFromBoard !== (form.bidAmount || '')) {
       setBidTouched(true);
-      setForm((prev) => ({ ...prev, bidAmount: bidFromBoard }));
+      updates.bidAmount = bidFromBoard;
     }
-    const ratioFromBoard = boardState.ratioBaseAmount || '';
     if (ratioFromBoard !== (form.ratioBaseAmount || '')) {
-      setForm((prev) => ({ ...prev, ratioBaseAmount: ratioFromBoard }));
+      updates.ratioBaseAmount = ratioFromBoard;
     }
-  }, [boardState?.open, boardState?.bidAmount, boardState?.ratioBaseAmount, form.bidAmount, form.ratioBaseAmount]);
+    if (entryFromBoard !== (form.entryQualificationAmount || '')) {
+      updates.entryQualificationAmount = entryFromBoard;
+    }
+    if (modeFromBoard !== entryMode) {
+      updates.entryQualificationMode = modeFromBoard;
+    }
+    if (bidRateFromBoard !== (form.bidRate || '')) {
+      updates.bidRate = bidRateFromBoard;
+    }
+    if (adjustmentFromBoard !== (form.adjustmentRate || '')) {
+      updates.adjustmentRate = adjustmentFromBoard;
+    }
+    if (Object.keys(updates).length > 0) {
+      setForm((prev) => ({ ...prev, ...updates }));
+    }
+  }, [boardState?.open, boardState?.bidAmount, boardState?.ratioBaseAmount, boardState?.entryAmount, boardState?.entryMode, boardState?.bidRate, boardState?.adjustmentRate, form.bidAmount, form.ratioBaseAmount, form.entryQualificationAmount, form.bidRate, form.adjustmentRate, entryMode]);
 
   const evalSingleBid = (company) => {
     if (!company) return;
@@ -555,6 +600,23 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                     />
                   </Field>
                   <Field label="참가자격금액"><AmountInput value={form.entryQualificationAmount} onChange={(value) => setForm((prev) => ({ ...prev, entryQualificationAmount: value }))} placeholder="원(=추정가격)" /></Field>
+                  <Field label="참가자격 산출 방식">
+                    <div className="entry-mode-toggle">
+                      <button
+                        type="button"
+                        className={`btn-sm ${entryMode === 'ratio' ? 'btn-primary' : 'btn-soft'}`}
+                        onClick={() => handleEntryModeSelect('ratio')}
+                      >비율제</button>
+                      <button
+                        type="button"
+                        className={`btn-sm ${entryMode === 'sum' ? 'btn-primary' : 'btn-soft'}`}
+                        onClick={() => handleEntryModeSelect('sum')}
+                      >단순합산제</button>
+                    </div>
+                    <small style={{ display: 'block', marginTop: 6, color: '#64748b' }}>
+                      비율제는 지분을 곱해 합산하고, 단순합산제는 지분과 무관하게 시평액을 더합니다.
+                    </small>
+                  </Field>
                   {isLH && (
                     <Field label="시공비율기준금액" style={{ gridColumn: '1 / -1' }}>
                       <AmountInput
@@ -564,7 +626,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                       />
                     </Field>
                   )}
-                  {isPPS && (
+                  {showTenderFields && (
                     <Field label="투찰율(%)">
                       <input
                         className="filter-input"
@@ -576,7 +638,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                       />
                     </Field>
                   )}
-                  {isPPS && (
+                  {showTenderFields && (
                     <Field label="사정율(%)">
                       <input
                         className="filter-input"
@@ -596,7 +658,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                       placeholder="금액 입력 시 자동 계산"
                     />
                   </Field>
-                  {isPPS && (
+                  {showTenderFields && (
                     <Field label="투찰금액" style={{ gridColumn: '1 / -1' }}>
                       <AmountInput
                         value={form.bidAmount}
@@ -681,6 +743,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         noticeDate: form.noticeDate,
                         industryLabel: form.industry,
                         entryAmount: form.entryQualificationAmount || '',
+                        entryMode,
                         baseAmount: form.baseAmount,
                         estimatedAmount: form.estimatedPrice,
                         ratioBaseAmount: form.ratioBaseAmount || form.bidAmount,
@@ -696,11 +759,24 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         initialCandidates: candidates,
                         initialPinned: pinned,
                         initialExcluded: excluded,
-                        onApply: ({ candidates: list, pinned: pinnedList, excluded: excludedList }) => {
+                        onApply: ({ candidates: list, pinned: pinnedList, excluded: excludedList, params: modalParams }) => {
                           if (mountedRef.current) {
                             setCandidates(list);
                             setPinned(pinnedList);
                             setExcluded(excludedList);
+                            if (modalParams && typeof modalParams === 'object') {
+                              setForm((prev) => ({
+                                ...prev,
+                                entryQualificationAmount: modalParams.entryAmount !== undefined ? modalParams.entryAmount : prev.entryQualificationAmount,
+                                baseAmount: modalParams.baseAmount !== undefined ? modalParams.baseAmount : prev.baseAmount,
+                                ratioBaseAmount: modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.ratioBaseAmount,
+                                bidAmount: modalParams.bidAmount !== undefined
+                                  ? modalParams.bidAmount
+                                  : (modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.bidAmount),
+                                bidRate: modalParams.bidRate !== undefined ? modalParams.bidRate : prev.bidRate,
+                                adjustmentRate: modalParams.adjustmentRate !== undefined ? modalParams.adjustmentRate : prev.adjustmentRate,
+                              }));
+                            }
                           }
                         },
                       });
@@ -732,8 +808,12 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         estimatedAmount: form.estimatedPrice || '',
                         bidAmount: form.bidAmount || '',
                         ratioBaseAmount: form.ratioBaseAmount || form.bidAmount || '',
+                        bidRate: form.bidRate || '',
+                        adjustmentRate: form.adjustmentRate || '',
                         bidDeadline: form.bidDeadline || '',
                         regionDutyRate: form.regionDutyRate || '',
+                        entryAmount: form.entryQualificationAmount || '',
+                        entryMode,
                       });
                     }}
                   >

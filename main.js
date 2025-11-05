@@ -1392,11 +1392,45 @@ try {
         singleBidEligible = Boolean(sbe && sbe.ok);
 
         if (isMoisUnder30) {
-          const perfTarget = perfectPerformanceNumber;
-          perfOk = perfTarget > 0 ? (perf5y >= perfTarget) : null;
-          moneyOk = null;
+          const entryNum = toNumber(entryAmount);
+          const perfTargetRaw = perfectPerformanceNumber;
+          const sipNumeric = parseNumeric(rating);
+          const perfNumeric = parseNumeric(perf5y);
+          const perfTarget = toNumber(perfTargetRaw);
+          const hasEntry = entryNum > 0;
+          const toLocale = (num) => (Number.isFinite(num) ? num.toLocaleString() : String(num || '0'));
+
+          const moneyCondition = hasEntry ? (sipNumeric >= entryNum) : true;
+          moneyOk = hasEntry ? moneyCondition : null;
+
+          const hasPerfTarget = perfTarget > 0;
+          const perfCondition = hasPerfTarget ? (perfNumeric >= perfTarget) : true;
+          perfOk = hasPerfTarget ? perfCondition : null;
+
           regionOk = matchesRegion(region);
-          singleBidEligible = perfOk === true && regionOk !== false;
+
+          const singleBidOk = moneyCondition && perfCondition && regionOk !== false;
+          const reasons = [];
+
+          if (hasEntry && moneyOk === false) {
+            reasons.push(`시평 미달: ${toLocale(sipNumeric)} < 참가자격 ${toLocale(entryNum)}`);
+          }
+          if (perfOk === false) {
+            reasons.push(`5년 실적 미달: ${toLocale(perfNumeric)} < 기초금액 ${toLocale(perfTarget)}`);
+          }
+          sbe = {
+            ok: singleBidOk,
+            reasons,
+            facts: {
+              sipyung: sipNumeric,
+              perf5y: perfNumeric,
+              entry: hasEntry ? entryNum : 0,
+              base: perfTarget,
+              region,
+            },
+          };
+
+          singleBidEligible = singleBidOk;
         }
 
         if (shouldExcludeSingle && singleBidEligible) continue;

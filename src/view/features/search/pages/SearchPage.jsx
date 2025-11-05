@@ -10,6 +10,21 @@ import { loadPersisted, savePersisted } from '../../../../shared/persistence.js'
 
 // --- Helper Functions & Components (변경 없음) ---
 const formatNumber = (value) => { if (!value && value !== 0) return ''; const num = String(value).replace(/,/g, ''); return isNaN(num) ? String(value) : Number(num).toLocaleString(); };
+const SIPYUNG_KEYS = ['시평', '시평액', '시평금액', '시평액(원)', '시평금액(원)', 'sipyung', 'rating'];
+const PERF5Y_KEYS = ['5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적', 'perf5y', 'performance5y'];
+
+const resolveCompanyValue = (company, keys) => {
+  if (!company || !Array.isArray(keys)) return null;
+  for (const key of keys) {
+    if (!key) continue;
+    if (!Object.prototype.hasOwnProperty.call(company, key)) continue;
+    const candidate = company[key];
+    if (candidate === undefined || candidate === null) continue;
+    if (typeof candidate === 'string' && candidate.trim() === '') continue;
+    return candidate;
+  }
+  return null;
+};
 const unformatNumber = (value) => String(value).replace(/,/g, '');
 const formatPercentage = (value) => { if (!value && value !== 0) return ''; const num = Number(String(value).replace(/,/g, '')); if (isNaN(num)) return String(value); return num.toFixed(2) + '%'; };
 const getStatusClass = (statusText) => { if (statusText === '최신') return 'status-latest'; if (statusText === '1년 경과') return 'status-warning'; if (statusText === '1년 이상 경과') return 'status-old'; return 'status-unknown'; };
@@ -901,6 +916,31 @@ function App() {
     }
   };
 
+  const handleCopyField = (label, keys) => {
+    if (!selectedCompany) return;
+    const raw = resolveCompanyValue(selectedCompany, keys);
+    if (raw === null) {
+      setDialog({ isOpen: true, message: `${label} 정보를 찾을 수 없습니다.` });
+      return;
+    }
+    const normalized = typeof raw === 'string' ? raw.trim() : raw;
+    if (normalized === '' || normalized === null || normalized === undefined) {
+      setDialog({ isOpen: true, message: `${label} 정보를 찾을 수 없습니다.` });
+      return;
+    }
+    const formatted = formatNumber(raw);
+    const output = formatted || String(raw ?? '');
+    const trimmedOutput = typeof output === 'string' ? output.trim() : String(output);
+    if (!trimmedOutput || trimmedOutput === 'N/A') {
+      setDialog({ isOpen: true, message: `${label} 정보를 찾을 수 없습니다.` });
+      return;
+    }
+    handleCopySingle(label, trimmedOutput);
+  };
+
+  const handleCopySipyung = () => handleCopyField('시평액', SIPYUNG_KEYS);
+  const handleCopyPerf5y = () => handleCopyField('5년 실적', PERF5Y_KEYS);
+
   useEffect(() => {
     const safeTotal = totalPages && totalPages > 0 ? totalPages : 1;
     const clamped = Math.min(Math.max(page, 1), safeTotal);
@@ -1174,7 +1214,11 @@ function App() {
                       {searchedFileType === 'tongsin' && '통신'}
                       {searchedFileType === 'sobang' && '소방'}
                     </div>
-                    <button onClick={handleCopyAll} className="copy-all-button">전체 복사</button>
+                    <div className="copy-button-group">
+                      <button onClick={handleCopySipyung} className="copy-button">시평액 복사</button>
+                      <button onClick={handleCopyPerf5y} className="copy-button">5년 실적 복사</button>
+                      <button onClick={handleCopyAll} className="copy-all-button">전체 복사</button>
+                    </div>
                   </div>
                 )}
                 {selectedCompany ? (

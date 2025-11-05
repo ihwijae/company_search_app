@@ -31,6 +31,8 @@ const initialState = {
   ratioBaseAmount: '',
   bidRate: '',
   adjustmentRate: '',
+  entryAmount: '',
+  entryMode: 'ratio',
 };
 
 const initialCandidatesWindowState = {
@@ -48,6 +50,7 @@ const initialCandidatesWindowState = {
   bidAmount: '',
   bidRate: '',
   adjustmentRate: '',
+  entryMode: 'ratio',
   perfectPerformanceAmount: 0,
   dutyRegions: [],
   ratioBaseAmount: '',
@@ -352,8 +355,14 @@ export function AgreementBoardProvider({ children }) {
       if (meta.industryLabel !== undefined) next.industryLabel = meta.industryLabel;
       if (meta.baseAmount !== undefined) next.baseAmount = meta.baseAmount;
       if (meta.estimatedAmount !== undefined) next.estimatedAmount = meta.estimatedAmount;
+      if (meta.entryAmount !== undefined) next.entryAmount = meta.entryAmount;
+      if (meta.entryMode !== undefined) next.entryMode = meta.entryMode;
       if (meta.bidDeadline !== undefined) next.bidDeadline = meta.bidDeadline;
       if (meta.regionDutyRate !== undefined) next.regionDutyRate = meta.regionDutyRate;
+      if (meta.bidAmount !== undefined) next.bidAmount = meta.bidAmount;
+      if (meta.bidRate !== undefined) next.bidRate = meta.bidRate;
+      if (meta.adjustmentRate !== undefined) next.adjustmentRate = meta.adjustmentRate;
+      if (meta.ratioBaseAmount !== undefined) next.ratioBaseAmount = meta.ratioBaseAmount;
       if (Array.isArray(meta.dutyRegions)) next.dutyRegions = [...meta.dutyRegions];
       if (meta.groupSize !== undefined) {
         const parsed = Number(meta.groupSize);
@@ -421,6 +430,7 @@ export function AgreementBoardProvider({ children }) {
       next.noticeDate = rest.noticeDate ?? base.noticeDate ?? '';
       next.industryLabel = rest.industryLabel ?? base.industryLabel ?? '';
       next.entryAmount = rest.entryAmount ?? base.entryAmount ?? '';
+      next.entryMode = rest.entryMode ?? base.entryMode ?? 'ratio';
       next.baseAmount = rest.baseAmount ?? base.baseAmount ?? '';
       next.estimatedAmount = rest.estimatedAmount ?? base.estimatedAmount ?? '';
       next.bidAmount = rest.bidAmount ?? base.bidAmount ?? '';
@@ -468,7 +478,20 @@ export function AgreementBoardProvider({ children }) {
       regionDutyRate: candidatesWindow.regionDutyRate,
       dutyRegions: Array.isArray(candidatesWindow.dutyRegions) ? candidatesWindow.dutyRegions : undefined,
       groupSize: candidatesWindow.groupSize,
+      entryAmount: candidatesWindow.entryAmount,
+      entryMode: candidatesWindow.entryMode,
+      ratioBaseAmount: candidatesWindow.ratioBaseAmount,
     };
+
+    if (payload && payload.params && typeof payload.params === 'object') {
+      const updates = payload.params;
+      if (updates.entryAmount !== undefined) meta.entryAmount = updates.entryAmount;
+      if (updates.baseAmount !== undefined) meta.baseAmount = updates.baseAmount;
+      if (updates.bidAmount !== undefined) meta.bidAmount = updates.bidAmount;
+      if (updates.ratioBase !== undefined) meta.ratioBaseAmount = updates.ratioBase;
+      if (updates.bidRate !== undefined) meta.bidRate = updates.bidRate;
+      if (updates.adjustmentRate !== undefined) meta.adjustmentRate = updates.adjustmentRate;
+    }
 
     applyCandidatesSelection(payload, meta);
 
@@ -554,6 +577,8 @@ export function AgreementBoardProvider({ children }) {
         noticeTitle={boardState.noticeTitle || ''}
         noticeDate={boardState.noticeDate || ''}
         industryLabel={boardState.industryLabel || ''}
+        entryAmount={boardState.entryAmount || ''}
+        entryMode={boardState.entryMode || 'ratio'}
         baseAmount={boardState.baseAmount || ''}
         estimatedAmount={boardState.estimatedAmount || ''}
         bidAmount={boardState.bidAmount || ''}

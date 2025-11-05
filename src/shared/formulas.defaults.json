@@ -865,13 +865,24 @@
                 "perf5y",
                 "baseAmount"
               ],
-              "maxScore": 13,
+              "maxScore": 15,
               "rounding": {
                 "method": "truncate",
                 "digits": 2
-              }
+              },
+              "mode": "ratio-bands",
+              "thresholds": [
+                { "minRatio": 0.8, "score": 15 },
+                { "minRatio": 0.7, "score": 13 },
+                { "minRatio": 0.6, "score": 11 },
+                { "minRatio": 0.5, "score": 9 },
+                { "minRatio": 0.4, "score": 7 },
+                { "minRatio": 0.3, "score": 5 },
+                { "minRatio": 0.2, "score": 3 },
+                { "minRatio": 0.0, "score": 1 }
+              ]
             },
-            "notes": "행안부 30억~50억 기본값 (임시)",
+            "notes": "행안부 30억~50억 기본값",
             "effectiveFrom": null,
             "effectiveTo": null
           }

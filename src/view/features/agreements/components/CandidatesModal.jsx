@@ -11,6 +11,57 @@ import {
 
 const DATE_PATTERN = /(\d{2,4})[.\-/년\s]*(\d{1,2})[.\-/월\s]*(\d{1,2})/;
 
+const SIPYUNG_RESOLVERS = [
+  (candidate) => candidate?.singleBidFacts?.sipyung,
+  (candidate) => candidate?.rating,
+  (candidate) => candidate?.sipyung,
+  (candidate) => candidate?.['시평'],
+  (candidate) => candidate?.['시평액'],
+  (candidate) => candidate?.['시평금액'],
+  (candidate) => candidate?.['시평액(원)'],
+  (candidate) => candidate?.['시평금액(원)'],
+  (candidate) => candidate?.['시평금액원'],
+];
+
+const PERF5Y_RESOLVERS = [
+  (candidate) => candidate?.singleBidFacts?.perf5y,
+  (candidate) => candidate?.perf5y,
+  (candidate) => candidate?.performance5y,
+  (candidate) => candidate?.['5년 실적'],
+  (candidate) => candidate?.['5년실적'],
+  (candidate) => candidate?.['5년 실적 합계'],
+  (candidate) => candidate?.['최근5년실적'],
+  (candidate) => candidate?.['최근5년실적합계'],
+  (candidate) => candidate?.['5년실적금액'],
+  (candidate) => candidate?.['최근5년시공실적'],
+];
+
+const resolveCandidateValue = (candidate, resolvers) => {
+  if (!candidate || !Array.isArray(resolvers)) return null;
+  for (const resolver of resolvers) {
+    try {
+      const value = resolver(candidate);
+      if (value === undefined || value === null) continue;
+      if (typeof value === 'string' && value.trim() === '') continue;
+      return value;
+    } catch (_) {
+      // ignore resolver errors and try next candidate field
+    }
+  }
+  return null;
+};
+
+const parseAmountValue = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  const cleaned = String(value).replace(/[^0-9.\-]/g, '').trim();
+  if (!cleaned) return null;
+  const numeric = Number(cleaned);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
 const parseDateToken = (input) => {
   if (!input) return null;
   const match = String(input).match(DATE_PATTERN);
@@ -90,7 +141,19 @@ export default function CandidatesModal({
   const popupRef = useRef(null);
   const [portalContainer, setPortalContainer] = useState(null);
   const [applying, setApplying] = useState(false);
-  const [params, setParams] = useState({ entryAmount: '', baseAmount: '', dutyRegions: [], ratioBase: '', minPct: '', maxPct: '', excludeSingleBidEligible: true, filterByRegion: true });
+  const [params, setParams] = useState({
+    entryAmount: '',
+    baseAmount: '',
+    dutyRegions: [],
+    ratioBase: '',
+    bidAmount: '',
+    bidRate: '',
+    adjustmentRate: '',
+    minPct: '',
+    maxPct: '',
+    excludeSingleBidEligible: true,
+    filterByRegion: true,
+  });
   const [loading, setLoading] = useState(false);
   const [list, setList] = useState([]);
   const [pinned, setPinned] = useState(new Set());
@@ -180,6 +243,9 @@ export default function CandidatesModal({
   const normalizedOwnerId = String(ownerId || '').toUpperCase();
   const isPpsOwner = normalizedOwnerId === 'PPS';
   const isLhOwner = normalizedOwnerId === 'LH';
+  const isMoisOwner = normalizedOwnerId === 'MOIS';
+  const isMoisShareRange = isMoisOwner && menuKey === 'mois-30to50';
+  const showTenderFields = isPpsOwner || isMoisShareRange;
   const showBizYearsMetrics = isPpsOwner || isLhOwner;
   const isMoisUnder30 = normalizedOwnerId === 'MOIS' && menuKey === 'mois-under30';
   const perfAmountValue = Number(perfectPerformanceAmount) > 0 ? String(perfectPerformanceAmount) : '';
@@ -214,20 +280,35 @@ const industryToLabel = (type) => {
       ? (perfAmountValue || estimatedAmount || entryAmount || '')
       : (baseAmount || '');
     const initialRatio = isMoisUnder30 ? '' : (ratioBaseAmount || bidAmount || '');
+    const normalizedBidRate = bidRate || '';
+    const normalizedAdjustmentRate = adjustmentRate || '';
     return {
       entryAmount: entryAmount || '',
       baseAmount: initialBase,
       dutyRegions: dutyRegions || [],
       ratioBase: initialRatio,
+      bidAmount: initialRatio,
+      bidRate: normalizedBidRate,
+      adjustmentRate: normalizedAdjustmentRate,
       minPct: '',
       maxPct: '',
       excludeSingleBidEligible: defaultExcludeSingle,
       filterByRegion: true,
     };
-  }, [isMoisUnder30, perfAmountValue, estimatedAmount, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, bidAmount, defaultExcludeSingle]);
+  }, [isMoisUnder30, perfAmountValue, estimatedAmount, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle]);
 
   const initKey = JSON.stringify({ ownerId, menuKey, entryAmount, baseAmount, estimatedAmount, perfAmountValue, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle, fileType });
   const didInitFetch = useRef(false);
+  const ratioLabel = showTenderFields ? '투찰금액(지분 기준)' : '시공비율 기준금액';
+  const displayEntryAmountRaw = formatAmount(params.entryAmount || entryAmount);
+  const displayEntryAmount = displayEntryAmountRaw !== '-' ? displayEntryAmountRaw : '';
+  const displayBaseAmountRaw = formatAmount(params.baseAmount || baseAmount);
+  const displayBaseAmount = displayBaseAmountRaw !== '-' ? displayBaseAmountRaw : '';
+  const displayAdjustmentRate = formatPercentInput(params.adjustmentRate || adjustmentRate);
+  const displayBidRate = formatPercentInput(params.bidRate || bidRate);
+  const bidAmountSource = params.ratioBase || params.bidAmount || bidAmount;
+  const displayBidAmountRaw = bidAmountSource ? formatAmount(bidAmountSource) : '';
+  const displayBidAmount = displayBidAmountRaw !== '-' ? displayBidAmountRaw : '';
   useEffect(() => {
     if (!open) return;
     const initial = buildInitialParams();
@@ -319,13 +400,13 @@ const industryToLabel = (type) => {
     return `${percent.toFixed(1).replace(/\.0$/, '')}%`;
   };
 
-  const formatPercentInput = (value) => {
+  function formatPercentInput(value) {
     if (value === null || value === undefined) return '';
     const numeric = Number(String(value).replace(/[^0-9.\-]/g, ''));
     if (!Number.isFinite(numeric)) return '';
     const str = numeric.toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
     return `${str}%`;
-  };
+  }
 
   const resolveSingleBidReasons = useCallback((candidate) => {
     if (!candidate) return [];
@@ -375,14 +456,62 @@ const industryToLabel = (type) => {
     }
   }, []);
 
-  const formatAmount = (value) => {
+  function formatAmount(value) {
     if (value === null || value === undefined) return '-';
     const cleaned = String(value).replace(/[^0-9.\-]/g, '').trim();
     if (!cleaned) return '-';
     const num = Number(cleaned);
     if (!Number.isFinite(num)) return '-';
     try { return num.toLocaleString('ko-KR'); } catch { return String(num); }
-  };
+  }
+
+  const copyPlainText = useCallback(async (text) => {
+    if (typeof window === 'undefined') return false;
+    const payload = String(text ?? '');
+    try {
+      if (window.electronAPI?.clipboardWriteText) {
+        const result = await window.electronAPI.clipboardWriteText(payload);
+        if (!result?.success) throw new Error(result?.message || 'copy failed');
+      } else if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+      } else {
+        throw new Error('clipboard unavailable');
+      }
+      return true;
+    } catch (err) {
+      console.error('[CandidatesModal] clipboard copy failed', err);
+      return false;
+    }
+  }, []);
+
+  const handleCopyAmountField = useCallback(async (candidate, resolvers, label) => {
+    if (!candidate) return;
+    const resolved = resolveCandidateValue(candidate, resolvers);
+    const numeric = parseAmountValue(resolved);
+    if (numeric === null) {
+      window.alert(`${label} 정보를 찾을 수 없습니다.`);
+      return;
+    }
+    const formatted = formatAmount(numeric);
+    if (!formatted || formatted === '-') {
+      window.alert(`${label} 정보를 찾을 수 없습니다.`);
+      return;
+    }
+    const ok = await copyPlainText(formatted);
+    if (ok) {
+      window.alert(`${label}이(가) 복사되었습니다.`);
+    } else {
+      window.alert('복사에 실패했습니다. 다시 시도해 주세요.');
+    }
+  }, [copyPlainText]);
+
+  const handleCopySipyungField = useCallback((candidate) => {
+    handleCopyAmountField(candidate, SIPYUNG_RESOLVERS, '시평액');
+  }, [handleCopyAmountField]);
+
+  const handleCopyPerf5yField = useCallback((candidate) => {
+    handleCopyAmountField(candidate, PERF5Y_RESOLVERS, '5년 실적');
+  }, [handleCopyAmountField]);
 
   const details = useMemo(() => ({
     noticeNo,
@@ -395,6 +524,10 @@ const industryToLabel = (type) => {
     adjustmentRate: formatPercentInput(adjustmentRate),
     noticeDate: noticeDate ? formatDate(noticeDate) : '',
   }), [noticeNo, noticeTitle, industryLabel, fileType, baseAmount, estimatedAmount, bidAmount, bidRate, adjustmentRate, noticeDate]);
+
+  const headerAdjustmentRate = displayAdjustmentRate || details.adjustmentRate;
+  const headerBidRate = displayBidRate || details.bidRate;
+  const headerBidAmount = displayBidAmount || details.bidAmount;
 
   const isMaxScore = (score, maxScore) => {
     const scoreNum = Number(score);
@@ -765,6 +898,14 @@ const industryToLabel = (type) => {
         candidates: list,
         pinned: Array.from(pinned),
         excluded: Array.from(excluded),
+        params: {
+          entryAmount: params.entryAmount,
+          baseAmount: params.baseAmount,
+          ratioBase: params.ratioBase,
+          bidAmount: params.bidAmount,
+          bidRate: params.bidRate,
+          adjustmentRate: params.adjustmentRate,
+        },
       });
       if (result && typeof result.then === 'function') {
         await result;
@@ -774,7 +915,7 @@ const industryToLabel = (type) => {
     } finally {
       setApplying(false);
     }
-  }, [onApply, list, pinned, excluded, onClose]);
+  }, [onApply, list, pinned, excluded, params, onClose]);
 
   if (!open || !portalContainer) return null;
 
@@ -791,12 +932,13 @@ const industryToLabel = (type) => {
               {details.noticeDate && (
                 <span><strong>공고일</strong> {details.noticeDate}</span>
               )}
-              <span><strong>기초금액</strong> {details.baseAmount || '-'}</span>
+              <span><strong>기초금액</strong> {(displayBaseAmount || details.baseAmount || '-')}</span>
               <span><strong>추정금액</strong> {details.estimatedPrice || '-'}</span>
-              {details.adjustmentRate && <span><strong>투찰율</strong> {details.adjustmentRate}</span>}
-              {details.bidRate && <span><strong>사정율</strong> {details.bidRate}</span>}
-              {details.bidAmount && (
-                <span><strong>투찰금액</strong> {details.bidAmount}</span>
+              <span><strong>참가자격</strong> {displayEntryAmount || '-'}</span>
+              {headerAdjustmentRate && <span><strong>투찰율</strong> {headerAdjustmentRate}</span>}
+              {headerBidRate && <span><strong>사정율</strong> {headerBidRate}</span>}
+              {headerBidAmount && (
+                <span><strong>투찰금액</strong> {headerBidAmount}</span>
               )}
             </div>
           </div>
@@ -820,8 +962,42 @@ const industryToLabel = (type) => {
           </div>
           {!isMoisUnder30 && (
             <div className="filter-item">
-              <label>{isPpsOwner ? '투찰금액(지분 기준)' : '시공비율 기준금액'}</label>
-              <AmountInput value={params.ratioBase} onChange={(v)=>setParams(p=>({ ...p, ratioBase: v }))} placeholder="숫자" />
+              <label>{ratioLabel}</label>
+              <AmountInput
+                value={params.ratioBase}
+                onChange={(v)=>setParams((p)=>({ ...p, ratioBase: v, bidAmount: v }))}
+                placeholder="숫자"
+              />
+            </div>
+          )}
+          {showTenderFields && (
+            <div className="filter-item">
+              <label>투찰율(%)</label>
+              <input
+                className="filter-input"
+                inputMode="decimal"
+                value={params.adjustmentRate}
+                onChange={(e)=>{
+                  const value = e.target.value.replace(/[^0-9.\-]/g, '');
+                  setParams((p)=>({ ...p, adjustmentRate: value }));
+                }}
+                placeholder="예: 88.745"
+              />
+            </div>
+          )}
+          {showTenderFields && (
+            <div className="filter-item">
+              <label>사정율(%)</label>
+              <input
+                className="filter-input"
+                inputMode="decimal"
+                value={params.bidRate}
+                onChange={(e)=>{
+                  const value = e.target.value.replace(/[^0-9.\-]/g, '');
+                  setParams((p)=>({ ...p, bidRate: value }));
+                }}
+                placeholder="예: 101.8"
+              />
             </div>
           )}
           {!isMoisUnder30 && (
@@ -1139,7 +1315,9 @@ const industryToLabel = (type) => {
                           ))}
                         </div>
                       )}
-                      <div className="details-actions" style={{ marginTop: 6 }}>
+                      <div className="details-actions" style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <button className="btn-sm btn-soft" onClick={()=>handleCopySipyungField(c)}>시평액 복사</button>
+                        <button className="btn-sm btn-soft" onClick={()=>handleCopyPerf5yField(c)}>5년 실적 복사</button>
                         <button className="btn-sm btn-soft" onClick={()=>handleCopyCandidate(c, pct)}>복사</button>
                         <button className={pinnedView.has(c.id) ? 'btn-sm primary' : 'btn-sm btn-soft'} onClick={()=>onTogglePin(c.id)} disabled={isAuto}>{pinnedView.has(c.id) ? (isAuto ? '선택(자동)' : '선택 해제') : '선택'}</button>
                         <button className={excluded.has(c.id) ? 'btn-sm btn-danger' : 'btn-sm btn-muted'} onClick={()=>onToggleExclude(c.id)}>{excluded.has(c.id) ? '제외 해제' : '제외'}</button>

@@ -11,6 +11,7 @@ const MIN_GROUPS = 4;
 const BID_SCORE = 65;
 const MANAGEMENT_SCORE_MAX = 15;
 const PERFORMANCE_DEFAULT_MAX = 13;
+const PERFORMANCE_MOIS_DEFAULT_MAX = 15;
 const PERFORMANCE_CAP_VERSION = 2;
 function Field({ label, children, style = {} }) {
   return (
@@ -21,11 +22,18 @@ function Field({ label, children, style = {} }) {
   );
 }
 
-const resolvePerformanceCap = (value) => {
-  if (value === null || value === undefined) return PERFORMANCE_DEFAULT_MAX;
+const resolveOwnerPerformanceMax = (ownerId) => {
+  const upper = String(ownerId || '').toUpperCase();
+  return upper === 'MOIS' ? PERFORMANCE_MOIS_DEFAULT_MAX : PERFORMANCE_DEFAULT_MAX;
+};
+
+const resolvePerformanceCap = (value, fallback = PERFORMANCE_DEFAULT_MAX) => {
+  if (value === null || value === undefined) return fallback;
   const parsed = Number(value);
-  if (Number.isFinite(parsed) && parsed > 0) return parsed;
-  return PERFORMANCE_DEFAULT_MAX;
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return Math.max(parsed, fallback);
+  }
+  return fallback;
 };
 
 const resolveTemplateKey = (ownerId, rangeId) => {
@@ -160,11 +168,32 @@ const SHARE_KEYWORDS = [['지분', 'share', '비율']];
 const PERFORMANCE_DIRECT_KEYS = ['_performance5y', 'performance5y', 'perf5y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적'];
 const PERFORMANCE_KEYWORDS = [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적']];
 
+const SIPYUNG_DIRECT_KEYS = ['_sipyung', 'sipyung', '시평', '시평액', '시평금액', '시평액(원)', '시평금액(원)', '기초금액', '기초금액(원)'];
+const SIPYUNG_KEYWORDS = [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']];
+
 const getCandidateNumericValue = (candidate, directKeys = [], keywordGroups = []) => {
   if (!candidate || typeof candidate !== 'object') return null;
   const value = extractAmountValue(candidate, directKeys, keywordGroups);
   const parsed = toNumber(value);
   return parsed;
+};
+
+const getCandidateSipyungAmount = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return null;
+  if (candidate._agreementSipyungAmount != null) {
+    const cached = toNumber(candidate._agreementSipyungAmount);
+    if (cached != null) return cached;
+  }
+  const raw = candidate._sipyung ?? extractAmountValue(candidate, SIPYUNG_DIRECT_KEYS, SIPYUNG_KEYWORDS);
+  const parsed = toNumber(raw);
+  if (parsed != null) {
+    candidate._agreementSipyungAmount = parsed;
+    return parsed;
+  }
+  if (raw != null) {
+    candidate._agreementSipyungAmount = raw;
+  }
+  return null;
 };
 
 const getCandidateCreditGrade = (candidate) => {
@@ -238,6 +267,13 @@ const formatScore = (score) => {
     try { return value.toLocaleString('ko-KR'); } catch (err) { return String(value); }
   }
   return value.toFixed(3);
+};
+
+const formatPlainAmount = (value) => {
+  const number = toNumber(value);
+  if (number === null) return '';
+  const rounded = Math.round(number);
+  return Number.isFinite(rounded) ? String(rounded) : String(number);
 };
 
 const formatAmount = (value) => {
@@ -524,6 +560,8 @@ export default function AgreementBoardWindow({
   noticeTitle = '',
   noticeDate = '',
   industryLabel = '',
+  entryAmount = '',
+  entryMode = 'ratio',
   baseAmount = '',
   estimatedAmount = '',
   bidAmount = '',
@@ -551,31 +589,54 @@ export default function AgreementBoardWindow({
   const credibilityEnabled = credibilityConfig.enabled;
   const ownerCredibilityMax = credibilityConfig.max;
   const candidateScoreCacheRef = React.useRef(new Map());
-  const performanceCapRef = React.useRef(PERFORMANCE_DEFAULT_MAX);
-  const getPerformanceCap = () => resolvePerformanceCap(performanceCapRef.current);
+  const performanceCapRef = React.useRef(resolveOwnerPerformanceMax(ownerKeyUpper));
+  const getPerformanceCap = React.useCallback(() => (
+    resolvePerformanceCap(performanceCapRef.current, resolveOwnerPerformanceMax(ownerKeyUpper))
+  ), [ownerKeyUpper]);
   const updatePerformanceCap = (value) => {
-    const resolved = resolvePerformanceCap(value);
+    const resolved = resolvePerformanceCap(value, resolveOwnerPerformanceMax(ownerKeyUpper));
     performanceCapRef.current = resolved;
     return resolved;
   };
+  React.useEffect(() => {
+    performanceCapRef.current = resolveOwnerPerformanceMax(ownerKeyUpper);
+  }, [ownerKeyUpper]);
   const [candidateMetricsVersion, setCandidateMetricsVersion] = React.useState(0);
   const prevAssignmentsRef = React.useRef(groupAssignments);
   const [representativeSearchOpen, setRepresentativeSearchOpen] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
   const [editableBidAmount, setEditableBidAmount] = React.useState(bidAmount);
+  const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
 
   const isLH = ownerId === 'LH';
+  const entryModeResolved = entryMode === 'sum' ? 'sum' : 'ratio';
 
   React.useEffect(() => {
     if (open) {
       setEditableBidAmount(bidAmount);
+      setEditableEntryAmount(entryAmount);
     }
-  }, [bidAmount, open]);
+  }, [bidAmount, entryAmount, open]);
 
   const handleBidAmountChange = (value) => {
     setEditableBidAmount(value);
     if (onUpdateBoard) {
       onUpdateBoard({ bidAmount: value });
+    }
+  };
+
+  const handleEntryAmountChange = (value) => {
+    setEditableEntryAmount(value);
+    if (onUpdateBoard) {
+      onUpdateBoard({ entryAmount: value });
+    }
+  };
+
+  const handleEntryModeChange = (mode) => {
+    if (mode !== 'ratio' && mode !== 'sum') return;
+    if (mode === entryModeResolved) return;
+    if (onUpdateBoard) {
+      onUpdateBoard({ entryMode: mode });
     }
   };
 
@@ -1215,6 +1276,10 @@ export default function AgreementBoardWindow({
     const ownerKey = String(ownerId || 'lh').toLowerCase();
     const performanceBaseReady = perfBase != null && perfBase > 0;
 
+    const entryLimitValue = parseAmountValue(entryAmount);
+    const entryModeForCalc = entryModeResolved;
+    const ownerPerformanceFallback = resolveOwnerPerformanceMax(ownerKeyUpper);
+
     const metrics = groupAssignments.map((memberIds, groupIndex) => {
       const members = memberIds.map((uid, slotIndex) => {
         if (!uid) return null;
@@ -1225,11 +1290,13 @@ export default function AgreementBoardWindow({
         const managementScore = getCandidateManagementScore(candidate);
         const performanceAmount = getCandidatePerformanceAmount(candidate);
         const credibilityBonus = credibilityEnabled ? getCredibilityValue(groupIndex, slotIndex) : 0;
+        const sipyungAmount = getCandidateSipyungAmount(candidate);
         return {
           sharePercent,
           managementScore,
           performanceAmount,
           credibility: credibilityBonus,
+          sipyungAmount,
         };
       }).filter(Boolean);
 
@@ -1252,6 +1319,7 @@ export default function AgreementBoardWindow({
 
       const managementMissing = normalizedMembers.some((member) => member.managementScore == null);
       const performanceMissing = normalizedMembers.some((member) => member.performanceAmount == null);
+      const sipyungMissing = normalizedMembers.some((member) => member.sipyungAmount == null);
       const aggregatedCredibility = credibilityEnabled
         ? (shareValid
           ? normalizedMembers.reduce((acc, member) => acc + (member.credibility || 0) * member.weight, 0)
@@ -1266,6 +1334,33 @@ export default function AgreementBoardWindow({
         ? normalizedMembers.reduce((acc, member) => acc + (member.performanceAmount || 0) * member.weight, 0)
         : null;
 
+      let sipyungSum = null;
+      if (!sipyungMissing && normalizedMembers.length > 0) {
+        sipyungSum = normalizedMembers.reduce((acc, member) => {
+          const value = Number(member.sipyungAmount);
+          return Number.isFinite(value) ? acc + value : acc;
+        }, 0);
+      }
+
+      let sipyungWeighted = null;
+      if (!sipyungMissing && shareValid && normalizedMembers.length > 0) {
+        sipyungWeighted = normalizedMembers.reduce((acc, member) => {
+          const value = Number(member.sipyungAmount);
+          const weight = Number(member.weight);
+          if (!Number.isFinite(value) || !Number.isFinite(weight)) return acc;
+          return acc + (value * weight);
+        }, 0);
+      }
+
+      const qualificationValue = entryModeForCalc === 'sum' ? sipyungSum : sipyungWeighted;
+      const qualificationReady = entryModeForCalc === 'sum'
+        ? (sipyungSum != null)
+        : (sipyungWeighted != null);
+      const qualificationLimit = entryLimitValue != null ? entryLimitValue : null;
+      const qualificationSatisfied = (qualificationLimit != null && qualificationLimit >= 0 && qualificationValue != null)
+        ? qualificationValue >= (qualificationLimit - 1e-6)
+        : null;
+
       return {
         groupIndex,
         memberCount: members.length,
@@ -1278,6 +1373,14 @@ export default function AgreementBoardWindow({
         performanceAmount: aggregatedPerformanceAmount,
         performanceMissing,
         credibilityScore: aggregatedCredibility,
+        sipyungSum,
+        sipyungWeighted,
+        sipyungMissing,
+        entryModeResolved: entryModeForCalc,
+        qualificationLimit,
+        qualificationValue,
+        qualificationReady,
+        qualificationSatisfied,
       };
     });
 
@@ -1340,7 +1443,7 @@ export default function AgreementBoardWindow({
 
         const perfCapCurrent = getPerformanceCap();
         const managementMax = MANAGEMENT_SCORE_MAX;
-        const performanceMax = perfCapCurrent || PERFORMANCE_DEFAULT_MAX;
+        const performanceMax = perfCapCurrent || ownerPerformanceFallback;
         const credibilityScore = (credibilityEnabled && shareReady && metric.credibilityScore != null)
           ? clampScore(metric.credibilityScore, ownerCredibilityMax)
           : (credibilityEnabled && shareReady ? 0 : (credibilityEnabled ? null : null));
@@ -1376,6 +1479,14 @@ export default function AgreementBoardWindow({
           managementMax,
           performanceMax,
           totalMax: totalMaxBase,
+          entryMode: metric.entryModeResolved,
+          entryLimit: metric.qualificationLimit,
+          entryValue: metric.qualificationValue,
+          entryReady: metric.qualificationReady,
+          entrySatisfied: metric.qualificationSatisfied,
+          sipyungSum: metric.sipyungSum,
+          sipyungWeighted: metric.sipyungWeighted,
+          sipyungMissing: metric.sipyungMissing,
         };
       }));
       if (!canceled) setGroupSummaries(results);
@@ -1386,7 +1497,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, estimatedAmount, baseAmount, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion]);
+  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -1741,6 +1852,59 @@ export default function AgreementBoardWindow({
     }))
   ), [groupAssignments, participantMap, summaryByGroup, candidateMetricsVersion]);
 
+  const copyGroupMetric = React.useCallback(async (groupIndex, metric) => {
+    const group = groups[groupIndex];
+    if (!group) {
+      window.alert('협정 조합을 찾을 수 없습니다.');
+      return;
+    }
+
+    const metricConfig = {
+      management: {
+        label: '경영점수',
+        extractor: (candidate) => {
+          const score = getCandidateManagementScore(candidate);
+          const numeric = toNumber(score);
+          return numeric == null ? '' : formatScore(score);
+        },
+      },
+      perf5y: {
+        label: '5년 실적',
+        extractor: (candidate) => formatPlainAmount(getCandidatePerformanceAmount(candidate)),
+      },
+      sipyung: {
+        label: '시평액',
+        extractor: (candidate) => formatPlainAmount(getCandidateSipyungAmount(candidate)),
+      },
+    };
+
+    const config = metricConfig[metric];
+    if (!config) return;
+
+    const values = group.members.map((entry) => {
+      const candidate = entry && entry.candidate;
+      if (!candidate) return '';
+      const value = config.extractor(candidate);
+      return value != null ? String(value) : '';
+    });
+
+    const text = values.join('\t');
+    try {
+      if (window.electronAPI?.clipboardWriteText) {
+        const result = await window.electronAPI.clipboardWriteText(text);
+        if (!result?.success) throw new Error(result?.message || 'clipboard write failed');
+      } else if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error('clipboard unavailable');
+      }
+      window.alert(`${config.label} 복사 완료`);
+    } catch (err) {
+      console.error('[AgreementBoard] copy failed', err);
+      window.alert('복사에 실패했습니다. 다시 시도해 주세요.');
+    }
+  }, [groups]);
+
   const renderMemberCard = (entry, slotIndex, groupIndex) => {
     const slotActive = dropTarget && dropTarget.groupIndex === groupIndex && dropTarget.slotIndex === slotIndex;
     if (!entry) {
@@ -2010,6 +2174,29 @@ export default function AgreementBoardWindow({
               )}
               <span><strong>기초금액</strong> {boardDetails.baseAmount || '-'}</span>
               <span><strong>추정금액</strong> {boardDetails.estimatedAmount || '-'}</span>
+              <span className="entry-field">
+                <strong>참가자격</strong>
+                <AmountInput
+                  value={editableEntryAmount}
+                  onChange={handleEntryAmountChange}
+                  placeholder="0"
+                />
+              </span>
+              <span className="entry-mode-field">
+                <strong>산출방식</strong>
+                <div className="entry-mode-toggle">
+                  <button
+                    type="button"
+                    className={`btn-sm ${entryModeResolved === 'ratio' ? 'btn-primary' : 'btn-soft'}`}
+                    onClick={() => handleEntryModeChange('ratio')}
+                  >비율제</button>
+                  <button
+                    type="button"
+                    className={`btn-sm ${entryModeResolved === 'sum' ? 'btn-primary' : 'btn-soft'}`}
+                    onClick={() => handleEntryModeChange('sum')}
+                  >단순합산제</button>
+                </div>
+              </span>
               {isLH ? (
                 <span><strong>시공비율기준금액</strong> {formatAmount(ratioBaseAmount)}</span>
               ) : (
@@ -2098,7 +2285,7 @@ export default function AgreementBoardWindow({
                   }
                 } else {
                   const managementMax = summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX;
-                  const performanceMax = summaryInfo.performanceMax ?? PERFORMANCE_DEFAULT_MAX;
+                  const performanceMax = summaryInfo.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper);
                   const totalMaxBase = summaryInfo.totalMaxBase ?? (managementMax + performanceMax + BID_SCORE);
                   const totalScoreBase = summaryInfo.totalScoreBase ?? null;
                   const totalScoreWithCred = summaryInfo.totalScoreWithCred ?? totalScoreBase;
@@ -2151,6 +2338,29 @@ export default function AgreementBoardWindow({
                       : (pendingText || `${label} 자료 확인`);
                     detailPills.push({ text, className });
                   });
+
+                  const entryModeLabel = summaryInfo.entryMode === 'sum' ? '합산제' : '비율제';
+                  if (summaryInfo.entryLimit != null && summaryInfo.entryLimit > 0) {
+                    if (!summaryInfo.entryReady) {
+                      detailPills.push({
+                        text: `참가자격 자료 확인 (${entryModeLabel})`,
+                        className: 'detail-pill detail-pill-alert',
+                      });
+                    } else if (summaryInfo.entryValue != null) {
+                      const satisfied = Boolean(summaryInfo.entrySatisfied);
+                      const symbol = satisfied ? '≥' : '<';
+                      const labelText = satisfied ? '참가자격 충족' : '참가자격 부족';
+                      detailPills.push({
+                        text: `${labelText} ${formatAmount(summaryInfo.entryValue)} ${symbol} ${formatAmount(summaryInfo.entryLimit)} (${entryModeLabel})`,
+                        className: `detail-pill ${satisfied ? 'detail-pill-ok' : 'detail-pill-alert'}`,
+                      });
+                    }
+                  } else if (summaryInfo.entryValue != null && summaryInfo.entryReady) {
+                    detailPills.push({
+                      text: `시평 합산 ${formatAmount(summaryInfo.entryValue)} (${entryModeLabel})`,
+                      className: 'detail-pill detail-pill-neutral',
+                    });
+                  }
                   if (summaryInfo.shareSum != null) {
                     shareBadgeClass = summaryInfo.shareComplete ? 'share-total-ok' : 'share-total-warn';
                     shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
@@ -2174,6 +2384,11 @@ export default function AgreementBoardWindow({
                             {shareText}
                           </span>
                         )}
+                        <div className="group-copy-actions">
+                          <button type="button" className="btn-sm btn-soft" onClick={() => copyGroupMetric(groupIndex, 'management')}>경영점수 복사</button>
+                          <button type="button" className="btn-sm btn-soft" onClick={() => copyGroupMetric(groupIndex, 'perf5y')}>5년 실적 복사</button>
+                          <button type="button" className="btn-sm btn-soft" onClick={() => copyGroupMetric(groupIndex, 'sipyung')}>시평액 복사</button>
+                        </div>
                         <button type="button" className="btn-sm btn-muted" disabled>세부 설정</button>
                       </div>
                     </header>
