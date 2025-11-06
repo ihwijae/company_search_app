@@ -439,7 +439,7 @@ function App() {
     targetFileType,
     targetPage = 1,
     preserveSelection = false,
-    skipScrollIntoView = false,
+    skipScrollIntoView: _skipScrollIntoView = false,
     overrides = {},
   } = {}) => {
     const effectiveCriteria = criteria || buildSearchCriteria();
@@ -543,6 +543,12 @@ function App() {
         const matchIndex = findMatchIndexByKey(items, currentSelectedKey, globalOffset);
         if (matchIndex >= 0) {
           handleCompanySelect(items[matchIndex], globalOffset + matchIndex, {
+            scrollIntoView: false,
+            resultFileType: effectiveFileType,
+          });
+        } else {
+          // 이전 선택 항목이 새 결과에 없으면 첫 번째 결과로 교체해 상단 패널이 오래된 업체를 유지하지 않도록 한다.
+          handleCompanySelect(items[0], globalOffset, {
             scrollIntoView: false,
             resultFileType: effectiveFileType,
           });
