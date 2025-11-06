@@ -1072,8 +1072,18 @@ export default function AgreementBoardWindow({
       if (!prev || prev.length === 0) {
         return buildInitialAssignments();
       }
-      const groupCount = Math.max(MIN_GROUPS, Math.ceil(representativeEntries.length / safeGroupSize), prev.length);
-      const trimmed = prev.slice(0, groupCount).map((group) => group.slice(0, safeGroupSize));
+      const groupCount = Math.max(
+        MIN_GROUPS,
+        Math.ceil(representativeEntries.length / safeGroupSize),
+        prev.length,
+      );
+      const trimmed = prev.slice(0, groupCount).map((group) => {
+        const nextGroup = Array.isArray(group) ? group.slice(0, safeGroupSize) : [];
+        while (nextGroup.length < safeGroupSize) {
+          nextGroup.push(null);
+        }
+        return nextGroup;
+      });
       while (trimmed.length < groupCount) {
         trimmed.push(Array(safeGroupSize).fill(null));
       }
