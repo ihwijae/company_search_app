@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
-import { isWomenOwnedCompany, getQualityBadgeText } from '../../../../utils/companyIndicators.js';
+import { isWomenOwnedCompany, getQualityBadgeText, extractManagerNames } from '../../../../utils/companyIndicators.js';
 import { generateMany } from '../../../../shared/agreements/generator.js';
 
 const DEFAULT_GROUP_SIZE = 3;
@@ -254,9 +254,9 @@ const toNumber = (value) => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : null;
   }
-  const cleaned = String(value).replace(/[^0-9.\-]/g, '').trim();
-  if (!cleaned) return null;
-  const parsed = Number(cleaned);
+  const match = String(value).match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
@@ -607,6 +607,8 @@ export default function AgreementBoardWindow({
   const [exporting, setExporting] = React.useState(false);
   const [editableBidAmount, setEditableBidAmount] = React.useState(bidAmount);
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
+  const [regionSearchQuery, setRegionSearchQuery] = React.useState('');
+  const [performanceSearchQuery, setPerformanceSearchQuery] = React.useState('');
   const searchTargetRef = React.useRef(null);
   const pendingPlacementRef = React.useRef(null);
 
@@ -829,6 +831,8 @@ export default function AgreementBoardWindow({
   React.useEffect(() => {
     if (open) {
       ensureWindow();
+      setRegionSearchQuery('');
+      setPerformanceSearchQuery('');
     } else {
       closeWindow();
     }
@@ -881,22 +885,44 @@ export default function AgreementBoardWindow({
   }, [dutyRegionSet]);
 
   const representativeCandidates = React.useMemo(
-    () => representativeCandidatesRaw.filter((candidate) => {
-      if (!candidate) return false;
-      if (candidate._forceRepresentative) return true;
-      return !isDutyRegionCompany(candidate);
-    }),
+    () => representativeCandidatesRaw.filter((candidate) => (
+      candidate && !isDutyRegionCompany(candidate)
+    )),
     [representativeCandidatesRaw, isDutyRegionCompany],
   );
 
   const regionCandidates = React.useMemo(
-    () => representativeCandidatesRaw.filter((candidate) => {
-      if (!candidate) return false;
-      if (candidate._forceRepresentative) return false;
-      return isDutyRegionCompany(candidate);
-    }),
+    () => representativeCandidatesRaw.filter((candidate) => (
+      candidate && isDutyRegionCompany(candidate)
+    )),
     [representativeCandidatesRaw, isDutyRegionCompany],
   );
+
+  const regionCandidateKeys = React.useMemo(() => {
+    const bizSet = new Set();
+    const nameSet = new Set();
+    regionCandidates.forEach((candidate) => {
+      const bizNo = normalizeBizNo(getBizNo(candidate));
+      if (bizNo) bizSet.add(bizNo);
+      const nameKey = String(getCompanyName(candidate) || '').trim().toLowerCase();
+      if (nameKey) nameSet.add(nameKey);
+    });
+    return { bizSet, nameSet };
+  }, [regionCandidates]);
+
+  const entryMatchesQuery = React.useCallback((entry, normalizedQuery) => {
+    if (!normalizedQuery) return true;
+    if (!entry || !entry.candidate) return false;
+    const candidate = entry.candidate;
+    const fields = [
+      getCompanyName(candidate),
+      getRegionLabel(candidate),
+      normalizeBizNo(getBizNo(candidate)),
+    ];
+    const managerNames = extractManagerNames(candidate);
+    managerNames.forEach((name) => fields.push(name));
+    return fields.some((value) => value && String(value).toLowerCase().includes(normalizedQuery));
+  }, []);
 
   const alwaysIncludeItems = React.useMemo(() => (
     Array.isArray(alwaysInclude)
@@ -915,10 +941,10 @@ export default function AgreementBoardWindow({
     return map;
   }, [alwaysIncludeItems]);
 
-  const representativeEntries = React.useMemo(() => {
+  const { representativeEntries, extraRegionCandidates } = React.useMemo(() => {
     const seen = new Map();
     const matchedRuleBiz = new Set();
-    const entries = representativeCandidates.map((candidate, index) => {
+    const repEntries = representativeCandidates.map((candidate, index) => {
       const bizNo = normalizeBizNo(getBizNo(candidate));
       const nameKey = String(getCompanyName(candidate) || '').trim().toLowerCase();
       const pinnedEntry = (bizNo && alwaysIncludeMap.get(`biz:${bizNo}`))
@@ -934,19 +960,24 @@ export default function AgreementBoardWindow({
         ruleSnapshot: pinnedEntry?.snapshot || null,
       };
     });
+
+    const regionExtras = [];
+
     let syntheticIndex = representativeCandidates.length;
     alwaysIncludeItems.forEach((item) => {
       const bizNo = normalizeBizNo(item.bizNo);
       const nameKey = String(item.name || '').trim().toLowerCase();
-      const alreadyRepresented = (bizNo && matchedRuleBiz.has(bizNo))
-        || entries.some((entry) => {
+      const alreadyRepresented = (bizNo && (matchedRuleBiz.has(bizNo) || regionCandidateKeys.bizSet.has(bizNo)))
+        || repEntries.some((entry) => {
           const entryBiz = normalizeBizNo(getBizNo(entry.candidate));
           const entryName = String(getCompanyName(entry.candidate) || '').trim().toLowerCase();
           if (bizNo && entryBiz === bizNo) return true;
           if (nameKey && entryName === nameKey) return true;
           return false;
-        });
+        })
+        || (nameKey && regionCandidateKeys.nameSet.has(nameKey));
       if (alreadyRepresented) return;
+
       const snapshot = item.snapshot && typeof item.snapshot === 'object' ? { ...item.snapshot } : null;
       let candidate;
       if (snapshot) {
@@ -991,18 +1022,34 @@ export default function AgreementBoardWindow({
         [['지분', 'share', '비율']]
       );
       if (canonicalShare !== null && canonicalShare !== undefined) candidate._share = canonicalShare;
-      const entry = {
-        uid: buildEntryUid('rep-rule', candidate, syntheticIndex, seen),
+
+      const candidateIsRegion = isDutyRegionCompany(candidate);
+
+      const entryMeta = {
         candidate,
-        type: 'representative',
         pinned: true,
         synthetic: true,
+        index: syntheticIndex,
       };
+
+      if (candidateIsRegion) {
+        regionExtras.push(entryMeta);
+      } else {
+        const entry = {
+          uid: buildEntryUid('rep-rule', candidate, syntheticIndex, seen),
+          candidate,
+          type: 'representative',
+          pinned: true,
+          synthetic: true,
+        };
+        repEntries.push(entry);
+      }
+
       syntheticIndex += 1;
-      entries.push(entry);
     });
-    return entries;
-  }, [representativeCandidates, pinnedSet, alwaysIncludeItems, alwaysIncludeMap]);
+
+    return { representativeEntries: repEntries, extraRegionCandidates: regionExtras };
+  }, [representativeCandidates, pinnedSet, alwaysIncludeItems, alwaysIncludeMap, isDutyRegionCompany, regionCandidateKeys]);
 
   const selectedRegionCandidates = React.useMemo(() => {
     const pinnedMatches = regionCandidates.filter((candidate) => pinnedSet.has(candidate?.id));
@@ -1012,12 +1059,30 @@ export default function AgreementBoardWindow({
 
   const regionEntries = React.useMemo(() => {
     const seen = new Map();
-    return selectedRegionCandidates.map((candidate, index) => ({
+    const base = selectedRegionCandidates.map((candidate, index) => ({
       uid: buildEntryUid('region', candidate, index, seen),
       candidate,
       type: 'region',
+      pinned: pinnedSet.has(candidate?.id),
     }));
-  }, [selectedRegionCandidates]);
+
+    let syntheticIndex = selectedRegionCandidates.length;
+    const extras = extraRegionCandidates.map((meta) => {
+      const entry = meta || {};
+      const candidate = entry.candidate;
+      const uid = buildEntryUid('region-rule', candidate, syntheticIndex, seen);
+      syntheticIndex += 1;
+      return {
+        uid,
+        candidate,
+        type: 'region',
+        pinned: true,
+        synthetic: true,
+      };
+    });
+
+    return [...base, ...extras];
+  }, [selectedRegionCandidates, extraRegionCandidates, pinnedSet]);
 
   const participantMap = React.useMemo(() => {
     const map = new Map();
@@ -1100,19 +1165,41 @@ export default function AgreementBoardWindow({
     return set;
   }, [groupAssignments]);
 
-  const pinnedRepresentatives = React.useMemo(
-    () => representativeEntries.filter((entry) => !assignedIds.has(entry.uid) && entry.pinned),
-    [representativeEntries, assignedIds],
-  );
-
-  const freeRepresentatives = React.useMemo(
-    () => representativeEntries.filter((entry) => !assignedIds.has(entry.uid) && !entry.pinned),
+  const availablePerformanceEntries = React.useMemo(
+    () => representativeEntries.filter((entry) => !assignedIds.has(entry.uid)),
     [representativeEntries, assignedIds],
   );
 
   const availableRegionEntries = React.useMemo(() => (
     regionEntries.filter((entry) => !assignedIds.has(entry.uid))
   ), [regionEntries, assignedIds]);
+
+  const filteredPerformanceEntries = React.useMemo(() => {
+    const normalized = performanceSearchQuery.trim().toLowerCase();
+    if (!normalized) return availablePerformanceEntries;
+    return availablePerformanceEntries.filter((entry) => entryMatchesQuery(entry, normalized));
+  }, [availablePerformanceEntries, performanceSearchQuery, entryMatchesQuery]);
+
+  const filteredRegionEntries = React.useMemo(() => {
+    const normalized = regionSearchQuery.trim().toLowerCase();
+    if (!normalized) return availableRegionEntries;
+    return availableRegionEntries.filter((entry) => entryMatchesQuery(entry, normalized));
+  }, [availableRegionEntries, regionSearchQuery, entryMatchesQuery]);
+
+  const regionSearchActive = regionSearchQuery.trim().length > 0;
+  const performanceSearchActive = performanceSearchQuery.trim().length > 0;
+  const regionCountLabel = regionSearchActive
+    ? `${filteredRegionEntries.length}/${availableRegionEntries.length}명`
+    : `총 ${availableRegionEntries.length}명`;
+  const performanceCountLabel = performanceSearchActive
+    ? `${filteredPerformanceEntries.length}/${availablePerformanceEntries.length}명`
+    : `총 ${availablePerformanceEntries.length}명`;
+  const regionEmptyMessage = regionSearchActive
+    ? '검색 결과가 없습니다.'
+    : '후보산출에서 지역사를 선택하면 여기에 표시됩니다.';
+  const performanceEmptyMessage = performanceSearchActive
+    ? '검색 결과가 없습니다.'
+    : '실적사 후보가 없습니다.';
 
   const summaryByGroup = React.useMemo(() => {
     const map = new Map();
@@ -1123,11 +1210,10 @@ export default function AgreementBoardWindow({
   }, [groupSummaries]);
 
   const summary = React.useMemo(() => ({
-    representativeTotal: representativeEntries.length,
-    pinnedRepresentatives: pinnedRepresentatives.length,
-    selectedRegions: regionEntries.length,
+    performanceTotal: representativeEntries.length,
+    regionTotal: regionEntries.length,
     groups: groupAssignments.length,
-  }), [representativeEntries.length, pinnedRepresentatives.length, regionEntries.length, groupAssignments.length]);
+  }), [representativeEntries.length, regionEntries.length, groupAssignments.length]);
 
   const handleExportExcel = React.useCallback(async () => {
     if (exporting) return;
@@ -2102,9 +2188,14 @@ export default function AgreementBoardWindow({
 
     const sipyung = sipyungRaw ?? candidate.sipyung;
     const fiveYear = fiveYearRaw ?? candidate.performance5y;
-    const rating = managementScoreForMember != null
-      ? managementScoreForMember
-      : ((ratingRaw != null && ratingRaw !== '') ? ratingRaw : (candidate.score ?? candidate.totalScore ?? null));
+    const fallbackScore = (ratingRaw != null && ratingRaw !== '') ? ratingRaw : (candidate.score ?? candidate.totalScore ?? null);
+    const rating = managementScoreForMember != null ? managementScoreForMember : fallbackScore;
+    const managementNumericForMember = clampScore(toNumber(managementScoreForMember != null ? managementScoreForMember : fallbackScore));
+    const memberScoreIsPerfect = managementNumericForMember != null
+      ? (managementNumericForMember >= (MANAGEMENT_SCORE_MAX - 0.01))
+      : false;
+    const memberScoreRowClasses = ['member-stat-row'];
+    if (managementNumericForMember != null && !memberScoreIsPerfect) memberScoreRowClasses.push('score-alert');
 
     const sipyungAmount = parseAmountValue(sipyung);
     const calculationBase = isLH
@@ -2211,7 +2302,7 @@ export default function AgreementBoardWindow({
             <span className="stat-label">5년 실적</span>
             <span className="stat-value">{formatAmount(fiveYear)}</span>
           </div>
-          <div className="member-stat-row">
+          <div className={memberScoreRowClasses.join(' ')}>
             <span className="stat-label">경영점수</span>
             <span className="stat-value">{formatScore(rating)}</span>
           </div>
@@ -2229,6 +2320,7 @@ export default function AgreementBoardWindow({
       {list.map((entry) => {
         const classes = ['board-sidebar-item'];
         if (extraClass) classes.push(extraClass);
+        if (entry.pinned) classes.push('pinned');
         if (draggingId === entry.uid) classes.push('dragging');
         if (isDutyRegionCompany(entry.candidate) || entry.type === 'region') classes.push('region');
         const perfValueRaw = entry.candidate?._performance5y ?? extractAmountValue(
@@ -2240,19 +2332,38 @@ export default function AgreementBoardWindow({
           ? formatAmount(perfValueRaw)
           : null;
         const perfDisplay = perfDisplayRaw && perfDisplayRaw !== '-' ? perfDisplayRaw : null;
+        const sipyungValueRaw = entry.candidate?._agreementSipyungAmount
+          ?? entry.candidate?._sipyung
+          ?? extractAmountValue(
+            entry.candidate,
+            ['_sipyung', 'sipyung', '시평', '시평액', '시평액(원)', '시평금액', '기초금액', '기초금액(원)'],
+            [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']]
+          );
+        if (entry.candidate && sipyungValueRaw != null && sipyungValueRaw !== undefined) {
+          entry.candidate._agreementSipyungAmount = sipyungValueRaw;
+        }
+        const sipyungDisplayRaw = sipyungValueRaw != null && sipyungValueRaw !== ''
+          ? formatAmount(sipyungValueRaw)
+          : null;
+        const sipyungDisplay = sipyungDisplayRaw && sipyungDisplayRaw !== '-' ? sipyungDisplayRaw : null;
         const managementSidebarScore = getCandidateManagementScore(entry.candidate);
-        const baseScoreSource = managementSidebarScore != null
+        const baseScoreSource = entry.candidate?.rating
+          ?? entry.candidate?.score
+          ?? entry.candidate?.managementTotalScore
+          ?? entry.candidate?.totalScore
+          ?? entry.candidate?._score;
+        const scoreDisplaySource = (managementSidebarScore != null && managementSidebarScore !== '')
           ? managementSidebarScore
-          : entry.candidate?.rating
-            ?? entry.candidate?.score
-            ?? entry.candidate?.managementTotalScore
-            ?? entry.candidate?.totalScore
-            ?? entry.candidate?._score;
-        const scoreDisplaySource = (baseScoreSource !== null && baseScoreSource !== undefined && baseScoreSource !== '')
-          ? baseScoreSource
-          : managementSidebarScore;
+          : baseScoreSource;
+        const managementNumeric = clampScore(toNumber(scoreDisplaySource));
+        const managementIsPerfect = managementNumeric != null
+          ? (managementNumeric >= (MANAGEMENT_SCORE_MAX - 0.01))
+          : false;
+        const scoreClassNames = ['score'];
+        if (managementNumeric != null && !managementIsPerfect) scoreClassNames.push('score-alert');
         const femaleOwned = isWomenOwnedCompany(entry.candidate);
         const qualityBadge = getQualityBadgeText(entry.candidate);
+        const managerNames = extractManagerNames(entry.candidate).filter(Boolean);
         return (
           <div
             key={entry.uid}
@@ -2265,15 +2376,31 @@ export default function AgreementBoardWindow({
               <span>{getCompanyName(entry.candidate)}</span>
               {femaleOwned && <span className="badge-female badge-inline">女</span>}
               {qualityBadge && <span className="badge-quality badge-inline">품질 {qualityBadge}</span>}
+              {managerNames.slice(0, 2).map((manager) => (
+                <span key={manager} className="badge-manager badge-inline">{manager}</span>
+              ))}
+              {managerNames.length > 2 && (
+                <span className="badge-manager badge-inline">+{managerNames.length - 2}</span>
+              )}
             </div>
             <div className="meta">
               <span>{getRegionLabel(entry.candidate)}</span>
-              <span className="score">{formatScore(scoreDisplaySource)}</span>
+              <span className={scoreClassNames.join(' ')}>{formatScore(scoreDisplaySource)}</span>
             </div>
-            {perfDisplay && (
+            {(sipyungDisplay || perfDisplay) && (
               <div className="meta secondary">
-                <span>5년 실적</span>
-                <span className="amount">{perfDisplay}</span>
+                {sipyungDisplay && (
+                  <div className="stat">
+                    <span>시평액</span>
+                    <span className="amount">{sipyungDisplay}</span>
+                  </div>
+                )}
+                {perfDisplay && (
+                  <div className="stat">
+                    <span>5년 실적</span>
+                    <span className="amount">{perfDisplay}</span>
+                  </div>
+                )}
               </div>
             )}
             {entry.type === 'representative' && entry.candidate?.id && (
@@ -2370,7 +2497,7 @@ export default function AgreementBoardWindow({
               {boardDetails.bidRate && <span><strong>투찰율</strong> {boardDetails.bidRate}</span>}
               </div>
             </div>
-            <p>대표사 {summary.representativeTotal}명 · 확정 지역사 {summary.selectedRegions}명 · 협정 {summary.groups}개</p>
+            <p>실적사 후보 {summary.performanceTotal}명 · 지역사 후보 {summary.regionTotal}명 · 협정 {summary.groups}개</p>
           </div>
           <div className="header-actions">
             <button type="button" className="btn-soft" onClick={onClose}>닫기</button>
@@ -2379,22 +2506,33 @@ export default function AgreementBoardWindow({
         <div className="agreement-board-layout">
           <aside className="agreement-board-sidebar">
             <section className="sidebar-section">
-              <div className="board-sidebar-title">설정한 고정 업체</div>
-              <div className="board-sidebar-count">{pinnedRepresentatives.length}개 고정</div>
-              {renderEntryList(pinnedRepresentatives, '설정한 고정 업체가 없습니다.', 'pinned')}
+              <div className="board-sidebar-title">지역사</div>
+              <div className="board-sidebar-head">
+                <div className="board-sidebar-count">{regionCountLabel}</div>
+              </div>
+              <input
+                type="text"
+                className="board-sidebar-search"
+                value={regionSearchQuery}
+                onChange={(event) => setRegionSearchQuery(event.target.value)}
+                placeholder="업체 검색"
+              />
+              {renderEntryList(filteredRegionEntries, regionEmptyMessage, 'region')}
             </section>
             <section className="sidebar-section">
-              <div className="board-sidebar-title">대기 업체</div>
+              <div className="board-sidebar-title">실적사</div>
               <div className="board-sidebar-head">
-                <div className="board-sidebar-count">총 {freeRepresentatives.length}명</div>
+                <div className="board-sidebar-count">{performanceCountLabel}</div>
                 {renderSearchButton()}
               </div>
-              {renderEntryList(freeRepresentatives, '대기 중인 업체가 없습니다.')}
-            </section>
-            <section className="sidebar-section">
-              <div className="board-sidebar-title">확정된 지역사</div>
-              <div className="board-sidebar-count">{availableRegionEntries.length}개 준비</div>
-              {renderEntryList(availableRegionEntries, '후보산출에서 지역사를 선택하면 여기에 표시됩니다.', 'region')}
+              <input
+                type="text"
+                className="board-sidebar-search"
+                value={performanceSearchQuery}
+                onChange={(event) => setPerformanceSearchQuery(event.target.value)}
+                placeholder="업체 검색"
+              />
+              {renderEntryList(filteredPerformanceEntries, performanceEmptyMessage, 'performance')}
             </section>
           </aside>
           <main className="agreement-board-main">

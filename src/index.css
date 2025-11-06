@@ -429,6 +429,12 @@ body {
   border: 1px solid #bae6fd;
 }
 
+.badge-manager {
+  background: #e0ecff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
 .badge-inline {
   margin-left: 6px;
 }
@@ -795,6 +801,23 @@ body {
   padding: 0 12px;
 }
 
+.board-sidebar-search {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1f2937;
+  background: #ffffff;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  margin-bottom: 8px;
+}
+.board-sidebar-search:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
 .agreement-board-sidebar .board-sidebar-list {
   display: flex;
   flex-direction: column;
@@ -840,9 +863,13 @@ body {
   border-color: #bbf7d0;
   background: #ecfdf5;
 }
-
 .agreement-board-sidebar .board-sidebar-item.pinned.region .meta .score {
   color: #047857;
+}
+
+.agreement-board-sidebar .board-sidebar-item.region .meta .score.score-alert,
+.agreement-board-sidebar .board-sidebar-item.pinned.region .meta .score.score-alert {
+  color: #dc2626;
 }
 
 .agreement-board-sidebar .board-sidebar-item .name {
@@ -865,16 +892,26 @@ body {
   color: #4c1d95;
 }
 
-.agreement-board-sidebar .board-sidebar-item .meta.secondary {
-  margin-top: 2px;
-  font-size: 12px;
-  color: #475569;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+.agreement-board-sidebar .board-sidebar-item .meta .score.score-alert {
+  color: #dc2626;
 }
 
-.agreement-board-sidebar .board-sidebar-item .meta.secondary .amount {
+.agreement-board-sidebar .board-sidebar-item .meta.secondary {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #475569;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 4px 8px;
+}
+
+.agreement-board-sidebar .board-sidebar-item .meta.secondary .stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.agreement-board-sidebar .board-sidebar-item .meta.secondary .stat .amount {
   font-weight: 600;
   color: #1f2937;
 }
@@ -1137,6 +1174,10 @@ body {
 .agreement-board-member .member-stat-row .stat-value {
   font-weight: 600;
   color: #111827;
+}
+
+.agreement-board-member .member-stat-row.score-alert .stat-value {
+  color: #dc2626;
 }
 
 .agreement-board-member .member-tags {
