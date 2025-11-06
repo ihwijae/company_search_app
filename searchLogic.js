@@ -84,6 +84,46 @@ const getSummaryStatus = (statusesDict) => {
 
 const SORT_FIELD_MAP = { sipyung: '시평', '3y': '3년 실적', '5y': '5년 실적' };
 
+const normalizeBizNumber = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/[^0-9]/g, '').trim();
+};
+
+const buildDedupKey = (item) => {
+  if (!item || typeof item !== 'object') return '';
+  const typeToken = item._file_type ? String(item._file_type).trim().toLowerCase() : '';
+  const biz = normalizeBizNumber(item['사업자번호']);
+  if (biz) {
+    return typeToken ? `biz:${biz}|type:${typeToken}` : `biz:${biz}`;
+  }
+  const nameSource = item['검색된 회사'] || item['회사명'] || item['대표자'];
+  if (nameSource) {
+    const normalized = String(nameSource).trim();
+    if (normalized) {
+      return typeToken ? `name:${normalized}|type:${typeToken}` : `name:${normalized}`;
+    }
+  }
+  return '';
+};
+
+const dedupeCompanies = (list) => {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  const deduped = [];
+  let fallbackIndex = 0;
+  for (const item of list) {
+    if (!item || typeof item !== 'object') continue;
+    let key = buildDedupKey(item);
+    if (!key) {
+      key = `row:${fallbackIndex++}`;
+    }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+  return deduped;
+};
+
 class SearchLogic {
   constructor(filePath) {
     this.filePath = filePath;
@@ -375,6 +415,8 @@ SearchLogic.postProcessResults = function postProcessResults(inputResults, optio
       return av > bv ? direction : -direction;
     });
   }
+
+  working = dedupeCompanies(working);
 
   const totalCount = working.length;
 
