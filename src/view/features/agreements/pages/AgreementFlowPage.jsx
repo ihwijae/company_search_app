@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
@@ -558,6 +558,91 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     if (menu) window.location.hash = menu.hash;
   };
 
+  const handleOpenCandidatesModal = useCallback(() => {
+    openCandidatesModal({
+      ownerId,
+      menuKey,
+      rangeId: menuKey,
+      fileType: currentFileType,
+      noticeNo: form.noticeNo,
+      noticeTitle: form.title,
+      noticeDate: form.noticeDate,
+      industryLabel: form.industry,
+      entryAmount: form.entryQualificationAmount || '',
+      entryMode,
+      baseAmount: form.baseAmount,
+      estimatedAmount: form.estimatedPrice,
+      ratioBaseAmount: isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount),
+      bidAmount: form.bidAmount,
+      bidRate: form.bidRate,
+      adjustmentRate: form.adjustmentRate,
+      bidDeadline: form.bidDeadline,
+      regionDutyRate: form.regionDutyRate,
+      perfectPerformanceAmount,
+      dutyRegions,
+      groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
+      defaultExcludeSingle: true,
+      initialCandidates: candidates,
+      initialPinned: pinned,
+      initialExcluded: excluded,
+      onApply: ({ candidates: list, pinned: pinnedList, excluded: excludedList, params: modalParams }) => {
+        if (!mountedRef.current) return;
+        setCandidates(list);
+        setPinned(pinnedList);
+        setExcluded(excludedList);
+        if (modalParams && typeof modalParams === 'object') {
+          setForm((prev) => {
+            const nextBidAmount = modalParams.bidAmount !== undefined
+              ? modalParams.bidAmount
+              : (modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.bidAmount);
+            const nextRatioBaseAmount = isPPS
+              ? nextBidAmount
+              : (modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.ratioBaseAmount);
+            return {
+              ...prev,
+              entryQualificationAmount: modalParams.entryAmount !== undefined ? modalParams.entryAmount : prev.entryQualificationAmount,
+              baseAmount: modalParams.baseAmount !== undefined ? modalParams.baseAmount : prev.baseAmount,
+              ratioBaseAmount: nextRatioBaseAmount,
+              bidAmount: nextBidAmount,
+              bidRate: modalParams.bidRate !== undefined ? modalParams.bidRate : prev.bidRate,
+              adjustmentRate: modalParams.adjustmentRate !== undefined ? modalParams.adjustmentRate : prev.adjustmentRate,
+            };
+          });
+        }
+      },
+    });
+  }, [openCandidatesModal, ownerId, menuKey, currentFileType, form.noticeNo, form.title, form.noticeDate, form.industry, form.entryQualificationAmount, entryMode, form.baseAmount, form.estimatedPrice, isPPS, form.bidAmount, form.ratioBaseAmount, form.bidRate, form.adjustmentRate, form.bidDeadline, form.regionDutyRate, perfectPerformanceAmount, dutyRegions, form.teamSizeMax, candidates, pinned, excluded]);
+
+  const handleOpenBoard = useCallback(() => {
+    if (!candidates || candidates.length === 0) {
+      window.alert('먼저 지역사 찾기를 실행해 최종 후보를 확정해주세요.');
+      return;
+    }
+    openBoard({
+      candidates,
+      pinned,
+      excluded,
+      dutyRegions,
+      groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
+      ownerId: (ownerId || 'LH').toUpperCase(),
+      fileType: currentFileType,
+      rangeId: menuKey,
+      noticeNo: form.noticeNo || '',
+      noticeTitle: form.title || '',
+      industryLabel: form.industry || '',
+      baseAmount: form.baseAmount || '',
+      estimatedAmount: form.estimatedPrice || '',
+      bidAmount: form.bidAmount || '',
+      ratioBaseAmount: isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount || ''),
+      bidRate: form.bidRate || '',
+      adjustmentRate: form.adjustmentRate || '',
+      bidDeadline: form.bidDeadline || '',
+      regionDutyRate: form.regionDutyRate || '',
+      entryAmount: form.entryQualificationAmount || '',
+      entryMode,
+    });
+  }, [candidates, openBoard, pinned, excluded, dutyRegions, form.teamSizeMax, ownerId, currentFileType, menuKey, form.noticeNo, form.title, form.industry, form.baseAmount, form.estimatedPrice, form.bidAmount, isPPS, form.ratioBaseAmount, form.bidRate, form.adjustmentRate, form.bidDeadline, form.regionDutyRate, form.entryQualificationAmount, entryMode]);
+
   return (
     <div className="app-shell">
       <Sidebar
@@ -754,128 +839,26 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
             </div>
 
             <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h3 style={{ marginTop: 0 }}>후보 풀</h3>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ color: '#6b7280' }}>고정 {pinned.length} · 제외 {excluded.length} · 후보 {candidates.length}</div>
-                <div>
-                  <button
-                    className="btn-soft"
-                    onClick={() => {
-                      openCandidatesModal({
-                        ownerId,
-                        menuKey,
-                        rangeId: menuKey,
-                        fileType: currentFileType,
-                        noticeNo: form.noticeNo,
-                        noticeTitle: form.title,
-                        noticeDate: form.noticeDate,
-                        industryLabel: form.industry,
-                        entryAmount: form.entryQualificationAmount || '',
-                        entryMode,
-                        baseAmount: form.baseAmount,
-                        estimatedAmount: form.estimatedPrice,
-                        ratioBaseAmount: isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount),
-                        bidAmount: form.bidAmount,
-                        bidRate: form.bidRate,
-                        adjustmentRate: form.adjustmentRate,
-                        bidDeadline: form.bidDeadline,
-                        regionDutyRate: form.regionDutyRate,
-                        perfectPerformanceAmount,
-                        dutyRegions,
-                        groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
-                        defaultExcludeSingle: true,
-                        initialCandidates: candidates,
-                        initialPinned: pinned,
-                        initialExcluded: excluded,
-                        onApply: ({ candidates: list, pinned: pinnedList, excluded: excludedList, params: modalParams }) => {
-                          if (mountedRef.current) {
-                            setCandidates(list);
-                            setPinned(pinnedList);
-                            setExcluded(excludedList);
-                            if (modalParams && typeof modalParams === 'object') {
-                              setForm((prev) => {
-                                const nextBidAmount = modalParams.bidAmount !== undefined
-                                  ? modalParams.bidAmount
-                                  : (modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.bidAmount);
-                                const nextRatioBaseAmount = isPPS
-                                  ? nextBidAmount
-                                  : (modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.ratioBaseAmount);
-                                return {
-                                  ...prev,
-                                  entryQualificationAmount: modalParams.entryAmount !== undefined ? modalParams.entryAmount : prev.entryQualificationAmount,
-                                  baseAmount: modalParams.baseAmount !== undefined ? modalParams.baseAmount : prev.baseAmount,
-                                  ratioBaseAmount: nextRatioBaseAmount,
-                                  bidAmount: nextBidAmount,
-                                  bidRate: modalParams.bidRate !== undefined ? modalParams.bidRate : prev.bidRate,
-                                  adjustmentRate: modalParams.adjustmentRate !== undefined ? modalParams.adjustmentRate : prev.adjustmentRate,
-                                };
-                              });
-                            }
-                          }
-                        },
-                      });
-                    }}
-                    style={{ marginRight: 6 }}
-                  >
-                    지역사 찾기
-                  </button>
-                  <button
-                    className="primary"
-                    onClick={() => {
-                      if (!candidates || candidates.length === 0) {
-                        window.alert('먼저 지역사 찾기를 실행해 최종 후보를 확정해주세요.');
-                        return;
-                      }
-                      openBoard({
-                        candidates,
-                        pinned,
-                        excluded,
-                        dutyRegions,
-                        groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
-                        ownerId: (ownerId || 'LH').toUpperCase(),
-                        fileType: currentFileType,
-                        rangeId: menuKey,
-                        noticeNo: form.noticeNo || '',
-                        noticeTitle: form.title || '',
-                        industryLabel: form.industry || '',
-                        baseAmount: form.baseAmount || '',
-                        estimatedAmount: form.estimatedPrice || '',
-                        bidAmount: form.bidAmount || '',
-                        ratioBaseAmount: isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount || ''),
-                        bidRate: form.bidRate || '',
-                        adjustmentRate: form.adjustmentRate || '',
-                        bidDeadline: form.bidDeadline || '',
-                        regionDutyRate: form.regionDutyRate || '',
-                        entryAmount: form.entryQualificationAmount || '',
-                        entryMode,
-                      });
-                    }}
-                  >
-                    협정보드 열기
-                  </button>
-                </div>
+              <h3 style={{ marginTop: 0 }}>후보 현황</h3>
+              <div className="candidate-summary">
+                <span>고정 {pinned.length}</span>
+                <span>제외 {excluded.length}</span>
+                <span>후보 {candidates.length}</span>
               </div>
               {candidates.length === 0 && (
-                <div style={{ color: '#6b7280', marginTop: 6 }}>아직 후보가 없습니다. “지역사 찾기”를 눌러 조건에 맞는 후보를 불러오세요.</div>
+                <div className="candidate-summary__empty">아직 후보가 없습니다. “지역사 찾기”를 눌러 조건에 맞는 후보를 불러오세요.</div>
               )}
             </div>
 
-            <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h3 style={{ marginTop: 0 }}>자동 구성 제안</h3>
-              <div style={{ color: '#6b7280' }}>
-                제약을 반영해 상위 N개 조합이 카드/표로 표시됩니다. 점수·지분·제약 충족 뱃지와 세부 보기 기능은 추후 추가 예정입니다.
+            <div className="action-footer" style={{ gridColumn: '1 / -1' }}>
+              <div className="action-footer__info">
+                {candidates.length > 0
+                  ? '후보를 검토하고 협정보드에서 조합을 확정하세요.'
+                  : '지역사 찾기를 통해 협정 후보를 먼저 불러오세요.'}
               </div>
-              <div style={{ marginTop: 8 }}>
-                <button disabled>제안 실행(준비중)</button>
-              </div>
-            </div>
-
-            <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h3 style={{ marginTop: 0 }}>확정 / 내보내기</h3>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button disabled>엑셀 내보내기(준비중)</button>
-                <button disabled>보고서 내보내기(준비중)</button>
-                <button disabled>시나리오 저장(준비중)</button>
+              <div className="action-footer__buttons">
+                <button className="btn-soft" onClick={handleOpenCandidatesModal}>지역사 찾기</button>
+                <button className="primary" onClick={handleOpenBoard}>협정보드 열기</button>
               </div>
             </div>
 

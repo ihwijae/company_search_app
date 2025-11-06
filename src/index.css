@@ -955,6 +955,55 @@ body {
   padding-right: 6px;
 }
 
+.candidate-summary {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.candidate-summary span {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.candidate-summary__empty {
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.action-footer {
+  margin-top: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.action-footer__info {
+  font-size: 14px;
+  color: #475569;
+  flex: 1 1 240px;
+}
+
+.action-footer__buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .board-header {
   display: flex;
   justify-content: space-between;
