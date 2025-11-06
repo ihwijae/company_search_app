@@ -415,11 +415,11 @@ function createWindow() {
     y: bounds.y,
     width: bounds.width,
     height: bounds.height,
-    backgroundColor: '#4A154B',
+    backgroundColor: '#e0ecff',
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#4A154B',
-      symbolColor: '#FFFFFF',
+      color: '#e0ecff',
+      symbolColor: '#1f2937',
       height: 32,
     },
     webPreferences: {
