@@ -615,6 +615,8 @@ export default function AgreementBoardWindow({
   const [performanceSearchQuery, setPerformanceSearchQuery] = React.useState('');
   const searchTargetRef = React.useRef(null);
   const pendingPlacementRef = React.useRef(null);
+  const rootRef = React.useRef(null);
+  const boardMainRef = React.useRef(null);
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -804,12 +806,12 @@ export default function AgreementBoardWindow({
     }
 
     if (!boardWindowRef.current) {
-      const width = Math.min(1180, Math.max(720, window.innerWidth - 160));
-      const height = Math.min(880, Math.max(640, window.innerHeight - 120));
+      const width = Math.min(1480, Math.max(1080, window.innerWidth - 80));
+      const height = Math.min(1040, Math.max(780, window.innerHeight - 72));
       const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
       const dualScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
-      const left = Math.max(24, dualScreenLeft + window.innerWidth - width - 48);
-      const top = Math.max(48, dualScreenTop + 48);
+      const left = Math.max(24, dualScreenLeft + Math.max(0, (window.innerWidth - width) / 2));
+      const top = Math.max(32, dualScreenTop + Math.max(0, (window.innerHeight - height) / 3));
       const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
       const child = window.open('', 'company-search-agreement-board', features);
       if (!child) return;
@@ -2571,11 +2573,46 @@ export default function AgreementBoardWindow({
     );
   }, [onAddRepresentatives, openRepresentativeSearch, fileType]);
 
+  React.useEffect(() => {
+    const rootEl = rootRef.current;
+    const mainEl = boardMainRef.current;
+    if (!rootEl || !mainEl) return undefined;
+
+    const handleWheel = (event) => {
+      if (!mainEl) return;
+      if (mainEl.contains(event.target)) {
+        return;
+      }
+      const deltaY = event.deltaY;
+      if (Math.abs(deltaY) < 0.1) return;
+      const atTop = mainEl.scrollTop <= 0;
+      const atBottom = (mainEl.scrollHeight - mainEl.clientHeight - mainEl.scrollTop) <= 1;
+      if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) {
+        return;
+      }
+
+      const insideSidebarList = event.target && typeof event.target.closest === 'function'
+        ? event.target.closest('.board-sidebar-list')
+        : null;
+
+      mainEl.scrollBy({ top: deltaY, behavior: 'auto' });
+
+      if (!insideSidebarList) {
+        event.preventDefault();
+      }
+    };
+
+    rootEl.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      rootEl.removeEventListener('wheel', handleWheel, { passive: false });
+    };
+  }, [portalContainer, open]);
+
   if (!open || !portalContainer) return null;
 
   return createPortal(
     <>
-      <div className="agreement-board-root">
+      <div className="agreement-board-root" ref={rootRef}>
         <header className="agreement-board-header">
           <div className="header-text">
             <div className="header-title-line">
@@ -2671,7 +2708,7 @@ export default function AgreementBoardWindow({
               {renderEntryList(filteredPerformanceEntries, performanceEmptyMessage, 'performance')}
             </section>
           </aside>
-          <main className="agreement-board-main">
+          <main className="agreement-board-main" ref={boardMainRef}>
             <div className="board-header">
               <div>
                 <div className="board-title">협정 조합 미리보기</div>

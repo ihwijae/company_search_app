@@ -202,8 +202,8 @@ export default function CandidatesModal({
     }
 
     if (!popupRef.current) {
-      const preferredWidth = Math.min(1620, Math.max(1100, window.innerWidth - 80));
-      const preferredHeight = Math.min(960, Math.max(720, window.innerHeight - 96));
+      const preferredWidth = Math.min(1720, Math.max(1280, window.innerWidth - 60));
+      const preferredHeight = Math.min(1080, Math.max(820, window.innerHeight - 72));
       const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
       const dualScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
       const left = Math.max(24, dualScreenLeft + Math.max(0, (window.innerWidth - preferredWidth) / 2));
