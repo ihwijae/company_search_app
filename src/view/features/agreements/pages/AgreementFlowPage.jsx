@@ -126,16 +126,23 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     setForm((prev) => {
       const next = { ...prev };
       let changed = false;
-      const defaultAdjustment = isPPS ? '101.4' : '88.745';
+      const defaultAdjustment = isPPS ? '101.6' : '88.745';
       const defaultBid = isPPS ? '86.745' : '101.8';
-      if (!String(prev.adjustmentRate || '').trim()) {
+      const legacyAdjustmentValues = isPPS ? ['101.4'] : [];
+      const legacyBidValues = isPPS ? ['88.745'] : [];
+
+      const currentAdjustment = String(prev.adjustmentRate || '').trim();
+      if (!currentAdjustment || legacyAdjustmentValues.includes(currentAdjustment)) {
         next.adjustmentRate = defaultAdjustment;
         changed = true;
       }
-      if (!String(prev.bidRate || '').trim()) {
+
+      const currentBid = String(prev.bidRate || '').trim();
+      if (!currentBid || legacyBidValues.includes(currentBid)) {
         next.bidRate = defaultBid;
         changed = true;
       }
+
       return changed ? next : prev;
     });
   }, [isPPS, isMoisShareRange, entryMode]);
@@ -656,7 +663,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         step="0.001"
                         value={form.adjustmentRate}
                         onChange={(e) => setForm((prev) => ({ ...prev, adjustmentRate: e.target.value }))}
-                        placeholder="예: 101.4"
+                        placeholder={isPPS ? '예: 86.745' : '예: 101.4'}
                       />
                     </Field>
                   )}
@@ -668,7 +675,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         step="0.1"
                         value={form.bidRate}
                         onChange={(e) => setForm((prev) => ({ ...prev, bidRate: e.target.value }))}
-                        placeholder="예: 86.745"
+                        placeholder={isPPS ? '예: 101.6' : '예: 86.745'}
                       />
                     </Field>
                   )}
@@ -768,7 +775,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         entryMode,
                         baseAmount: form.baseAmount,
                         estimatedAmount: form.estimatedPrice,
-                        ratioBaseAmount: form.ratioBaseAmount || form.bidAmount,
+                        ratioBaseAmount: isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount),
                         bidAmount: form.bidAmount,
                         bidRate: form.bidRate,
                         adjustmentRate: form.adjustmentRate,
@@ -787,17 +794,23 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                             setPinned(pinnedList);
                             setExcluded(excludedList);
                             if (modalParams && typeof modalParams === 'object') {
-                              setForm((prev) => ({
-                                ...prev,
-                                entryQualificationAmount: modalParams.entryAmount !== undefined ? modalParams.entryAmount : prev.entryQualificationAmount,
-                                baseAmount: modalParams.baseAmount !== undefined ? modalParams.baseAmount : prev.baseAmount,
-                                ratioBaseAmount: modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.ratioBaseAmount,
-                                bidAmount: modalParams.bidAmount !== undefined
+                              setForm((prev) => {
+                                const nextBidAmount = modalParams.bidAmount !== undefined
                                   ? modalParams.bidAmount
-                                  : (modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.bidAmount),
-                                bidRate: modalParams.bidRate !== undefined ? modalParams.bidRate : prev.bidRate,
-                                adjustmentRate: modalParams.adjustmentRate !== undefined ? modalParams.adjustmentRate : prev.adjustmentRate,
-                              }));
+                                  : (modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.bidAmount);
+                                const nextRatioBaseAmount = isPPS
+                                  ? nextBidAmount
+                                  : (modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.ratioBaseAmount);
+                                return {
+                                  ...prev,
+                                  entryQualificationAmount: modalParams.entryAmount !== undefined ? modalParams.entryAmount : prev.entryQualificationAmount,
+                                  baseAmount: modalParams.baseAmount !== undefined ? modalParams.baseAmount : prev.baseAmount,
+                                  ratioBaseAmount: nextRatioBaseAmount,
+                                  bidAmount: nextBidAmount,
+                                  bidRate: modalParams.bidRate !== undefined ? modalParams.bidRate : prev.bidRate,
+                                  adjustmentRate: modalParams.adjustmentRate !== undefined ? modalParams.adjustmentRate : prev.adjustmentRate,
+                                };
+                              });
                             }
                           }
                         },
@@ -829,7 +842,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
                         baseAmount: form.baseAmount || '',
                         estimatedAmount: form.estimatedPrice || '',
                         bidAmount: form.bidAmount || '',
-                        ratioBaseAmount: form.ratioBaseAmount || form.bidAmount || '',
+                        ratioBaseAmount: isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount || ''),
                         bidRate: form.bidRate || '',
                         adjustmentRate: form.adjustmentRate || '',
                         bidDeadline: form.bidDeadline || '',

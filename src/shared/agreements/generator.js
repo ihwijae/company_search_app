@@ -62,8 +62,11 @@ export function validateAgreement(item) {
 }
 
 function isMOIS(owner) {
-  const s = String(owner || '');
-  return /행정|행안|조달/.test(s);
+  const raw = String(owner || '').trim();
+  if (!raw) return false;
+  const upper = raw.toUpperCase();
+  if (upper === 'MOIS') return true;
+  return /행정|행안|조달/.test(raw);
 }
 
 function isLH(owner) {
@@ -133,4 +136,3 @@ export function generateMany(items) {
 export function helpers() {
   return { computeSumShare, hasDuplicateNames };
 }
-

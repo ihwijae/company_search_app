@@ -281,7 +281,10 @@ const industryToLabel = (type) => {
     const initialBase = isMoisUnder30
       ? (perfAmountValue || estimatedAmount || entryAmount || '')
       : (baseAmount || '');
-    const initialRatio = (!hasEntryLimit || isMoisUnder30) ? '' : (ratioBaseAmount || bidAmount || '');
+    const initialRatio = (!hasEntryLimit || isMoisUnder30)
+      ? ''
+      : (isPpsOwner ? (bidAmount || ratioBaseAmount || '') : (ratioBaseAmount || bidAmount || ''));
+    const initialBidAmount = hasEntryLimit ? (bidAmount || initialRatio) : '';
     const normalizedBidRate = hasEntryLimit ? (bidRate || '') : '';
     const normalizedAdjustmentRate = hasEntryLimit ? (adjustmentRate || '') : '';
     return {
@@ -289,7 +292,7 @@ const industryToLabel = (type) => {
       baseAmount: initialBase,
       dutyRegions: dutyRegions || [],
       ratioBase: initialRatio,
-      bidAmount: initialRatio,
+      bidAmount: initialBidAmount,
       bidRate: normalizedBidRate,
       adjustmentRate: normalizedAdjustmentRate,
       minPct: '',
