@@ -247,7 +247,7 @@ export default function CandidatesModal({
   const isMoisOwner = normalizedOwnerId === 'MOIS';
   const isMoisShareRange = isMoisOwner && menuKey === 'mois-30to50';
   const hasEntryLimit = entryMode !== 'none';
-  const showTenderFields = (isPpsOwner || isMoisShareRange) && hasEntryLimit;
+  const showTenderFields = (isPpsOwner || isMoisShareRange);
   const showBizYearsMetrics = isPpsOwner || isLhOwner;
   const isMoisUnder30 = normalizedOwnerId === 'MOIS' && menuKey === 'mois-under30';
   const perfAmountValue = Number(perfectPerformanceAmount) > 0 ? String(perfectPerformanceAmount) : '';
@@ -281,12 +281,11 @@ const industryToLabel = (type) => {
     const initialBase = isMoisUnder30
       ? (perfAmountValue || estimatedAmount || entryAmount || '')
       : (baseAmount || '');
-    const initialRatio = (!hasEntryLimit || isMoisUnder30)
-      ? ''
-      : (isPpsOwner ? (bidAmount || ratioBaseAmount || '') : (ratioBaseAmount || bidAmount || ''));
-    const initialBidAmount = hasEntryLimit ? (bidAmount || initialRatio) : '';
-    const normalizedBidRate = hasEntryLimit ? (bidRate || '') : '';
-    const normalizedAdjustmentRate = hasEntryLimit ? (adjustmentRate || '') : '';
+    const defaultRatioSource = isPpsOwner ? (bidAmount || ratioBaseAmount || '') : (ratioBaseAmount || bidAmount || '');
+    const initialRatio = isMoisUnder30 ? '' : defaultRatioSource;
+    const initialBidAmount = isMoisUnder30 ? '' : (bidAmount || defaultRatioSource);
+    const normalizedBidRate = bidRate || '';
+    const normalizedAdjustmentRate = adjustmentRate || '';
     return {
       entryAmount: hasEntryLimit ? (entryAmount || '') : '',
       baseAmount: initialBase,
@@ -311,9 +310,9 @@ const industryToLabel = (type) => {
     : '없음';
   const displayBaseAmountRaw = formatAmount(params.baseAmount || baseAmount);
   const displayBaseAmount = displayBaseAmountRaw !== '-' ? displayBaseAmountRaw : '';
-  const displayAdjustmentRate = hasEntryLimit ? formatPercentInput(params.adjustmentRate || adjustmentRate) : '';
-  const displayBidRate = hasEntryLimit ? formatPercentInput(params.bidRate || bidRate) : '';
-  const bidAmountSource = hasEntryLimit ? (params.ratioBase || params.bidAmount || bidAmount) : '';
+  const displayAdjustmentRate = formatPercentInput(params.adjustmentRate || adjustmentRate);
+  const displayBidRate = formatPercentInput(params.bidRate || bidRate);
+  const bidAmountSource = params.bidAmount || params.ratioBase || bidAmount;
   const displayBidAmountRaw = bidAmountSource ? formatAmount(bidAmountSource) : '';
   const displayBidAmount = displayBidAmountRaw !== '-' ? displayBidAmountRaw : '';
   useEffect(() => {
@@ -533,9 +532,9 @@ const industryToLabel = (type) => {
     noticeDate: noticeDate ? formatDate(noticeDate) : '',
   }), [noticeNo, noticeTitle, industryLabel, fileType, baseAmount, estimatedAmount, bidAmount, bidRate, adjustmentRate, noticeDate]);
 
-  const headerAdjustmentRate = hasEntryLimit ? (displayAdjustmentRate || details.adjustmentRate) : '';
-  const headerBidRate = hasEntryLimit ? (displayBidRate || details.bidRate) : '';
-  const headerBidAmount = hasEntryLimit ? (displayBidAmount || details.bidAmount) : '';
+  const headerAdjustmentRate = displayAdjustmentRate || details.adjustmentRate;
+  const headerBidRate = displayBidRate || details.bidRate;
+  const headerBidAmount = displayBidAmount || details.bidAmount;
 
   const isMaxScore = (score, maxScore) => {
     const scoreNum = Number(score);

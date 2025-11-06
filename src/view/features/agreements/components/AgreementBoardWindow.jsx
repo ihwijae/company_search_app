@@ -254,7 +254,10 @@ const toNumber = (value) => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : null;
   }
-  const match = String(value).match(/-?\d+(?:\.\d+)?/);
+  const normalized = String(value)
+    .replace(/[,\s]/g, '')
+    .trim();
+  const match = normalized.match(/-?\d+(?:\.\d+)?/);
   if (!match) return null;
   const parsed = Number(match[0]);
   return Number.isFinite(parsed) ? parsed : null;
@@ -607,10 +610,22 @@ export default function AgreementBoardWindow({
   const [exporting, setExporting] = React.useState(false);
   const [editableBidAmount, setEditableBidAmount] = React.useState(bidAmount);
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
+  const [excelCopying, setExcelCopying] = React.useState(false);
   const [regionSearchQuery, setRegionSearchQuery] = React.useState('');
   const [performanceSearchQuery, setPerformanceSearchQuery] = React.useState('');
   const searchTargetRef = React.useRef(null);
   const pendingPlacementRef = React.useRef(null);
+
+  const possibleShareBase = React.useMemo(() => {
+    const sources = ownerKeyUpper === 'LH'
+      ? [ratioBaseAmount, editableBidAmount, bidAmount, baseAmount, estimatedAmount]
+      : [editableBidAmount, bidAmount, ratioBaseAmount, baseAmount, estimatedAmount];
+    for (const source of sources) {
+      const parsed = parseAmountValue(source);
+      if (parsed !== null && parsed > 0) return parsed;
+    }
+    return null;
+  }, [ownerKeyUpper, ratioBaseAmount, editableBidAmount, bidAmount, baseAmount, estimatedAmount]);
 
   const derivePendingPlacementHint = React.useCallback((picked) => {
     if (!picked || typeof picked !== 'object') {
@@ -2076,6 +2091,128 @@ export default function AgreementBoardWindow({
     }))
   ), [groupAssignments, participantMap, summaryByGroup, candidateMetricsVersion]);
 
+  const handleCopyExcelPlan = React.useCallback(async () => {
+    if (excelCopying) return;
+
+    const MAX_SLOTS = 5;
+    const START_COLUMN = 0; // paste always starts at the user's selected cell (e.g., C열)
+    const SLOT_SPACING = 1;
+    const SHARE_OFFSET = 6;
+    const MANAGEMENT_OFFSET = 13;
+    const PERFORMANCE_OFFSET = 20;
+    const SIPYUNG_OFFSET = 38;
+    const TOTAL_COLUMNS = START_COLUMN + (MAX_SLOTS - 1) * SLOT_SPACING + SIPYUNG_OFFSET + 1;
+
+    const formatNumeric = (value) => {
+      const numeric = toNumber(value);
+      if (numeric === null) return '0';
+      if (Math.abs(numeric - Math.round(numeric)) < 0.0001) return String(Math.round(numeric));
+      return numeric.toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+    };
+
+    const formatAmountForExcel = (value) => {
+      const plain = formatPlainAmount(value);
+      if (!plain || plain === '-') return '0';
+      return plain;
+    };
+
+    const CELL_BREAK = '\n';
+    const encodeCell = (value) => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      if (!str) return '';
+      if (/[\t\n\r"]/g.test(str)) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = groups
+      .map((group, groupIndex) => {
+        if (!group || !Array.isArray(group.memberIds) || group.memberIds.every((id) => !id)) return null;
+        const row = new Array(TOTAL_COLUMNS).fill('');
+        for (let slotIndex = 0; slotIndex < MAX_SLOTS; slotIndex += 1) {
+          const baseCol = START_COLUMN + slotIndex * SLOT_SPACING;
+          const shareCol = START_COLUMN + SHARE_OFFSET + slotIndex * SLOT_SPACING;
+          const managementCol = START_COLUMN + MANAGEMENT_OFFSET + slotIndex * SLOT_SPACING;
+          const performanceCol = START_COLUMN + PERFORMANCE_OFFSET + slotIndex * SLOT_SPACING;
+          const sipyungCol = START_COLUMN + SIPYUNG_OFFSET + slotIndex * SLOT_SPACING;
+
+          const uid = group.memberIds[slotIndex];
+          if (!uid) continue;
+          const entry = participantMap.get(uid);
+          if (!entry || !entry.candidate) continue;
+          const candidate = entry.candidate;
+
+          const rawName = getCompanyName(candidate) || '';
+          const cleanName = sanitizeCompanyName(rawName) || rawName;
+          const managerName = getCandidateManagerName(candidate);
+          const shareStored = groupShares[groupIndex]?.[slotIndex];
+          const shareText = shareStored !== undefined && shareStored !== null
+            ? String(shareStored).trim()
+            : '';
+
+          const sipyungAmountRaw = getCandidateSipyungAmount(candidate);
+          const sipyungAmount = parseAmountValue(sipyungAmountRaw);
+          let possibleShareDisplay = '';
+          if (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount !== null && sipyungAmount > 0) {
+            const ratio = (sipyungAmount / possibleShareBase) * 100;
+            if (Number.isFinite(ratio) && ratio > 0) {
+              possibleShareDisplay = formatNumeric(ratio);
+            }
+          }
+
+          const nameLines = [cleanName];
+          if (possibleShareDisplay) {
+            nameLines.push(possibleShareDisplay);
+          } else if (shareText) {
+            nameLines.push(shareText);
+          }
+          if (managerName) nameLines.push(managerName);
+
+          row[baseCol] = nameLines.filter(Boolean).join(CELL_BREAK);
+          row[shareCol] = shareText;
+
+          const managementScore = getCandidateManagementScore(candidate);
+          if (managementScore != null && managementScore !== '') {
+            row[managementCol] = formatNumeric(managementScore);
+          }
+
+          const performanceAmount = getCandidatePerformanceAmount(candidate);
+          if (performanceAmount != null && performanceAmount !== '') {
+            row[performanceCol] = formatAmountForExcel(performanceAmount);
+          }
+
+          if (sipyungAmountRaw != null && sipyungAmountRaw !== '') {
+            row[sipyungCol] = formatAmountForExcel(sipyungAmountRaw);
+          }
+        }
+        return row.map(encodeCell).join('\t');
+      })
+      .filter(Boolean);
+
+    const payload = rows.join('\r\n');
+    if (!payload.trim()) {
+      window.alert('복사할 협정이 없습니다.');
+      return;
+    }
+
+    try {
+      setExcelCopying(true);
+      const result = await window.electronAPI.clipboardWriteText(payload);
+      if (!result?.success) {
+        throw new Error(result?.message || 'clipboard failed');
+      }
+      window.alert('엑셀 붙여넣기용 데이터가 클립보드에 복사되었습니다.');
+    } catch (error) {
+      console.error('[AgreementBoard] Excel copy failed:', error);
+      window.alert('엑셀 붙여넣기용 복사에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      setExcelCopying(false);
+    }
+  }, [excelCopying, groups, participantMap, groupShares, possibleShareBase]);
+
+
   const copyGroupMetric = React.useCallback(async (groupIndex, metric) => {
     const group = groups[groupIndex];
     if (!group) {
@@ -2198,9 +2335,7 @@ export default function AgreementBoardWindow({
     if (managementNumericForMember != null && !memberScoreIsPerfect) memberScoreRowClasses.push('score-alert');
 
     const sipyungAmount = parseAmountValue(sipyung);
-    const calculationBase = isLH
-      ? parseAmountValue(ratioBaseAmount)
-      : parseAmountValue(editableBidAmount);
+    const calculationBase = possibleShareBase;
 
     let possibleShare = null;
     if (calculationBase !== null && calculationBase > 0 && sipyungAmount !== null && sipyungAmount > 0) {
@@ -2432,7 +2567,7 @@ export default function AgreementBoardWindow({
         className="btn-sm btn-soft"
         onClick={() => openRepresentativeSearch(null)}
         disabled={disabled}
-      >대표사 찾기</button>
+      >업체 찾기</button>
     );
   }, [onAddRepresentatives, openRepresentativeSearch, fileType]);
 
@@ -2509,6 +2644,7 @@ export default function AgreementBoardWindow({
               <div className="board-sidebar-title">지역사</div>
               <div className="board-sidebar-head">
                 <div className="board-sidebar-count">{regionCountLabel}</div>
+                {renderSearchButton()}
               </div>
               <input
                 type="text"
@@ -2551,6 +2687,9 @@ export default function AgreementBoardWindow({
                   {exporting ? '엑셀 내보내는 중...' : '엑셀로 내보내기'}
                 </button>
                 <button type="button" className="btn-soft" onClick={handleGenerateText}>협정 문자 생성</button>
+                <button type="button" className="btn-soft" onClick={handleCopyExcelPlan} disabled={excelCopying}>
+                  {excelCopying ? '복사 중...' : '엑셀 붙여넣기용 복사'}
+                </button>
                 <button type="button" className="btn-soft" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="btn-soft" onClick={handleResetGroups}>초기화</button>
               </div>

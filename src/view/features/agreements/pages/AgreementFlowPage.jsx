@@ -68,7 +68,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   const entryMode = form.entryQualificationMode === 'sum'
     ? 'sum'
     : (form.entryQualificationMode === 'none' ? 'none' : 'ratio');
-  const showTenderFields = (isPPS || isMoisShareRange) && entryMode !== 'none';
+  const showTenderFields = (isPPS || isMoisShareRange);
   const [baseTouched, setBaseTouched] = React.useState(false);
   const [bidTouched, setBidTouched] = React.useState(false);
   const baseAutoRef = React.useRef('');
@@ -122,7 +122,6 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
 
   React.useEffect(() => {
     if (!(isPPS || isMoisShareRange)) return;
-    if (entryMode === 'none') return;
     setForm((prev) => {
       const next = { ...prev };
       let changed = false;

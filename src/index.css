@@ -982,6 +982,11 @@ body {
   gap: 8px;
 }
 
+.board-actions .btn-soft:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .board-groups {
   flex: 1;
   display: flex;
