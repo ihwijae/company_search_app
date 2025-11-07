@@ -405,6 +405,9 @@ const getCandidateManagementScore = (candidate) => {
     // 일부 데이터는 신용점수를 별도로 주지 않고 composite에 포함시킴
     credit = null;
   }
+  if (credit != null && isCreditScoreExpired(candidate)) {
+    credit = null;
+  }
 
   const candidates = [composite, credit].filter((value) => value != null && Number.isFinite(value));
   if (candidates.length === 0) return null;
@@ -467,6 +470,72 @@ const extractCreditGrade = (candidate) => {
     return match ? match[1] : str.split(/[\s(]/)[0];
   }
   return '';
+};
+
+const CREDIT_DATE_PATTERN = /(\d{2,4})[^0-9]{0,3}(\d{1,2})[^0-9]{0,3}(\d{1,2})/;
+const CREDIT_DATE_PATTERN_GLOBAL = new RegExp(CREDIT_DATE_PATTERN.source, 'g');
+const CREDIT_EXPIRED_REGEX = /(expired|만료|기한경과|유효\s*기간\s*만료|기간\s*만료|만기)/i;
+const CREDIT_OVERAGE_REGEX = /(over[-\s]?age|기간\s*초과|인정\s*기간\s*초과)/i;
+
+const parseExpiryDateToken = (token) => {
+  if (!token) return null;
+  const match = String(token).match(CREDIT_DATE_PATTERN);
+  if (!match) return null;
+  let year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (year < 100) year += year >= 70 ? 1900 : 2000;
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const extractExpiryDateFromText = (text) => {
+  if (!text) return null;
+  const source = String(text);
+  const explicit = source.match(/(~|부터|:)?\s*([0-9]{2,4}[^0-9]{0,3}[0-9]{1,2}[^0-9]{0,3}[0-9]{1,2})\s*(까지|만료|만기)/);
+  if (explicit) {
+    const parsed = parseExpiryDateToken(explicit[2]);
+    if (parsed) return parsed;
+  }
+  const tokens = source.match(CREDIT_DATE_PATTERN_GLOBAL);
+  if (tokens) {
+    for (let i = tokens.length - 1; i >= 0; i -= 1) {
+      const parsed = parseExpiryDateToken(tokens[i]);
+      if (parsed) return parsed;
+    }
+  }
+  return null;
+};
+
+const isCreditScoreExpired = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return false;
+  const textSources = [
+    candidate.creditNoteText,
+    candidate.creditNote,
+    candidate.creditGradeText,
+    candidate.creditGrade,
+    candidate.snapshot?.creditNoteText,
+    candidate.snapshot?.creditNote,
+    candidate.snapshot?.creditGradeText,
+    candidate.snapshot?.creditGrade,
+  ].filter(Boolean).map((value) => String(value));
+  if (textSources.length === 0) return false;
+  const expiryDate = (() => {
+    for (const text of textSources) {
+      const parsed = extractExpiryDateFromText(text);
+      if (parsed) return parsed;
+    }
+    return null;
+  })();
+  if (expiryDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiry = new Date(expiryDate.getTime());
+    expiry.setHours(0, 0, 0, 0);
+    if (expiry < today) return true;
+  }
+  return textSources.some((text) => CREDIT_EXPIRED_REGEX.test(text) || CREDIT_OVERAGE_REGEX.test(text));
 };
 
 const extractValue = (candidate, keys = []) => {
