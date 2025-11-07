@@ -118,6 +118,7 @@ export default function CandidatesModal({
   onClose,
   ownerId = 'LH',
   menuKey = '',
+  rangeId = null,
   fileType,
   entryAmount,
   entryMode = 'ratio',
@@ -134,10 +135,11 @@ export default function CandidatesModal({
   noticeTitle = '',
   noticeDate = '',
   industryLabel = '',
-  initialCandidates = [],
-  initialPinned = [],
-  initialExcluded = [],
+  initialCandidates = EMPTY_ARRAY,
+  initialPinned = EMPTY_ARRAY,
+  initialExcluded = EMPTY_ARRAY,
   onApply,
+  readOnly = false,
 }) {
   const popupRef = useRef(null);
   const [portalContainer, setPortalContainer] = useState(null);
@@ -174,6 +176,7 @@ export default function CandidatesModal({
   const [autoPin, setAutoPin] = useState(false);
   const [autoCount, setAutoCount] = useState(3);
   const [onlyLatest, setOnlyLatest] = useState(false);
+  const readOnlyMode = Boolean(readOnly);
   const today = useMemo(() => {
     const base = new Date();
     base.setHours(0, 0, 0, 0);
@@ -277,7 +280,7 @@ const industryToLabel = (type) => {
   return upper ? upper.toUpperCase() : '';
 };
 
-  const buildInitialParams = useCallback(() => {
+  const initialParamsSnapshot = useMemo(() => {
     const initialBase = isMoisUnder30
       ? (perfAmountValue || estimatedAmount || entryAmount || '')
       : (baseAmount || '');
@@ -299,7 +302,7 @@ const industryToLabel = (type) => {
       excludeSingleBidEligible: defaultExcludeSingle,
       filterByRegion: true,
     };
-  }, [isMoisUnder30, perfAmountValue, estimatedAmount, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle, hasEntryLimit]);
+  }, [isMoisUnder30, perfAmountValue, estimatedAmount, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle, hasEntryLimit, isPpsOwner]);
 
   const initKey = JSON.stringify({ ownerId, menuKey, entryAmount, baseAmount, estimatedAmount, perfAmountValue, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle, fileType });
   const didInitFetch = useRef(false);
@@ -317,27 +320,34 @@ const industryToLabel = (type) => {
   const displayBidAmount = displayBidAmountRaw !== '-' ? displayBidAmountRaw : '';
   useEffect(() => {
     if (!open) return;
-    const initial = buildInitialParams();
+    const initial = initialParamsSnapshot;
     setParams(initial);
     setSearchQuery('');
     setManagerQuery('');
-    const clonedCandidates = Array.isArray(initialCandidates)
-      ? initialCandidates.map((item) => (item && typeof item === 'object' ? { ...item } : item))
-      : [];
-    setList(clonedCandidates);
-    setPinned(new Set(Array.isArray(initialPinned) ? initialPinned : []));
-    setExcluded(new Set(Array.isArray(initialExcluded) ? initialExcluded : []));
+    if (readOnlyMode) {
+      setList([]);
+      setPinned(new Set());
+      setExcluded(new Set());
+      didInitFetch.current = false;
+    } else {
+      const clonedCandidates = Array.isArray(initialCandidates)
+        ? initialCandidates.map((item) => (item && typeof item === 'object' ? { ...item } : item))
+        : [];
+      setList(clonedCandidates);
+      setPinned(new Set(Array.isArray(initialPinned) ? initialPinned : []));
+      setExcluded(new Set(Array.isArray(initialExcluded) ? initialExcluded : []));
+      didInitFetch.current = clonedCandidates.length > 0;
+    }
     setError('');
     setApplying(false);
     setOnlyLatest(false);
-    didInitFetch.current = clonedCandidates.length > 0;
-  }, [open, initKey, buildInitialParams, initialCandidates, initialPinned, initialExcluded]);
+  }, [open, initKey, initialParamsSnapshot, initialCandidates, initialPinned, initialExcluded, readOnlyMode]);
 
   // Auto fetch on open with incoming values (once per open/inputs)
   useEffect(() => {
     if (!open) return;
     if (didInitFetch.current) return;
-    const initial = buildInitialParams();
+    const initial = initialParamsSnapshot;
     const entryAmountToken = hasEntryLimit ? String(initial.entryAmount || '').trim() : '';
     const hasAmounts = entryAmountToken || String(initial.baseAmount || '').trim() || String(estimatedAmount || '').trim();
     const hasRegions = Array.isArray(initial.dutyRegions) && initial.dutyRegions.length > 0;
@@ -345,7 +355,7 @@ const industryToLabel = (type) => {
       didInitFetch.current = true;
       runFetch(initial);
     }
-  }, [open, initKey, buildInitialParams, estimatedAmount]);
+  }, [open, initKey, initialParamsSnapshot, estimatedAmount, hasEntryLimit]);
 
   const formatScore = (value) => {
     if (value === null || value === undefined) return '-';
@@ -575,20 +585,24 @@ const industryToLabel = (type) => {
 
   const runFetch = async (overrideParams = null) => {
     const requestParams = overrideParams ? { ...overrideParams } : { ...params };
+    const hasRegionFilters = Array.isArray(requestParams.dutyRegions) && requestParams.dutyRegions.length > 0;
+    const filterByRegion = !!requestParams.filterByRegion && hasRegionFilters;
+    const dutyRegionsPayload = filterByRegion ? requestParams.dutyRegions : [];
     setLoading(true); setError(''); setList([]);
     try {
       const perfectAmountParam = isMoisUnder30 ? requestParams.baseAmount : perfAmountValue;
       const r = await window.electronAPI.fetchCandidates({
         ownerId,
         menuKey,
+        rangeId,
         fileType,
         entryAmount: requestParams.entryAmount,
         baseAmount: requestParams.baseAmount,
         estimatedAmount,
         perfectPerformanceAmount: perfectAmountParam,
-        dutyRegions: requestParams.dutyRegions,
+        dutyRegions: dutyRegionsPayload,
         excludeSingleBidEligible: requestParams.excludeSingleBidEligible,
-        filterByRegion: !!requestParams.filterByRegion,
+        filterByRegion,
         evaluationDate: noticeDate,
       });
       if (!r?.success) throw new Error(r?.message || '후보 요청 실패');
@@ -779,8 +793,14 @@ const industryToLabel = (type) => {
     return next;
   };
 
-  const onTogglePin = (id) => setPinned(prev => toggle(prev, id));
-  const onToggleExclude = (id) => setExcluded(prev => toggle(prev, id));
+  const onTogglePin = (id) => {
+    if (readOnlyMode) return;
+    setPinned((prev) => toggle(prev, id));
+  };
+  const onToggleExclude = (id) => {
+    if (readOnlyMode) return;
+    setExcluded((prev) => toggle(prev, id));
+  };
 
   const parseAmount = (s) => Number(String(s || '').replace(/[^0-9]/g, '')) || 0;
   const ratioBase = useMemo(() => parseAmount(params.ratioBase), [params.ratioBase]);
@@ -878,14 +898,14 @@ const industryToLabel = (type) => {
   }, [filtered, sortDir, sortSeq, sortKey]);
 
   const autoPinned = useMemo(() => {
-    if (!autoPin) return new Set();
+    if (readOnlyMode || !autoPin) return new Set();
     const ids = [];
     for (const c of sorted) {
       if (ids.length >= Math.max(0, Number(autoCount) || 0)) break;
       ids.push(c.id);
     }
     return new Set(ids);
-  }, [autoPin, autoCount, sorted]);
+  }, [readOnlyMode, autoPin, autoCount, sorted]);
 
   const pinnedView = useMemo(() => {
     const s = new Set(pinned);
@@ -900,7 +920,7 @@ const industryToLabel = (type) => {
   }, [onClose]);
 
   const handleApply = useCallback(async () => {
-    if (!onApply) {
+    if (readOnlyMode || !onApply) {
       onClose?.();
       return;
     }
@@ -927,7 +947,7 @@ const industryToLabel = (type) => {
     } finally {
       setApplying(false);
     }
-  }, [onApply, list, pinned, excluded, params, onClose]);
+  }, [readOnlyMode, onApply, list, pinned, excluded, params, onClose]);
 
   if (!open || !portalContainer) return null;
 
@@ -954,11 +974,17 @@ const industryToLabel = (type) => {
               )}
             </div>
           </div>
-          <p>총 {summary.total}개 · 선택 {summary.pinned} · 제외 {summary.excluded}</p>
+          <p>
+            {readOnlyMode
+              ? `총 ${summary.total}개`
+              : `총 ${summary.total}개 · 선택 ${summary.pinned} · 제외 ${summary.excluded}`}
+          </p>
           {loading && <span className="candidates-window__loading">검색 중…</span>}
         </div>
         <div className="candidates-window__header-actions">
-          <button className="primary" onClick={handleApply} disabled={applying}>{applying ? '적용 중…' : '선택 적용'}</button>
+          {!readOnlyMode && (
+            <button className="primary" onClick={handleApply} disabled={applying}>{applying ? '적용 중…' : '선택 적용'}</button>
+          )}
           <button className="btn-muted" onClick={handleClose}>닫기</button>
         </div>
       </header>
@@ -1098,7 +1124,11 @@ const industryToLabel = (type) => {
         </div>
         <div className="panel candidates-window__results" style={{ padding: 16, fontSize: 14, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ color: '#6b7280' }}>총 {summary.total}개 · 선택 {summary.pinned} · 제외 {summary.excluded}</div>
+            <div style={{ color: '#6b7280' }}>
+              {readOnlyMode
+                ? `총 ${summary.total}개`
+                : `총 ${summary.total}개 · 선택 ${summary.pinned} · 제외 ${summary.excluded}`}
+            </div>
             <div style={{ display:'flex', gap: 6, alignItems:'center', flexWrap: 'wrap' }}>
               <button className={`btn-sm ${isActiveSort('share','desc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('share','desc')}>지분 높은순</button>
               <button className={`btn-sm ${isActiveSort('share','asc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('share','asc')}>지분 낮은순</button>
@@ -1106,11 +1136,15 @@ const industryToLabel = (type) => {
               <button className={`btn-sm ${isActiveSort('perf5y','asc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('perf5y','asc')}>5년실적 낮은순</button>
               <button className={`btn-sm ${isActiveSort('sipyung','desc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('sipyung','desc')}>시평액 높은순</button>
               <button className={`btn-sm ${isActiveSort('sipyung','asc') ? 'primary' : 'btn-soft'}`} onClick={()=>applySort('sipyung','asc')}>시평액 낮은순</button>
-              <label style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
-                <input type="checkbox" checked={autoPin} onChange={(e)=>setAutoPin(!!e.target.checked)} /> 자동 선택 상위
-              </label>
-              <input type="number" min={1} max={10} value={autoCount} onChange={(e)=>setAutoCount(e.target.value)} style={{ width: 68, height: 32, borderRadius: 8, border: '1px solid #d0d5dd', padding: '0 8px' }} />
-              <button className="btn-muted btn-sm" onClick={()=>{ setPinned(new Set()); setExcluded(new Set()); }}>선택 초기화</button>
+              {!readOnlyMode && (
+                <>
+                  <label style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+                    <input type="checkbox" checked={autoPin} onChange={(e)=>setAutoPin(!!e.target.checked)} /> 자동 선택 상위
+                  </label>
+                  <input type="number" min={1} max={10} value={autoCount} onChange={(e)=>setAutoCount(e.target.value)} style={{ width: 68, height: 32, borderRadius: 8, border: '1px solid #d0d5dd', padding: '0 8px' }} />
+                  <button className="btn-muted btn-sm" onClick={()=>{ setPinned(new Set()); setExcluded(new Set()); }}>선택 초기화</button>
+                </>
+              )}
             </div>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8, paddingBottom: 4 }}>
@@ -1145,25 +1179,13 @@ const industryToLabel = (type) => {
                   const combinedScore = (Number.isFinite(debtScore) ? debtScore : 0) + (Number.isFinite(currentScore) ? currentScore : 0);
                   const combinedMax = (Number.isFinite(debtMax) ? debtMax : 0) + (Number.isFinite(currentMax) ? currentMax : 0);
                   const managementMax = Math.max(combinedMax, Number.isFinite(creditMax) ? creditMax : 0);
-                  let managementScore = Number.isFinite(creditScore)
-                    ? Math.max(combinedScore, creditScore)
-                    : combinedScore;
-                  const combinedIsMax = combinedMax > 0 && Math.abs(combinedScore - combinedMax) < 1e-6;
-                  const creditIsMax = Number.isFinite(creditScore)
-                    && Number.isFinite(creditMax)
-                    && creditMax > 0
-                    && Math.abs(creditScore - creditMax) < 1e-6;
-                  if (managementMax > 0 && (combinedIsMax || creditIsMax)) {
-                    managementScore = managementMax;
-                  }
-                  const managementIsMax = managementMax > 0 && Math.abs(managementScore - managementMax) < 1e-6;
-                  const hasManagementScores = Number.isFinite(debtScore) || Number.isFinite(currentScore) || Number.isFinite(creditScore);
                   const creditNoteLower = String(c.creditNote || '').trim().toLowerCase();
                   const creditNoteTextRaw = c.creditNoteText || '';
                   const creditNoteTextLower = creditNoteTextRaw.trim().toLowerCase();
                   const creditGradePure = (c.creditGrade || '').trim();
                   const creditGradeTextRaw = c.creditGradeText || creditGradePure;
                   const creditGradeTextLower = creditGradeTextRaw.trim().toLowerCase();
+                  const creditScoreValue = Number.isFinite(creditScore) ? Number(creditScore) : null;
                   const creditExpiredFlag = /expired|만료|기한경과|유효\s*기간\s*만료/.test(creditNoteLower)
                     || /만료|기한경과|유효\s*기간\s*만료/.test(creditGradeTextLower)
                     || /만료|기한경과|유효\s*기간\s*만료/.test(creditNoteTextLower);
@@ -1174,7 +1196,22 @@ const industryToLabel = (type) => {
                   const expiryFromNote = extractExpiryDate(creditNoteTextRaw);
                   const expiryDate = expiryFromGrade || expiryFromNote;
                   const isExpiredByDate = expiryDate ? expiryDate < today : false;
-                  const creditScoreValue = Number.isFinite(creditScore) ? Number(creditScore) : null;
+                  const creditUsable = creditScoreValue != null && !(creditExpiredFlag || creditOverAge || isExpiredByDate);
+                  const effectiveCreditScore = creditUsable ? creditScoreValue : null;
+                  let managementScore = Number.isFinite(effectiveCreditScore)
+                    ? Math.max(combinedScore, effectiveCreditScore)
+                    : combinedScore;
+                  const combinedIsMax = combinedMax > 0 && Math.abs(combinedScore - combinedMax) < 1e-6;
+                  const creditIsMax = creditUsable
+                    && Number.isFinite(creditScoreValue)
+                    && Number.isFinite(creditMax)
+                    && creditMax > 0
+                    && Math.abs(creditScoreValue - creditMax) < 1e-6;
+                  if (managementMax > 0 && (combinedIsMax || creditIsMax)) {
+                    managementScore = managementMax;
+                  }
+                  const managementIsMax = managementMax > 0 && Math.abs(managementScore - managementMax) < 1e-6;
+                  const hasManagementScores = Number.isFinite(debtScore) || Number.isFinite(currentScore) || Number.isFinite(creditScoreValue);
                   const hasCreditScoreValue = creditScoreValue != null && creditScoreValue > 0;
                   const creditDisplayLabel = creditGradeTextRaw.trim() || creditGradePure;
                   const normalizedGrade = creditGradePure.replace(/\s+/g, '').toUpperCase();
@@ -1339,8 +1376,12 @@ const industryToLabel = (type) => {
                         <button className="btn-sm btn-soft" onClick={()=>handleCopySipyungField(c)}>시평액 복사</button>
                         <button className="btn-sm btn-soft" onClick={()=>handleCopyPerf5yField(c)}>5년 실적 복사</button>
                         <button className="btn-sm btn-soft" onClick={()=>handleCopyCandidate(c, pct)}>복사</button>
-                        <button className={pinnedView.has(c.id) ? 'btn-sm primary' : 'btn-sm btn-soft'} onClick={()=>onTogglePin(c.id)} disabled={isAuto}>{pinnedView.has(c.id) ? (isAuto ? '선택(자동)' : '선택 해제') : '선택'}</button>
-                        <button className={excluded.has(c.id) ? 'btn-sm btn-danger' : 'btn-sm btn-muted'} onClick={()=>onToggleExclude(c.id)}>{excluded.has(c.id) ? '제외 해제' : '제외'}</button>
+                        {!readOnlyMode && (
+                          <>
+                            <button className={pinnedView.has(c.id) ? 'btn-sm primary' : 'btn-sm btn-soft'} onClick={()=>onTogglePin(c.id)} disabled={isAuto}>{pinnedView.has(c.id) ? (isAuto ? '선택(자동)' : '선택 해제') : '선택'}</button>
+                            <button className={excluded.has(c.id) ? 'btn-sm btn-danger' : 'btn-sm btn-muted'} onClick={()=>onToggleExclude(c.id)}>{excluded.has(c.id) ? '제외 해제' : '제외'}</button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1357,3 +1398,4 @@ const industryToLabel = (type) => {
     portalContainer,
   );
 }
+const EMPTY_ARRAY = Object.freeze([]);

@@ -1,6 +1,5 @@
 import React from 'react';
 import AgreementBoardWindow from '../components/AgreementBoardWindow.jsx';
-import CandidatesModal from '../components/CandidatesModal.jsx';
 
 const DEFAULT_GROUP_SIZE = 3;
 const DEFAULT_OWNER_ID = 'LH';
@@ -33,34 +32,6 @@ const initialState = {
   adjustmentRate: '',
   entryAmount: '',
   entryMode: 'ratio',
-};
-
-const initialCandidatesWindowState = {
-  open: false,
-  ownerId: DEFAULT_OWNER_ID,
-  menuKey: '',
-  rangeId: null,
-  fileType: DEFAULT_FILE_TYPE,
-  noticeNo: '',
-  noticeTitle: '',
-  industryLabel: '',
-  entryAmount: '',
-  baseAmount: '',
-  estimatedAmount: '',
-  bidAmount: '',
-  bidRate: '',
-  adjustmentRate: '',
-  entryMode: 'ratio',
-  perfectPerformanceAmount: 0,
-  dutyRegions: [],
-  ratioBaseAmount: '',
-  defaultExcludeSingle: true,
-  groupSize: DEFAULT_GROUP_SIZE,
-  bidDeadline: '',
-  regionDutyRate: '',
-  initialCandidates: [],
-  initialPinned: [],
-  initialExcluded: [],
 };
 
 const normalizeRuleEntry = (item = {}) => ({
@@ -138,8 +109,6 @@ const buildCandidateFromSearchEntry = (entry) => {
     region: snapshot['대표지역'] || snapshot['지역'] || '',
     source: 'search',
     _forceRepresentative: true,
-    _regionSelected: true,
-    regionSelected: true,
   };
 
   const sipyungValue = extractAmountValue(
@@ -166,6 +135,23 @@ const buildCandidateFromSearchEntry = (entry) => {
   return candidate;
 };
 
+const stripCandidateComputedFields = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return candidate;
+  const clone = { ...candidate };
+  delete clone._agreementManagementScore;
+  delete clone._agreementManagementScoreVersion;
+  delete clone._agreementPerformanceScore;
+  delete clone._agreementPerformanceMax;
+  delete clone._agreementPerformanceCapVersion;
+  return clone;
+};
+
+const sanitizeCandidatesList = (list) => (
+  Array.isArray(list)
+    ? list.map((item) => (item && typeof item === 'object' ? stripCandidateComputedFields(item) : item))
+    : list
+);
+
 const equalRuleLists = (a, b) => {
   if (a === b) return true;
   if (!Array.isArray(a) || !Array.isArray(b)) return false;
@@ -185,8 +171,6 @@ const equalRuleLists = (a, b) => {
 
 export function AgreementBoardProvider({ children }) {
   const [boardState, setBoardState] = React.useState(initialState);
-  const [candidatesWindow, setCandidatesWindow] = React.useState(initialCandidatesWindowState);
-  const candidatesCallbacksRef = React.useRef({ onApply: null, onClose: null });
 
   const fetchAlwaysInclude = React.useCallback(async (
     ownerId = DEFAULT_OWNER_ID,
@@ -279,6 +263,7 @@ export function AgreementBoardProvider({ children }) {
     setBoardState((prev) => ({
       ...prev,
       ...payload,
+      candidates: sanitizeCandidatesList(payload.candidates || []),
       ownerId: owner,
       fileType,
       rangeId: range,
@@ -291,6 +276,9 @@ export function AgreementBoardProvider({ children }) {
     setBoardState((prev) => ({
       ...prev,
       ...payload,
+      candidates: Array.isArray(payload.candidates)
+        ? sanitizeCandidatesList(payload.candidates)
+        : (payload.candidates !== undefined ? payload.candidates : prev.candidates),
     }));
   }, []);
 
@@ -300,7 +288,7 @@ export function AgreementBoardProvider({ children }) {
       const existing = Array.isArray(prev.candidates) ? prev.candidates : [];
       const existingIds = new Set(existing.map((item) => item && item.id).filter(Boolean));
       const normalized = entries
-        .map((item) => (item && typeof item === 'object' ? { ...item } : null))
+        .map((item) => (item && typeof item === 'object' ? stripCandidateComputedFields({ ...item }) : null))
         .filter((item) => item && (item.id || item.bizNo || item.name));
       if (normalized.length === 0) return prev;
       const next = [];
@@ -354,181 +342,6 @@ export function AgreementBoardProvider({ children }) {
     setBoardState((prev) => ({ ...prev, open: false }));
   }, []);
 
-  const closeCandidatesModal = React.useCallback(() => {
-    setCandidatesWindow((prev) => (
-      prev.open ? { ...prev, open: false } : prev
-    ));
-  }, []);
-
-  const applyCandidatesSelection = React.useCallback((payload = {}, meta = {}) => {
-    setBoardState((prev) => {
-      const next = { ...prev };
-
-      if (meta.ownerId) {
-        next.ownerId = String(meta.ownerId || DEFAULT_OWNER_ID).toUpperCase();
-      }
-      if (meta.fileType) {
-        next.fileType = meta.fileType;
-      }
-      if (meta.rangeId !== undefined) {
-        next.rangeId = meta.rangeId;
-      }
-      if (meta.noticeNo !== undefined) next.noticeNo = meta.noticeNo;
-      if (meta.noticeTitle !== undefined) next.noticeTitle = meta.noticeTitle;
-      if (meta.industryLabel !== undefined) next.industryLabel = meta.industryLabel;
-      if (meta.baseAmount !== undefined) next.baseAmount = meta.baseAmount;
-      if (meta.estimatedAmount !== undefined) next.estimatedAmount = meta.estimatedAmount;
-      if (meta.entryAmount !== undefined) next.entryAmount = meta.entryAmount;
-      if (meta.entryMode !== undefined) next.entryMode = meta.entryMode;
-      if (meta.bidDeadline !== undefined) next.bidDeadline = meta.bidDeadline;
-      if (meta.regionDutyRate !== undefined) next.regionDutyRate = meta.regionDutyRate;
-      if (meta.bidAmount !== undefined) next.bidAmount = meta.bidAmount;
-      if (meta.bidRate !== undefined) next.bidRate = meta.bidRate;
-      if (meta.adjustmentRate !== undefined) next.adjustmentRate = meta.adjustmentRate;
-      if (meta.ratioBaseAmount !== undefined) next.ratioBaseAmount = meta.ratioBaseAmount;
-      if (Array.isArray(meta.dutyRegions)) next.dutyRegions = [...meta.dutyRegions];
-      if (meta.groupSize !== undefined) {
-        const parsed = Number(meta.groupSize);
-        if (Number.isFinite(parsed) && parsed > 0) {
-          next.groupSize = Math.max(1, Math.floor(parsed));
-        }
-      }
-
-      if (Array.isArray(payload.candidates)) {
-        next.candidates = payload.candidates.map((item) => (item && typeof item === 'object' ? { ...item } : item));
-      }
-      if (Array.isArray(payload.pinned)) {
-        next.pinned = [...payload.pinned];
-      }
-      if (Array.isArray(payload.excluded)) {
-        next.excluded = [...payload.excluded];
-      }
-
-      return next;
-    });
-  }, []);
-
-  const handleCandidatesWindowClosed = React.useCallback(() => {
-    closeCandidatesModal();
-    const { onClose } = candidatesCallbacksRef.current || {};
-    if (typeof onClose === 'function') {
-      try {
-        onClose();
-      } catch (err) {
-        console.warn('[AgreementBoard] candidates window close handler failed:', err?.message || err);
-      }
-    }
-    candidatesCallbacksRef.current = { onApply: null, onClose: null };
-  }, [closeCandidatesModal]);
-
-  const openCandidatesModal = React.useCallback((payload = {}) => {
-    const {
-      onApply,
-      onClose,
-      dutyRegions,
-      defaultExcludeSingle,
-      rangeId,
-      groupSize,
-      initialCandidates,
-      initialPinned,
-      initialExcluded,
-      ...rest
-    } = payload || {};
-
-    candidatesCallbacksRef.current = {
-      onApply: typeof onApply === 'function' ? onApply : null,
-      onClose: typeof onClose === 'function' ? onClose : null,
-    };
-
-    setCandidatesWindow((prev) => {
-      const base = { ...prev, open: true };
-      const next = { ...base, ...rest };
-      const ownerSource = rest.ownerId ?? base.ownerId ?? DEFAULT_OWNER_ID;
-      next.ownerId = ownerSource ? String(ownerSource).toUpperCase() : DEFAULT_OWNER_ID;
-      next.menuKey = rest.menuKey ?? base.menuKey ?? '';
-      next.rangeId = rangeId ?? rest.rangeId ?? rest.menuKey ?? base.rangeId ?? base.menuKey ?? null;
-      next.fileType = rest.fileType || base.fileType || DEFAULT_FILE_TYPE;
-      next.noticeNo = rest.noticeNo ?? base.noticeNo ?? '';
-      next.noticeTitle = rest.noticeTitle ?? base.noticeTitle ?? '';
-      next.noticeDate = rest.noticeDate ?? base.noticeDate ?? '';
-      next.industryLabel = rest.industryLabel ?? base.industryLabel ?? '';
-      next.entryAmount = rest.entryAmount ?? base.entryAmount ?? '';
-      next.entryMode = rest.entryMode ?? base.entryMode ?? 'ratio';
-      next.baseAmount = rest.baseAmount ?? base.baseAmount ?? '';
-      next.estimatedAmount = rest.estimatedAmount ?? base.estimatedAmount ?? '';
-      next.bidAmount = rest.bidAmount ?? base.bidAmount ?? '';
-      next.bidRate = rest.bidRate ?? base.bidRate ?? '';
-      next.adjustmentRate = rest.adjustmentRate ?? base.adjustmentRate ?? '';
-      next.bidDeadline = rest.bidDeadline ?? base.bidDeadline ?? '';
-      next.regionDutyRate = rest.regionDutyRate ?? base.regionDutyRate ?? '';
-      next.perfectPerformanceAmount = rest.perfectPerformanceAmount ?? base.perfectPerformanceAmount ?? 0;
-      next.ratioBaseAmount = rest.ratioBaseAmount ?? base.ratioBaseAmount ?? '';
-      const parsedGroupSize = Number(groupSize ?? rest.groupSize ?? base.groupSize ?? DEFAULT_GROUP_SIZE);
-      next.groupSize = Number.isFinite(parsedGroupSize) && parsedGroupSize > 0
-        ? Math.max(1, Math.floor(parsedGroupSize))
-        : (base.groupSize || DEFAULT_GROUP_SIZE);
-      if (defaultExcludeSingle !== undefined) {
-        next.defaultExcludeSingle = Boolean(defaultExcludeSingle);
-      } else if (next.defaultExcludeSingle === undefined) {
-        next.defaultExcludeSingle = true;
-      }
-      if (Array.isArray(dutyRegions)) {
-        next.dutyRegions = dutyRegions;
-      } else if (!Array.isArray(next.dutyRegions)) {
-        next.dutyRegions = [];
-      }
-      next.initialCandidates = Array.isArray(initialCandidates) ? initialCandidates : Array.isArray(next.initialCandidates) ? next.initialCandidates : [];
-      next.initialPinned = Array.isArray(initialPinned) ? initialPinned : Array.isArray(next.initialPinned) ? next.initialPinned : [];
-      next.initialExcluded = Array.isArray(initialExcluded) ? initialExcluded : Array.isArray(next.initialExcluded) ? next.initialExcluded : [];
-      return next;
-    });
-  }, []);
-
-  const handleCandidatesApply = React.useCallback((payload) => {
-    const meta = {
-      ownerId: candidatesWindow.ownerId,
-      fileType: candidatesWindow.fileType,
-      rangeId: candidatesWindow.rangeId ?? candidatesWindow.menuKey ?? null,
-      noticeNo: candidatesWindow.noticeNo,
-      noticeTitle: candidatesWindow.noticeTitle,
-      industryLabel: candidatesWindow.industryLabel,
-      baseAmount: candidatesWindow.baseAmount,
-      estimatedAmount: candidatesWindow.estimatedAmount,
-      bidAmount: candidatesWindow.bidAmount,
-      bidRate: candidatesWindow.bidRate,
-      adjustmentRate: candidatesWindow.adjustmentRate,
-      bidDeadline: candidatesWindow.bidDeadline,
-      regionDutyRate: candidatesWindow.regionDutyRate,
-      dutyRegions: Array.isArray(candidatesWindow.dutyRegions) ? candidatesWindow.dutyRegions : undefined,
-      groupSize: candidatesWindow.groupSize,
-      entryAmount: candidatesWindow.entryAmount,
-      entryMode: candidatesWindow.entryMode,
-      ratioBaseAmount: candidatesWindow.ratioBaseAmount,
-    };
-
-    if (payload && payload.params && typeof payload.params === 'object') {
-      const updates = payload.params;
-      if (updates.entryAmount !== undefined) meta.entryAmount = updates.entryAmount;
-      if (updates.baseAmount !== undefined) meta.baseAmount = updates.baseAmount;
-      if (updates.bidAmount !== undefined) meta.bidAmount = updates.bidAmount;
-      if (updates.ratioBase !== undefined) meta.ratioBaseAmount = updates.ratioBase;
-      if (updates.bidRate !== undefined) meta.bidRate = updates.bidRate;
-      if (updates.adjustmentRate !== undefined) meta.adjustmentRate = updates.adjustmentRate;
-    }
-
-    applyCandidatesSelection(payload, meta);
-
-    const { onApply } = candidatesCallbacksRef.current || {};
-    if (typeof onApply === 'function') {
-      try {
-        onApply(payload);
-      } catch (err) {
-        console.warn('[AgreementBoard] candidates apply handler failed:', err?.message || err);
-      }
-    }
-    closeCandidatesModal();
-  }, [applyCandidatesSelection, candidatesWindow, closeCandidatesModal]);
-
   React.useEffect(() => {
     if (!boardState.open) return;
     const owner = String(boardState.ownerId || DEFAULT_OWNER_ID).toUpperCase();
@@ -559,10 +372,6 @@ export function AgreementBoardProvider({ children }) {
     appendCandidatesFromSearch,
     removeCandidate,
     closeBoard,
-    candidatesWindow,
-    openCandidatesModal,
-    closeCandidatesModal,
-    applyCandidatesSelection,
   }), [
     boardState,
     openBoard,
@@ -571,10 +380,6 @@ export function AgreementBoardProvider({ children }) {
     appendCandidatesFromSearch,
     removeCandidate,
     closeBoard,
-    candidatesWindow,
-    openCandidatesModal,
-    closeCandidatesModal,
-    applyCandidatesSelection,
   ]);
 
   return (
@@ -610,32 +415,6 @@ export function AgreementBoardProvider({ children }) {
         adjustmentRate={boardState.adjustmentRate || ''}
         bidDeadline={boardState.bidDeadline || ''}
         regionDutyRate={boardState.regionDutyRate || ''}
-      />
-      <CandidatesModal
-        open={Boolean(candidatesWindow.open)}
-        onClose={handleCandidatesWindowClosed}
-        ownerId={candidatesWindow.ownerId || DEFAULT_OWNER_ID}
-        menuKey={candidatesWindow.menuKey || ''}
-        fileType={candidatesWindow.fileType || DEFAULT_FILE_TYPE}
-        noticeNo={candidatesWindow.noticeNo || ''}
-        noticeTitle={candidatesWindow.noticeTitle || ''}
-        noticeDate={candidatesWindow.noticeDate || ''}
-        industryLabel={candidatesWindow.industryLabel || ''}
-        entryAmount={candidatesWindow.entryAmount || ''}
-        entryMode={candidatesWindow.entryMode || 'ratio'}
-        baseAmount={candidatesWindow.baseAmount || ''}
-        estimatedAmount={candidatesWindow.estimatedAmount || ''}
-        bidAmount={candidatesWindow.bidAmount || ''}
-        bidRate={candidatesWindow.bidRate || ''}
-        adjustmentRate={candidatesWindow.adjustmentRate || ''}
-        perfectPerformanceAmount={candidatesWindow.perfectPerformanceAmount || 0}
-        dutyRegions={Array.isArray(candidatesWindow.dutyRegions) ? candidatesWindow.dutyRegions : []}
-        ratioBaseAmount={candidatesWindow.ratioBaseAmount || ''}
-        defaultExcludeSingle={candidatesWindow.defaultExcludeSingle !== undefined ? candidatesWindow.defaultExcludeSingle : true}
-        initialCandidates={Array.isArray(candidatesWindow.initialCandidates) ? candidatesWindow.initialCandidates : []}
-        initialPinned={Array.isArray(candidatesWindow.initialPinned) ? candidatesWindow.initialPinned : []}
-        initialExcluded={Array.isArray(candidatesWindow.initialExcluded) ? candidatesWindow.initialExcluded : []}
-        onApply={handleCandidatesApply}
       />
     </AgreementBoardContext.Provider>
   );

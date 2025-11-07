@@ -13,6 +13,7 @@ const MANAGEMENT_SCORE_MAX = 15;
 const PERFORMANCE_DEFAULT_MAX = 13;
 const PERFORMANCE_MOIS_DEFAULT_MAX = 15;
 const PERFORMANCE_CAP_VERSION = 2;
+const MANAGEMENT_SCORE_VERSION = 3;
 const BOARD_COPY_SLOT_COUNT = 5;
 const BOARD_COPY_ACTIONS = [
   { kind: 'names', label: '업체명 복사', successMessage: '업체명 데이터가 복사되었습니다.' },
@@ -337,11 +338,30 @@ const clampScore = (value, max = MANAGEMENT_SCORE_MAX) => {
 
 const getCandidateManagementScore = (candidate) => {
   if (!candidate || typeof candidate !== 'object') return null;
-  if (candidate._agreementManagementScore != null) {
+  const normalizeFlag = (value) => {
+    if (value === true) return true;
+    if (value === null || value === undefined) return false;
+    const str = String(value).trim().toUpperCase();
+    if (!str) return false;
+    return ['Y', 'YES', 'TRUE', '만점', 'MAX', '완료', 'O', '1'].includes(str);
+  };
+  const explicitPerfectSources = [
+    candidate.managementIsPerfect,
+    candidate.snapshot?.managementIsPerfect,
+  ];
+  const explicitPerfect = explicitPerfectSources.some(normalizeFlag);
+  if (explicitPerfect) {
+    candidate._agreementManagementScore = MANAGEMENT_SCORE_MAX;
+    candidate._agreementManagementScoreVersion = MANAGEMENT_SCORE_VERSION;
+    return MANAGEMENT_SCORE_MAX;
+  }
+  if (
+    candidate._agreementManagementScore != null
+    && candidate._agreementManagementScoreVersion === MANAGEMENT_SCORE_VERSION
+  ) {
     const cached = clampScore(toNumber(candidate._agreementManagementScore));
     if (cached != null) return cached;
   }
-
   const directFields = [
     'managementScore',
     '_managementScore',
@@ -354,6 +374,7 @@ const getCandidateManagementScore = (candidate) => {
       const parsed = clampScore(toNumber(candidate[field]));
       if (parsed != null) {
         candidate._agreementManagementScore = parsed;
+        candidate._agreementManagementScoreVersion = MANAGEMENT_SCORE_VERSION;
         return parsed;
       }
     }
@@ -414,6 +435,7 @@ const getCandidateManagementScore = (candidate) => {
   const best = Math.max(...candidates);
   const clamped = clampScore(best);
   candidate._agreementManagementScore = clamped;
+  candidate._agreementManagementScoreVersion = MANAGEMENT_SCORE_VERSION;
   return clamped;
 };
 
@@ -474,8 +496,9 @@ const extractCreditGrade = (candidate) => {
 
 const CREDIT_DATE_PATTERN = /(\d{2,4})[^0-9]{0,3}(\d{1,2})[^0-9]{0,3}(\d{1,2})/;
 const CREDIT_DATE_PATTERN_GLOBAL = new RegExp(CREDIT_DATE_PATTERN.source, 'g');
-const CREDIT_EXPIRED_REGEX = /(expired|만료|기한경과|유효\s*기간\s*만료|기간\s*만료|만기)/i;
+const CREDIT_EXPIRED_REGEX = /(expired|만료|기한\s*경과|유효\s*기간\s*만료|기간\s*만료|만기)/i;
 const CREDIT_OVERAGE_REGEX = /(over[-\s]?age|기간\s*초과|인정\s*기간\s*초과)/i;
+const CREDIT_STATUS_STALE_REGEX = /(경과)/i;
 
 const parseExpiryDateToken = (token) => {
   if (!token) return null;
@@ -510,32 +533,129 @@ const extractExpiryDateFromText = (text) => {
 
 const isCreditScoreExpired = (candidate) => {
   if (!candidate || typeof candidate !== 'object') return false;
+  const flagFields = [
+    candidate.creditExpired,
+    candidate.snapshot?.creditExpired,
+  ];
+  for (const flag of flagFields) {
+    if (flag === true) return true;
+    if (typeof flag === 'string') {
+      const upper = flag.trim().toUpperCase();
+      if (upper === 'Y' || upper === 'TRUE' || upper === 'EXPIRED') return true;
+    }
+  }
+
+  const explicitExpirySources = [
+    candidate.creditExpiry,
+    candidate.creditExpiryDate,
+    candidate.creditValidUntil,
+    candidate.creditExpiryText,
+    candidate.creditExpiryLabel,
+    candidate['신용평가 유효기간'],
+    candidate['신용평가유효기간'],
+    candidate['신용평가 기간'],
+    candidate['신용평가기간'],
+    candidate['신용평가 만료일'],
+    candidate['신용만료일'],
+    candidate.snapshot?.creditExpiry,
+    candidate.snapshot?.creditExpiryDate,
+    candidate.snapshot?.creditValidUntil,
+    candidate.snapshot?.creditExpiryText,
+    candidate.snapshot?.creditExpiryLabel,
+    candidate.snapshot?.['신용평가 유효기간'],
+    candidate.snapshot?.['신용평가유효기간'],
+    candidate.snapshot?.['신용평가 기간'],
+    candidate.snapshot?.['신용평가기간'],
+    candidate.snapshot?.['신용평가 만료일'],
+    candidate.snapshot?.['신용만료일'],
+  ].filter(Boolean);
+  const parsedExplicit = (() => {
+    for (const raw of explicitExpirySources) {
+      const parsed = extractExpiryDateFromText(raw);
+      if (parsed) return parsed;
+    }
+    return null;
+  })();
+
+  const creditTextKeys = [
+    'creditNoteText',
+    'creditNote',
+    'creditGradeText',
+    'creditGrade',
+    'creditInfo',
+    'creditDetails',
+    'creditStatus',
+    'creditStatusText',
+    'creditValidityText',
+    'creditExpiryText',
+    '신용평가',
+    '신용평가등급',
+    '신용등급',
+    '신용평가비고',
+    '신용평가 비고',
+    '신용평가상태',
+    '신용상태',
+    '신용평가 상태',
+  ];
+
+  const collectCreditTexts = (source) => {
+    if (!source || typeof source !== 'object') return [];
+    return creditTextKeys
+      .map((key) => source[key])
+      .filter((value) => value !== undefined && value !== null && value !== '')
+      .map((value) => String(value));
+  };
+
   const textSources = [
-    candidate.creditNoteText,
-    candidate.creditNote,
-    candidate.creditGradeText,
-    candidate.creditGrade,
-    candidate.snapshot?.creditNoteText,
-    candidate.snapshot?.creditNote,
-    candidate.snapshot?.creditGradeText,
-    candidate.snapshot?.creditGrade,
-  ].filter(Boolean).map((value) => String(value));
-  if (textSources.length === 0) return false;
-  const expiryDate = (() => {
+    ...collectCreditTexts(candidate),
+    ...collectCreditTexts(candidate.snapshot),
+  ];
+
+  const expiryFromText = (() => {
     for (const text of textSources) {
       const parsed = extractExpiryDateFromText(text);
       if (parsed) return parsed;
     }
     return null;
   })();
-  if (expiryDate) {
+
+  const finalExpiry = parsedExplicit || expiryFromText;
+  if (finalExpiry) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const expiry = new Date(expiryDate.getTime());
+    const expiry = new Date(finalExpiry.getTime());
     expiry.setHours(0, 0, 0, 0);
     if (expiry < today) return true;
   }
-  return textSources.some((text) => CREDIT_EXPIRED_REGEX.test(text) || CREDIT_OVERAGE_REGEX.test(text));
+
+  if (textSources.some((text) => CREDIT_EXPIRED_REGEX.test(text) || CREDIT_OVERAGE_REGEX.test(text))) {
+    return true;
+  }
+
+  const statusSources = [
+    candidate.dataStatus,
+    candidate['데이터상태'],
+    candidate.snapshot?.dataStatus,
+    candidate.snapshot?.['데이터상태'],
+  ].filter((value) => value && typeof value === 'object');
+
+  for (const status of statusSources) {
+    const statusTexts = [
+      status.credit,
+      status.creditStatus,
+      status.creditValidity,
+      status['신용평가'],
+      status['신용'],
+    ].filter((value) => value !== undefined && value !== null && value !== '')
+      .map((value) => String(value));
+    if (statusTexts.some((text) => CREDIT_EXPIRED_REGEX.test(text)
+      || CREDIT_OVERAGE_REGEX.test(text)
+      || CREDIT_STATUS_STALE_REGEX.test(text))) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 const extractValue = (candidate, keys = []) => {
@@ -1169,7 +1289,9 @@ export default function AgreementBoardWindow({
   const selectedRegionCandidates = React.useMemo(() => {
     const pinnedMatches = regionCandidates.filter((candidate) => pinnedSet.has(candidate?.id));
     if (pinnedMatches.length > 0) return pinnedMatches;
-    return regionCandidates.filter((candidate) => isRegionExplicitlySelected(candidate));
+    const explicit = regionCandidates.filter((candidate) => isRegionExplicitlySelected(candidate));
+    if (explicit.length > 0) return explicit;
+    return regionCandidates;
   }, [regionCandidates, pinnedSet]);
 
   const regionEntries = React.useMemo(() => {
@@ -1241,6 +1363,23 @@ export default function AgreementBoardWindow({
     }
     return result;
   }, [representativeEntries.length, safeGroupSize]);
+
+  React.useEffect(() => {
+    if (open) {
+      candidateScoreCacheRef.current.clear();
+    }
+  }, [open]);
+
+  const participantSignature = React.useMemo(() => {
+    const repIds = representativeEntries.map((entry) => entry?.candidate?.id || entry?.uid || 'rep');
+    const regionIds = regionEntries.map((entry) => entry?.candidate?.id || entry?.uid || 'region');
+    return [...repIds, '|', ...regionIds].join('|');
+  }, [representativeEntries, regionEntries]);
+
+  React.useEffect(() => {
+    candidateScoreCacheRef.current.clear();
+    setCandidateMetricsVersion((prev) => prev + 1);
+  }, [participantSignature]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -1877,7 +2016,7 @@ export default function AgreementBoardWindow({
         currentRatio: getCandidateNumericValue(candidate, ['currentRatio', '유동비율']),
         credit: extractCreditGrade(candidate),
         perf5y: getCandidatePerformanceAmount(candidate),
-        managementScore: candidate.managementTotalScore ?? candidate.managementScore ?? candidate._agreementManagementScore ?? null,
+        managementScore: candidate.managementTotalScore ?? candidate.managementScore ?? null,
       }));
       console.debug('[AgreementBoard] candidate sample', sample);
     }
@@ -1985,7 +2124,9 @@ export default function AgreementBoardWindow({
           ['qualityEval', '품질평가', '품질점수'],
           [['품질', 'quality']]
         );
-        const creditGrade = extractCreditGrade(candidate);
+        const creditGradeRaw = extractCreditGrade(candidate);
+        const creditExpired = isCreditScoreExpired(candidate);
+        const creditGrade = creditExpired ? '' : creditGradeRaw;
         const candidatePerfAmount = performanceAmount;
 
         let resolvedManagement = currentManagement;
@@ -2027,8 +2168,9 @@ export default function AgreementBoardWindow({
               if (needsManagement && management && management.score != null) {
                 const mgmtScore = clampScore(management.score);
                 if (mgmtScore != null) {
-                  candidate._agreementManagementScore = mgmtScore;
                   resolvedManagement = mgmtScore;
+                  candidate._agreementManagementScore = mgmtScore;
+                  candidate._agreementManagementScoreVersion = MANAGEMENT_SCORE_VERSION;
                 }
               }
               if (needsPerformanceScore && performance && performance.score != null) {

@@ -3,6 +3,7 @@ import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import AmountInput from '../../../../components/AmountInput.jsx';
+import CandidatesModal from '../components/CandidatesModal.jsx';
 import { useAgreementBoard } from '../context/AgreementBoardContext.jsx';
 import { BASE_ROUTES, findMenuByKey } from '../../../../shared/navigation.js';
 import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
@@ -79,12 +80,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     const saved = loadPersisted(`${storageKey}:dutyRegions`, []);
     return Array.isArray(saved) ? saved.filter((name) => typeof name === 'string') : [];
   });
-  const [candidates, setCandidates] = React.useState([]);
-  const [pinned, setPinned] = React.useState([]);
-  const [excluded, setExcluded] = React.useState([]);
-  const prevIndustryRef = React.useRef(form.industry);
-  const prevDutyRegionsRef = React.useRef(dutyRegions);
-  const mountedRef = React.useRef(true);
+  const [regionSearchOpen, setRegionSearchOpen] = React.useState(false);
 
   const toFileType = (industry) => {
     if (industry === '전기') return 'eung';
@@ -94,14 +90,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
 
   const currentFileType = React.useMemo(() => toFileType(form.industry), [form.industry]);
 
-  const { boardState, openBoard, updateBoard, openCandidatesModal } = useAgreementBoard();
-
-  React.useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  const { boardState, openBoard, updateBoard } = useAgreementBoard();
 
   React.useEffect(() => {
     setBaseTouched(false);
@@ -154,61 +143,6 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     if (sameRegions && boardState?.groupSize === groupSizeValue) return;
     updateBoard({ dutyRegions, groupSize: groupSizeValue });
   }, [boardState, dutyRegions, form.teamSizeMax, updateBoard]);
-
-  const normalizeList = React.useCallback((value) => (
-    Array.isArray(value) ? value : []
-  ), []);
-
-  const listEqualsByKey = React.useCallback((a, b) => {
-    if (a === b) return true;
-    const left = normalizeList(a);
-    const right = normalizeList(b);
-    if (left.length !== right.length) return false;
-    const toKey = (item) => {
-      if (!item || typeof item !== 'object') return '';
-      return (
-        item.id
-        || item.bizNo
-        || item.bizno
-        || item.biz_no
-        || item['사업자번호']
-        || item['검색된 회사']
-        || item.name
-        || ''
-      );
-    };
-    for (let i = 0; i < left.length; i += 1) {
-      if (toKey(left[i]) !== toKey(right[i])) return false;
-    }
-    return true;
-  }, [normalizeList]);
-
-  const shallowEqualArray = React.useCallback((left = [], right = []) => {
-    if (left === right) return true;
-    if (left.length !== right.length) return false;
-    for (let i = 0; i < left.length; i += 1) {
-      if (left[i] !== right[i]) return false;
-    }
-    return true;
-  }, []);
-
-  React.useEffect(() => {
-    if (!boardState) return;
-    const boardCandidates = normalizeList(boardState.candidates);
-    const boardPinned = normalizeList(boardState.pinned);
-    const boardExcluded = normalizeList(boardState.excluded);
-
-    if (!listEqualsByKey(boardCandidates, candidates)) {
-      setCandidates(boardCandidates.slice());
-    }
-
-    if (!shallowEqualArray(boardPinned, pinned)) {
-      setPinned(boardPinned.slice());
-    }
-    if (!shallowEqualArray(boardExcluded, excluded)) {
-      setExcluded(boardExcluded.slice());
-    }
-  }, [boardState, candidates, excluded, listEqualsByKey, normalizeList, pinned, shallowEqualArray]);
 
   React.useEffect(() => {
     const normalizedOwner = String(ownerId || 'LH').toUpperCase();
@@ -362,30 +296,6 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     if (!autoFormatted && current === '') return;
     setForm((prev) => ({ ...prev, bidAmount: autoFormatted }));
   }, [showTenderFields, form.baseAmount, form.bidRate, form.adjustmentRate, form.bidAmount, bidTouched]);
-
-  React.useEffect(() => {
-    const prevIndustry = prevIndustryRef.current;
-    const prevRegions = prevDutyRegionsRef.current || [];
-    const currentRegions = dutyRegions || [];
-    const industryChanged = prevIndustry !== form.industry;
-    const regionsChanged = (() => {
-      if (prevRegions.length !== currentRegions.length) return true;
-      for (let i = 0; i < currentRegions.length; i += 1) {
-        if (prevRegions[i] !== currentRegions[i]) return true;
-      }
-      return false;
-    })();
-
-    if ((industryChanged || regionsChanged) && (candidates.length > 0 || pinned.length > 0 || excluded.length > 0)) {
-      setCandidates([]);
-      setPinned([]);
-      setExcluded([]);
-      updateBoard({ candidates: [], pinned: [], excluded: [] });
-    }
-
-    prevIndustryRef.current = form.industry;
-    prevDutyRegionsRef.current = currentRegions.slice();
-  }, [form.industry, dutyRegions, candidates.length, pinned.length, excluded.length, updateBoard]);
 
   React.useEffect(() => {
     if (boardState?.open) return;
@@ -558,70 +468,19 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     if (menu) window.location.hash = menu.hash;
   };
 
-  const handleOpenCandidatesModal = useCallback(() => {
-    openCandidatesModal({
-      ownerId,
-      menuKey,
-      rangeId: menuKey,
-      fileType: currentFileType,
-      noticeNo: form.noticeNo,
-      noticeTitle: form.title,
-      noticeDate: form.noticeDate,
-      industryLabel: form.industry,
-      entryAmount: form.entryQualificationAmount || '',
-      entryMode,
-      baseAmount: form.baseAmount,
-      estimatedAmount: form.estimatedPrice,
-      ratioBaseAmount: isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount),
-      bidAmount: form.bidAmount,
-      bidRate: form.bidRate,
-      adjustmentRate: form.adjustmentRate,
-      bidDeadline: form.bidDeadline,
-      regionDutyRate: form.regionDutyRate,
-      perfectPerformanceAmount,
-      dutyRegions,
-      groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
-      defaultExcludeSingle: true,
-      initialCandidates: candidates,
-      initialPinned: pinned,
-      initialExcluded: excluded,
-      onApply: ({ candidates: list, pinned: pinnedList, excluded: excludedList, params: modalParams }) => {
-        if (!mountedRef.current) return;
-        setCandidates(list);
-        setPinned(pinnedList);
-        setExcluded(excludedList);
-        if (modalParams && typeof modalParams === 'object') {
-          setForm((prev) => {
-            const nextBidAmount = modalParams.bidAmount !== undefined
-              ? modalParams.bidAmount
-              : (modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.bidAmount);
-            const nextRatioBaseAmount = isPPS
-              ? nextBidAmount
-              : (modalParams.ratioBase !== undefined ? modalParams.ratioBase : prev.ratioBaseAmount);
-            return {
-              ...prev,
-              entryQualificationAmount: modalParams.entryAmount !== undefined ? modalParams.entryAmount : prev.entryQualificationAmount,
-              baseAmount: modalParams.baseAmount !== undefined ? modalParams.baseAmount : prev.baseAmount,
-              ratioBaseAmount: nextRatioBaseAmount,
-              bidAmount: nextBidAmount,
-              bidRate: modalParams.bidRate !== undefined ? modalParams.bidRate : prev.bidRate,
-              adjustmentRate: modalParams.adjustmentRate !== undefined ? modalParams.adjustmentRate : prev.adjustmentRate,
-            };
-          });
-        }
-      },
-    });
-  }, [openCandidatesModal, ownerId, menuKey, currentFileType, form.noticeNo, form.title, form.noticeDate, form.industry, form.entryQualificationAmount, entryMode, form.baseAmount, form.estimatedPrice, isPPS, form.bidAmount, form.ratioBaseAmount, form.bidRate, form.adjustmentRate, form.bidDeadline, form.regionDutyRate, perfectPerformanceAmount, dutyRegions, form.teamSizeMax, candidates, pinned, excluded]);
+  const handleOpenRegionSearch = useCallback(() => {
+    setRegionSearchOpen(true);
+  }, []);
+
+  const handleCloseRegionSearch = useCallback(() => {
+    setRegionSearchOpen(false);
+  }, []);
 
   const handleOpenBoard = useCallback(() => {
-    if (!candidates || candidates.length === 0) {
-      window.alert('먼저 지역사 찾기를 실행해 최종 후보를 확정해주세요.');
-      return;
-    }
     openBoard({
-      candidates,
-      pinned,
-      excluded,
+      candidates: [],
+      pinned: [],
+      excluded: [],
       dutyRegions,
       groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
       ownerId: (ownerId || 'LH').toUpperCase(),
@@ -641,7 +500,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       entryAmount: form.entryQualificationAmount || '',
       entryMode,
     });
-  }, [candidates, openBoard, pinned, excluded, dutyRegions, form.teamSizeMax, ownerId, currentFileType, menuKey, form.noticeNo, form.title, form.industry, form.baseAmount, form.estimatedPrice, form.bidAmount, isPPS, form.ratioBaseAmount, form.bidRate, form.adjustmentRate, form.bidDeadline, form.regionDutyRate, form.entryQualificationAmount, entryMode]);
+  }, [openBoard, dutyRegions, form.teamSizeMax, ownerId, currentFileType, menuKey, form.noticeNo, form.title, form.industry, form.baseAmount, form.estimatedPrice, form.bidAmount, isPPS, form.ratioBaseAmount, form.bidRate, form.adjustmentRate, form.bidDeadline, form.regionDutyRate, form.entryQualificationAmount, entryMode]);
 
   return (
     <div className="app-shell">
@@ -839,25 +698,20 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
             </div>
 
             <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h3 style={{ marginTop: 0 }}>후보 현황</h3>
-              <div className="candidate-summary">
-                <span>고정 {pinned.length}</span>
-                <span>제외 {excluded.length}</span>
-                <span>후보 {candidates.length}</span>
+              <h3 style={{ marginTop: 0 }}>지역사 찾기 안내</h3>
+              <div className="candidate-summary__empty">
+                지역사 찾기는 업체 검색과 정보 확인용 도구입니다. 필요한 업체를 확인한 뒤 협정보드 슬롯의 “업체 검색” 버튼으로 직접 배치하세요.
               </div>
-              {candidates.length === 0 && (
-                <div className="candidate-summary__empty">아직 후보가 없습니다. “지역사 찾기”를 눌러 조건에 맞는 후보를 불러오세요.</div>
-              )}
+              <div style={{ marginTop: 12 }}>
+                <button className="btn-soft" onClick={handleOpenRegionSearch}>지역사 찾기</button>
+              </div>
             </div>
 
             <div className="action-footer" style={{ gridColumn: '1 / -1' }}>
               <div className="action-footer__info">
-                {candidates.length > 0
-                  ? '후보를 검토하고 협정보드에서 조합을 확정하세요.'
-                  : '지역사 찾기를 통해 협정 후보를 먼저 불러오세요.'}
+                지역사 찾기에서 확인한 업체를 협정보드에서 다시 검색해 직접 구성하세요.
               </div>
               <div className="action-footer__buttons">
-                <button className="btn-soft" onClick={handleOpenCandidatesModal}>지역사 찾기</button>
                 <button className="primary" onClick={handleOpenBoard}>협정보드 열기</button>
               </div>
             </div>
@@ -865,6 +719,30 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
           </div>
         </div>
       </div>
+      <CandidatesModal
+        open={regionSearchOpen}
+        onClose={handleCloseRegionSearch}
+        ownerId={ownerId}
+        menuKey={menuKey}
+        rangeId={menuKey}
+        fileType={currentFileType}
+        noticeNo={form.noticeNo}
+        noticeTitle={form.title}
+        noticeDate={form.noticeDate}
+        industryLabel={form.industry}
+        entryAmount={form.entryQualificationAmount || ''}
+        entryMode={entryMode}
+        baseAmount={form.baseAmount}
+        estimatedAmount={form.estimatedPrice}
+        bidAmount={form.bidAmount}
+        bidRate={form.bidRate}
+        adjustmentRate={form.adjustmentRate}
+        perfectPerformanceAmount={perfectPerformanceAmount}
+        dutyRegions={dutyRegions}
+        ratioBaseAmount={isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount || '')}
+        defaultExcludeSingle
+        readOnly
+      />
     </div>
   );
 }
