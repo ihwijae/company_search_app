@@ -138,6 +138,8 @@ const buildCandidateFromSearchEntry = (entry) => {
     region: snapshot['대표지역'] || snapshot['지역'] || '',
     source: 'search',
     _forceRepresentative: true,
+    _regionSelected: true,
+    regionSelected: true,
   };
 
   const sipyungValue = extractAmountValue(
