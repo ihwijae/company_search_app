@@ -2098,7 +2098,7 @@ export default function AgreementBoardWindow({
 
         const candidateKey = normalizeCandidateKey(candidate);
         if (!candidateKey) continue;
-        const cacheKey = `${ownerKey}|${evaluationAmount || ''}|${perfBase || ''}|${candidateKey}`;
+        const cacheKey = `${ownerKey}|${String(fileType || '')}|${evaluationAmount || ''}|${perfBase || ''}|${candidateKey}`;
         const cacheEntry = candidateScoreCacheRef.current.get(cacheKey);
         if (cacheEntry === 'pending') continue;
         if (cacheEntry === 'done' && !needsManagement && !needsPerformanceScore) continue;
@@ -2147,6 +2147,9 @@ export default function AgreementBoardWindow({
             creditGrade,
           },
         };
+        if (fileType) {
+          payload.fileType = fileType;
+        }
 
         if (!Number.isFinite(payload.inputs.debtRatio)) delete payload.inputs.debtRatio;
         if (!Number.isFinite(payload.inputs.currentRatio)) delete payload.inputs.currentRatio;
@@ -2228,7 +2231,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantMap, ownerId, baseAmount, estimatedAmount]);
+  }, [open, participantMap, ownerId, baseAmount, estimatedAmount, fileType]);
 
   const handleDragStart = (id) => (event) => {
     if (!id) return;

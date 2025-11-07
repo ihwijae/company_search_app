@@ -66,6 +66,14 @@ const normalizeFileType = (value, { fallback = null } = {}) => {
   return fallback;
 };
 
+const sanitizeFileTypeForAvg = (value) => {
+  const normalized = normalizeFileType(value, { fallback: null });
+  if (normalized) return normalized;
+  if (value === undefined || value === null) return null;
+  const token = String(value).trim();
+  return token ? token.toLowerCase() : null;
+};
+
 const FILE_TYPE_LABELS = {
   eung: '전기',
   tongsin: '통신',
@@ -1610,7 +1618,17 @@ try {
 
   ipcMain.handle('formulas-evaluate', async (_event, payload) => {
     try {
-      const r = evaluator.evaluateScores(payload || {});
+      const sanitized = payload && typeof payload === 'object' ? { ...payload } : {};
+      if (!sanitized.industryAvg) {
+        const normalizedType = sanitizeFileTypeForAvg(sanitized.fileType);
+        if (normalizedType) {
+          const avg = industryAverages[normalizedType]
+            || industryAverages[String(normalizedType).toLowerCase()]
+            || null;
+          if (avg) sanitized.industryAvg = avg;
+        }
+      }
+      const r = evaluator.evaluateScores(sanitized);
       return { success: true, data: r };
     } catch (e) {
       return { success: false, message: e?.message || 'Failed to evaluate' };
