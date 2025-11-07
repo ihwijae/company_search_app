@@ -107,12 +107,33 @@ const extractAmountValue = (candidate, directKeys = [], keywordGroups = []) => {
 const buildCandidateFromSearchEntry = (entry) => {
   if (!entry) return null;
   const snapshot = entry.snapshot && typeof entry.snapshot === 'object' ? { ...entry.snapshot } : {};
-  const bizNoNormalized = normalizeBizNo(entry.bizNo || snapshot['사업자번호'] || '');
-  const baseId = bizNoNormalized || String(entry.name || snapshot['검색된 회사'] || '') || `search-${Date.now()}`;
+  const rawBizNo = entry.bizNo
+    || snapshot.bizNo
+    || snapshot.BizNo
+    || snapshot['사업자번호']
+    || snapshot['사업자 번호']
+    || snapshot['사업자등록번호']
+    || snapshot['사업자 등록번호']
+    || snapshot['법인등록번호']
+    || snapshot['법인 등록번호']
+    || snapshot['법인번호']
+    || snapshot['법인 번호']
+    || '';
+  const bizNoNormalized = normalizeBizNo(rawBizNo);
+  const resolvedName = (entry.name
+    || snapshot['검색된 회사']
+    || snapshot['업체명']
+    || snapshot['회사명']
+    || snapshot.companyName
+    || snapshot.name
+    || '')
+    .toString()
+    .trim();
+  const baseId = bizNoNormalized || resolvedName || `search-${Date.now()}`;
   const candidate = {
     id: `search:${baseId}`,
     bizNo: bizNoNormalized,
-    name: entry.name || snapshot['검색된 회사'] || snapshot['업체명'] || baseId || '대표사',
+    name: resolvedName || baseId || '대표사',
     snapshot,
     region: snapshot['대표지역'] || snapshot['지역'] || '',
     source: 'search',

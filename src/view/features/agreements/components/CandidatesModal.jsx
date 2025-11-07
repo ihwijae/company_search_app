@@ -443,8 +443,13 @@ const industryToLabel = (type) => {
       return cleaned;
     })();
     const manager = String(candidate.manager ?? '').trim();
-    const share = Number.isFinite(pctValue) ? pctValue.toFixed(2) : '';
-    const block = [name, share, manager].join('\n');
+    const share = (Number.isFinite(pctValue) && pctValue < 100)
+      ? pctValue.toFixed(2)
+      : '';
+    const lines = [name];
+    if (share) lines.push(share);
+    if (manager) lines.push(manager);
+    const block = lines.join('\n');
     try {
       if (window.electronAPI?.copyCsvColumn) {
         const result = await window.electronAPI.copyCsvColumn([block]);

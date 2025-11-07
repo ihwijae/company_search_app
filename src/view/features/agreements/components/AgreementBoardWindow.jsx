@@ -13,6 +13,26 @@ const MANAGEMENT_SCORE_MAX = 15;
 const PERFORMANCE_DEFAULT_MAX = 13;
 const PERFORMANCE_MOIS_DEFAULT_MAX = 15;
 const PERFORMANCE_CAP_VERSION = 2;
+const BOARD_COPY_SLOT_COUNT = 5;
+const BOARD_COPY_ACTIONS = [
+  { kind: 'names', label: '업체명 복사', successMessage: '업체명 데이터가 복사되었습니다.' },
+  { kind: 'shares', label: '지분 복사', successMessage: '지분 값이 복사되었습니다.' },
+  { kind: 'management', label: '경영점수 복사', successMessage: '경영점수가 복사되었습니다.' },
+  { kind: 'performance', label: '실적 복사', successMessage: '5년 실적이 복사되었습니다.' },
+  { kind: 'sipyung', label: '시평액 복사', successMessage: '시평액이 복사되었습니다.' },
+];
+const BOARD_COPY_LOOKUP = BOARD_COPY_ACTIONS.reduce((acc, action) => {
+  acc[action.kind] = action;
+  return acc;
+}, {});
+const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
+const BOARD_COPY_BUTTON_STYLE_MAP = {
+  names: { backgroundColor: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' },
+  shares: { backgroundColor: '#ccfbf1', color: '#0f766e', borderColor: '#99f6e4' },
+  management: { backgroundColor: '#fef9c3', color: '#92400e', borderColor: '#fde68a' },
+  performance: { backgroundColor: '#ffe4e6', color: '#be123c', borderColor: '#fecdd3' },
+  sipyung: { backgroundColor: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' },
+};
 function Field({ label, children, style = {} }) {
   return (
     <div className="filter-item" style={style}>
@@ -581,6 +601,7 @@ export default function AgreementBoardWindow({
   const [draggingId, setDraggingId] = React.useState(null);
   const [dropTarget, setDropTarget] = React.useState(null);
   const [groupShares, setGroupShares] = React.useState([]);
+  const [groupShareRawInputs, setGroupShareRawInputs] = React.useState([]);
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState([]);
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
@@ -611,6 +632,7 @@ export default function AgreementBoardWindow({
   const [editableBidAmount, setEditableBidAmount] = React.useState(bidAmount);
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
   const [excelCopying, setExcelCopying] = React.useState(false);
+  const [copyingKind, setCopyingKind] = React.useState(null);
   const [regionSearchQuery, setRegionSearchQuery] = React.useState('');
   const [performanceSearchQuery, setPerformanceSearchQuery] = React.useState('');
   const searchTargetRef = React.useRef(null);
@@ -760,6 +782,13 @@ export default function AgreementBoardWindow({
       return next;
     });
     setGroupShares((prev) => {
+      const next = prev.map((row) => row.slice());
+      while (next.length <= groupIndex) next.push([]);
+      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
+      next[groupIndex][slotIndex] = '';
+      return next;
+    });
+    setGroupShareRawInputs((prev) => {
       const next = prev.map((row) => row.slice());
       while (next.length <= groupIndex) next.push([]);
       while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
@@ -1440,9 +1469,9 @@ export default function AgreementBoardWindow({
   }, [groupAssignments, participantMap, groupShares, ownerId, noticeNo, noticeTitle]);
 
   React.useEffect(() => {
+    const prevAssignments = prevAssignmentsRef.current || [];
     setGroupShares((prevShares) => {
       const shareMap = new Map();
-      const prevAssignments = prevAssignmentsRef.current || [];
       prevAssignments.forEach((group, gIdx) => {
         group.forEach((id, idx) => {
           if (id) {
@@ -1451,10 +1480,25 @@ export default function AgreementBoardWindow({
           }
         });
       });
-      const nextShares = groupAssignments.map((group) => group.map((id) => (id ? (shareMap.get(id) ?? '') : '')));
-      prevAssignmentsRef.current = groupAssignments;
-      return nextShares;
+      return groupAssignments.map((group) => (
+        group.map((id) => (id ? (shareMap.get(id) ?? '') : ''))
+      ));
     });
+    setGroupShareRawInputs((prevRaw) => {
+      const rawMap = new Map();
+      prevAssignments.forEach((group, gIdx) => {
+        group.forEach((id, idx) => {
+          if (id) {
+            const value = prevRaw[gIdx]?.[idx] ?? '';
+            rawMap.set(id, value);
+          }
+        });
+      });
+      return groupAssignments.map((group) => (
+        group.map((id) => (id ? (rawMap.get(id) ?? '') : ''))
+      ));
+    });
+    prevAssignmentsRef.current = groupAssignments;
   }, [groupAssignments]);
 
   React.useEffect(() => {
@@ -2000,6 +2044,13 @@ export default function AgreementBoardWindow({
       }
       return next;
     });
+    setGroupShareRawInputs((prev) => {
+      const next = prev.map((row) => row.slice());
+      if (next[groupIndex] && next[groupIndex][slotIndex] !== undefined) {
+        next[groupIndex][slotIndex] = '';
+      }
+      return next;
+    });
     setGroupCredibility((prev) => {
       const next = prev.map((row) => row.slice());
       if (next[groupIndex] && next[groupIndex][slotIndex] !== undefined) {
@@ -2057,17 +2108,26 @@ export default function AgreementBoardWindow({
     setGroupAssignments(buildInitialAssignments());
     setDropTarget(null);
     setGroupShares([]);
+    setGroupShareRawInputs([]);
     setGroupCredibility([]);
   };
 
   const handleShareInput = (groupIndex, slotIndex, rawValue) => {
-    const sanitized = rawValue.replace(/[^0-9.]/g, '');
+    const original = rawValue ?? '';
+    const sanitized = original.replace(/[^0-9.]/g, '');
     if ((sanitized.match(/\./g) || []).length > 1) return;
     setGroupShares((prev) => {
       const next = prev.map((row) => row.slice());
       while (next.length <= groupIndex) next.push([]);
       while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
       next[groupIndex][slotIndex] = sanitized;
+      return next;
+    });
+    setGroupShareRawInputs((prev) => {
+      const next = prev.map((row) => row.slice());
+      while (next.length <= groupIndex) next.push([]);
+      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
+      next[groupIndex][slotIndex] = original;
       return next;
     });
   };
@@ -2093,17 +2153,36 @@ export default function AgreementBoardWindow({
     }))
   ), [groupAssignments, participantMap, summaryByGroup, candidateMetricsVersion]);
 
-  const handleCopyExcelPlan = React.useCallback(async () => {
-    if (excelCopying) return;
+  const formatShareDecimal = (value) => {
+    if (value === null || value === undefined) return '';
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '';
+    let text = numeric.toFixed(6);
+    text = text.replace(/(\.\d*?[1-9])0+$/u, '$1');
+    text = text.replace(/\.0+$/u, '');
+    if (text === '' || text === '-0') return '0';
+    return text;
+  };
 
-    const MAX_SLOTS = 5;
-    const START_COLUMN = 0; // paste always starts at the user's selected cell (e.g., C열)
-    const SLOT_SPACING = 1;
-    const SHARE_OFFSET = 6;
-    const MANAGEMENT_OFFSET = 13;
-    const PERFORMANCE_OFFSET = 20;
-    const SIPYUNG_OFFSET = 38;
-    const TOTAL_COLUMNS = START_COLUMN + (MAX_SLOTS - 1) * SLOT_SPACING + SIPYUNG_OFFSET + 1;
+  const copyToClipboard = React.useCallback(async (payload) => {
+    if (window.electronAPI?.clipboardWriteText) {
+      const result = await window.electronAPI.clipboardWriteText(payload);
+      if (!result?.success) {
+        throw new Error(result?.message || 'clipboard failed');
+      }
+      return;
+    }
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(payload);
+      return;
+    }
+    throw new Error('clipboard unavailable');
+  }, []);
+
+  const copyBoardDataset = React.useCallback(async (kind) => {
+    if (excelCopying) return;
+    const action = BOARD_COPY_LOOKUP[kind];
+    if (!action) return;
 
     const formatNumeric = (value) => {
       const numeric = toNumber(value);
@@ -2118,7 +2197,6 @@ export default function AgreementBoardWindow({
       return plain;
     };
 
-    const CELL_BREAK = '\n';
     const encodeCell = (value) => {
       if (value === null || value === undefined) return '';
       const str = String(value);
@@ -2129,65 +2207,92 @@ export default function AgreementBoardWindow({
       return str;
     };
 
+    const getShareDisplayValue = (groupIndex, slotIndex) => {
+      const rawInput = groupShareRawInputs[groupIndex]?.[slotIndex];
+      if (rawInput !== undefined && rawInput !== null) {
+        const trimmed = String(rawInput).trim();
+        if (trimmed) return trimmed;
+      }
+      const stored = groupShares[groupIndex]?.[slotIndex];
+      if (stored !== undefined && stored !== null) {
+        const trimmed = String(stored).trim();
+        if (trimmed) return trimmed;
+      }
+      return '';
+    };
+
+    const buildNameCell = (candidate, groupIndex, slotIndex) => {
+      const rawName = getCompanyName(candidate) || '';
+      const cleanName = sanitizeCompanyName(rawName) || rawName;
+      const managerName = getCandidateManagerName(candidate);
+      const shareDisplay = getShareDisplayValue(groupIndex, slotIndex);
+
+      const sipyungAmountRaw = getCandidateSipyungAmount(candidate);
+      const sipyungAmount = parseAmountValue(sipyungAmountRaw);
+      let possibleShareDisplay = '';
+      let possibleShareRatio = null;
+      if (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount !== null && sipyungAmount > 0) {
+        const ratio = (sipyungAmount / possibleShareBase) * 100;
+        if (Number.isFinite(ratio) && ratio > 0) {
+          possibleShareRatio = ratio;
+          if (ratio < 100) {
+            possibleShareDisplay = formatNumeric(ratio);
+          }
+        }
+      }
+
+      const lines = [cleanName];
+      if (possibleShareDisplay) {
+        lines.push(possibleShareDisplay);
+      } else if (!(possibleShareRatio != null && possibleShareRatio >= 100) && shareDisplay) {
+        lines.push(shareDisplay);
+      }
+      if (managerName) lines.push(managerName);
+      return lines.filter(Boolean).join('\n');
+    };
+
     const rows = groups
       .map((group, groupIndex) => {
         if (!group || !Array.isArray(group.memberIds) || group.memberIds.every((id) => !id)) return null;
-        const row = new Array(TOTAL_COLUMNS).fill('');
-        for (let slotIndex = 0; slotIndex < MAX_SLOTS; slotIndex += 1) {
-          const baseCol = START_COLUMN + slotIndex * SLOT_SPACING;
-          const shareCol = START_COLUMN + SHARE_OFFSET + slotIndex * SLOT_SPACING;
-          const managementCol = START_COLUMN + MANAGEMENT_OFFSET + slotIndex * SLOT_SPACING;
-          const performanceCol = START_COLUMN + PERFORMANCE_OFFSET + slotIndex * SLOT_SPACING;
-          const sipyungCol = START_COLUMN + SIPYUNG_OFFSET + slotIndex * SLOT_SPACING;
-
+        const row = new Array(BOARD_COPY_SLOT_COUNT).fill('');
+        for (let slotIndex = 0; slotIndex < BOARD_COPY_SLOT_COUNT; slotIndex += 1) {
           const uid = group.memberIds[slotIndex];
           if (!uid) continue;
           const entry = participantMap.get(uid);
           if (!entry || !entry.candidate) continue;
           const candidate = entry.candidate;
-
-          const rawName = getCompanyName(candidate) || '';
-          const cleanName = sanitizeCompanyName(rawName) || rawName;
-          const managerName = getCandidateManagerName(candidate);
-          const shareStored = groupShares[groupIndex]?.[slotIndex];
-          const shareText = shareStored !== undefined && shareStored !== null
-            ? String(shareStored).trim()
-            : '';
-
-          const sipyungAmountRaw = getCandidateSipyungAmount(candidate);
-          const sipyungAmount = parseAmountValue(sipyungAmountRaw);
-          let possibleShareDisplay = '';
-          if (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount !== null && sipyungAmount > 0) {
-            const ratio = (sipyungAmount / possibleShareBase) * 100;
-            if (Number.isFinite(ratio) && ratio > 0) {
-              possibleShareDisplay = formatNumeric(ratio);
+          let value = '';
+          if (kind === 'names') {
+            value = buildNameCell(candidate, groupIndex, slotIndex);
+          } else if (kind === 'shares') {
+            const shareStored = groupShares[groupIndex]?.[slotIndex];
+            if (shareStored !== undefined && shareStored !== null && String(shareStored).trim() !== '') {
+              const numeric = Number(shareStored);
+              if (Number.isFinite(numeric)) {
+                value = formatShareDecimal(numeric / 100);
+              } else {
+                value = String(shareStored).trim();
+              }
+            } else {
+              value = '';
+            }
+          } else if (kind === 'management') {
+            const managementScore = getCandidateManagementScore(candidate);
+            if (managementScore != null && managementScore !== '') {
+              value = formatNumeric(managementScore);
+            }
+          } else if (kind === 'performance') {
+            const performanceAmount = getCandidatePerformanceAmount(candidate);
+            if (performanceAmount != null && performanceAmount !== '') {
+              value = formatAmountForExcel(performanceAmount);
+            }
+          } else if (kind === 'sipyung') {
+            const sipyungAmount = getCandidateSipyungAmount(candidate);
+            if (sipyungAmount != null && sipyungAmount !== '') {
+              value = formatAmountForExcel(sipyungAmount);
             }
           }
-
-          const nameLines = [cleanName];
-          if (possibleShareDisplay) {
-            nameLines.push(possibleShareDisplay);
-          } else if (shareText) {
-            nameLines.push(shareText);
-          }
-          if (managerName) nameLines.push(managerName);
-
-          row[baseCol] = nameLines.filter(Boolean).join(CELL_BREAK);
-          row[shareCol] = shareText;
-
-          const managementScore = getCandidateManagementScore(candidate);
-          if (managementScore != null && managementScore !== '') {
-            row[managementCol] = formatNumeric(managementScore);
-          }
-
-          const performanceAmount = getCandidatePerformanceAmount(candidate);
-          if (performanceAmount != null && performanceAmount !== '') {
-            row[performanceCol] = formatAmountForExcel(performanceAmount);
-          }
-
-          if (sipyungAmountRaw != null && sipyungAmountRaw !== '') {
-            row[sipyungCol] = formatAmountForExcel(sipyungAmountRaw);
-          }
+          row[slotIndex] = value ?? '';
         }
         return row.map(encodeCell).join('\t');
       })
@@ -2201,18 +2306,17 @@ export default function AgreementBoardWindow({
 
     try {
       setExcelCopying(true);
-      const result = await window.electronAPI.clipboardWriteText(payload);
-      if (!result?.success) {
-        throw new Error(result?.message || 'clipboard failed');
-      }
-      window.alert('엑셀 붙여넣기용 데이터가 클립보드에 복사되었습니다.');
+      setCopyingKind(kind);
+      await copyToClipboard(payload);
+      window.alert(action.successMessage || '복사가 완료되었습니다.');
     } catch (error) {
       console.error('[AgreementBoard] Excel copy failed:', error);
-      window.alert('엑셀 붙여넣기용 복사에 실패했습니다. 다시 시도해 주세요.');
+      window.alert('복사에 실패했습니다. 다시 시도해 주세요.');
     } finally {
+      setCopyingKind(null);
       setExcelCopying(false);
     }
-  }, [excelCopying, groups, participantMap, groupShares, possibleShareBase]);
+  }, [copyToClipboard, excelCopying, groups, participantMap, groupShares, groupShareRawInputs, possibleShareBase]);
 
 
   const copyGroupMetric = React.useCallback(async (groupIndex, metric) => {
@@ -2718,17 +2822,45 @@ export default function AgreementBoardWindow({
                 <button
                   type="button"
                   className="btn-soft"
+                  style={BOARD_ACTION_BUTTON_STYLE}
                   onClick={handleExportExcel}
                   disabled={exporting}
                 >
                   {exporting ? '엑셀 내보내는 중...' : '엑셀로 내보내기'}
                 </button>
-                <button type="button" className="btn-soft" onClick={handleGenerateText}>협정 문자 생성</button>
-                <button type="button" className="btn-soft" onClick={handleCopyExcelPlan} disabled={excelCopying}>
-                  {excelCopying ? '복사 중...' : '엑셀 붙여넣기용 복사'}
-                </button>
-                <button type="button" className="btn-soft" onClick={handleAddGroup}>빈 행 추가</button>
-                <button type="button" className="btn-soft" onClick={handleResetGroups}>초기화</button>
+                <button
+                  type="button"
+                  className="btn-soft"
+                  style={BOARD_ACTION_BUTTON_STYLE}
+                  onClick={handleGenerateText}
+                >협정 문자 생성</button>
+                {BOARD_COPY_ACTIONS.map((action) => (
+                  <button
+                    key={action.kind}
+                    type="button"
+                    className="btn-soft"
+                    style={{
+                      ...BOARD_ACTION_BUTTON_STYLE,
+                      ...(BOARD_COPY_BUTTON_STYLE_MAP[action.kind] || {}),
+                    }}
+                    onClick={() => copyBoardDataset(action.kind)}
+                    disabled={excelCopying}
+                  >
+                    {excelCopying && copyingKind === action.kind ? '복사 중...' : action.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="btn-soft"
+                  style={BOARD_ACTION_BUTTON_STYLE}
+                  onClick={handleAddGroup}
+                >빈 행 추가</button>
+                <button
+                  type="button"
+                  className="btn-soft"
+                  style={BOARD_ACTION_BUTTON_STYLE}
+                  onClick={handleResetGroups}
+                >초기화</button>
               </div>
             </div>
             <div className="board-groups">
