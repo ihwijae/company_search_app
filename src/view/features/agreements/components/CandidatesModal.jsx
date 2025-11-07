@@ -62,6 +62,21 @@ const parseAmountValue = (value) => {
   return Number.isFinite(numeric) ? numeric : null;
 };
 
+const parsePercentValue = (value) => {
+  if (value === null || value === undefined || value === '') return NaN;
+  const numeric = Number(String(value).replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(numeric) ? numeric / 100 : NaN;
+};
+
+const formatAmountString = (value) => {
+  if (!Number.isFinite(value) || value <= 0) return '';
+  try {
+    return Math.round(value).toLocaleString('ko-KR');
+  } catch {
+    return String(Math.round(value));
+  }
+};
+
 const parseDateToken = (input) => {
   if (!input) return null;
   const match = String(input).match(DATE_PATTERN);
@@ -176,6 +191,8 @@ export default function CandidatesModal({
   const [autoPin, setAutoPin] = useState(false);
   const [autoCount, setAutoCount] = useState(3);
   const [onlyLatest, setOnlyLatest] = useState(false);
+  const [bidTouched, setBidTouched] = useState(false);
+  const bidAutoRef = useRef('');
   const readOnlyMode = Boolean(readOnly);
   const today = useMemo(() => {
     const base = new Date();
@@ -322,6 +339,8 @@ const industryToLabel = (type) => {
     if (!open) return;
     const initial = initialParamsSnapshot;
     setParams(initial);
+    setBidTouched(false);
+    bidAutoRef.current = initial.bidAmount || '';
     setSearchQuery('');
     setManagerQuery('');
     if (readOnlyMode) {
@@ -819,6 +838,33 @@ const industryToLabel = (type) => {
     });
   }, [list, ratioBase]);
 
+  useEffect(() => {
+    if (!open || !showTenderFields) return;
+    const baseSource = params.baseAmount || baseAmount;
+    const bidRateSource = params.bidRate || bidRate;
+    const adjustmentSource = params.adjustmentRate || adjustmentRate;
+    const baseNumeric = parseAmountValue(baseSource);
+    const bidRateNumeric = parsePercentValue(bidRateSource);
+    const adjustmentNumeric = parsePercentValue(adjustmentSource);
+    const autoValue = (baseNumeric != null && baseNumeric > 0
+      && Number.isFinite(bidRateNumeric)
+      && Number.isFinite(adjustmentNumeric))
+      ? Math.round(baseNumeric * bidRateNumeric * adjustmentNumeric)
+      : 0;
+    const autoFormatted = formatAmountString(autoValue);
+    const current = params.bidAmount || '';
+    const lastAuto = bidAutoRef.current;
+    bidAutoRef.current = autoFormatted;
+    if (bidTouched && current !== lastAuto) return;
+    if (current === (autoFormatted || '')) return;
+    if (!autoFormatted && current === '') return;
+    setParams((prev) => ({
+      ...prev,
+      bidAmount: autoFormatted,
+      ratioBase: autoFormatted,
+    }));
+  }, [open, showTenderFields, params.baseAmount, params.bidRate, params.adjustmentRate, params.bidAmount, bidTouched, baseAmount, bidRate, adjustmentRate]);
+
   const filtered = useMemo(() => {
     const toFloat = (s) => {
       const t = String(s ?? '').trim();
@@ -1011,7 +1057,10 @@ const industryToLabel = (type) => {
               <label>{ratioLabel}</label>
               <AmountInput
                 value={params.ratioBase}
-                onChange={(v)=>setParams((p)=>({ ...p, ratioBase: v, bidAmount: v }))}
+                onChange={(v)=>{
+                  setBidTouched(true);
+                  setParams((p)=>({ ...p, ratioBase: v, bidAmount: v }));
+                }}
                 placeholder="숫자"
               />
             </div>
