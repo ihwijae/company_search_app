@@ -59,7 +59,7 @@ const REPRESENTATIVE_FIELDS = ['대표자', '대표자명'];
 const DEBT_RATIO_FIELDS = ['부채비율', '부채 비율', 'debtRatio', 'DebtRatio'];
 const CURRENT_RATIO_FIELDS = ['유동비율', 'currentRatio', 'CurrentRatio'];
 const BIZ_YEARS_FIELDS = ['영업기간', '업력', 'bizYears', 'bizyears', '업력(년)', '업력'];
-const CREDIT_GRADE_FIELDS = ['creditGrade', 'creditGradeText', '신용등급', '신용평가등급', '신용평가'];
+const CREDIT_GRADE_FIELDS = ['creditGrade', 'creditGradeText', '신용등급', '신용평가등급', '신용평가', '신용등급(최근)'];
 const CREDIT_EXPIRED_FIELDS = ['creditExpired', '신용만료', '신용평가만료'];
 const CREDIT_TRUE_SET = new Set(['Y', 'YES', 'TRUE', 'EXPIRED']);
 const WON = 100000000;
@@ -233,23 +233,94 @@ const resolveRangeAmount = (ownerId, rangeId) => {
   return DEFAULT_RANGE_AMOUNT;
 };
 
-const isCreditExpiredSimple = (company) => {
-  const candidates = [
+const CREDIT_DATE_PATTERN = /(\d{2,4})[^0-9]{0,3}(\d{1,2})[^0-9]{0,3}(\d{1,2})/;
+const CREDIT_DATE_PATTERN_GLOBAL = new RegExp(CREDIT_DATE_PATTERN.source, 'g');
+
+const parseExpiryDateToken = (token) => {
+  if (!token) return null;
+  const match = String(token).match(CREDIT_DATE_PATTERN);
+  if (!match) return null;
+  let year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (year < 100) year += year >= 70 ? 1900 : 2000;
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const extractExpiryDateFromText = (text) => {
+  if (!text) return null;
+  const source = String(text);
+  const explicit = source.match(/(~|부터|:)?\s*([0-9]{2,4}[^0-9]{0,3}[0-9]{1,2}[^0-9]{0,3}[0-9]{1,2})\s*(까지|만료|만기)/);
+  if (explicit) {
+    const parsed = parseExpiryDateToken(explicit[2]);
+    if (parsed) return parsed;
+  }
+  const tokens = source.match(CREDIT_DATE_PATTERN_GLOBAL);
+  if (tokens) {
+    for (let i = tokens.length - 1; i >= 0; i -= 1) {
+      const parsed = parseExpiryDateToken(tokens[i]);
+      if (parsed) return parsed;
+    }
+  }
+  return null;
+};
+
+const collectCreditTexts = (source) => {
+  if (!source || typeof source !== 'object') return [];
+  const keys = [
+    'creditNote', 'creditNoteText', 'creditGrade', 'creditGradeText',
+    'creditInfo', 'creditDetails', 'creditStatus', 'creditStatusText',
+    'creditValidityText', 'creditExpiryText', '신용평가', '신용등급',
+    '신용평가등급', '신용평가비고', '신용상태', '신용평가 상태',
+  ];
+  return keys
+    .map((key) => source[key])
+    .filter((value) => value !== undefined && value !== null && value !== '')
+    .map((value) => String(value));
+};
+
+const isCreditExpiredDetailed = (company) => {
+  if (!company || typeof company !== 'object') return false;
+  const explicitFlags = [
     pickFirstValue(company, CREDIT_EXPIRED_FIELDS),
     company?.creditExpired,
     company?.snapshot?.creditExpired,
   ];
-  return candidates.some((value) => {
-    if (value === true) return true;
-    if (typeof value === 'string') {
-      const token = value.trim().toUpperCase();
-      return CREDIT_TRUE_SET.has(token);
+  if (explicitFlags.some((flag) => {
+    if (flag === true) return true;
+    if (typeof flag === 'string') {
+      const upper = flag.trim().toUpperCase();
+      return CREDIT_TRUE_SET.has(upper);
     }
     return false;
-  });
+  })) {
+    return true;
+  }
+
+  const textSources = [
+    ...collectCreditTexts(company),
+    ...collectCreditTexts(company?.snapshot),
+  ];
+  const expiryFromText = (() => {
+    for (const text of textSources) {
+      const parsed = extractExpiryDateFromText(text);
+      if (parsed) return parsed;
+    }
+    return null;
+  })();
+
+  if (expiryFromText) {
+    const now = new Date();
+    const diff = now.getTime() - expiryFromText.getTime();
+    if (diff > 0) return true;
+  }
+
+  return false;
 };
 
-const extractCreditGradeSimple = (company) => {
+const extractCreditGradeDetailed = (company) => {
   const raw = pickFirstValue(company, CREDIT_GRADE_FIELDS);
   if (!raw) return '';
   const str = String(raw).trim().toUpperCase();
@@ -324,8 +395,8 @@ export default function ExcelHelperPage() {
       perf5y: getNumericValue(company, PERFORMANCE_FIELDS),
       baseAmount: amount,
     };
-    const creditGrade = extractCreditGradeSimple(company);
-    if (creditGrade && !isCreditExpiredSimple(company)) {
+    const creditGrade = extractCreditGradeDetailed(company);
+    if (creditGrade && !isCreditExpiredDetailed(company)) {
       inputs.creditGrade = creditGrade;
     }
 
