@@ -776,7 +776,7 @@ export default function ExcelHelperPage() {
             const shareItem = slotResponse.items.find(item => item.key === 'share');
             const rawName = nameItem?.text ?? nameItem?.value ?? '';
             if (rawName) {
-              const name = String(rawName).split('\n')[0].replace(/[\s\d].*$/, '').trim();
+              const name = String(rawName).split('\n')[0].replace(/\s*[\d.,%].*$/, '').trim();
               if (name) {
                 allCompanyNames.add(name);
                 rowParticipants.push({
@@ -802,7 +802,10 @@ export default function ExcelHelperPage() {
 
       // 2. BULK SEARCH
       setMessageStatus(`총 ${allCompanyNames.size}개 업체 정보 조회 중...`);
+      console.log('Names to search:', Array.from(allCompanyNames));
       const searchResponse = await window.electronAPI.searchManyCompanies(Array.from(allCompanyNames), fileType);
+      console.log('Bulk search response:', searchResponse);
+
       if (!searchResponse.success) {
         throw new Error('업체 정보 대량 조회에 실패했습니다: ' + searchResponse.message);
       }
@@ -815,12 +818,15 @@ export default function ExcelHelperPage() {
           bizNoMap.set(normalizeName(name), bizNo);
         }
       });
+      console.log('Created bizNoMap:', bizNoMap);
 
       // 3. PROCESS AND GENERATE
       setMessageStatus('협정 문자 생성 중...');
       const allPayloads = allAgreementsData.map(agreement => {
         const participants = agreement.participants.map(p => {
-          const bizNo = bizNoMap.get(normalizeName(p.name)) || '';
+          const normalizedParticipantName = normalizeName(p.name);
+          const bizNo = bizNoMap.get(normalizedParticipantName) || '';
+          console.log(`Mapping name "${p.name}" (normalized: "${normalizedParticipantName}") to bizNo: "${bizNo}"`);
           let finalShare = p.share;
           if (typeof p.share === 'number' && p.share > 0 && p.share <= 1) {
             finalShare = parseFloat((p.share * 100).toFixed(2));
