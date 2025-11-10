@@ -484,8 +484,8 @@ function createExcelHelperWindow() {
     height: 860,
     backgroundColor: '#f5f6fa',
     title: '엑셀 협정 도우미',
-    parent: mainWindowRef && !mainWindowRef.isDestroyed() ? mainWindowRef : undefined,
     autoHideMenuBar: true,
+    showInTaskbar: true,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#e0ecff',

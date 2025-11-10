@@ -58,24 +58,24 @@ const REGION_FIELDS = ['대표지역', '지역'];
 const REPRESENTATIVE_FIELDS = ['대표자', '대표자명'];
 const DEBT_RATIO_FIELDS = ['부채비율', '부채 비율', 'debtRatio', 'DebtRatio'];
 const CURRENT_RATIO_FIELDS = ['유동비율', 'currentRatio', 'CurrentRatio'];
-const BIZ_YEARS_FIELDS = ['영업기간', '업력', 'bizYears', 'bizyears', '업력(년)'];
+const BIZ_YEARS_FIELDS = ['영업기간', '업력', 'bizYears', 'bizyears', '업력(년)', '업력'];
 const CREDIT_GRADE_FIELDS = ['creditGrade', 'creditGradeText', '신용등급', '신용평가등급', '신용평가'];
 const CREDIT_EXPIRED_FIELDS = ['creditExpired', '신용만료', '신용평가만료'];
-const CREDIT_TRUE_SET = new Set(['Y', 'TRUE', 'YES', 'EXPIRED']);
+const CREDIT_TRUE_SET = new Set(['Y', 'YES', 'TRUE', 'EXPIRED']);
 const WON = 100000000;
 const RANGE_AMOUNT_PRESETS = {
   mois: {
     under30: 30 * WON,
-    '30to50': 40 * WON,
-    '50to100': 75 * WON,
+    '30to50': 50 * WON,
+    '50to100': 100 * WON,
   },
   pps: {
     under50: 50 * WON,
-    '50to100': 75 * WON,
+    '50to100': 100 * WON,
   },
   lh: {
     under50: 50 * WON,
-    '50to100': 75 * WON,
+    '50to100': 100 * WON,
   },
 };
 const DEFAULT_RANGE_AMOUNT = 50 * WON;
@@ -226,8 +226,10 @@ const resolveRangeAmount = (ownerId, rangeId) => {
   const ownerKey = String(ownerId || '').toLowerCase();
   const ownerMap = RANGE_AMOUNT_PRESETS[ownerKey];
   if (ownerMap && ownerMap[rangeId]) return ownerMap[rangeId];
-  const fallbacks = ownerMap ? Object.values(ownerMap) : [];
-  if (fallbacks.length > 0) return fallbacks[0];
+  if (ownerMap) {
+    const values = Object.values(ownerMap);
+    if (values.length > 0) return values[0];
+  }
   return DEFAULT_RANGE_AMOUNT;
 };
 
@@ -240,8 +242,8 @@ const isCreditExpiredSimple = (company) => {
   return candidates.some((value) => {
     if (value === true) return true;
     if (typeof value === 'string') {
-      const upper = value.trim().toUpperCase();
-      return CREDIT_TRUE_SET.has(upper);
+      const token = value.trim().toUpperCase();
+      return CREDIT_TRUE_SET.has(token);
     }
     return false;
   });
@@ -254,6 +256,18 @@ const extractCreditGradeSimple = (company) => {
   if (!str) return '';
   const match = str.match(/^([A-Z]{1,3}[0-9]?(?:[+-])?)/);
   return match ? match[1] : str.split(/[\s(]/)[0];
+};
+
+const normalizeShareInput = (input) => {
+  if (input === null || input === undefined) return '';
+  const stripped = String(input).replace(/[%]/g, '').trim();
+  if (!stripped) return '';
+  const numeric = Number(stripped);
+  if (!Number.isFinite(numeric)) return stripped;
+  if (numeric > 1.5) {
+    return numeric / 100;
+  }
+  return numeric;
 };
 
 const normalizeName = (value) => String(value || '').replace(/\s+/g, '').toLowerCase();
@@ -297,52 +311,40 @@ export default function ExcelHelperPage() {
     setShareInput('');
   }, [selectedCompany]);
 
-  const evaluateManagementScore = React.useCallback(async (company, perfAmount) => {
-    if (!company || !window.electronAPI?.formulasEvaluate) return null;
+  const evaluateManagementScore = React.useCallback(async (company, fallbackScore) => {
+    if (!company || !window.electronAPI?.formulasEvaluate) return fallbackScore;
     const agencyId = String(ownerId || '').toUpperCase();
-    if (!agencyId) return null;
+    if (!agencyId) return fallbackScore;
     const amount = resolveRangeAmount(ownerId, rangeId);
-    const debtRatio = getNumericValue(company, DEBT_RATIO_FIELDS);
-    const currentRatio = getNumericValue(company, CURRENT_RATIO_FIELDS);
-    const bizYears = getNumericValue(company, BIZ_YEARS_FIELDS);
-    const qualityEval = getNumericValue(company, QUALITY_FIELDS);
-    const perf5y = Number.isFinite(perfAmount)
-      ? perfAmount
-      : getNumericValue(company, PERFORMANCE_FIELDS);
-    const creditGradeRaw = extractCreditGradeSimple(company);
-    const creditExpired = isCreditExpiredSimple(company);
-
     const inputs = {
-      debtRatio,
-      currentRatio,
-      bizYears,
-      qualityEval,
-      perf5y,
+      debtRatio: getNumericValue(company, DEBT_RATIO_FIELDS),
+      currentRatio: getNumericValue(company, CURRENT_RATIO_FIELDS),
+      bizYears: getNumericValue(company, BIZ_YEARS_FIELDS),
+      qualityEval: getNumericValue(company, QUALITY_FIELDS),
+      perf5y: getNumericValue(company, PERFORMANCE_FIELDS),
       baseAmount: amount,
     };
-    if (creditGradeRaw && !creditExpired) {
-      inputs.creditGrade = creditGradeRaw;
+    const creditGrade = extractCreditGradeSimple(company);
+    if (creditGrade && !isCreditExpiredSimple(company)) {
+      inputs.creditGrade = creditGrade;
     }
 
     Object.keys(inputs).forEach((key) => {
-      const value = inputs[key];
-      if (value === null || value === undefined || Number.isNaN(value)) {
+      if (inputs[key] === null || Number.isNaN(inputs[key])) {
         delete inputs[key];
       }
     });
 
-    if (Object.keys(inputs).length === 0) return null;
+    if (Object.keys(inputs).length === 0) return fallbackScore;
 
     try {
       const response = await window.electronAPI.formulasEvaluate({ agencyId, amount, inputs });
-      if (response?.success && response.data?.management?.score != null) {
-        const score = Number(response.data.management.score);
-        return Number.isFinite(score) ? score : null;
-      }
+      const score = Number(response?.data?.management?.score);
+      if (Number.isFinite(score)) return score;
     } catch (err) {
       console.warn('[ExcelHelper] formulasEvaluate failed:', err?.message || err);
     }
-    return null;
+    return fallbackScore;
   }, [ownerId, rangeId]);
 
   const rememberAppliedCell = React.useCallback((location, companyInfo) => {
@@ -452,24 +454,16 @@ export default function ExcelHelperPage() {
       setExcelStatus('지분(%)을 입력하세요.');
       return;
     }
-    let resolvedManagementValue = parseNumericInput(selectedMetrics.managementScore);
-    try {
-      const evaluated = await evaluateManagementScore(selectedCompany, selectedMetrics.performanceAmount);
-      if (Number.isFinite(evaluated)) {
-        resolvedManagementValue = evaluated;
-      }
-    } catch (err) {
-      console.warn('[ExcelHelper] management score evaluation failed:', err?.message || err);
-    }
+    const managementScore = await evaluateManagementScore(selectedCompany, parseNumericInput(selectedMetrics.managementScore));
 
     const offsets = getOffsetsForOwner(ownerId);
     const updates = offsets
       .map((field) => {
         let source;
         if (field.key === 'share') {
-          source = shareValue;
+          source = normalizeShareInput(shareValue);
         } else if (field.key === 'managementScore') {
-          source = (resolvedManagementValue ?? selectedMetrics[field.key]);
+          source = managementScore ?? selectedMetrics[field.key];
         } else {
           source = selectedMetrics[field.key];
         }
