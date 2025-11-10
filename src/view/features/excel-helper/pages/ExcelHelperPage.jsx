@@ -3,6 +3,7 @@ import '../../../../styles.css';
 import '../../../../fonts.css';
 import { generateOne, validateAgreement } from '../../../../shared/agreements/generator.js';
 import { extractManagerNames, getQualityBadgeText, isWomenOwnedCompany } from '../../../../utils/companyIndicators.js';
+import { INDUSTRY_AVERAGES } from '../../../../ratios.js';
 
 const OWNER_OPTIONS = [
   {
@@ -233,6 +234,11 @@ const resolveRangeAmount = (ownerId, rangeId) => {
   return DEFAULT_RANGE_AMOUNT;
 };
 
+const resolveIndustryAverage = (fileType) => {
+  const key = String(fileType || '').toLowerCase();
+  return INDUSTRY_AVERAGES[key] || null;
+};
+
 const CREDIT_DATE_PATTERN = /(\d{2,4})[^0-9]{0,3}(\d{1,2})[^0-9]{0,3}(\d{1,2})/;
 const CREDIT_DATE_PATTERN_GLOBAL = new RegExp(CREDIT_DATE_PATTERN.source, 'g');
 
@@ -382,10 +388,10 @@ export default function ExcelHelperPage() {
     setShareInput('');
   }, [selectedCompany]);
 
-  const evaluateManagementScore = React.useCallback(async (company, fallbackScore) => {
-    if (!company || !window.electronAPI?.formulasEvaluate) return fallbackScore;
+  const evaluateManagementScore = React.useCallback(async (company, fileType) => {
+    if (!company || !window.electronAPI?.formulasEvaluate) return null;
     const agencyId = String(ownerId || '').toUpperCase();
-    if (!agencyId) return fallbackScore;
+    if (!agencyId) return null;
     const amount = resolveRangeAmount(ownerId, rangeId);
     const inputs = {
       debtRatio: getNumericValue(company, DEBT_RATIO_FIELDS),
@@ -406,16 +412,18 @@ export default function ExcelHelperPage() {
       }
     });
 
-    if (Object.keys(inputs).length === 0) return fallbackScore;
+    if (Object.keys(inputs).length === 0) return null;
 
     try {
-      const response = await window.electronAPI.formulasEvaluate({ agencyId, amount, inputs });
+      const industryAvg = resolveIndustryAverage(fileType || company?._file_type);
+      const payload = industryAvg ? { agencyId, amount, inputs, industryAvg } : { agencyId, amount, inputs };
+      const response = await window.electronAPI.formulasEvaluate(payload);
       const score = Number(response?.data?.management?.score);
       if (Number.isFinite(score)) return score;
     } catch (err) {
       console.warn('[ExcelHelper] formulasEvaluate failed:', err?.message || err);
     }
-    return fallbackScore;
+    return null;
   }, [ownerId, rangeId]);
 
   const rememberAppliedCell = React.useCallback((location, companyInfo) => {
@@ -525,7 +533,10 @@ export default function ExcelHelperPage() {
       setExcelStatus('지분(%)을 입력하세요.');
       return;
     }
-    const managementScore = await evaluateManagementScore(selectedCompany, parseNumericInput(selectedMetrics.managementScore));
+    const evaluatedManagement = await evaluateManagementScore(selectedCompany, fileType || selectedCompany?._file_type);
+    const managementScore = Number.isFinite(evaluatedManagement)
+      ? evaluatedManagement
+      : parseNumericInput(selectedMetrics.managementScore);
 
     const offsets = getOffsetsForOwner(ownerId);
     const updates = offsets
