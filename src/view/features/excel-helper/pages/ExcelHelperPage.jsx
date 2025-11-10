@@ -1,7 +1,7 @@
 import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
-import { generateOne, validateAgreement } from '../../../../shared/agreements/generator.js';
+import { generateOne, generateMany, validateAgreement } from '../../../../shared/agreements/generator.js';
 import { extractManagerNames, getQualityBadgeText, isWomenOwnedCompany } from '../../../../utils/companyIndicators.js';
 import { INDUSTRY_AVERAGES } from '../../../../ratios.js';
 
