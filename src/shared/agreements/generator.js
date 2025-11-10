@@ -21,29 +21,6 @@ function formatBizNo(bizNo) {
   return cleaned;
 }
 
-function computeSumShare(item) {
-  const l = normalizeShare(item?.leader?.share);
-  const ms = (item?.members || []).map(m => normalizeShare(m?.share));
-  let sum = 0;
-  if (Number.isFinite(l)) sum += l;
-  for (const n of ms) if (Number.isFinite(n)) sum += n;
-  // keep precision without rounding
-  return Number(sum.toFixed(10));
-}
-
-function hasDuplicateNames(item) {
-  const names = [];
-  if (item?.leader?.name) names.push(String(item.leader.name).trim());
-  (item?.members || []).forEach(m => { if (m?.name) names.push(String(m.name).trim()); });
-  const seen = new Set();
-  for (const n of names) {
-    if (!n) continue;
-    if (seen.has(n)) return true;
-    seen.add(n);
-  }
-  return false;
-}
-
 export function validateAgreement(item) {
   const errors = [];
   if (!item?.noticeNo || !String(item.noticeNo).trim()) errors.push('공고번호를 입력하세요');
@@ -55,10 +32,7 @@ export function validateAgreement(item) {
 
   if (hasDuplicateNames(item)) errors.push('대표사/구성원에 중복 업체가 있습니다.');
 
-  const sum = computeSumShare(item);
-  if (sum !== 100) errors.push('지분 합계가 100%가 되어야 합니다.');
-
-  return { ok: errors.length === 0, errors, sumShare: sum };
+  return { ok: errors.length === 0, errors };
 }
 
 function isMOIS(owner) {
@@ -134,5 +108,5 @@ export function generateMany(items) {
 }
 
 export function helpers() {
-  return { computeSumShare, hasDuplicateNames };
+  return { hasDuplicateNames };
 }
