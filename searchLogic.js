@@ -190,13 +190,18 @@ class SearchLogic {
                 // 2. 해당 행의 B열부터 끝까지 순회하며 회사들을 찾습니다.
                 for (let cIdx = 2; cIdx <= maxCol; cIdx++) {
                     const companyNameCell = sheet.getCell(rIdx, cIdx);
-                    const companyName = companyNameCell.value;
+                    const rawCompanyName = companyNameCell.value;
 
-                    if (typeof companyName !== 'string' || !companyName.trim()) {
+                    if (typeof rawCompanyName !== 'string' || !rawCompanyName.trim()) {
                         continue; // 회사 이름이 없으면 건너뜁니다.
                     }
 
-                    const companyData = { "검색된 회사": companyName.trim() };
+                    const companyName = String(rawCompanyName).split('\n')[0].replace(/\s*[\d.,%].*$/, '').trim();
+                    if (!companyName) {
+                        continue;
+                    }
+
+                    const companyData = { "검색된 회사": companyName };
                     companyData['대표지역'] = sheetName.trim();
                     const companyStatuses = {};
                     
