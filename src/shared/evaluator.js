@@ -72,6 +72,15 @@ function evalManagementComposite(inputs, rules, industryAvg) {
   const yearsScore = evaluateBizYearsScore(years, def.bizYears && def.bizYears.thresholds);
   const qualityScore = evaluateThresholdScore(quality, def.qualityEval && def.qualityEval.thresholds);
   const scoreRaw = toNumber(debtScore) + toNumber(currentScore) + toNumber(yearsScore) + toNumber(qualityScore);
+
+  console.log('[EVAL DEBUG] Composite Scores:');
+  console.log('[EVAL DEBUG]   Debt Score:    ', debtScore);
+  console.log('[EVAL DEBUG]   Current Score: ', currentScore);
+  console.log('[EVAL DEBUG]   Years Score:   ', yearsScore);
+  console.log('[EVAL DEBUG]   Quality Score: ', qualityScore);
+  console.log('[EVAL DEBUG]   Raw Total:     ', scoreRaw);
+  console.log('[EVAL DEBUG] --------------------------');
+
   const score = applyRounding(scoreRaw, rules.management.rounding);
   return { score, parts: { debtScore, currentScore, yearsScore, qualityScore }, methodId: 'composite' };
 }
@@ -173,6 +182,10 @@ function evaluateScores({ agencyId, amount, inputs = {}, industryAvg } = {}) {
   const tier = pickTierByAmount(agency.tiers || [], amount);
   if (!tier) return { ok: false, error: 'NO_TIER' };
   const rules = tier.rules || {};
+
+  console.log('[EVAL DEBUG] Selected Agency:', agency.name, '(' + agency.id + ')');
+  console.log('[EVAL DEBUG] Selected Tier:', tier.minAmount, '~', tier.maxAmount);
+  console.log('[EVAL DEBUG] Rules for Management:', JSON.stringify(rules.management));
 
   const management = evalManagement(inputs, rules, industryAvg);
   const performance = evalPerformance(inputs, rules);
