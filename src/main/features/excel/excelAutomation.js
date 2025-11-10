@@ -6,6 +6,15 @@ class ExcelAutomationService {
     this.commandTimeoutMs = options.commandTimeoutMs || 8000;
   }
 
+  encodePayload(payload = {}) {
+    try {
+      const json = JSON.stringify(payload ?? {});
+      return Buffer.from(json, 'utf8').toString('base64');
+    } catch {
+      return Buffer.from('{}', 'utf8').toString('base64');
+    }
+  }
+
   resolvePowerShellCommand() {
     if (process.platform === 'win32') return 'powershell.exe';
     if (process.env.WSL_DISTRO_NAME) return 'powershell.exe';
@@ -92,10 +101,12 @@ $result | ConvertTo-Json -Depth 4 -Compress
       return { success: false, message: '기준 셀 정보가 누락되었습니다.' };
     }
     const script = `
-param([string]$jsonPayload)
+& {
+param([string]$payloadBase64)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$payload = $jsonPayload | ConvertFrom-Json
+$payloadJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBase64))
+$payload = $payloadJson | ConvertFrom-Json
 if (-not $payload) { throw 'payload 파싱에 실패했습니다.' }
 $excel = $null
 try {
@@ -136,9 +147,9 @@ foreach ($update in $payload.updates) {
   }
 }
 [pscustomobject]@{ success = $true } | ConvertTo-Json -Compress
-`;
+}`;
     try {
-      const raw = await this.runPowerShell(script, [JSON.stringify(payload)]);
+      const raw = await this.runPowerShell(script, [this.encodePayload(payload)]);
       const data = raw ? JSON.parse(raw) : null;
       if (!data?.success) {
         return { success: false, message: '엑셀 업데이트가 실패했습니다.' };
@@ -154,10 +165,12 @@ foreach ($update in $payload.updates) {
       return { success: false, message: '읽을 셀 정보가 부족합니다.' };
     }
     const script = `
-param([string]$jsonPayload)
+& {
+param([string]$payloadBase64)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$payload = $jsonPayload | ConvertFrom-Json
+$payloadJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBase64))
+$payload = $payloadJson | ConvertFrom-Json
 if (-not $payload) { throw 'payload 파싱에 실패했습니다.' }
 $excel = $null
 try {
@@ -192,18 +205,18 @@ foreach ($req in $payload.requests) {
   if ($targetRow -lt 1 -or $targetCol -lt 1) { continue }
   $cell = $targetSheet.Cells.Item($targetRow, $targetCol)
   if (-not $cell) { continue }
-  $items += [pscustomobject]@{
-    key = $req.key
-    row = $targetRow
-    column = $targetCol
-    value = $cell.Value2
-    text = $cell.Text
-  }
+$items += [pscustomobject]@{
+  key = $req.key
+  row = $targetRow
+  column = $targetCol
+  value = $cell.Value2
+  text = $cell.Text
+}
 }
 [pscustomobject]@{ success = $true; items = $items } | ConvertTo-Json -Depth 5 -Compress
-`;
+}`;
     try {
-      const raw = await this.runPowerShell(script, [JSON.stringify(payload)]);
+      const raw = await this.runPowerShell(script, [this.encodePayload(payload)]);
       const data = raw ? JSON.parse(raw) : null;
       if (!data?.success) {
         return { success: false, message: '엑셀 셀 읽기에 실패했습니다.' };
