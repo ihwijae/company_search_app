@@ -36,6 +36,8 @@ const loadMergedFormulasCached = () => {
 const loadExcelHelperFormulas = () => {
   if (excelHelperFormulasCache) return excelHelperFormulasCache;
   try {
+    // Bust cache to ensure fresh load from disk
+    try { delete require.cache[require.resolve('./src/shared/formulas.excel-helper.json')]; } catch {}
     // Directly load from the fixed Excel Helper formulas file
     const excelHelperFormulas = require('./src/shared/formulas.excel-helper.json');
     excelHelperFormulasCache = excelHelperFormulas;
