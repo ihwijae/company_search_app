@@ -759,20 +759,17 @@ export default function ExcelHelperPage() {
     }
   };
 
-  const readSlotFromExcel = React.useCallback(async (slotIndex, allCompanies, activeWorkbook, activeWorksheet) => {
-    console.log(`Reading slot ${slotIndex}`);
-    const baseRow = 5; // Hardcoded to row 5
-    const baseColumnBase = 3; // Hardcoded to column C (3rd column)
+  const readSlotFromExcel = React.useCallback(async (row, column, allCompanies, activeWorkbook, activeWorksheet) => {
+    console.log(`Reading slot at row ${row}, col ${column}`);
     if (!window.electronAPI?.excelHelper?.readOffsets) {
       throw new Error('Excel 연동 기능을 사용할 수 없습니다.');
     }
-    const baseColumn = baseColumnBase + slotIndex;
     const offsets = getOffsetsForOwner(ownerId);
     const payload = {
-      workbook: activeWorkbook, // Use active workbook
-      worksheet: activeWorksheet, // Use active worksheet
-      baseRow,
-      baseColumn,
+      workbook: activeWorkbook,
+      worksheet: activeWorksheet,
+      baseRow: row,
+      baseColumn: column,
       requests: offsets.map((field) => ({
         key: field.key,
         rowOffset: field.rowOffset || 0,
@@ -785,27 +782,27 @@ export default function ExcelHelperPage() {
     const nameValue = map.get('name');
     const rawName = nameValue?.text ?? nameValue?.value ?? '';
     const name = String(rawName || '').split('\n')[0].trim();
-    console.log(`Slot ${slotIndex} raw name: "${rawName}", cleaned name: "${name}"`);
+    console.log(`Slot at (${row},${column}) raw name: "${rawName}", cleaned name: "${name}"`);
     if (!name) return null;
     const shareValue = map.get('share');
-    const share = shareValue?.value ?? null; // Use the numeric value, default to null if not found
+    const share = shareValue?.value ?? null;
     const location = {
       workbook: activeWorkbook,
       worksheet: activeWorksheet,
-      row: baseRow,
-      column: baseColumn,
+      row,
+      column,
     };
     let bizNo = lookupBizNo(location, name, allCompanies);
-    console.log(`Slot ${slotIndex} bizNo from lookup: ${bizNo}`);
+    console.log(`Slot at (${row},${column}) bizNo from lookup: ${bizNo}`);
     if (!bizNo) {
-      console.log(`Slot ${slotIndex} bizNo not found, searching for "${name}" with fileType "${fileType}"`);
+      console.log(`Slot at (${row},${column}) bizNo not found, searching for "${name}" with fileType "${fileType}"`);
       const foundBizNo = await searchCompanyByName(name, fileType);
       if (foundBizNo) {
-        console.log(`Slot ${slotIndex} bizNo found via search: ${foundBizNo}`);
+        console.log(`Slot at (${row},${column}) bizNo found via search: ${foundBizNo}`);
         bizNo = foundBizNo;
         rememberAppliedCell(location, { name, bizNo });
       } else {
-        console.log(`Slot ${slotIndex} bizNo not found for "${name}"`);
+        console.log(`Slot at (${row},${column}) bizNo not found for "${name}"`);
       }
     }
     return {
@@ -816,18 +813,12 @@ export default function ExcelHelperPage() {
   }, [ownerId, lookupBizNo, fileType, rememberAppliedCell]);
 
   const handleCopyMessage = async () => {
-    // if (!selection) { // Removed check
-    //   setMessageStatus('엑셀 기준 셀을 먼저 동기화해주세요.');
-    //   return;
-    // }
-    const baseRow = 5; // Hardcoded to row 5
-    const baseColumn = 3; // Hardcoded to column C (3rd column)
-    // if (!baseRow || !baseColumn) { // Removed check
-    //   setMessageStatus('기준 셀 좌표를 확인할 수 없습니다. 다시 동기화해주세요.');
-    //   return;
-    // }
     if (!noticeTitle.trim() || !noticeNo.trim()) {
       setMessageStatus('공고명/공고번호를 입력하세요.');
+      return;
+    }
+    if (!fileType) {
+      setMessageStatus('검색 파일(전기/통신/소방)을 먼저 선택하세요.');
       return;
     }
     setMessageStatus('엑셀 데이터를 읽는 중...');
@@ -843,41 +834,69 @@ export default function ExcelHelperPage() {
         throw new Error('현재 활성화된 엑셀 시트 정보를 가져올 수 없습니다. 엑셀이 열려있는지 확인해주세요.');
       }
 
-      const slotPromises = [];
-      for (let i = 0; i < MAX_SLOTS; i += 1) {
-        slotPromises.push(readSlotFromExcel(i, searchResults, activeWorkbook, activeWorksheet));
-      }
-      const slotResults = await Promise.all(slotPromises);
-      console.log('Slot results:', slotResults);
-      const participants = slotResults.filter(Boolean).map(p => {
-        const share = p.share;
-        let finalShare = share;
-        if (typeof share === 'number' && share > 0 && share <= 1) {
-          finalShare = parseFloat((share * 100).toFixed(2));
-        } else if (typeof share === 'number') {
-          finalShare = parseFloat(share.toFixed(2));
-        }
-        return { ...p, share: finalShare };
-      });
+      const allPayloads = [];
+      let currentRow = 5;
 
-      if (participants.length === 0) {
-        setMessageStatus('엑셀에서 업체명을 찾지 못했습니다. 기준 셀을 확인해주세요.');
+      while (currentRow < 100) { // Safety break at 100 rows
+        const checkCellResponse = await window.electronAPI.excelHelper.readOffsets({
+          workbook: activeWorkbook,
+          worksheet: activeWorksheet,
+          baseRow: currentRow,
+          baseColumn: 1, // Column A
+          requests: [{ key: 'check', rowOffset: 0, colOffset: 0 }],
+        });
+
+        const cellValue = checkCellResponse?.items?.[0]?.text || checkCellResponse?.items?.[0]?.value;
+        if (!checkCellResponse?.success || !cellValue) {
+          console.log(`Stopping at row ${currentRow}, cell A${currentRow} is empty.`);
+          break; // Stop if cell is empty or read fails
+        }
+
+        console.log(`Processing agreement on row ${currentRow}`);
+        const slotPromises = [];
+        for (let i = 0; i < MAX_SLOTS; i += 1) {
+          slotPromises.push(readSlotFromExcel(currentRow, 3 + i, searchResults, activeWorkbook, activeWorksheet)); // Column C is 3
+        }
+        const slotResults = await Promise.all(slotPromises);
+        console.log(`Row ${currentRow} slot results:`, slotResults);
+
+        const participants = slotResults.filter(Boolean).map(p => {
+          const share = p.share;
+          let finalShare = share;
+          if (typeof share === 'number' && share > 0 && share <= 1) {
+            finalShare = parseFloat((share * 100).toFixed(2));
+          } else if (typeof share === 'number') {
+            finalShare = parseFloat(share.toFixed(2));
+          }
+          return { ...p, share: finalShare };
+        });
+
+        if (participants.length > 0) {
+          const leader = participants[0];
+          const members = participants.slice(1);
+          const payload = buildAgreementPayload(activeOwner.ownerToken, noticeNo, noticeTitle, leader, members);
+          if (payload) {
+            const validation = validateAgreement(payload);
+            if (validation.ok) {
+              allPayloads.push(payload);
+            } else {
+              console.warn(`Skipping invalid agreement on row ${currentRow}:`, validation.errors);
+            }
+          }
+        } else {
+          console.log(`No participants found for agreement on row ${currentRow}`);
+        }
+        currentRow++;
+      }
+
+      if (allPayloads.length === 0) {
+        setMessageStatus('엑셀에서 처리할 협정 데이터를 찾지 못했습니다. A열에 순번이 있는지, C열부터 업체명이 있는지 확인해주세요.');
         return;
       }
-      const leader = participants[0];
-      const members = participants.slice(1);
-      const payload = buildAgreementPayload(activeOwner.ownerToken, noticeNo, noticeTitle, leader, members);
-      if (!payload) {
-        setMessageStatus('협정 정보가 부족합니다.');
-        return;
-      }
-      const validation = validateAgreement(payload);
-      if (!validation.ok) {
-        setMessageStatus(validation.errors[0] || '협정 정보를 다시 확인해주세요.');
-        return;
-      }
-      const text = generateOne(payload);
+
+      const text = generateMany(allPayloads);
       setMessagePreview(text);
+
       if (window.electronAPI?.clipboardWriteText) {
         const result = await window.electronAPI.clipboardWriteText(text);
         if (!result?.success) throw new Error(result?.message || '클립보드 복사 실패');
@@ -886,7 +905,7 @@ export default function ExcelHelperPage() {
       } else {
         throw new Error('클립보드를 사용할 수 없습니다.');
       }
-      setMessageStatus('협정 문자가 클립보드에 복사되었습니다.');
+      setMessageStatus(`${allPayloads.length}건의 협정 문자가 클립보드에 복사되었습니다.`);
     } catch (err) {
       setMessageStatus(err.message || '협정 문자 생성에 실패했습니다.');
     }
