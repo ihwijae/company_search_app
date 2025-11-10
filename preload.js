@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   stateClear: (prefix) => ipcRenderer.invoke('renderer-state-clear', prefix),
 
   excelHelper: {
+    openWindow: () => ipcRenderer.invoke('excel-helper:open-window'),
     getSelection: () => ipcRenderer.invoke('excel-helper:get-selection'),
     applyOffsets: (payload) => ipcRenderer.invoke('excel-helper:apply-offsets', payload),
     readOffsets: (payload) => ipcRenderer.invoke('excel-helper:read-offsets', payload),

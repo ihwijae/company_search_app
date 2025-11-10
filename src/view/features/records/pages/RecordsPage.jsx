@@ -241,7 +241,7 @@ export default function RecordsPage() {
     } else if (key === 'agreements') {
       window.location.hash = '#/agreements';
     } else if (key === 'excel-helper') {
-      window.location.hash = '#/excel-helper';
+      window.electronAPI?.excelHelper?.openWindow?.();
     } else if (key === 'settings') {
       window.location.hash = '#/settings';
     }

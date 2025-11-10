@@ -17,6 +17,7 @@ const pkg = (() => { try { return require('./package.json'); } catch { return {}
 let formulasCache = null;
 let recordsDbInstance = null;
 let recordsServiceInstance = null;
+let excelHelperWindow = null;
 const excelAutomation = new ExcelAutomationService();
 const loadMergedFormulasCached = () => {
   if (formulasCache) return formulasCache;
@@ -472,6 +473,44 @@ function createWindow() {
   }
 }
 
+function createExcelHelperWindow() {
+  if (excelHelperWindow && !excelHelperWindow.isDestroyed()) {
+    excelHelperWindow.focus();
+    return excelHelperWindow;
+  }
+
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 860,
+    backgroundColor: '#f5f6fa',
+    title: '엑셀 협정 도우미',
+    parent: mainWindowRef && !mainWindowRef.isDestroyed() ? mainWindowRef : undefined,
+    autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#e0ecff',
+      symbolColor: '#1f2937',
+      height: 32,
+    },
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+
+  excelHelperWindow = win;
+  win.on('closed', () => {
+    excelHelperWindow = null;
+  });
+
+  if (isDev) {
+    win.loadURL('http://localhost:5173/#/excel-helper');
+  } else {
+    win.loadFile(path.join(__dirname, 'dist', 'index.html'), { hash: '/excel-helper' });
+  }
+
+  return win;
+}
+
 app.whenReady().then(async () => {
   try {
     recordsDbInstance = await ensureRecordsDatabase({ userDataDir });
@@ -714,6 +753,15 @@ try {
 }
 
 try {
+  if (ipcMain.removeHandler) ipcMain.removeHandler('excel-helper:open-window');
+  ipcMain.handle('excel-helper:open-window', async () => {
+    try {
+      createExcelHelperWindow();
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err?.message || '엑셀 도우미 창을 열 수 없습니다.' };
+    }
+  });
   if (ipcMain.removeHandler) ipcMain.removeHandler('excel-helper:get-selection');
   ipcMain.handle('excel-helper:get-selection', async () => excelAutomation.getSelection());
   if (ipcMain.removeHandler) ipcMain.removeHandler('excel-helper:apply-offsets');

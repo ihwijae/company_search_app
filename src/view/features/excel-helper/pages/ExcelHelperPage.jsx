@@ -1,9 +1,8 @@
 import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
-import Sidebar from '../../../../components/Sidebar.jsx';
-import { BASE_ROUTES, findMenuByKey } from '../../../../shared/navigation.js';
 import { generateOne, validateAgreement } from '../../../../shared/agreements/generator.js';
+import { extractManagerNames, getQualityBadgeText, isWomenOwnedCompany } from '../../../../utils/companyIndicators.js';
 
 const OWNER_OPTIONS = [
   {
@@ -37,15 +36,19 @@ const OWNER_OPTIONS = [
 ];
 
 const FILE_TYPE_OPTIONS = [
-  { value: 'all', label: '전체' },
   { value: 'eung', label: '전기' },
   { value: 'tongsin', label: '통신' },
   { value: 'sobang', label: '소방' },
 ];
 
+const FILE_TYPE_LABELS = {
+  eung: '전기',
+  tongsin: '통신',
+  sobang: '소방',
+};
+
 const NAME_FIELDS = ['검색된 회사', '업체명', '회사명', 'name'];
 const BIZ_FIELDS = ['사업자번호', 'bizNo', '사업자 번호'];
-const SHARE_DEFAULT = '0';
 const MANAGEMENT_FIELDS = ['경영상태점수', '경영점수', '관리점수', '경영상태 점수'];
 const PERFORMANCE_FIELDS = ['5년 실적', '5년실적', '최근5년실적합계', '최근5년실적'];
 const SIPYUNG_FIELDS = ['시평', '시평액', '시평금액', '시평액(원)', '시평금액(원)'];
@@ -66,6 +69,8 @@ const LH_EXTRA_OFFSETS = [
   { key: 'qualityScore', label: '품질점수', rowOffset: 1, colOffset: 6 },
   { key: 'abilityAmount', label: '시공능력평가액', rowOffset: 0, colOffset: 41 },
 ];
+
+const MAX_SLOTS = 5;
 
 const pickFirstValue = (company, keys) => {
   if (!company || !Array.isArray(keys)) return '';
@@ -106,8 +111,7 @@ const coerceExcelValue = (value) => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   const numeric = toNumeric(value);
   if (Number.isFinite(numeric)) return numeric;
-  const text = String(value).trim();
-  return text;
+  return String(value).trim();
 };
 
 const computeMetrics = (company) => {
@@ -153,14 +157,6 @@ const getOffsetsForOwner = (ownerId) => {
   return DEFAULT_OFFSETS;
 };
 
-const sumShares = (items) => {
-  return items.reduce((acc, item) => {
-    const numeric = Number(String(item.share || '').replace(/[^0-9.+-]/g, ''));
-    if (!Number.isFinite(numeric)) return acc;
-    return acc + numeric;
-  }, 0);
-};
-
 const buildAgreementPayload = (ownerToken, noticeNo, noticeTitle, leaderEntry, memberEntries) => {
   if (!leaderEntry) return null;
   return {
@@ -180,43 +176,31 @@ const buildAgreementPayload = (ownerToken, noticeNo, noticeTitle, leaderEntry, m
   };
 };
 
+const normalizeName = (value) => String(value || '').replace(/\s+/g, '').toLowerCase();
+
+const makeLocationKey = ({ workbook, worksheet, row, column }) => (
+  `${workbook || ''}|${worksheet || ''}|${row || 0}|${column || 0}`
+);
+
 export default function ExcelHelperPage() {
   const [ownerId, setOwnerId] = React.useState('mois');
   const [rangeId, setRangeId] = React.useState(OWNER_OPTIONS[0].ranges[0].id);
-  const [fileType, setFileType] = React.useState('all');
+  const [fileType, setFileType] = React.useState('');
   const [selection, setSelection] = React.useState(null);
-  const [selectionMessage, setSelectionMessage] = React.useState('');
+  const [selectionMessage, setSelectionMessage] = React.useState('엑셀에서 업체명이 있는 셀을 선택한 뒤 동기화하세요.');
   const [companyQuery, setCompanyQuery] = React.useState('');
   const [searchResults, setSearchResults] = React.useState([]);
   const [searchLoading, setSearchLoading] = React.useState(false);
   const [searchError, setSearchError] = React.useState('');
   const [selectedCompany, setSelectedCompany] = React.useState(null);
-  const [shareInput, setShareInput] = React.useState(SHARE_DEFAULT);
-  const [excelStatus, setExcelStatus] = React.useState('');
-  const [appliedCompanies, setAppliedCompanies] = React.useState([]);
-  const [leaderId, setLeaderId] = React.useState(null);
+  const [shareInput, setShareInput] = React.useState('');
   const [noticeTitle, setNoticeTitle] = React.useState('');
   const [noticeNo, setNoticeNo] = React.useState('');
+  const [excelStatus, setExcelStatus] = React.useState('');
   const [messageStatus, setMessageStatus] = React.useState('');
-  const [fileStatuses, setFileStatuses] = React.useState(null);
+  const [messagePreview, setMessagePreview] = React.useState('');
 
-  React.useEffect(() => {
-    let mounted = true;
-    const loadStatuses = async () => {
-      try {
-        const status = await window.electronAPI?.checkFiles();
-        if (mounted) setFileStatuses(status);
-      } catch {
-        /* ignore */
-      }
-    };
-    loadStatuses();
-    const interval = setInterval(loadStatuses, 120000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+  const appliedCellsRef = React.useRef(new Map());
 
   const activeOwner = OWNER_OPTIONS.find((o) => o.id === ownerId) || OWNER_OPTIONS[0];
   const availableRanges = activeOwner.ranges;
@@ -230,32 +214,44 @@ export default function ExcelHelperPage() {
   const selectedMetrics = React.useMemo(() => computeMetrics(selectedCompany), [selectedCompany]);
 
   React.useEffect(() => {
-    setShareInput(SHARE_DEFAULT);
+    setShareInput('');
   }, [selectedCompany]);
 
-  const handleSidebarSelect = React.useCallback((key) => {
-    if (!key) return;
-    if (key === 'search') { window.location.hash = BASE_ROUTES.search; return; }
-    if (key === 'agreements') { window.location.hash = BASE_ROUTES.agreements; return; }
-    if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
-    if (key === 'records') { window.location.hash = '#/records'; return; }
-    if (key === 'mail') { window.location.hash = '#/mail'; return; }
-    if (key === 'upload') { window.location.hash = '#/agreements'; return; }
-    if (key === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }
-    const menu = findMenuByKey(key);
-    if (menu) window.location.hash = menu.hash;
+  const rememberAppliedCell = React.useCallback((location, companyInfo) => {
+    if (!location) return;
+    const key = makeLocationKey(location);
+    appliedCellsRef.current.set(key, {
+      name: companyInfo?.name || '',
+      bizNo: companyInfo?.bizNo || '',
+      location,
+    });
+  }, []);
+
+  const lookupBizNo = React.useCallback((location, slotName) => {
+    if (!location) return '';
+    const key = makeLocationKey(location);
+    const stored = appliedCellsRef.current.get(key);
+    if (stored?.bizNo) return stored.bizNo;
+    const normalizedName = normalizeName(slotName);
+    if (!normalizedName) return '';
+    for (const entry of appliedCellsRef.current.values()) {
+      if (normalizeName(entry.name) === normalizedName && entry.bizNo) {
+        return entry.bizNo;
+      }
+    }
+    return '';
   }, []);
 
   const handleFetchSelection = async () => {
-    setSelectionMessage('엑셀 선택 정보를 불러오는 중...');
+    setSelectionMessage('엑셀 선택 정보를 확인 중...');
     try {
       if (!window.electronAPI?.excelHelper) {
-        throw new Error('Excel 연동 기능을 사용할 수 없습니다. (Windows 환경 필요)');
+        throw new Error('Excel 연동 기능을 사용할 수 없습니다. (Windows 전용)');
       }
       const response = await window.electronAPI.excelHelper.getSelection();
-      if (!response?.success) throw new Error(response?.message || '선택 정보를 가져오지 못했습니다.');
+      if (!response?.success) throw new Error(response?.message || '선택 정보를 찾을 수 없습니다.');
       setSelection(response.data);
-      setSelectionMessage(`기준 셀: ${response.data?.Worksheet || ''}!${response.data?.Address || ''}`);
+      setSelectionMessage(`기준 셀: ${(response.data?.Worksheet || '').trim()}!${response.data?.Address || ''}`);
     } catch (err) {
       setSelectionMessage(err.message || '엑셀 선택 정보 확인에 실패했습니다.');
     }
@@ -264,6 +260,10 @@ export default function ExcelHelperPage() {
   const handleSearch = async () => {
     if (!companyQuery.trim()) {
       setSearchError('업체명을 입력하세요.');
+      return;
+    }
+    if (!fileType) {
+      setSearchError('검색 파일(전기/통신/소방)을 먼저 선택하세요.');
       return;
     }
     if (!window.electronAPI?.searchCompanies) {
@@ -295,7 +295,7 @@ export default function ExcelHelperPage() {
       return;
     }
     if (!selection) {
-      setExcelStatus('엑셀에서 기준 셀을 먼저 지정해주세요.');
+      setExcelStatus('엑셀 기준 셀을 먼저 동기화해주세요.');
       return;
     }
     if (!window.electronAPI?.excelHelper?.applyOffsets) {
@@ -336,354 +336,315 @@ export default function ExcelHelperPage() {
         baseColumn: selection.column,
         updates,
       };
-      const response = await window.electronAPI?.excelHelper?.applyOffsets(payload);
+      const response = await window.electronAPI.excelHelper.applyOffsets(payload);
       if (!response?.success) throw new Error(response?.message || '엑셀 쓰기에 실패했습니다.');
+      rememberAppliedCell({
+        workbook: selection.workbook,
+        worksheet: selection.worksheet,
+        row: selection.row,
+        column: selection.column,
+      }, selectedMetrics);
       setExcelStatus('엑셀에 값이 반영되었습니다.');
-      const newEntry = {
-        id: crypto.randomUUID ? crypto.randomUUID() : `applied-${Date.now()}-${Math.random()}`,
-        name: selectedMetrics.name,
-        share: shareValue,
-        bizNo: selectedMetrics.bizNo,
-      };
-      setAppliedCompanies((prev) => {
-        const next = [...prev, newEntry];
-        if (!leaderId && next.length > 0) setLeaderId(next[0].id);
-        return next;
-      });
     } catch (err) {
       setExcelStatus(err.message || '엑셀 쓰기에 실패했습니다.');
     }
   };
 
-  const handleRemoveApplied = (id) => {
-    setAppliedCompanies((prev) => {
-      const next = prev.filter((item) => item.id !== id);
-      if (leaderId === id) {
-        setLeaderId(next[0]?.id || null);
-      }
-      return next;
-    });
-  };
-
-  const handleShareChange = (id, value) => {
-    setAppliedCompanies((prev) => prev.map((item) => (item.id === id ? { ...item, share: value } : item)));
-  };
-
-  const leaderEntry = React.useMemo(() => {
-    if (!leaderId) return appliedCompanies[0] || null;
-    return appliedCompanies.find((item) => item.id === leaderId) || appliedCompanies[0] || null;
-  }, [leaderId, appliedCompanies]);
-
-  const memberEntries = React.useMemo(() => {
-    const leaderKey = leaderEntry?.id;
-    return appliedCompanies.filter((item) => item.id !== leaderKey);
-  }, [appliedCompanies, leaderEntry]);
-
-  const agreementPayload = React.useMemo(() => (
-    buildAgreementPayload(activeOwner.ownerToken, noticeNo, noticeTitle, leaderEntry, memberEntries)
-  ), [activeOwner.ownerToken, noticeNo, noticeTitle, leaderEntry, memberEntries]);
-
-  const validation = React.useMemo(() => (
-    agreementPayload ? validateAgreement(agreementPayload) : null
-  ), [agreementPayload]);
-
-  const messagePreview = React.useMemo(() => {
-    if (!agreementPayload) return '';
-    try {
-      return generateOne(agreementPayload);
-    } catch {
-      return '';
+  const readSlotFromExcel = React.useCallback(async (slotIndex) => {
+    if (!selection) return null;
+    if (!window.electronAPI?.excelHelper?.readOffsets) {
+      throw new Error('Excel 연동 기능을 사용할 수 없습니다.');
     }
-  }, [agreementPayload]);
+    const baseColumn = Number(selection.column || 0) + slotIndex;
+    const offsets = getOffsetsForOwner(ownerId);
+    const payload = {
+      workbook: selection.workbook,
+      worksheet: selection.worksheet,
+      baseRow: selection.row,
+      baseColumn,
+      requests: offsets.map((field) => ({
+        key: field.key,
+        rowOffset: field.rowOffset || 0,
+        colOffset: field.colOffset || 0,
+      })),
+    };
+    const response = await window.electronAPI.excelHelper.readOffsets(payload);
+    if (!response?.success) throw new Error(response?.message || '엑셀 셀 값을 읽을 수 없습니다.');
+    const map = new Map((response.items || []).map((item) => [item.key, item]));
+    const nameValue = map.get('name');
+    const rawName = nameValue?.text ?? nameValue?.value ?? '';
+    const name = String(rawName || '').trim();
+    if (!name) return null;
+    const shareValue = map.get('share');
+    const shareText = shareValue?.text ?? shareValue?.value ?? '';
+    const location = {
+      workbook: selection.workbook,
+      worksheet: selection.worksheet,
+      row: selection.row,
+      column: baseColumn,
+    };
+    const bizNo = lookupBizNo(location, name);
+    return {
+      name,
+      share: shareText ? String(shareText) : '',
+      bizNo,
+    };
+  }, [selection, ownerId, lookupBizNo]);
 
   const handleCopyMessage = async () => {
-    if (!messagePreview) {
-      setMessageStatus('생성된 문자가 없습니다.');
+    if (!selection) {
+      setMessageStatus('엑셀 기준 셀을 먼저 동기화해주세요.');
       return;
     }
-    if (validation && !validation.ok) {
-      setMessageStatus(validation.errors[0] || '필수 정보를 먼저 채워주세요.');
+    if (!noticeTitle.trim() || !noticeNo.trim()) {
+      setMessageStatus('공고명/공고번호를 입력하세요.');
       return;
     }
+    setMessageStatus('엑셀 데이터를 읽는 중...');
     try {
+      const slotPromises = [];
+      for (let i = 0; i < MAX_SLOTS; i += 1) {
+        slotPromises.push(readSlotFromExcel(i));
+      }
+      const slotResults = await Promise.all(slotPromises);
+      const participants = slotResults.filter(Boolean);
+      if (participants.length === 0) {
+        setMessageStatus('엑셀에서 업체명을 찾지 못했습니다. 기준 셀을 확인해주세요.');
+        return;
+      }
+      const leader = participants[0];
+      const members = participants.slice(1);
+      const payload = buildAgreementPayload(activeOwner.ownerToken, noticeNo, noticeTitle, leader, members);
+      if (!payload) {
+        setMessageStatus('협정 정보가 부족합니다.');
+        return;
+      }
+      const validation = validateAgreement(payload);
+      if (!validation.ok) {
+        setMessageStatus(validation.errors[0] || '협정 정보를 다시 확인해주세요.');
+        return;
+      }
+      const text = generateOne(payload);
+      setMessagePreview(text);
       if (window.electronAPI?.clipboardWriteText) {
-        const result = await window.electronAPI.clipboardWriteText(messagePreview);
+        const result = await window.electronAPI.clipboardWriteText(text);
         if (!result?.success) throw new Error(result?.message || '클립보드 복사 실패');
       } else if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(messagePreview);
+        await navigator.clipboard.writeText(text);
       } else {
         throw new Error('클립보드를 사용할 수 없습니다.');
       }
-      setMessageStatus('문자가 클립보드에 복사되었습니다.');
+      setMessageStatus('협정 문자가 클립보드에 복사되었습니다.');
     } catch (err) {
-      setMessageStatus(err.message || '클립보드 복사에 실패했습니다.');
+      setMessageStatus(err.message || '협정 문자 생성에 실패했습니다.');
     }
   };
 
-  const shareSum = React.useMemo(() => sumShares(appliedCompanies), [appliedCompanies]);
-
   return (
-    <div className="app-shell">
-      <Sidebar
-        active="excel-helper"
-        onSelect={handleSidebarSelect}
-        fileStatuses={fileStatuses}
-        collapsed
-      />
-      <div className="main">
-        <div className="title-drag" />
-        <div className="topbar" />
-        <div className="stage">
-          <div className="content">
-            <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h1 className="main-title" style={{ marginTop: 0 }}>엑셀 협정 도우미</h1>
-              <p className="section-help">발주처·금액대를 선택하고, 엑셀 기준 셀과 업체 정보를 연동해 협정 수치를 자동으로 채웁니다.</p>
-              <div className="helper-grid">
-                <div>
-                  <label className="field-label">발주처</label>
-                  <div className="button-group">
-                    {OWNER_OPTIONS.map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className={option.id === ownerId ? 'btn-chip active' : 'btn-chip'}
-                        onClick={() => { setOwnerId(option.id); setRangeId(option.ranges[0]?.id || ''); }}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="field-label">금액대</label>
-                  <select className="input" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
-                    {availableRanges.map((range) => (
-                      <option key={range.id} value={range.id}>{range.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="field-label">검색 파일</label>
-                  <select className="input" value={fileType} onChange={(e) => setFileType(e.target.value)}>
-                    {FILE_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+    <div className="excel-helper-shell">
+      <div className="excel-helper-header title-drag">엑셀 협정 도우미</div>
+      <div className="excel-helper-body">
+        <section className="excel-helper-section">
+          <h1>공고 정보</h1>
+          <p className="section-help">공고 정보와 발주처/금액대를 먼저 선택한 뒤, 엑셀 기준 셀을 동기화하세요.</p>
+          <div className="helper-grid">
+            <div>
+              <label className="field-label">공고명</label>
+              <input className="input" value={noticeTitle} onChange={(e) => setNoticeTitle(e.target.value)} placeholder="예: ○○○ 공사" />
             </div>
-
-            <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h2 style={{ marginTop: 0 }}>1. 엑셀 기준 셀 지정</h2>
-              <p style={{ color: '#6b7280', marginBottom: 12 }}>엑셀에서 업체명이 입력될 셀을 선택한 뒤 아래 버튼을 눌러 현재 선택을 불러오세요.</p>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <button type="button" className="primary" onClick={handleFetchSelection}>선택 셀 동기화</button>
-                {selection && (
-                  <div className="pill">{selection?.Worksheet || ''}!{selection?.Address || ''}</div>
-                )}
-                {selectionMessage && <span style={{ color: '#374151' }}>{selectionMessage}</span>}
-              </div>
+            <div>
+              <label className="field-label">공고번호</label>
+              <input className="input" value={noticeNo} onChange={(e) => setNoticeNo(e.target.value)} placeholder="예: 2024-0000" />
             </div>
-
-            <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h2 style={{ marginTop: 0 }}>2. 업체 검색</h2>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
-                <input
-                  className="input"
-                  placeholder="업체명 또는 키워드"
-                  value={companyQuery}
-                  onChange={(e) => setCompanyQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-                />
-                <button type="button" className="btn-soft" onClick={handleSearch} disabled={searchLoading}>
-                  {searchLoading ? '검색 중...' : '검색'}
-                </button>
-              </div>
-              {searchError && <div className="error-message" style={{ marginBottom: 16 }}>{searchError}</div>}
-              <div className="table-scroll">
-                <table className="details-table">
-                  <thead>
-                    <tr>
-                      <th>업체명</th>
-                      <th>대표자</th>
-                      <th>지역</th>
-                      <th>시평액</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(searchResults || []).map((company, idx) => {
-                      const metrics = computeMetrics(company);
-                      const isActive = selectedCompany === company;
-                      return (
-                        <tr key={idx} className={isActive ? 'row-active' : ''}>
-                          <td>{metrics?.name || ''}</td>
-                          <td>{metrics?.representative || ''}</td>
-                          <td>{metrics?.region || ''}</td>
-                          <td>{metrics?.sipyungDisplay || ''}</td>
-                          <td style={{ textAlign: 'right' }}>
-                            <button type="button" className="btn-sm" onClick={() => setSelectedCompany(company)}>선택</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {(!searchResults || searchResults.length === 0) && (
-                      <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: 16 }}>
-                          {searchLoading ? '검색 중입니다...' : '검색 결과가 없습니다.'}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h2 style={{ marginTop: 0 }}>3. 선택된 업체 상세</h2>
-              {selectedMetrics ? (
-                <div className="company-details-card">
-                  <div>
-                    <div className="detail-label">업체명</div>
-                    <div className="detail-value">{selectedMetrics.name || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="detail-label">사업자번호</div>
-                    <div className="detail-value">{selectedMetrics.bizNo || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="detail-label">경영상태점수</div>
-                    <div className="detail-value">{selectedMetrics.managementDisplay || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="detail-label">실적액</div>
-                    <div className="detail-value">{selectedMetrics.performanceDisplay || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="detail-label">시평액</div>
-                    <div className="detail-value">{selectedMetrics.sipyungDisplay || '-'}</div>
-                  </div>
-                  {ownerId === 'lh' && (
-                    <>
-                      <div>
-                        <div className="detail-label">품질점수</div>
-                        <div className="detail-value">{selectedMetrics.qualityDisplay || '-'}</div>
-                      </div>
-                      <div>
-                        <div className="detail-label">시공능력평가액</div>
-                        <div className="detail-value">{selectedMetrics.abilityDisplay || '-'}</div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div style={{ color: '#9ca3af' }}>업체를 선택하면 상세 정보가 표시됩니다.</div>
-              )}
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 16 }}>
-                <label className="field-label" style={{ marginBottom: 0 }}>지분 (%)</label>
-                <input
-                  className="input"
-                  value={shareInput}
-                  onChange={(e) => setShareInput(e.target.value)}
-                  style={{ maxWidth: 120 }}
-                  placeholder="예: 40"
-                />
-                <button type="button" className="primary" onClick={handleApplyToExcel}>엑셀에 채우기</button>
-                {excelStatus && <span style={{ color: '#2563eb' }}>{excelStatus}</span>}
-              </div>
-            </div>
-
-            <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h2 style={{ marginTop: 0 }}>4. 협정 문자 준비</h2>
-              <div className="helper-grid">
-                <div>
-                  <label className="field-label">공고명</label>
-                  <input className="input" value={noticeTitle} onChange={(e) => setNoticeTitle(e.target.value)} placeholder="예: OOO 공사" />
-                </div>
-                <div>
-                  <label className="field-label">공고번호</label>
-                  <input className="input" value={noticeNo} onChange={(e) => setNoticeNo(e.target.value)} placeholder="예: 2024-0000" />
-                </div>
-                <div>
-                  <label className="field-label">발주처</label>
-                  <input className="input" value={activeOwner.label} disabled readOnly />
-                </div>
-              </div>
-
-              <div className="table-scroll" style={{ marginTop: 16 }}>
-                <table className="details-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '28%' }}>업체명</th>
-                      <th style={{ width: '16%' }}>지분(%)</th>
-                      <th style={{ width: '20%' }}>사업자번호</th>
-                      <th style={{ width: '16%' }}>역할</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {appliedCompanies.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.name}</td>
-                        <td>
-                          <input
-                            className="input"
-                            value={item.share}
-                            onChange={(e) => handleShareChange(item.id, e.target.value)}
-                            style={{ width: '90%' }}
-                          />
-                        </td>
-                        <td>{item.bizNo || '-'}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className={leaderEntry?.id === item.id ? 'btn-chip active small' : 'btn-chip small'}
-                            onClick={() => setLeaderId(item.id)}
-                          >
-                            {leaderEntry?.id === item.id ? '대표사' : '대표사 지정'}
-                          </button>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <button type="button" className="btn-sm" onClick={() => handleRemoveApplied(item.id)}>삭제</button>
-                        </td>
-                      </tr>
-                    ))}
-                    {appliedCompanies.length === 0 && (
-                      <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', padding: 16, color: '#9ca3af' }}>
-                          아직 추가된 업체가 없습니다. 엑셀에 채우기를 실행하면 자동으로 목록에 추가됩니다.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div style={{ marginTop: 8, color: shareSum === 100 ? '#059669' : '#b45309' }}>
-                지분 합계: {shareSum.toLocaleString()}%
-              </div>
-            </div>
-
-            <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h2 style={{ marginTop: 0 }}>5. 협정 문자 생성</h2>
-              {validation && !validation.ok && (
-                <div className="error-message" style={{ marginBottom: 12 }}>
-                  {validation.errors.join(', ')}
-                </div>
-              )}
-              <textarea
-                className="input"
-                style={{ minHeight: 160, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
-                value={messagePreview}
-                readOnly
-              />
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12 }}>
-                <button type="button" className="primary" onClick={handleCopyMessage} disabled={!messagePreview}>문자 내용 복사</button>
-                {messageStatus && <span style={{ color: '#2563eb' }}>{messageStatus}</span>}
-              </div>
-            </div>
-
           </div>
-        </div>
+          <div className="helper-grid" style={{ marginTop: 12 }}>
+            <div>
+              <label className="field-label">발주처</label>
+              <div className="button-group">
+                {OWNER_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={option.id === ownerId ? 'btn-chip active' : 'btn-chip'}
+                    onClick={() => { setOwnerId(option.id); setRangeId(option.ranges[0]?.id || ''); }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="field-label">금액대</label>
+              <select className="input" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
+                {availableRanges.map((range) => (
+                  <option key={range.id} value={range.id}>{range.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="field-label">검색 파일 (필수)</label>
+              <select className="input" value={fileType} onChange={(e) => setFileType(e.target.value)}>
+                <option value="">선택하세요</option>
+                {FILE_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section className="excel-helper-section">
+          <h2>엑셀 기준 셀 지정</h2>
+          <p className="section-help">엑셀에서 대표사(첫 번째) 업체명이 입력된 셀을 선택한 뒤 버튼을 눌러 좌표를 동기화하세요.</p>
+          <div className="excel-helper-actions">
+            <button type="button" className="primary" onClick={handleFetchSelection}>선택 셀 동기화</button>
+            <span>{selectionMessage}</span>
+          </div>
+        </section>
+
+        <section className="excel-helper-section">
+          <h2>업체 검색 및 엑셀 반영</h2>
+          <div className="excel-helper-search-row">
+            <input
+              className="input"
+              placeholder="업체명 또는 키워드"
+              value={companyQuery}
+              onChange={(e) => setCompanyQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
+            />
+            <button type="button" className="btn-soft" onClick={handleSearch} disabled={searchLoading}>
+              {searchLoading ? '검색 중...' : '검색'}
+            </button>
+          </div>
+          {searchError && <div className="error-message" style={{ marginBottom: 12 }}>{searchError}</div>}
+          <div className="table-scroll">
+            <table className="details-table">
+              <thead>
+                <tr>
+                  <th>업체명</th>
+                  <th>대표자</th>
+                  <th>지역</th>
+                  <th>시평액</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(searchResults || []).map((company, idx) => {
+                  const metrics = computeMetrics(company);
+                  const isActive = selectedCompany === company;
+                  const managers = extractManagerNames(company);
+                  const typeKey = String(company?._file_type || fileType || '').toLowerCase();
+                  const typeLabel = FILE_TYPE_LABELS[typeKey] || '';
+                  const femaleOwned = isWomenOwnedCompany(company);
+                  const qualityBadge = getQualityBadgeText(company);
+                  return (
+                    <tr key={idx} className={isActive ? 'row-active' : ''}>
+                      <td>
+                        <div className="company-cell">
+                          <div className="company-name-line">
+                            <span className="company-name-text">{metrics?.name || ''}</span>
+                            {typeLabel && (
+                              <span className={`file-type-badge-small file-type-${typeKey}`}>
+                                {typeLabel}
+                              </span>
+                            )}
+                            {femaleOwned && <span className="badge-female badge-inline" title="여성기업">女</span>}
+                            {qualityBadge && <span className="badge-quality badge-inline">품질 {qualityBadge}</span>}
+                          </div>
+                          {managers.length > 0 && (
+                            <div className="company-manager-badges">
+                              {managers.map((name) => (
+                                <span key={`${idx}-${name}`} className="badge-person">{name}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td>{metrics?.representative || ''}</td>
+                      <td>{metrics?.region || ''}</td>
+                      <td>{metrics?.sipyungDisplay || ''}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button type="button" className="btn-sm" onClick={() => setSelectedCompany(company)}>선택</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {(!searchResults || searchResults.length === 0) && (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: 16 }}>
+                      {searchLoading ? '검색 중입니다...' : '검색 결과가 없습니다.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="excel-helper-selected">
+            <div>
+              <div className="detail-label">선택된 업체</div>
+              <div className="detail-value">{selectedMetrics?.name || '-'}</div>
+            </div>
+            <div>
+              <div className="detail-label">사업자번호</div>
+              <div className="detail-value">{selectedMetrics?.bizNo || '-'}</div>
+            </div>
+            <div>
+              <div className="detail-label">경영상태점수</div>
+              <div className="detail-value">{selectedMetrics?.managementDisplay || '-'}</div>
+            </div>
+            <div>
+              <div className="detail-label">실적액</div>
+              <div className="detail-value">{selectedMetrics?.performanceDisplay || '-'}</div>
+            </div>
+            <div>
+              <div className="detail-label">시평액</div>
+              <div className="detail-value">{selectedMetrics?.sipyungDisplay || '-'}</div>
+            </div>
+            {ownerId === 'lh' && (
+              <>
+                <div>
+                  <div className="detail-label">품질점수</div>
+                  <div className="detail-value">{selectedMetrics?.qualityDisplay || '-'}</div>
+                </div>
+                <div>
+                  <div className="detail-label">시공능력평가액</div>
+                  <div className="detail-value">{selectedMetrics?.abilityDisplay || '-'}</div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="excel-helper-actions">
+            <div className="excel-helper-share-input">
+              <label className="field-label" style={{ marginBottom: 4 }}>지분 (%)</label>
+              <input
+                className="input"
+                value={shareInput}
+                onChange={(e) => setShareInput(e.target.value)}
+                placeholder="예: 40"
+              />
+            </div>
+            <button type="button" className="primary" onClick={handleApplyToExcel}>엑셀에 채우기</button>
+            {excelStatus && <span>{excelStatus}</span>}
+          </div>
+        </section>
+
+        <section className="excel-helper-section">
+          <h2>협정 문자 생성</h2>
+          <p className="section-help">엑셀에서 대표사 셀을 선택한 뒤 동기화하면, 오른쪽으로 이어진 업체 정보를 자동으로 읽어 문자를 생성합니다. (좌측 첫 업체가 대표사로 간주됩니다)</p>
+          <div className="excel-helper-actions">
+            <button type="button" className="primary" onClick={handleCopyMessage}>협정 문자 생성 & 복사</button>
+            {messageStatus && <span>{messageStatus}</span>}
+          </div>
+          <textarea
+            className="input"
+            style={{ minHeight: 160, marginTop: 12, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
+            value={messagePreview}
+            readOnly
+            placeholder="생성된 협정 문자가 여기에 표시됩니다."
+          />
+        </section>
       </div>
     </div>
   );

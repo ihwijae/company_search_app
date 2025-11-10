@@ -464,7 +464,10 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     if (key === 'agreements') { window.location.hash = BASE_ROUTES.agreements; return; }
     if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
     if (key === 'upload') { window.location.hash = BASE_ROUTES.agreements; return; }
-    if (key === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }
+    if (key === 'excel-helper') {
+      window.electronAPI?.excelHelper?.openWindow?.();
+      return;
+    }
     const menu = findMenuByKey(key);
     if (menu) window.location.hash = menu.hash;
   };

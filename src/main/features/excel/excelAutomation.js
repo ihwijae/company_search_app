@@ -52,6 +52,7 @@ class ExcelAutomationService {
   async getSelection() {
     const script = `
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $excel = $null
 try {
   $excel = [Runtime.InteropServices.Marshal]::GetActiveObject('Excel.Application')
@@ -93,6 +94,7 @@ $result | ConvertTo-Json -Depth 4 -Compress
     const script = `
 param([string]$jsonPayload)
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $payload = $jsonPayload | ConvertFrom-Json
 if (-not $payload) { throw 'payload 파싱에 실패했습니다.' }
 $excel = $null
@@ -154,6 +156,7 @@ foreach ($update in $payload.updates) {
     const script = `
 param([string]$jsonPayload)
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $payload = $jsonPayload | ConvertFrom-Json
 if (-not $payload) { throw 'payload 파싱에 실패했습니다.' }
 $excel = $null
