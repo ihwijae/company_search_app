@@ -772,6 +772,8 @@ export default function ExcelHelperPage() {
     if (!name) return null;
     const shareValue = map.get('share');
     const shareText = shareValue?.text ?? shareValue?.value ?? '';
+    console.log('[SHARE DEBUG] Raw shareValue:', shareValue);
+    console.log('[SHARE DEBUG] Processed shareText:', shareText);
     const location = {
       workbook: activeWorkbook,
       worksheet: activeWorksheet,
