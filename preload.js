@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ? ipcRenderer.invoke('search-companies-all', { criteria, options })
       : ipcRenderer.invoke('search-companies', { criteria, file_type, options })
   ),
+  searchManyCompanies: (names, file_type, options) => ipcRenderer.invoke('search-many-companies', { names, file_type, options }),
   
   // (異붽?) ?덈줈??API?ㅼ쓣 ?깅줉?⑸땲??
   checkFiles: () => ipcRenderer.invoke('check-files'),

@@ -244,6 +244,7 @@ class SearchLogic {
     }
     
     this.loaded = true;
+    this.buildNameIndex();
     console.log(`총 ${this.allCompanies.length}개의 업체 데이터를 ${this.sheetNames.length}개의 시트에서 로드했습니다.`);
   }
 
@@ -349,6 +350,32 @@ class SearchLogic {
       return { items: processed.items, meta: processed.meta };
     }
     return processed.items;
+  }
+
+  buildNameIndex() {
+    if (this.nameIndex) return;
+    this.nameIndex = new Map();
+    for (const company of this.allCompanies) {
+      const name = company['검색된 회사'];
+      if (name) {
+        const normalizedName = String(name).replace(/\s+/g, '').toLowerCase();
+        if (!this.nameIndex.has(normalizedName)) {
+          this.nameIndex.set(normalizedName, company);
+        }
+      }
+    }
+  }
+
+  searchMany(names = []) {
+    if (!this.loaded) throw new Error('엑셀 데이터가 로드되지 않았습니다.');
+    const results = [];
+    const nameSet = new Set(names.map(n => String(n).replace(/\s+/g, '').toLowerCase()));
+    for (const name of nameSet) {
+      if (this.nameIndex.has(name)) {
+        results.push(this.nameIndex.get(name));
+      }
+    }
+    return results;
   }
 }
 

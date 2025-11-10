@@ -74,6 +74,15 @@ class SearchService {
     return processed.items;
   }
 
+  searchMany(type, names, options = {}) {
+    const logic = this.searchLogics[type];
+    if (!logic || !logic.isLoaded || !logic.isLoaded()) {
+      throw new Error(`${type} 파일이 로드되지 않았습니다`);
+    }
+    const results = logic.searchMany(names, options || {});
+    return results.map(item => ({ ...item, _file_type: type }));
+  }
+
   async loadAndWatch(fileType, sourcePath) {
     const { sanitizedPath, sanitized } = this.sanitizeXlsx(sourcePath);
     if (sanitized) this.registerSanitized(sourcePath, sanitizedPath);

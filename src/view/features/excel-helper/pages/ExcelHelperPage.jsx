@@ -1,7 +1,7 @@
 import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
-import { generateOne, generateMany, validateAgreement } from '../../../../shared/agreements/generator.js';
+import { generateMany, validateAgreement } from '../../../../shared/agreements/generator.js';
 import { extractManagerNames, getQualityBadgeText, isWomenOwnedCompany } from '../../../../utils/companyIndicators.js';
 import { INDUSTRY_AVERAGES } from '../../../../ratios.js';
 
@@ -485,25 +485,6 @@ const computeBizYears = (rawValue, baseDate) => {
 };
 // --- End BizYears Calculation Utilities ---
 
-const searchCompanyByName = async (name, fileType) => {
-  if (!name || !fileType || !window.electronAPI?.searchCompanies) {
-    return null;
-  }
-  try {
-    const response = await window.electronAPI.searchCompanies({ name }, fileType);
-    if (response?.success && response.data?.length > 0) {
-      const company = response.data[0];
-      const bizNo = pickFirstValue(company, BIZ_FIELDS);
-      if (bizNo) {
-        return bizNo;
-      }
-    }
-  } catch (err) {
-    console.warn(`[ExcelHelper] Failed to auto-search for company "${name}":`, err);
-  }
-  return null;
-};
-
 export default function ExcelHelperPage() {
   const [ownerId, setOwnerId] = React.useState('mois');
   const [rangeId, setRangeId] = React.useState(OWNER_OPTIONS[0].ranges[0].id);
@@ -597,29 +578,6 @@ export default function ExcelHelperPage() {
       bizNo: companyInfo?.bizNo || '',
       location,
     });
-  }, []);
-
-  const lookupBizNo = React.useCallback((location, slotName, allCompanies = []) => {
-    if (!location) return '';
-    const key = makeLocationKey(location);
-    const stored = appliedCellsRef.current.get(key);
-    if (stored?.bizNo) return stored.bizNo;
-    const normalizedName = normalizeName(slotName);
-    if (!normalizedName) return '';
-    
-    // Try to find bizNo from allCompanies (search results)
-    const foundCompany = allCompanies.find(c => normalizeName(pickFirstValue(c, NAME_FIELDS)) === normalizedName);
-    if (foundCompany) {
-      const bizNo = pickFirstValue(foundCompany, BIZ_FIELDS);
-      if (bizNo) return bizNo;
-    }
-
-    for (const entry of appliedCellsRef.current.values()) {
-      if (normalizeName(entry.name) === normalizedName && entry.bizNo) {
-        return entry.bizNo;
-      }
-    }
-    return '';
   }, []);
 
   const handleFetchSelection = async () => {
@@ -759,66 +717,8 @@ export default function ExcelHelperPage() {
     }
   };
 
-  const readSlotFromExcel = React.useCallback(async (row, column, allCompanies, activeWorkbook, activeWorksheet) => {
-    console.log(`Reading slot at row ${row}, col ${column}`);
-    if (!window.electronAPI?.excelHelper?.readOffsets) {
-      throw new Error('Excel 연동 기능을 사용할 수 없습니다.');
-    }
-    const offsets = getOffsetsForOwner(ownerId);
-    const payload = {
-      workbook: activeWorkbook,
-      worksheet: activeWorksheet,
-      baseRow: row,
-      baseColumn: column,
-      requests: offsets.map((field) => ({
-        key: field.key,
-        rowOffset: field.rowOffset || 0,
-        colOffset: field.colOffset || 0,
-      })),
-    };
-    const response = await window.electronAPI.excelHelper.readOffsets(payload);
-    if (!response?.success) throw new Error(response?.message || '엑셀 셀 값을 읽을 수 없습니다.');
-    const map = new Map((response.items || []).map((item) => [item.key, item]));
-    const nameValue = map.get('name');
-    const rawName = nameValue?.text ?? nameValue?.value ?? '';
-    
-    // 1. Get first line
-    let name = String(rawName || '').split('\n')[0].trim();
-    // 2. Remove trailing numbers, person names, etc.
-    // This regex removes the first occurrence of a space or digit and everything after it.
-    name = name.replace(/[\s\d].*$/, '').trim();
-
-    console.log(`Slot at (${row},${column}) raw name: "${rawName}", cleaned name: "${name}"`);
-    if (!name) return null;
-    const shareValue = map.get('share');
-    const share = shareValue?.value ?? null;
-    const location = {
-      workbook: activeWorkbook,
-      worksheet: activeWorksheet,
-      row,
-      column,
-    };
-    let bizNo = lookupBizNo(location, name, allCompanies);
-    console.log(`Slot at (${row},${column}) bizNo from lookup: ${bizNo}`);
-    if (!bizNo) {
-      console.log(`Slot at (${row},${column}) bizNo not found, searching for "${name}" with fileType "${fileType}"`);
-      const foundBizNo = await searchCompanyByName(name, fileType);
-      if (foundBizNo) {
-        console.log(`Slot at (${row},${column}) bizNo found via search: ${foundBizNo}`);
-        bizNo = foundBizNo;
-        rememberAppliedCell(location, { name, bizNo });
-      } else {
-        console.log(`Slot at (${row},${column}) bizNo not found for "${name}"`);
-      }
-    }
-    return {
-      name,
-      share: share,
-      bizNo,
-    };
-  }, [ownerId, lookupBizNo, fileType, rememberAppliedCell]);
-
-  const handleCopyMessage = async () => {
+  const generateAgreementMessages = React.useCallback(async ({ rowIncrement = 1 } = {}) => {
+    // 0. Validation
     if (!fileType) {
       setMessageStatus('검색 파일(전기/통신/소방)을 먼저 선택하세요.');
       return;
@@ -830,8 +730,8 @@ export default function ExcelHelperPage() {
     
     setMessageStatus('엑셀 데이터를 읽는 중...');
     try {
-      if (!window.electronAPI?.excelHelper) {
-        throw new Error('Excel 연동 기능을 사용할 수 없습니다. (Windows 전용)');
+      if (!window.electronAPI?.excelHelper || !window.electronAPI?.searchManyCompanies) {
+        throw new Error('필수 기능(Excel 연동 또는 업체 검색)을 사용할 수 없습니다.');
       }
       const selectionResponse = await window.electronAPI.excelHelper.getSelection();
       if (!selectionResponse?.success) throw new Error(selectionResponse?.message || '현재 활성화된 엑셀 시트 정보를 가져올 수 없습니다.');
@@ -841,7 +741,10 @@ export default function ExcelHelperPage() {
         throw new Error('현재 활성화된 엑셀 시트 정보를 가져올 수 없습니다. 엑셀이 열려있는지 확인해주세요.');
       }
 
-      const allPayloads = [];
+      // 1. GATHER ALL COMPANY NAMES
+      setMessageStatus('업체명 수집 중...');
+      const allCompanyNames = new Set();
+      const allAgreementsData = []; // Will store { row, participants: [{ name, share }] }
       let currentRow = 5;
 
       while (currentRow < 100) { // Safety break at 100 rows
@@ -855,49 +758,91 @@ export default function ExcelHelperPage() {
 
         const cellValue = checkCellResponse?.items?.[0]?.text || checkCellResponse?.items?.[0]?.value;
         if (!checkCellResponse?.success || !cellValue) {
-          console.log(`Stopping at row ${currentRow}, cell A${currentRow} is empty.`);
-          break; // Stop if cell is empty or read fails
+          break; // Stop
         }
 
-        console.log(`Processing agreement on row ${currentRow}`);
-        const slotPromises = [];
+        const rowParticipants = [];
         for (let i = 0; i < MAX_SLOTS; i += 1) {
-          slotPromises.push(readSlotFromExcel(currentRow, 3 + i, searchResults, activeWorkbook, activeWorksheet)); // Column C is 3
-        }
-        const slotResults = await Promise.all(slotPromises);
-        console.log(`Row ${currentRow} slot results:`, slotResults);
-
-        const participants = slotResults.filter(Boolean).map(p => {
-          const share = p.share;
-          let finalShare = share;
-          if (typeof share === 'number' && share > 0 && share <= 1) {
-            finalShare = parseFloat((share * 100).toFixed(2));
-          } else if (typeof share === 'number') {
-            finalShare = parseFloat(share.toFixed(2));
-          }
-          return { ...p, share: finalShare };
-        });
-
-        if (participants.length > 0) {
-          const leader = participants[0];
-          const members = participants.slice(1);
-          const payload = buildAgreementPayload(activeOwner.ownerToken, noticeNo, noticeTitle, leader, members);
-          if (payload) {
-            const validation = validateAgreement(payload);
-            if (validation.ok) {
-              allPayloads.push(payload);
-            } else {
-              console.warn(`Skipping invalid agreement on row ${currentRow}:`, validation.errors);
+          const col = 3 + i;
+          const slotResponse = await window.electronAPI.excelHelper.readOffsets({
+            workbook: activeWorkbook,
+            worksheet: activeWorksheet,
+            baseRow: currentRow,
+            baseColumn: col,
+            requests: [{ key: 'name', rowOffset: 0, colOffset: 0 }, { key: 'share', rowOffset: 0, colOffset: 6 }],
+          });
+          if (slotResponse.success && slotResponse.items) {
+            const nameItem = slotResponse.items.find(item => item.key === 'name');
+            const shareItem = slotResponse.items.find(item => item.key === 'share');
+            const rawName = nameItem?.text ?? nameItem?.value ?? '';
+            if (rawName) {
+              const name = String(rawName).split('\n')[0].replace(/[\s\d].*$/, '').trim();
+              if (name) {
+                allCompanyNames.add(name);
+                rowParticipants.push({
+                  name,
+                  share: shareItem?.value ?? null,
+                });
+              }
             }
           }
-        } else {
-          console.log(`No participants found for agreement on row ${currentRow}`);
         }
-        currentRow++;
+        
+        if (rowParticipants.length > 0) {
+          allAgreementsData.push({ row: currentRow, participants: rowParticipants });
+        }
+
+        currentRow += rowIncrement;
       }
 
+      if (allCompanyNames.size === 0) {
+        setMessageStatus('엑셀에서 처리할 업체를 찾지 못했습니다.');
+        return;
+      }
+
+      // 2. BULK SEARCH
+      setMessageStatus(`총 ${allCompanyNames.size}개 업체 정보 조회 중...`);
+      const searchResponse = await window.electronAPI.searchManyCompanies(Array.from(allCompanyNames), fileType);
+      if (!searchResponse.success) {
+        throw new Error('업체 정보 대량 조회에 실패했습니다: ' + searchResponse.message);
+      }
+      
+      const bizNoMap = new Map();
+      (searchResponse.data || []).forEach(company => {
+        const name = pickFirstValue(company, NAME_FIELDS);
+        const bizNo = pickFirstValue(company, BIZ_FIELDS);
+        if (name && bizNo) {
+          bizNoMap.set(normalizeName(name), bizNo);
+        }
+      });
+
+      // 3. PROCESS AND GENERATE
+      setMessageStatus('협정 문자 생성 중...');
+      const allPayloads = allAgreementsData.map(agreement => {
+        const participants = agreement.participants.map(p => {
+          const bizNo = bizNoMap.get(normalizeName(p.name)) || '';
+          let finalShare = p.share;
+          if (typeof p.share === 'number' && p.share > 0 && p.share <= 1) {
+            finalShare = parseFloat((p.share * 100).toFixed(2));
+          } else if (typeof p.share === 'number') {
+            finalShare = parseFloat(p.share.toFixed(2));
+          }
+          return { ...p, bizNo, share: finalShare };
+        });
+
+        if (participants.length === 0) return null;
+
+        const leader = participants[0];
+        const members = participants.slice(1);
+        const payload = buildAgreementPayload(activeOwner.ownerToken, noticeNo, noticeTitle, leader, members);
+        
+        const validation = validateAgreement(payload);
+        return validation.ok ? payload : null;
+      }).filter(Boolean);
+
+
       if (allPayloads.length === 0) {
-        setMessageStatus('엑셀에서 처리할 협정 데이터를 찾지 못했습니다. A열에 순번이 있는지, C열부터 업체명이 있는지 확인해주세요.');
+        setMessageStatus('유효한 협정 데이터를 찾지 못했습니다.');
         return;
       }
 
@@ -905,18 +850,19 @@ export default function ExcelHelperPage() {
       setMessagePreview(text);
 
       if (window.electronAPI?.clipboardWriteText) {
-        const result = await window.electronAPI.clipboardWriteText(text);
-        if (!result?.success) throw new Error(result?.message || '클립보드 복사 실패');
-      } else if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
+        await window.electronAPI.clipboardWriteText(text);
       } else {
-        throw new Error('클립보드를 사용할 수 없습니다.');
+        await navigator.clipboard.writeText(text);
       }
       setMessageStatus(`${allPayloads.length}건의 협정 문자가 클립보드에 복사되었습니다.`);
+
     } catch (err) {
       setMessageStatus(err.message || '협정 문자 생성에 실패했습니다.');
     }
-  };
+  }, [fileType, noticeTitle, noticeNo, activeOwner.ownerToken]);
+
+  const handleCopyMessage = () => generateAgreementMessages({ rowIncrement: 1 });
+  const handleCopyMessageLH = () => generateAgreementMessages({ rowIncrement: 2 });
 
   return (
     <div className="excel-helper-shell">
@@ -1114,9 +1060,10 @@ export default function ExcelHelperPage() {
 
         <section className="excel-helper-section">
           <h2>협정 문자 생성</h2>
-          <p className="section-help">엑셀에서 대표사 셀을 선택한 뒤 동기화하면, 오른쪽으로 이어진 업체 정보를 자동으로 읽어 문자를 생성합니다. (좌측 첫 업체가 대표사로 간주됩니다)</p>
+          <p className="section-help">엑셀에서 협정 목록을 자동으로 읽어 문자를 생성합니다. (A열에 순번이 있는 행을 기준으로 C열부터 업체를 읽습니다)</p>
           <div className="excel-helper-actions">
-            <button type="button" className="primary" onClick={handleCopyMessage}>협정 문자 생성 & 복사</button>
+            <button type="button" className="primary" onClick={handleCopyMessage}>일반 협정 문자 생성</button>
+            <button type="button" className="primary" onClick={handleCopyMessageLH} style={{ marginLeft: 8 }}>[LH] 협정 문자 생성</button>
             {messageStatus && <span>{messageStatus}</span>}
           </div>
           <textarea

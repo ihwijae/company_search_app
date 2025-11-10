@@ -732,6 +732,23 @@ try {
     }
     catch (e) { return { success: false, message: e?.message || 'Search failed' }; }
   });
+
+  if (ipcMain.removeHandler) ipcMain.removeHandler('search-many-companies');
+  ipcMain.handle('search-many-companies', (_event, { names, file_type, options }) => {
+    try {
+      const normalizedType = normalizeFileType(file_type, { fallback: null });
+      if (!normalizedType || normalizedType === 'all') {
+        throw new Error(`지원하지 않는 검색 대상입니다: ${file_type}`);
+      }
+      const sanitizedNames = Array.isArray(names) ? names : [];
+      const sanitizedOptions = parseMaybeJson(options, 'options');
+      
+      const result = svc.searchMany(normalizedType, sanitizedNames, sanitizedOptions || {});
+      
+      return { success: true, data: sanitizeIpcPayload(result) };
+    }
+    catch (e) { return { success: false, message: e?.message || 'Search many failed' }; }
+  });
 } catch (e) {
   console.error('[MAIN] SearchService 초기화/바인딩 실패:', e);
 }
