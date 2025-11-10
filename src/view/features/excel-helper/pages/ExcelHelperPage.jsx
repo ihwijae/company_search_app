@@ -375,6 +375,10 @@ export default function ExcelHelperPage() {
   const [shareInput, setShareInput] = React.useState('');
   const [noticeTitle, setNoticeTitle] = React.useState('');
   const [noticeNo, setNoticeNo] = React.useState('');
+  const [noticeDateInput, setNoticeDateInput] = React.useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
   const [excelStatus, setExcelStatus] = React.useState('');
   const [messageStatus, setMessageStatus] = React.useState('');
   const [messagePreview, setMessagePreview] = React.useState('');
@@ -427,7 +431,9 @@ export default function ExcelHelperPage() {
 
     try {
       const industryAvg = resolveIndustryAverage(fileType || company?._file_type);
-      const payload = industryAvg ? { agencyId, amount, inputs, industryAvg } : { agencyId, amount, inputs };
+      const payload = industryAvg
+        ? { agencyId, amount, inputs, industryAvg, noticeDate: noticeDateInput }
+        : { agencyId, amount, inputs, noticeDate: noticeDateInput };
       const response = await window.electronAPI.excelHelperFormulasEvaluate(payload);
       const score = Number(response?.data?.management?.score);
       if (Number.isFinite(score)) return score;
@@ -435,7 +441,7 @@ export default function ExcelHelperPage() {
       console.warn('[ExcelHelper] excelHelperFormulasEvaluate failed:', err?.message || err);
     }
     return null;
-  }, [ownerId, rangeId]);
+  }, [ownerId, rangeId, noticeDateInput]);
 
   const rememberAppliedCell = React.useCallback((location, companyInfo) => {
     if (!location) return;
@@ -715,6 +721,10 @@ export default function ExcelHelperPage() {
             <div>
               <label className="field-label">공고번호</label>
               <input className="input" value={noticeNo} onChange={(e) => setNoticeNo(e.target.value)} placeholder="예: 2024-0000" />
+            </div>
+            <div>
+              <label className="field-label">공고일</label>
+              <input className="input" type="date" value={noticeDateInput} onChange={(e) => setNoticeDateInput(e.target.value)} />
             </div>
           </div>
           <div className="helper-grid" style={{ marginTop: 12 }}>
