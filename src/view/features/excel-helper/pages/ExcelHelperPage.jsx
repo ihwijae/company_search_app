@@ -396,11 +396,14 @@ export default function ExcelHelperPage() {
     const inputs = {
       debtRatio: getNumericValue(company, DEBT_RATIO_FIELDS),
       currentRatio: getNumericValue(company, CURRENT_RATIO_FIELDS),
-      bizYears: getNumericValue(company, BIZ_YEARS_FIELDS),
-      qualityEval: getNumericValue(company, QUALITY_FIELDS),
       perf5y: getNumericValue(company, PERFORMANCE_FIELDS),
       baseAmount: amount,
     };
+
+    if (agencyId === 'PPS' || agencyId === 'LH') {
+      inputs.bizYears = getNumericValue(company, BIZ_YEARS_FIELDS);
+    }
+
     const creditGrade = extractCreditGradeDetailed(company);
     if (creditGrade && !isCreditExpiredDetailed(company)) {
       inputs.creditGrade = creditGrade;
