@@ -143,7 +143,12 @@ foreach ($update in $payload.updates) {
   if ($null -eq $update.value) {
     $cell.ClearContents() | Out-Null
   } else {
-    $cell.Value2 = $update.value
+    $value = $update.value
+    if ($value -is [double] -or $value -is [float] -or $value -is [decimal] -or $value -is [int] -or $value -is [long]) {
+      $cell.Value2 = [double]$value
+    } else {
+      $cell.Value2 = [string]$value
+    }
   }
 }
 [pscustomobject]@{ success = $true } | ConvertTo-Json -Compress
