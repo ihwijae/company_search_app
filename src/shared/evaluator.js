@@ -67,8 +67,6 @@ function evalManagementComposite(inputs, rules, industryAvg) {
   const debtNorm = avg.debtRatio ? debt / avg.debtRatio : debt; // lower is better
   const currentNorm = avg.currentRatio ? current / avg.currentRatio : current; // higher is better
 
-  console.log('[RULE DEBUG] Using debt thresholds:', JSON.stringify(def.debtRatio && def.debtRatio.thresholds));
-
   const debtScore = evaluateThresholdScore(debtNorm, def.debtRatio && def.debtRatio.thresholds);
   const currentScore = evaluateThresholdScore(currentNorm, def.currentRatio && def.currentRatio.thresholds);
   const yearsScore = evaluateBizYearsScore(years, def.bizYears && def.bizYears.thresholds);

@@ -21,11 +21,11 @@ const MOIS_BIZ_DEFAULT = [
 ];
 
 const MOIS_DEBT_DEFAULT = [
-  { lt: 0.5, score: 7.0 },
-  { lt: 0.75, score: 6.3 },
-  { lt: 1.0, score: 5.6 },
-  { lt: 1.25, score: 4.9 },
-  { gte: 1.25, score: 4.2 },
+  { lt: 0.5, score: 8.0 },
+  { lt: 0.75, score: 7.2 },
+  { lt: 1.0, score: 6.4 },
+  { lt: 1.25, score: 5.6 },
+  { gte: 1.25, score: 4.8 },
 ];
 
 const MOIS_DEBT_LEGACY = [
