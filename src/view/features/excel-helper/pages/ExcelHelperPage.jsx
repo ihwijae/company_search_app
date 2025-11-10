@@ -187,6 +187,7 @@ const getOffsetsForOwner = (ownerId) => {
 
 const buildAgreementPayload = (ownerToken, noticeNo, noticeTitle, leaderEntry, memberEntries) => {
   if (!leaderEntry) return null;
+  const isLH = ownerToken === 'LH';
   return {
     owner: ownerToken,
     noticeNo,
@@ -194,12 +195,12 @@ const buildAgreementPayload = (ownerToken, noticeNo, noticeTitle, leaderEntry, m
     leader: {
       name: leaderEntry.name,
       share: leaderEntry.share,
-      bizNo: leaderEntry.bizNo,
+      ...(isLH && { bizNo: leaderEntry.bizNo }), // Conditionally include bizNo for LH leader
     },
     members: memberEntries.map((item) => ({
       name: item.name,
       share: item.share,
-      bizNo: item.bizNo,
+      bizNo: item.bizNo, // Always include bizNo for members
     })),
   };
 };
@@ -579,13 +580,21 @@ export default function ExcelHelperPage() {
     });
   }, []);
 
-  const lookupBizNo = React.useCallback((location, slotName) => {
+  const lookupBizNo = React.useCallback((location, slotName, allCompanies = []) => {
     if (!location) return '';
     const key = makeLocationKey(location);
     const stored = appliedCellsRef.current.get(key);
     if (stored?.bizNo) return stored.bizNo;
     const normalizedName = normalizeName(slotName);
     if (!normalizedName) return '';
+    
+    // Try to find bizNo from allCompanies (search results)
+    const foundCompany = allCompanies.find(c => normalizeName(pickFirstValue(c, NAME_FIELDS)) === normalizedName);
+    if (foundCompany) {
+      const bizNo = pickFirstValue(foundCompany, BIZ_FIELDS);
+      if (bizNo) return bizNo;
+    }
+
     for (const entry of appliedCellsRef.current.values()) {
       if (normalizeName(entry.name) === normalizedName && entry.bizNo) {
         return entry.bizNo;
@@ -731,7 +740,7 @@ export default function ExcelHelperPage() {
     }
   };
 
-  const readSlotFromExcel = React.useCallback(async (slotIndex) => {
+  const readSlotFromExcel = React.useCallback(async (slotIndex, allCompanies) => {
     if (!selection) return null;
     const baseRow = Number(selection.row || 0);
     const baseColumnBase = Number(selection.column || 0);
@@ -769,7 +778,7 @@ export default function ExcelHelperPage() {
       row: selection.row,
       column: baseColumn,
     };
-    const bizNo = lookupBizNo(location, name);
+    const bizNo = lookupBizNo(location, name, allCompanies);
     return {
       name,
       share: shareText ? String(shareText) : '',
@@ -796,7 +805,7 @@ export default function ExcelHelperPage() {
     try {
       const slotPromises = [];
       for (let i = 0; i < MAX_SLOTS; i += 1) {
-        slotPromises.push(readSlotFromExcel(i));
+        slotPromises.push(readSlotFromExcel(i, searchResults));
       }
       const slotResults = await Promise.all(slotPromises);
       const participants = slotResults.filter(Boolean);
