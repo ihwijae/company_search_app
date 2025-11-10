@@ -21,6 +21,19 @@ function formatBizNo(bizNo) {
   return cleaned;
 }
 
+function hasDuplicateNames(item) {
+  const names = [];
+  if (item?.leader?.name) names.push(String(item.leader.name).trim());
+  (item?.members || []).forEach(m => { if (m?.name) names.push(String(m.name).trim()); });
+  const seen = new Set();
+  for (const n of names) {
+    if (!n) continue;
+    if (seen.has(n)) return true;
+    seen.add(n);
+  }
+  return false;
+}
+
 export function validateAgreement(item) {
   const errors = [];
   if (!item?.noticeNo || !String(item.noticeNo).trim()) errors.push('공고번호를 입력하세요');
