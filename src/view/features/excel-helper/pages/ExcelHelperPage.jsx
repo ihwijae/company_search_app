@@ -250,8 +250,19 @@ export default function ExcelHelperPage() {
       }
       const response = await window.electronAPI.excelHelper.getSelection();
       if (!response?.success) throw new Error(response?.message || '선택 정보를 찾을 수 없습니다.');
-      setSelection(response.data);
-      setSelectionMessage(`기준 셀: ${(response.data?.Worksheet || '').trim()}!${response.data?.Address || ''}`);
+      const raw = response.data || {};
+      const normalizedSelection = {
+        workbook: raw.Workbook || raw.workbook || '',
+        worksheet: raw.Worksheet || raw.worksheet || '',
+        address: raw.Address || raw.address || '',
+        row: Number(raw.Row ?? raw.row ?? 0) || 0,
+        column: Number(raw.Column ?? raw.column ?? 0) || 0,
+      };
+      if (!normalizedSelection.row || !normalizedSelection.column) {
+        throw new Error('선택한 셀 좌표를 확인할 수 없습니다. 다시 선택해 주세요.');
+      }
+      setSelection(normalizedSelection);
+      setSelectionMessage(`기준 셀: ${normalizedSelection.worksheet}!${normalizedSelection.address}`);
     } catch (err) {
       setSelectionMessage(err.message || '엑셀 선택 정보 확인에 실패했습니다.');
     }
