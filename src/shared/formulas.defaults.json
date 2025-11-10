@@ -85,31 +85,6 @@
                           "score": 0.8
                         }
                       ]
-                    },
-                    "qualityEval": {
-                      "scale": "higherIsBetter",
-                      "thresholds": [
-                        {
-                          "gte": 88,
-                          "score": 3
-                        },
-                        {
-                          "gte": 85,
-                          "score": 2
-                        },
-                        {
-                          "gte": 83,
-                          "score": 1.5
-                        },
-                        {
-                          "gte": 80,
-                          "score": 1
-                        },
-                        {
-                          "lt": 80,
-                          "score": 0
-                        }
-                      ]
                     }
                   }
                 },
