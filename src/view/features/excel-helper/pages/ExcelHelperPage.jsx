@@ -760,12 +760,9 @@ export default function ExcelHelperPage() {
   };
 
   const readSlotFromExcel = React.useCallback(async (slotIndex, allCompanies, activeWorkbook, activeWorksheet) => {
-    // if (!selection) return null; // Removed dependency on selection
+    console.log(`Reading slot ${slotIndex}`);
     const baseRow = 5; // Hardcoded to row 5
     const baseColumnBase = 3; // Hardcoded to column C (3rd column)
-    // if (!baseRow || !baseColumnBase) { // Removed check
-    //   throw new Error('기준 셀 좌표를 확인할 수 없습니다. 다시 동기화해주세요.');
-    // }
     if (!window.electronAPI?.excelHelper?.readOffsets) {
       throw new Error('Excel 연동 기능을 사용할 수 없습니다.');
     }
@@ -788,6 +785,7 @@ export default function ExcelHelperPage() {
     const nameValue = map.get('name');
     const rawName = nameValue?.text ?? nameValue?.value ?? '';
     const name = String(rawName || '').split('\n')[0].trim();
+    console.log(`Slot ${slotIndex} raw name: "${rawName}", cleaned name: "${name}"`);
     if (!name) return null;
     const shareValue = map.get('share');
     const share = shareValue?.value ?? null; // Use the numeric value, default to null if not found
@@ -798,11 +796,16 @@ export default function ExcelHelperPage() {
       column: baseColumn,
     };
     let bizNo = lookupBizNo(location, name, allCompanies);
+    console.log(`Slot ${slotIndex} bizNo from lookup: ${bizNo}`);
     if (!bizNo) {
+      console.log(`Slot ${slotIndex} bizNo not found, searching for "${name}" with fileType "${fileType}"`);
       const foundBizNo = await searchCompanyByName(name, fileType);
       if (foundBizNo) {
+        console.log(`Slot ${slotIndex} bizNo found via search: ${foundBizNo}`);
         bizNo = foundBizNo;
         rememberAppliedCell(location, { name, bizNo });
+      } else {
+        console.log(`Slot ${slotIndex} bizNo not found for "${name}"`);
       }
     }
     return {
@@ -845,6 +848,7 @@ export default function ExcelHelperPage() {
         slotPromises.push(readSlotFromExcel(i, searchResults, activeWorkbook, activeWorksheet));
       }
       const slotResults = await Promise.all(slotPromises);
+      console.log('Slot results:', slotResults);
       const participants = slotResults.filter(Boolean).map(p => {
         const share = p.share;
         let finalShare = share;
