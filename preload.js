@@ -33,9 +33,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Formulas: load/save/evaluate
   formulasLoad: () => ipcRenderer.invoke('formulas-load'),
   formulasLoadDefaults: () => ipcRenderer.invoke('formulas-load-defaults'),
-  formulasLoadOverrides: () => ipcRenderer.invoke('formulas-load-overrides'),
+  formulasLoadOverrides: (payload) => ipcRenderer.invoke('formulas-load-overrides', payload),
   formulasSaveOverrides: (payload) => ipcRenderer.invoke('formulas-save-overrides', payload),
   formulasEvaluate: (payload) => ipcRenderer.invoke('formulas-evaluate', payload),
+  excelHelperFormulasEvaluate: (payload) => ipcRenderer.invoke('excel-helper-formulas-evaluate', payload),
 
   // Agreements Rules (load/save)
   agreementsRulesLoad: () => ipcRenderer.invoke('agreements-rules-load'),

@@ -389,7 +389,7 @@ export default function ExcelHelperPage() {
   }, [selectedCompany]);
 
   const evaluateManagementScore = React.useCallback(async (company, fileType) => {
-    if (!company || !window.electronAPI?.formulasEvaluate) return null;
+    if (!company || !window.electronAPI?.excelHelperFormulasEvaluate) return null;
     const agencyId = String(ownerId || '').toUpperCase();
     if (!agencyId) return null;
     const amount = resolveRangeAmount(ownerId, rangeId);
@@ -420,11 +420,11 @@ export default function ExcelHelperPage() {
     try {
       const industryAvg = resolveIndustryAverage(fileType || company?._file_type);
       const payload = industryAvg ? { agencyId, amount, inputs, industryAvg } : { agencyId, amount, inputs };
-      const response = await window.electronAPI.formulasEvaluate(payload);
+      const response = await window.electronAPI.excelHelperFormulasEvaluate(payload);
       const score = Number(response?.data?.management?.score);
       if (Number.isFinite(score)) return score;
     } catch (err) {
-      console.warn('[ExcelHelper] formulasEvaluate failed:', err?.message || err);
+      console.warn('[ExcelHelper] excelHelperFormulasEvaluate failed:', err?.message || err);
     }
     return null;
   }, [ownerId, rangeId]);

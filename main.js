@@ -15,6 +15,7 @@ const { execSync } = require('child_process');
 const pkg = (() => { try { return require('./package.json'); } catch { return {}; } })();
 
 let formulasCache = null;
+let excelHelperFormulasCache = null; // New cache for Excel Helper formulas
 let recordsDbInstance = null;
 let recordsServiceInstance = null;
 let excelHelperWindow = null;
@@ -31,8 +32,21 @@ const loadMergedFormulasCached = () => {
   }
   return formulasCache;
 };
+
+const loadExcelHelperFormulas = () => {
+  if (excelHelperFormulasCache) return excelHelperFormulasCache;
+  try {
+    // Directly load from the fixed Excel Helper formulas file
+    const excelHelperFormulas = require('./src/shared/formulas.excel-helper.json');
+    excelHelperFormulasCache = excelHelperFormulas;
+  } catch (e) {
+    console.error('[MAIN] Excel Helper formulas load failed:', e?.message || e);
+  }
+  return excelHelperFormulasCache;
+};
 const invalidateFormulasCache = () => {
   formulasCache = null;
+  excelHelperFormulasCache = null; // Invalidate both caches
 };
 
 // Minimize GPU shader cache errors on Windows (cannot create/move cache)
@@ -1693,6 +1707,41 @@ try {
       return { success: true, data: r };
     } catch (e) {
       return { success: false, message: e?.message || 'Failed to evaluate' };
+    }
+  });
+
+  // New IPC handler for Excel Helper
+  ipcMain.handle('excel-helper-formulas-evaluate', async (_event, payload) => {
+    try {
+      const sanitized = payload && typeof payload === 'object' ? { ...payload } : {};
+      if (!sanitized.industryAvg) {
+        const normalizedType = sanitizeFileTypeForAvg(sanitized.fileType);
+        if (normalizedType) {
+          const avg = industryAverages[normalizedType]
+            || industryAverages[String(normalizedType).toLowerCase()]
+            || null;
+          if (avg) sanitized.industryAvg = avg;
+        }
+      }
+      // Load rules specifically for Excel Helper (no user overrides)
+      const excelHelperFormulas = loadExcelHelperFormulas();
+      if (!excelHelperFormulas) throw new Error('Excel Helper formulas not loaded');
+
+      // Temporarily override loadFormulasMerged to use fixed formulas
+      const originalLoadFormulasMerged = formulasMod.loadFormulasMerged;
+      formulasMod.loadFormulasMerged = () => excelHelperFormulas;
+
+      let r;
+      try {
+        r = evaluator.evaluateScores(sanitized);
+      } finally {
+        // Restore original loadFormulasMerged
+        formulasMod.loadFormulasMerged = originalLoadFormulasMerged;
+      }
+      return { success: true, data: r };
+    } catch (e) {
+      console.error('[MAIN] excel-helper-formulas-evaluate failed:', e?.message || e);
+      return { success: false, message: e?.message || 'Failed to evaluate for Excel Helper' };
     }
   });
 } catch (e) {
