@@ -485,6 +485,25 @@ const computeBizYears = (rawValue, baseDate) => {
 };
 // --- End BizYears Calculation Utilities ---
 
+const searchCompanyByName = async (name, fileType) => {
+  if (!name || !fileType || !window.electronAPI?.searchCompanies) {
+    return null;
+  }
+  try {
+    const response = await window.electronAPI.searchCompanies({ name }, fileType);
+    if (response?.success && response.data?.length > 0) {
+      const company = response.data[0];
+      const bizNo = pickFirstValue(company, BIZ_FIELDS);
+      if (bizNo) {
+        return bizNo;
+      }
+    }
+  } catch (err) {
+    console.warn(`[ExcelHelper] Failed to auto-search for company "${name}":`, err);
+  }
+  return null;
+};
+
 export default function ExcelHelperPage() {
   const [ownerId, setOwnerId] = React.useState('mois');
   const [rangeId, setRangeId] = React.useState(OWNER_OPTIONS[0].ranges[0].id);
@@ -768,7 +787,7 @@ export default function ExcelHelperPage() {
     const map = new Map((response.items || []).map((item) => [item.key, item]));
     const nameValue = map.get('name');
     const rawName = nameValue?.text ?? nameValue?.value ?? '';
-    const name = String(rawName || '').trim();
+    const name = String(rawName || '').split('\n')[0].trim();
     if (!name) return null;
     const shareValue = map.get('share');
     const share = shareValue?.value ?? null; // Use the numeric value, default to null if not found
@@ -778,13 +797,20 @@ export default function ExcelHelperPage() {
       row: baseRow,
       column: baseColumn,
     };
-    const bizNo = lookupBizNo(location, name, allCompanies);
+    let bizNo = lookupBizNo(location, name, allCompanies);
+    if (!bizNo) {
+      const foundBizNo = await searchCompanyByName(name, fileType);
+      if (foundBizNo) {
+        bizNo = foundBizNo;
+        rememberAppliedCell(location, { name, bizNo });
+      }
+    }
     return {
       name,
       share: share,
       bizNo,
     };
-  }, [selection, ownerId, lookupBizNo]);
+  }, [ownerId, lookupBizNo, fileType, rememberAppliedCell]);
 
   const handleCopyMessage = async () => {
     // if (!selection) { // Removed check
@@ -819,7 +845,17 @@ export default function ExcelHelperPage() {
         slotPromises.push(readSlotFromExcel(i, searchResults, activeWorkbook, activeWorksheet));
       }
       const slotResults = await Promise.all(slotPromises);
-      const participants = slotResults.filter(Boolean);
+      const participants = slotResults.filter(Boolean).map(p => {
+        const share = p.share;
+        let finalShare = share;
+        if (typeof share === 'number' && share > 0 && share <= 1) {
+          finalShare = parseFloat((share * 100).toFixed(2));
+        } else if (typeof share === 'number') {
+          finalShare = parseFloat(share.toFixed(2));
+        }
+        return { ...p, share: finalShare };
+      });
+
       if (participants.length === 0) {
         setMessageStatus('엑셀에서 업체명을 찾지 못했습니다. 기준 셀을 확인해주세요.');
         return;
