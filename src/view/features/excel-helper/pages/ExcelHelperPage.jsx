@@ -741,20 +741,20 @@ export default function ExcelHelperPage() {
   };
 
   const readSlotFromExcel = React.useCallback(async (slotIndex, allCompanies) => {
-    if (!selection) return null;
-    const baseRow = Number(selection.row || 0);
-    const baseColumnBase = Number(selection.column || 0);
-    if (!baseRow || !baseColumnBase) {
-      throw new Error('기준 셀 좌표를 확인할 수 없습니다. 다시 동기화해주세요.');
-    }
+    // if (!selection) return null; // Removed dependency on selection
+    const baseRow = 5; // Hardcoded to row 5
+    const baseColumnBase = 3; // Hardcoded to column C (3rd column)
+    // if (!baseRow || !baseColumnBase) { // Removed check
+    //   throw new Error('기준 셀 좌표를 확인할 수 없습니다. 다시 동기화해주세요.');
+    // }
     if (!window.electronAPI?.excelHelper?.readOffsets) {
       throw new Error('Excel 연동 기능을 사용할 수 없습니다.');
     }
     const baseColumn = baseColumnBase + slotIndex;
     const offsets = getOffsetsForOwner(ownerId);
     const payload = {
-      workbook: selection.workbook,
-      worksheet: selection.worksheet,
+      workbook: selection?.workbook || '', // Use selection.workbook if available, otherwise default
+      worksheet: selection?.worksheet || '', // Use selection.worksheet if available, otherwise default
       baseRow,
       baseColumn,
       requests: offsets.map((field) => ({
@@ -773,9 +773,9 @@ export default function ExcelHelperPage() {
     const shareValue = map.get('share');
     const shareText = shareValue?.text ?? shareValue?.value ?? '';
     const location = {
-      workbook: selection.workbook,
-      worksheet: selection.worksheet,
-      row: selection.row,
+      workbook: selection?.workbook || '',
+      worksheet: selection?.worksheet || '',
+      row: baseRow,
       column: baseColumn,
     };
     const bizNo = lookupBizNo(location, name, allCompanies);
@@ -787,16 +787,16 @@ export default function ExcelHelperPage() {
   }, [selection, ownerId, lookupBizNo]);
 
   const handleCopyMessage = async () => {
-    if (!selection) {
-      setMessageStatus('엑셀 기준 셀을 먼저 동기화해주세요.');
-      return;
-    }
-    const baseRow = Number(selection.row || 0);
-    const baseColumn = Number(selection.column || 0);
-    if (!baseRow || !baseColumn) {
-      setMessageStatus('기준 셀 좌표를 확인할 수 없습니다. 다시 동기화해주세요.');
-      return;
-    }
+    // if (!selection) { // Removed check
+    //   setMessageStatus('엑셀 기준 셀을 먼저 동기화해주세요.');
+    //   return;
+    // }
+    const baseRow = 5; // Hardcoded to row 5
+    const baseColumn = 3; // Hardcoded to column C (3rd column)
+    // if (!baseRow || !baseColumn) { // Removed check
+    //   setMessageStatus('기준 셀 좌표를 확인할 수 없습니다. 다시 동기화해주세요.');
+    //   return;
+    // }
     if (!noticeTitle.trim() || !noticeNo.trim()) {
       setMessageStatus('공고명/공고번호를 입력하세요.');
       return;
