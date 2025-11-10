@@ -740,7 +740,7 @@ export default function ExcelHelperPage() {
     }
   };
 
-  const readSlotFromExcel = React.useCallback(async (slotIndex, allCompanies) => {
+  const readSlotFromExcel = React.useCallback(async (slotIndex, allCompanies, activeWorkbook, activeWorksheet) => {
     // if (!selection) return null; // Removed dependency on selection
     const baseRow = 5; // Hardcoded to row 5
     const baseColumnBase = 3; // Hardcoded to column C (3rd column)
@@ -753,8 +753,8 @@ export default function ExcelHelperPage() {
     const baseColumn = baseColumnBase + slotIndex;
     const offsets = getOffsetsForOwner(ownerId);
     const payload = {
-      workbook: selection?.workbook || '', // Use selection.workbook if available, otherwise default
-      worksheet: selection?.worksheet || '', // Use selection.worksheet if available, otherwise default
+      workbook: activeWorkbook, // Use active workbook
+      worksheet: activeWorksheet, // Use active worksheet
       baseRow,
       baseColumn,
       requests: offsets.map((field) => ({
@@ -773,8 +773,8 @@ export default function ExcelHelperPage() {
     const shareValue = map.get('share');
     const shareText = shareValue?.text ?? shareValue?.value ?? '';
     const location = {
-      workbook: selection?.workbook || '',
-      worksheet: selection?.worksheet || '',
+      workbook: activeWorkbook,
+      worksheet: activeWorksheet,
       row: baseRow,
       column: baseColumn,
     };
@@ -803,9 +803,20 @@ export default function ExcelHelperPage() {
     }
     setMessageStatus('엑셀 데이터를 읽는 중...');
     try {
+      if (!window.electronAPI?.excelHelper) {
+        throw new Error('Excel 연동 기능을 사용할 수 없습니다. (Windows 전용)');
+      }
+      const selectionResponse = await window.electronAPI.excelHelper.getSelection();
+      if (!selectionResponse?.success) throw new Error(selectionResponse?.message || '현재 활성화된 엑셀 시트 정보를 가져올 수 없습니다.');
+      const activeWorkbook = selectionResponse.data?.Workbook || selectionResponse.data?.workbook || '';
+      const activeWorksheet = selectionResponse.data?.Worksheet || selectionResponse.data?.worksheet || '';
+      if (!activeWorkbook || !activeWorksheet) {
+        throw new Error('현재 활성화된 엑셀 시트 정보를 가져올 수 없습니다. 엑셀이 열려있는지 확인해주세요.');
+      }
+
       const slotPromises = [];
       for (let i = 0; i < MAX_SLOTS; i += 1) {
-        slotPromises.push(readSlotFromExcel(i, searchResults));
+        slotPromises.push(readSlotFromExcel(i, searchResults, activeWorkbook, activeWorksheet));
       }
       const slotResults = await Promise.all(slotPromises);
       const participants = slotResults.filter(Boolean);
