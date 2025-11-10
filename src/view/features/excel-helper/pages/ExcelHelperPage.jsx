@@ -781,7 +781,13 @@ export default function ExcelHelperPage() {
     const map = new Map((response.items || []).map((item) => [item.key, item]));
     const nameValue = map.get('name');
     const rawName = nameValue?.text ?? nameValue?.value ?? '';
-    const name = String(rawName || '').split('\n')[0].trim();
+    
+    // 1. Get first line
+    let name = String(rawName || '').split('\n')[0].trim();
+    // 2. Remove trailing numbers, person names, etc.
+    // This regex removes the first occurrence of a space or digit and everything after it.
+    name = name.replace(/[\s\d].*$/, '').trim();
+
     console.log(`Slot at (${row},${column}) raw name: "${rawName}", cleaned name: "${name}"`);
     if (!name) return null;
     const shareValue = map.get('share');
@@ -813,14 +819,15 @@ export default function ExcelHelperPage() {
   }, [ownerId, lookupBizNo, fileType, rememberAppliedCell]);
 
   const handleCopyMessage = async () => {
-    if (!noticeTitle.trim() || !noticeNo.trim()) {
-      setMessageStatus('공고명/공고번호를 입력하세요.');
-      return;
-    }
     if (!fileType) {
       setMessageStatus('검색 파일(전기/통신/소방)을 먼저 선택하세요.');
       return;
     }
+    if (!noticeTitle.trim() || !noticeNo.trim()) {
+      setMessageStatus('공고명/공고번호를 입력하세요.');
+      return;
+    }
+    
     setMessageStatus('엑셀 데이터를 읽는 중...');
     try {
       if (!window.electronAPI?.excelHelper) {
