@@ -54,6 +54,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   stateRemove: (key) => ipcRenderer.invoke('renderer-state-remove', key),
   stateClear: (prefix) => ipcRenderer.invoke('renderer-state-clear', prefix),
 
+  excelHelper: {
+    getSelection: () => ipcRenderer.invoke('excel-helper:get-selection'),
+    applyOffsets: (payload) => ipcRenderer.invoke('excel-helper:apply-offsets', payload),
+    readOffsets: (payload) => ipcRenderer.invoke('excel-helper:read-offsets', payload),
+  },
+
   records: {
     listProjects: (filters) => ipcRenderer.invoke('records:list-projects', filters),
     getProject: (id) => ipcRenderer.invoke('records:get-project', { id }),

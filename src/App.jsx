@@ -13,6 +13,7 @@ import MOISUnder30Page from './view/features/agreements/pages/MOISUnder30Page.js
 import MOIS30To50Page from './view/features/agreements/pages/MOIS30To50Page.jsx';
 import MOIS50To100Page from './view/features/agreements/pages/MOIS50To100Page.jsx';
 import { AgreementBoardProvider } from './view/features/agreements/context/AgreementBoardContext.jsx';
+import ExcelHelperPage from './view/features/excel-helper/pages/ExcelHelperPage.jsx';
 
 export default function App() {
   const [route, setRoute] = React.useState(window.location.hash || '#/search');
@@ -58,6 +59,9 @@ export default function App() {
       break;
     case '/mail':
       Screen = MailAutomationPage;
+      break;
+    case '/excel-helper':
+      Screen = ExcelHelperPage;
       break;
     case '/search':
     default:

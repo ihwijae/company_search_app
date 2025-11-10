@@ -9,6 +9,7 @@ const { ensureRecordsDatabase } = require('./src/main/features/records/recordsDa
 const { RecordsService } = require('./src/main/features/records/recordsService.js');
 const { registerRecordsIpcHandlers } = require('./src/main/features/records/ipc.js');
 const industryAverages = require('./src/shared/industryAverages.json');
+const { ExcelAutomationService } = require('./src/main/features/excel/excelAutomation.js');
 const os = require('os');
 const { execSync } = require('child_process');
 const pkg = (() => { try { return require('./package.json'); } catch { return {}; } })();
@@ -16,6 +17,7 @@ const pkg = (() => { try { return require('./package.json'); } catch { return {}
 let formulasCache = null;
 let recordsDbInstance = null;
 let recordsServiceInstance = null;
+const excelAutomation = new ExcelAutomationService();
 const loadMergedFormulasCached = () => {
   if (formulasCache) return formulasCache;
   try {
@@ -709,6 +711,17 @@ try {
   });
 } catch (e) {
   console.error('[MAIN] clipboard:writeText IPC wiring failed:', e);
+}
+
+try {
+  if (ipcMain.removeHandler) ipcMain.removeHandler('excel-helper:get-selection');
+  ipcMain.handle('excel-helper:get-selection', async () => excelAutomation.getSelection());
+  if (ipcMain.removeHandler) ipcMain.removeHandler('excel-helper:apply-offsets');
+  ipcMain.handle('excel-helper:apply-offsets', async (_event, payload = {}) => excelAutomation.applyOffsets(payload));
+  if (ipcMain.removeHandler) ipcMain.removeHandler('excel-helper:read-offsets');
+  ipcMain.handle('excel-helper:read-offsets', async (_event, payload = {}) => excelAutomation.readOffsets(payload));
+} catch (e) {
+  console.error('[MAIN] excel-helper IPC wiring failed:', e);
 }
 
 // Agreements: Fetch candidates (skeleton implementation)
