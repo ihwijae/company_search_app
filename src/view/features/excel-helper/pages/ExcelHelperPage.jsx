@@ -226,12 +226,20 @@ const getNumericValue = (company, fields) => {
 const resolveRangeAmount = (ownerId, rangeId) => {
   const ownerKey = String(ownerId || '').toLowerCase();
   const ownerMap = RANGE_AMOUNT_PRESETS[ownerKey];
-  if (ownerMap && ownerMap[rangeId]) return ownerMap[rangeId];
-  if (ownerMap) {
+  let amount = null;
+  if (ownerMap && ownerMap[rangeId]) {
+    amount = ownerMap[rangeId];
+  } else if (ownerMap) {
     const values = Object.values(ownerMap);
-    if (values.length > 0) return values[0];
+    if (values.length > 0) amount = values[0];
   }
-  return DEFAULT_RANGE_AMOUNT;
+  if (amount === null) amount = DEFAULT_RANGE_AMOUNT;
+
+  // Adjust amount for "under X" ranges to ensure correct tier selection
+  if (rangeId.startsWith('under')) {
+    return amount - 1;
+  }
+  return amount;
 };
 
 const resolveIndustryAverage = (fileType) => {
