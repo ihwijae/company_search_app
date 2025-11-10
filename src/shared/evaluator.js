@@ -72,6 +72,15 @@ function evalManagementComposite(inputs, rules, industryAvg) {
   const yearsScore = evaluateBizYearsScore(years, def.bizYears && def.bizYears.thresholds);
   const qualityScore = evaluateThresholdScore(quality, def.qualityEval && def.qualityEval.thresholds);
   const scoreRaw = toNumber(debtScore) + toNumber(currentScore) + toNumber(yearsScore) + toNumber(qualityScore);
+
+  console.log('[SCORE DEBUG] --------------------------');
+  console.log('[SCORE DEBUG] Debt Score:    ', debtScore);
+  console.log('[SCORE DEBUG] Current Score: ', currentScore);
+  console.log('[SCORE DEBUG] Years Score:   ', yearsScore);
+  console.log('[SCORE DEBUG] Quality Score: ', qualityScore);
+  console.log('[SCORE DEBUG] Raw Total:     ', scoreRaw);
+  console.log('[SCORE DEBUG] --------------------------');
+
   const score = applyRounding(scoreRaw, rules.management.rounding);
   return { score, parts: { debtScore, currentScore, yearsScore, qualityScore }, methodId: 'composite' };
 }
