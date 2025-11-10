@@ -309,6 +309,12 @@ export default function ExcelHelperPage() {
       setExcelStatus('엑셀 기준 셀을 먼저 동기화해주세요.');
       return;
     }
+    const baseRow = Number(selection.row || 0);
+    const baseColumn = Number(selection.column || 0);
+    if (!baseRow || !baseColumn) {
+      setExcelStatus('기준 셀 좌표를 확인할 수 없습니다. 다시 동기화해주세요.');
+      return;
+    }
     if (!window.electronAPI?.excelHelper?.applyOffsets) {
       setExcelStatus('Excel 연동 기능을 사용할 수 없습니다.');
       return;
@@ -343,8 +349,8 @@ export default function ExcelHelperPage() {
       const payload = {
         workbook: selection.workbook,
         worksheet: selection.worksheet,
-        baseRow: selection.row,
-        baseColumn: selection.column,
+        baseRow,
+        baseColumn,
         updates,
       };
       const response = await window.electronAPI.excelHelper.applyOffsets(payload);
@@ -352,8 +358,8 @@ export default function ExcelHelperPage() {
       rememberAppliedCell({
         workbook: selection.workbook,
         worksheet: selection.worksheet,
-        row: selection.row,
-        column: selection.column,
+        row: baseRow,
+        column: baseColumn,
       }, selectedMetrics);
       setExcelStatus('엑셀에 값이 반영되었습니다.');
     } catch (err) {
@@ -363,15 +369,20 @@ export default function ExcelHelperPage() {
 
   const readSlotFromExcel = React.useCallback(async (slotIndex) => {
     if (!selection) return null;
+    const baseRow = Number(selection.row || 0);
+    const baseColumnBase = Number(selection.column || 0);
+    if (!baseRow || !baseColumnBase) {
+      throw new Error('기준 셀 좌표를 확인할 수 없습니다. 다시 동기화해주세요.');
+    }
     if (!window.electronAPI?.excelHelper?.readOffsets) {
       throw new Error('Excel 연동 기능을 사용할 수 없습니다.');
     }
-    const baseColumn = Number(selection.column || 0) + slotIndex;
+    const baseColumn = baseColumnBase + slotIndex;
     const offsets = getOffsetsForOwner(ownerId);
     const payload = {
       workbook: selection.workbook,
       worksheet: selection.worksheet,
-      baseRow: selection.row,
+      baseRow,
       baseColumn,
       requests: offsets.map((field) => ({
         key: field.key,
@@ -405,6 +416,12 @@ export default function ExcelHelperPage() {
   const handleCopyMessage = async () => {
     if (!selection) {
       setMessageStatus('엑셀 기준 셀을 먼저 동기화해주세요.');
+      return;
+    }
+    const baseRow = Number(selection.row || 0);
+    const baseColumn = Number(selection.column || 0);
+    if (!baseRow || !baseColumn) {
+      setMessageStatus('기준 셀 좌표를 확인할 수 없습니다. 다시 동기화해주세요.');
       return;
     }
     if (!noticeTitle.trim() || !noticeNo.trim()) {
