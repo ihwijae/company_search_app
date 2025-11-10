@@ -361,6 +361,129 @@ const makeLocationKey = ({ workbook, worksheet, row, column }) => (
   `${workbook || ''}|${worksheet || ''}|${row || 0}|${column || 0}`
 );
 
+// --- BizYears Calculation Utilities (Copied from main.js) ---
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const MS_PER_YEAR = 365.2425 * MS_PER_DAY;
+const EXCEL_DATE_EPOCH = new Date(Date.UTC(1899, 11, 30)); // Excel's date epoch
+
+const isValidDate = (value) => value instanceof Date && !Number.isNaN(value.getTime());
+
+const fromExcelSerial = (serial) => {
+  const num = Number(serial);
+  if (!Number.isFinite(num)) return null;
+  if (num <= 0) return null;
+  const milliseconds = Math.round(num * MS_PER_DAY);
+  const date = new Date(EXCEL_DATE_EPOCH.getTime() + milliseconds);
+  if (!isValidDate(date)) return null;
+  return date;
+};
+
+const DATE_PATTERN = /(\d{2,4})[.\-/년\s]*(\d{1,2})[.\-/월\s]*(\d{1,2})/;
+
+const parseDateToken = (input) => {
+  if (!input) return null;
+  const match = String(input).match(DATE_PATTERN);
+  if (!match) return null;
+  let year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (year < 100) year += year >= 70 ? 1900 : 2000;
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const parseDateLike = (raw) => {
+  if (!raw && raw !== 0) return null;
+  if (raw instanceof Date) {
+    return isValidDate(raw) ? raw : null;
+  }
+  if (typeof raw === 'number') {
+    if (raw > 1000) { // Heuristic: assume numbers > 1000 are Excel serial dates
+      const excelDate = fromExcelSerial(raw);
+      if (excelDate) return excelDate;
+    }
+    return null;
+  }
+  const text = String(raw || '').trim();
+  if (!text) return null;
+
+  // Try YYYY-MM-DD or YYYY.MM.DD
+  const dateMatch = text.match(/(\d{4})[^0-9]*(\d{1,2})[^0-9]*(\d{1,2})/);
+  if (dateMatch) {
+    const year = Number(dateMatch[1]);
+    const month = Number(dateMatch[2]);
+    const day = Number(dateMatch[3]);
+    if (year >= 1900 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      const date = new Date(year, month - 1, day);
+      if (isValidDate(date)) return date;
+    }
+  }
+
+  // Try YYYYMMDD
+  const digitsOnly = text.replace(/[^0-9]/g, '');
+  if (digitsOnly.length === 8) {
+    const year = Number(digitsOnly.slice(0, 4));
+    const month = Number(digitsOnly.slice(4, 6));
+    const day = Number(digitsOnly.slice(6, 8));
+    if (year >= 1900 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      const date = new Date(year, month - 1, day);
+      if (isValidDate(date)) return date;
+    }
+  }
+
+  return null;
+};
+
+const parseBizYearsFromText = (text) => {
+  const normalized = String(text || '').trim();
+  if (!normalized) return null;
+  const yearMonthMatch = normalized.match(/(\d+(?:\.\d+)?)\s*년\s*(\d+(?:\.\d+)?)?\s*개월?/);
+  if (yearMonthMatch) {
+    const yearsPart = Number(yearMonthMatch[1]);
+    const monthsPart = yearMonthMatch[2] != null ? Number(yearMonthMatch[2]) : 0;
+    const total = (Number.isFinite(yearsPart) ? yearsPart : 0) + (Number.isFinite(monthsPart) ? monthsPart / 12 : 0);
+    return Number.isFinite(total) && total > 0 ? total : null;
+  }
+  const monthsOnlyMatch = normalized.match(/(\d+(?:\.\d+)?)\s*개월/);
+  if (monthsOnlyMatch) {
+    const months = Number(monthsOnlyMatch[1]);
+    if (Number.isFinite(months) && months > 0) return months / 12;
+  }
+  return null;
+};
+
+const computeBizYears = (rawValue, baseDate) => {
+  if (!rawValue && rawValue !== 0) return { years: null, startDate: null };
+
+  const base = isValidDate(baseDate) ? baseDate : new Date(); // Default to today if no baseDate
+  const startDate = parseDateLike(rawValue);
+  if (startDate && base && isValidDate(base)) {
+    const diff = base.getTime() - startDate.getTime();
+    const years = diff > 0 ? (diff / MS_PER_YEAR) : 0;
+    return { years: Number.isFinite(years) ? Number(years.toFixed(4)) : 0, startDate };
+  }
+
+  if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+    if (rawValue > 0 && rawValue <= 200) { // Assuming max 200 years
+      return { years: Number(rawValue.toFixed(4)), startDate: null };
+    }
+  }
+
+  const fromText = parseBizYearsFromText(rawValue);
+  if (Number.isFinite(fromText) && fromText > 0) {
+    return { years: Number(fromText.toFixed(4)), startDate: null };
+  }
+
+  const numericString = toNumeric(rawValue); // Use toNumeric for general numeric parsing
+  if (Number.isFinite(numericString) && numericString > 0 && numericString <= 200) {
+    return { years: Number(numericString.toFixed(4)), startDate: null };
+  }
+
+  return { years: null, startDate: null };
+};
+// --- End BizYears Calculation Utilities ---
+
 export default function ExcelHelperPage() {
   const [ownerId, setOwnerId] = React.useState('mois');
   const [rangeId, setRangeId] = React.useState(OWNER_OPTIONS[0].ranges[0].id);
@@ -405,6 +528,9 @@ export default function ExcelHelperPage() {
     const agencyId = String(ownerId || '').toUpperCase();
     if (!agencyId) return null;
     const amount = resolveRangeAmount(ownerId, rangeId);
+    
+    const bizYearsInfo = computeBizYears(pickFirstValue(company, BIZ_YEARS_FIELDS), parseDateLike(noticeDateInput));
+
     const inputs = {
       debtRatio: getNumericValue(company, DEBT_RATIO_FIELDS),
       currentRatio: getNumericValue(company, CURRENT_RATIO_FIELDS),
@@ -413,7 +539,7 @@ export default function ExcelHelperPage() {
     };
 
     if (agencyId === 'PPS' || agencyId === 'LH') {
-      inputs.bizYears = getNumericValue(company, BIZ_YEARS_FIELDS);
+      inputs.bizYears = bizYearsInfo.years;
     }
 
     const creditGrade = extractCreditGradeDetailed(company);
