@@ -771,9 +771,7 @@ export default function ExcelHelperPage() {
     const name = String(rawName || '').trim();
     if (!name) return null;
     const shareValue = map.get('share');
-    const shareText = shareValue?.text ?? shareValue?.value ?? '';
-    console.log('[SHARE DEBUG] Raw shareValue:', shareValue);
-    console.log('[SHARE DEBUG] Processed shareText:', shareText);
+    const share = shareValue?.value ?? null; // Use the numeric value, default to null if not found
     const location = {
       workbook: activeWorkbook,
       worksheet: activeWorksheet,
@@ -783,7 +781,7 @@ export default function ExcelHelperPage() {
     const bizNo = lookupBizNo(location, name, allCompanies);
     return {
       name,
-      share: shareText ? String(shareText) : '',
+      share: share,
       bizNo,
     };
   }, [selection, ownerId, lookupBizNo]);
