@@ -724,6 +724,7 @@ export default function ExcelHelperPage() {
           const managers = extractManagerNames(selectedCompany);
           const managerNames = managers.length > 0 ? ` ${managers.join(', ')}` : '';
           source = `${companyName}${availableShare}${managerNames}`;
+          console.log(`[handleApplyToExcel] name field update: companyName="${companyName}", availableShare="${availableShare}", managerNames="${managerNames}", final source="${source}"`); // 디버깅 로그 추가
         } else {
           source = selectedMetrics[field.key];
         }
