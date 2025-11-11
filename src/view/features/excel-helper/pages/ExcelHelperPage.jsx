@@ -767,7 +767,9 @@ export default function ExcelHelperPage() {
         baseColumn,
         updates,
       };
+      console.log('[handleApplyToExcel] Sending payload to Excel:', payload); // 디버깅 로그 추가
       const response = await window.electronAPI.excelHelper.applyOffsets(payload);
+      console.log('[handleApplyToExcel] Excel applyOffsets response:', response); // 디버깅 로그 추가
       if (!response?.success) throw new Error(response?.message || '엑셀 쓰기에 실패했습니다.');
       rememberAppliedCell({
         workbook: selection.workbook,
