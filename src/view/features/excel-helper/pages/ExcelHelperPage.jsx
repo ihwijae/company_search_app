@@ -4,6 +4,7 @@ import '../../../../fonts.css';
 import { generateMany, validateAgreement } from '../../../../shared/agreements/generator.js';
 import { extractManagerNames, getQualityBadgeText, isWomenOwnedCompany } from '../../../../utils/companyIndicators.js';
 import { INDUSTRY_AVERAGES } from '../../../../ratios.js';
+import * as XLSX from 'xlsx'; // Import xlsx library
 
 const OWNER_OPTIONS = [
   {
@@ -530,6 +531,12 @@ export default function ExcelHelperPage() {
   const [evaluatedManagementScore, setEvaluatedManagementScore] = React.useState(null);
   const [isGeneratingAgreement, setIsGeneratingAgreement] = React.useState(false); // 새 상태 추가
 
+  // New states for file upload
+  const [uploadedFile, setUploadedFile] = React.useState(null);
+  const [uploadedWorkbook, setUploadedWorkbook] = React.useState(null);
+  const [sheetNames, setSheetNames] = React.useState([]);
+  const [selectedSheet, setSelectedSheet] = React.useState('');
+
   const appliedCellsRef = React.useRef(new Map());
 
   const activeOwner = OWNER_OPTIONS.find((o) => o.id === ownerId) || OWNER_OPTIONS[0];
@@ -782,6 +789,37 @@ export default function ExcelHelperPage() {
     }
   };
 
+  // Handle file upload
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setUploadedFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        setUploadedWorkbook(workbook);
+        setSheetNames(workbook.SheetNames);
+        if (workbook.SheetNames.length > 0) {
+          setSelectedSheet(workbook.SheetNames[0]); // Select first sheet by default
+        } else {
+          setSelectedSheet('');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      setUploadedFile(null);
+      setUploadedWorkbook(null);
+      setSheetNames([]);
+      setSelectedSheet('');
+    }
+  };
+
+  // Handle sheet selection
+  const handleSheetSelect = (event) => {
+    setSelectedSheet(event.target.value);
+  };
+
   const generateAgreementMessages = React.useCallback(async ({ rowIncrement = 1 } = {}) => {
     setIsGeneratingAgreement(true); // 로딩 시작
     // 0. Validation
@@ -797,58 +835,99 @@ export default function ExcelHelperPage() {
     }
     
     try {
-      if (!window.electronAPI?.excelHelper || !window.electronAPI?.searchManyCompanies) {
-        throw new Error('필수 기능(Excel 연동 또는 업체 검색)을 사용할 수 없습니다.');
+      // Determine data source: uploaded file or live Excel
+      let sourceWorkbook = null;
+      let sourceWorksheet = null;
+      let isUploadedFileSource = false;
+
+      if (uploadedWorkbook && selectedSheet) {
+        sourceWorkbook = uploadedWorkbook;
+        sourceWorksheet = selectedSheet;
+        isUploadedFileSource = true;
+      } else if (window.electronAPI?.excelHelper) {
+        const selectionResponse = await window.electronAPI.excelHelper.getSelection();
+        if (!selectionResponse?.success) throw new Error(selectionResponse?.message || '현재 활성화된 엑셀 시트 정보를 가져올 수 없습니다.');
+        sourceWorkbook = selectionResponse.data?.Workbook || selectionResponse.data?.workbook || '';
+        sourceWorksheet = selectionResponse.data?.Worksheet || selectionResponse.data?.worksheet || '';
+      } else {
+        throw new Error('엑셀 데이터 소스를 찾을 수 없습니다. 파일을 업로드하거나 엑셀을 동기화해주세요.');
       }
-      const selectionResponse = await window.electronAPI.excelHelper.getSelection();
-      if (!selectionResponse?.success) throw new Error(selectionResponse?.message || '현재 활성화된 엑셀 시트 정보를 가져올 수 없습니다.');
-      const activeWorkbook = selectionResponse.data?.Workbook || selectionResponse.data?.workbook || '';
-      const activeWorksheet = selectionResponse.data?.Worksheet || selectionResponse.data?.worksheet || '';
-      if (!activeWorkbook || !activeWorksheet) {
-        throw new Error('현재 활성화된 엑셀 시트 정보를 가져올 수 없습니다. 엑셀이 열려있는지 확인해주세요.');
+
+      if (!sourceWorkbook || !sourceWorksheet) {
+        throw new Error('유효한 엑셀 워크북 또는 워크시트 정보를 찾을 수 없습니다.');
       }
 
       // 1. GATHER ALL COMPANY NAMES
-      console.log('--- Step 1: Gathering Company Names ---'); // 디버깅 로그 추가
       const allCompanyNames = new Set();
       const allAgreementsData = []; // Will store { row, participants: [{ name, share }] }
       let currentRow = 5;
 
       while (currentRow < 100) { // Safety break at 100 rows
-        const checkCellResponse = await window.electronAPI.excelHelper.readOffsets({
-          workbook: activeWorkbook,
-          worksheet: activeWorksheet,
-          baseRow: currentRow,
-          baseColumn: 1, // Column A
-          requests: [{ key: 'check', rowOffset: 0, colOffset: 0 }],
-        });
+        let cellValue = null;
+        let slotResponses = [];
 
-        const cellValue = checkCellResponse?.items?.[0]?.text || checkCellResponse?.items?.[0]?.value;
-        if (!checkCellResponse?.success || !cellValue) {
-          console.log(`Row ${currentRow}: No cell value or read failed. Stopping.`); // 디버깅 로그 추가
+        if (isUploadedFileSource) {
+          const sheet = sourceWorkbook.Sheets[sourceWorksheet];
+          const cellAddress = XLSX.utils.encode_cell({ r: currentRow - 1, c: 0 }); // Column A
+          cellValue = sheet[cellAddress] ? XLSX.utils.format_cell(sheet[cellAddress]) : null;
+
+          if (cellValue) {
+            for (let i = 0; i < MAX_SLOTS; i += 1) {
+              const col = 3 + i; // Column D onwards
+              const nameCellAddress = XLSX.utils.encode_cell({ r: currentRow - 1, c: col - 1 });
+              const shareCellAddress = XLSX.utils.encode_cell({ r: currentRow - 1, c: col + 6 - 1 }); // colOffset 6
+              
+              const nameItem = sheet[nameCellAddress] ? XLSX.utils.format_cell(sheet[nameCellAddress]) : '';
+              const shareItem = sheet[shareCellAddress] ? XLSX.utils.format_cell(sheet[shareCellAddress]) : null;
+              
+              slotResponses.push({
+                success: true,
+                items: [
+                  { key: 'name', text: nameItem, value: nameItem },
+                  { key: 'share', text: shareItem, value: shareItem },
+                ]
+              });
+            }
+          }
+        } else { // Live Excel
+          const checkCellResponse = await window.electronAPI.excelHelper.readOffsets({
+            workbook: sourceWorkbook,
+            worksheet: sourceWorksheet,
+            baseRow: currentRow,
+            baseColumn: 1, // Column A
+            requests: [{ key: 'check', rowOffset: 0, colOffset: 0 }],
+          });
+          cellValue = checkCellResponse?.items?.[0]?.text || checkCellResponse?.items?.[0]?.value;
+
+          if (cellValue) {
+            for (let i = 0; i < MAX_SLOTS; i += 1) {
+              const col = 3 + i;
+              const slotResponse = await window.electronAPI.excelHelper.readOffsets({
+                workbook: sourceWorkbook,
+                worksheet: sourceWorksheet,
+                baseRow: currentRow,
+                baseColumn: col,
+                requests: [{ key: 'name', rowOffset: 0, colOffset: 0 }, { key: 'share', rowOffset: 0, colOffset: 6 }],
+              });
+              slotResponses.push(slotResponse);
+            }
+          }
+        }
+
+        if (!cellValue) {
           break; // Stop
         }
 
         const rowParticipants = [];
-        for (let i = 0; i < MAX_SLOTS; i += 1) {
-          const col = 3 + i;
-          const slotResponse = await window.electronAPI.excelHelper.readOffsets({
-            workbook: activeWorkbook,
-            worksheet: activeWorksheet,
-            baseRow: currentRow,
-            baseColumn: col,
-            requests: [{ key: 'name', rowOffset: 0, colOffset: 0 }, { key: 'share', rowOffset: 0, colOffset: 6 }],
-          });
+        for (const slotResponse of slotResponses) {
           if (slotResponse.success && slotResponse.items) {
             const nameItem = slotResponse.items.find(item => item.key === 'name');
             const shareItem = slotResponse.items.find(item => item.key === 'share');
             const rawName = nameItem?.text ?? nameItem?.value ?? '';
-            console.log(`Row ${currentRow}, Slot ${i}: rawName = "${rawName}"`); // 디버깅 로그 추가
             if (rawName) {
               let cleanedName = String(rawName).split('\n')[0].replace(/\s*[\d.,%].*$/, '').trim();
               cleanedName = cleanedName.split('_')[0].trim(); // 언더바 뒤의 내용 제거
               const name = cleanedName; // 최종 이름
-              console.log(`Row ${currentRow}, Slot ${i}: cleanedName = "${cleanedName}", final name = "${name}"`); // 디버깅 로그 추가
               if (name) {
                 allCompanyNames.add(name);
                 rowParticipants.push({
@@ -862,15 +941,10 @@ export default function ExcelHelperPage() {
         
         if (rowParticipants.length > 0) {
           allAgreementsData.push({ row: currentRow, participants: rowParticipants });
-          console.log(`Row ${currentRow}: Participants added:`, rowParticipants); // 디버깅 로그 추가
-        } else {
-          console.log(`Row ${currentRow}: No participants found.`); // 디버깅 로그 추가
         }
 
         currentRow += rowIncrement;
       }
-
-      console.log('All company names gathered:', Array.from(allCompanyNames)); // 디버깅 로그 추가
 
       if (allCompanyNames.size === 0) {
         setIsGeneratingAgreement(false); // alert 전에 로딩 종료
@@ -879,10 +953,7 @@ export default function ExcelHelperPage() {
       }
 
       // 2. BULK SEARCH
-      console.log('--- Step 2: Bulk Search ---'); // 디버깅 로그 추가
-      console.log('Names to search:', Array.from(allCompanyNames));
       const searchResponse = await window.electronAPI.searchManyCompanies(Array.from(allCompanyNames), fileType);
-      console.log('Bulk search response:', searchResponse);
 
       if (!searchResponse.success) {
         throw new Error('업체 정보 대량 조회에 실패했습니다: ' + searchResponse.message);
@@ -891,32 +962,25 @@ export default function ExcelHelperPage() {
       const companySearchResultMap = new Map();
       (searchResponse.data || []).forEach(company => {
         const name = pickFirstValue(company, NAME_FIELDS);
-        console.log(`Search result company: raw name = "${name}", normalized name = "${normalizeName(name)}"`); // 디버깅 로그 추가
         if (name) {
           companySearchResultMap.set(normalizeName(name), company);
         }
       });
-      console.log('Created companySearchResultMap:', companySearchResultMap);
 
       // 3. PROCESS AND GENERATE
-      console.log('--- Step 3: Process and Generate ---'); // 디버깅 로그 추가
       const allPayloads = allAgreementsData.map(agreement => {
         const participants = agreement.participants.map(p => {
           const normalizedParticipantName = normalizeName(p.name);
-          console.log(`Processing participant: original name = "${p.name}", normalized name = "${normalizedParticipantName}"`); // 디버깅 로그 추가
           
           let foundCompany = companySearchResultMap.get(normalizedParticipantName);
           if (!foundCompany) {
-            console.log(`Exact match not found for "${normalizedParticipantName}". Trying startsWith.`); // 디버깅 로그 추가
             for (const [key, company] of companySearchResultMap.entries()) {
               if (key.startsWith(normalizedParticipantName)) {
                 foundCompany = company;
-                console.log(`Found company by startsWith: "${key}" for "${normalizedParticipantName}"`); // 디버깅 로그 추가
                 break;
               }
             }
           }
-          console.log(`Found company for "${p.name}":`, foundCompany); // 디버깅 로그 추가
 
           const bizNo = foundCompany ? (pickFirstValue(foundCompany, BIZ_FIELDS) || '') : '';
           const fullName = foundCompany ? (pickFirstValue(foundCompany, NAME_FIELDS) || p.name) : p.name;
@@ -932,7 +996,6 @@ export default function ExcelHelperPage() {
         });
 
         if (participants.length === 0) {
-          console.log(`Agreement for row ${agreement.row}: No valid participants. Returning null.`); // 디버깅 로그 추가
           return null;
         }
 
@@ -941,11 +1004,8 @@ export default function ExcelHelperPage() {
         const payload = buildAgreementPayload(activeOwner.ownerToken, noticeInfo, leader, members); // noticeInfoContent에 noticeInfo만 전달
         
         const validation = validateAgreement(payload);
-        console.log(`Agreement for row ${agreement.row}: Payload =`, payload, `Validation =`, validation, `Validation Errors =`, validation.errors); // 디버깅 로그 추가
         return validation.ok ? payload : null;
       }).filter(Boolean);
-
-      console.log('Final allPayloads:', allPayloads); // 디버깅 로그 추가
 
       if (allPayloads.length === 0) {
         setIsGeneratingAgreement(false); // alert 전에 로딩 종료
@@ -954,7 +1014,6 @@ export default function ExcelHelperPage() {
       }
 
       const text = generateMany(allPayloads);
-      console.log('Generated agreement text:', text); // 디버깅 로그 추가
 
       if (window.electronAPI?.clipboardWriteText) {
         await window.electronAPI.clipboardWriteText(text);
@@ -968,7 +1027,7 @@ export default function ExcelHelperPage() {
       setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert(err.message || '협정 문자 생성에 실패했습니다.'); // 팝업으로 변경
     }
-  }, [fileType, noticeInfo, activeOwner.ownerToken]);
+  }, [fileType, noticeInfo, activeOwner.ownerToken, uploadedWorkbook, selectedSheet]);
 
   const handleGenerateAgreement = () => {
     const rowIncrement = ownerId === 'lh' ? 2 : 1;
@@ -1188,7 +1247,20 @@ export default function ExcelHelperPage() {
         <section className="excel-helper-section">
           <h2>협정 문자 생성</h2>
           <p className="section-help">엑셀에서 협정 목록을 자동으로 읽어 문자를 생성합니다. (A열에 순번이 있는 행을 기준으로 C열부터 업체를 읽습니다)</p>
-          <div className="excel-helper-actions">
+          <div className="excel-helper-actions" style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+            <div>
+              <label className="field-label">엑셀 파일 선택</label>
+              <input type="file" className="input" accept=".xlsx, .xls" onChange={handleFileUpload} style={{ width: 'auto' }} />
+            </div>
+            <div>
+              <label className="field-label">시트 선택</label>
+              <select className="input" value={selectedSheet} onChange={handleSheetSelect} disabled={sheetNames.length === 0} style={{ width: 'auto' }}>
+                <option value="">시트를 선택하세요</option>
+                {sheetNames.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
             <button
               type="button"
               className="primary"
@@ -1199,6 +1271,7 @@ export default function ExcelHelperPage() {
             </button>
             {isGeneratingAgreement && <span style={{ marginLeft: '10px' }}>잠시만 기다려주세요...</span>} {/* 추가 로딩 메시지 */}
           </div>
+          {uploadedFile && <p className="section-help" style={{ marginTop: 10 }}>선택된 파일: {uploadedFile.name} (시트: {selectedSheet || '없음'})</p>}
         </section>
       </div>
     </div>
