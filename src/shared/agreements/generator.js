@@ -90,22 +90,30 @@ export function generateOne(item) {
   lines.push('');
 
   const leaderName = String(item.leader?.name || '').trim();
-  const leaderShare = String(item.leader?.share || '').trim();
-  if (leaderName && leaderShare) {
+  const leaderShareRaw = item.leader?.share;
+  if (leaderName && (leaderShareRaw !== null && leaderShareRaw !== undefined && leaderShareRaw !== '')) {
+    const leaderShareValue = Number(leaderShareRaw);
+    const leaderShare = Number.isFinite(leaderShareValue) && leaderShareValue > 0 && leaderShareValue <= 1
+      ? parseFloat((leaderShareValue * 100).toPrecision(12))
+      : leaderShareRaw;
     const leaderBiz = leaderNeedsBizNo(owner) && item.leader?.bizNo ? ` [${formatBizNo(item.leader.bizNo)}]` : '';
     lines.push(`${leaderName} ${leaderShare}%${leaderBiz}`);
   }
 
   const effectiveMembers = (item.members || [])
-    .filter(m => String(m?.name || '').trim() && String(m?.share || '').trim());
+    .filter(m => String(m?.name || '').trim() && (m?.share !== null && m?.share !== undefined && m?.share !== ''));
   effectiveMembers.forEach(m => {
     const n = String(m?.name || '').trim();
-    const s = String(m?.share || '').trim();
+    const sRaw = m?.share;
+    const sValue = Number(sRaw);
+    const s = Number.isFinite(sValue) && sValue > 0 && sValue <= 1
+      ? parseFloat((sValue * 100).toPrecision(12))
+      : sRaw;
     const biz = memberNeedsBizNo(owner) && m?.bizNo ? ` [${formatBizNo(m.bizNo)}]` : '';
     lines.push(`${n} ${s}%${biz}`);
   });
   lines.push('');
-  const leaderShareNum = Number(leaderShare);
+  const leaderShareNum = Number(leaderShareRaw);
   if (Number.isFinite(leaderShareNum) && leaderShareNum === 100 && effectiveMembers.length === 0) {
     lines.push('입찰 참여 부탁드립니다.');
   } else {
