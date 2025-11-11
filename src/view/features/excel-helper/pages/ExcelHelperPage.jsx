@@ -720,6 +720,8 @@ export default function ExcelHelperPage() {
         column: baseColumn,
       }, selectedMetrics);
       setExcelStatus('엑셀에 값이 반영되었습니다.');
+      setSelection(null); // 선택된 셀 동기화 초기화
+      setSelectionMessage('엑셀에서 업체명이 있는 셀을 선택한 뒤 동기화하세요.'); // 메시지 초기화
     } catch (err) {
       setExcelStatus(err.message || '엑셀 쓰기에 실패했습니다.');
     }
@@ -728,15 +730,14 @@ export default function ExcelHelperPage() {
   const generateAgreementMessages = React.useCallback(async ({ rowIncrement = 1 } = {}) => {
     // 0. Validation
     if (!fileType) {
-      setMessageStatus('검색 파일(전기/통신/소방)을 먼저 선택하세요.');
+      alert('검색 파일(전기/통신/소방)을 먼저 선택하세요.'); // 팝업으로 변경
       return;
     }
     if (!noticeTitle.trim() || !noticeNo.trim()) {
-      setMessageStatus('공고명/공고번호를 입력하세요.');
+      alert('공고명/공고번호를 입력하세요.'); // 팝업으로 변경
       return;
     }
     
-    setMessageStatus('엑셀 데이터를 읽는 중...');
     try {
       if (!window.electronAPI?.excelHelper || !window.electronAPI?.searchManyCompanies) {
         throw new Error('필수 기능(Excel 연동 또는 업체 검색)을 사용할 수 없습니다.');
@@ -750,7 +751,6 @@ export default function ExcelHelperPage() {
       }
 
       // 1. GATHER ALL COMPANY NAMES
-      setMessageStatus('업체명 수집 중...');
       const allCompanyNames = new Set();
       const allAgreementsData = []; // Will store { row, participants: [{ name, share }] }
       let currentRow = 5;
@@ -804,12 +804,11 @@ export default function ExcelHelperPage() {
       }
 
       if (allCompanyNames.size === 0) {
-        setMessageStatus('엑셀에서 처리할 업체를 찾지 못했습니다.');
+        alert('엑셀에서 처리할 업체를 찾지 못했습니다.'); // 팝업으로 변경
         return;
       }
 
       // 2. BULK SEARCH
-      setMessageStatus(`총 ${allCompanyNames.size}개 업체 정보 조회 중...`);
       console.log('Names to search:', Array.from(allCompanyNames));
       const searchResponse = await window.electronAPI.searchManyCompanies(Array.from(allCompanyNames), fileType);
       console.log('Bulk search response:', searchResponse);
@@ -828,7 +827,6 @@ export default function ExcelHelperPage() {
       console.log('Created companySearchResultMap:', companySearchResultMap);
 
       // 3. PROCESS AND GENERATE
-      setMessageStatus('협정 문자 생성 중...');
       const allPayloads = allAgreementsData.map(agreement => {
         const participants = agreement.participants.map(p => {
           const normalizedParticipantName = normalizeName(p.name);
@@ -868,22 +866,21 @@ export default function ExcelHelperPage() {
 
 
       if (allPayloads.length === 0) {
-        setMessageStatus('유효한 협정 데이터를 찾지 못했습니다.');
+        alert('유효한 협정 데이터를 찾지 못했습니다.'); // 팝업으로 변경
         return;
       }
 
       const text = generateMany(allPayloads);
-      setMessagePreview(text);
 
       if (window.electronAPI?.clipboardWriteText) {
         await window.electronAPI.clipboardWriteText(text);
       } else {
         await navigator.clipboard.writeText(text);
       }
-      setMessageStatus(`${allPayloads.length}건의 협정 문자가 클립보드에 복사되었습니다.`);
+      alert(`${allPayloads.length}건의 협정 문자가 클립보드에 복사되었습니다.`); // 팝업으로 변경
 
     } catch (err) {
-      setMessageStatus(err.message || '협정 문자 생성에 실패했습니다.');
+      alert(err.message || '협정 문자 생성에 실패했습니다.'); // 팝업으로 변경
     }
   }, [fileType, noticeTitle, noticeNo, activeOwner.ownerToken]);
 
@@ -1091,15 +1088,7 @@ export default function ExcelHelperPage() {
           <p className="section-help">엑셀에서 협정 목록을 자동으로 읽어 문자를 생성합니다. (A열에 순번이 있는 행을 기준으로 C열부터 업체를 읽습니다)</p>
           <div className="excel-helper-actions">
             <button type="button" className="primary" onClick={handleGenerateAgreement}>협정 문자 생성</button>
-            {messageStatus && <span>{messageStatus}</span>}
           </div>
-          <textarea
-            className="input"
-            style={{ minHeight: 160, marginTop: 12, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
-            value={messagePreview}
-            readOnly
-            placeholder="생성된 협정 문자가 여기에 표시됩니다."
-          />
         </section>
       </div>
     </div>
