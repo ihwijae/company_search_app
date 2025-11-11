@@ -1065,242 +1065,253 @@ export default function ExcelHelperPage() {
   return (
     <div className="excel-helper-shell">
       <div className="excel-helper-header title-drag">엑셀 협정 도우미</div>
-      <div className="excel-helper-body">
-        <section className="excel-helper-section">
-          <h1>공고 정보</h1>
-          <p className="section-help">공고 정보와 발주처/금액대를 먼저 선택한 뒤, 엑셀 기준 셀을 동기화하세요.</p>
-          <div className="helper-grid">
-            <div>
-              <label className="field-label">공고명/공고번호</label>
-              <input className="input" value={noticeInfo} onChange={(e) => setNoticeInfo(e.target.value)} placeholder="예: 2024-0000 ○○○ 공사" />
-            </div>
-            <div>
-              <label className="field-label">공고일</label>
-              <input className="input" type="date" value={noticeDateInput} onChange={(e) => setNoticeDateInput(e.target.value)} />
-            </div>
-            <div>
-              <label className="field-label">기준금액 (원)</label>
-              <input
-                className="input"
-                value={formatAmount(baseAmountInput)}
-                onChange={(e) => {
-                  const numericValue = toNumeric(e.target.value);
-                  setBaseAmountInput(numericValue !== null ? String(numericValue) : '');
-                }}
-                onBlur={(e) => {
-                  const numericValue = toNumeric(e.target.value);
-                  setBaseAmountInput(numericValue !== null ? String(numericValue) : '');
-                }}
-                placeholder="예: 1,000,000,000 (10억)"
-              />
-            </div>
-          </div>
-          <div className="helper-grid" style={{ marginTop: 12 }}>
-            <div>
-              <label className="field-label">발주처</label>
-              <div className="button-group">
-                {OWNER_OPTIONS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={option.id === ownerId ? 'btn-chip active' : 'btn-chip'}
-                    onClick={() => { setOwnerId(option.id); setRangeId(option.ranges[0]?.id || ''); }}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+      <div className="excel-helper-body" style={{ display: 'flex', flexDirection: 'row', gap: '16px' }}>
+        {/* Sidebar */}
+        <div style={{ width: '450px', borderRight: '1px solid #e5e7eb', paddingRight: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <section className="excel-helper-section">
+            <div className="helper-grid">
+              <div>
+                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>공고명/공고번호</label>
+                <input className="input" value={noticeInfo} onChange={(e) => setNoticeInfo(e.target.value)} placeholder="예: 2024-0000 ○○○ 공사" />
+              </div>
+              <div>
+                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>공고일</label>
+                <input className="input" type="date" value={noticeDateInput} onChange={(e) => setNoticeDateInput(e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>기준금액 (원)</label>
+                <input
+                  className="input"
+                  value={formatAmount(baseAmountInput)}
+                  onChange={(e) => {
+                    const numericValue = toNumeric(e.target.value);
+                    setBaseAmountInput(numericValue !== null ? String(numericValue) : '');
+                  }}
+                  onBlur={(e) => {
+                    const numericValue = toNumeric(e.target.value);
+                    setBaseAmountInput(numericValue !== null ? String(numericValue) : '');
+                  }}
+                  placeholder="예: 1,000,000,000 (10억)"
+                />
               </div>
             </div>
-            <div>
-              <label className="field-label">금액대</label>
-              <select className="input" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
-                {availableRanges.map((range) => (
-                  <option key={range.id} value={range.id}>{range.label}</option>
-                ))}
-              </select>
+            <div className="helper-grid" style={{ marginTop: 12 }}>
+              <div>
+                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>발주처</label>
+                <div className="button-group">
+                  {OWNER_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={option.id === ownerId ? 'btn-chip active' : 'btn-chip'}
+                      onClick={() => { setOwnerId(option.id); setRangeId(option.ranges[0]?.id || ''); }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>금액대</label>
+                <select className="input" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
+                  {availableRanges.map((range) => (
+                    <option key={range.id} value={range.id}>{range.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>검색 파일 (필수)</label>
+                <select className="input" value={fileType} onChange={(e) => setFileType(e.target.value)}>
+                  <option value="">선택하세요</option>
+                  {FILE_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="field-label">검색 파일 (필수)</label>
-              <select className="input" value={fileType} onChange={(e) => setFileType(e.target.value)}>
-                <option value="">선택하세요</option>
-                {FILE_TYPE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="excel-helper-section">
-          <h2>엑셀 기준 셀 지정</h2>
-          <p className="section-help">엑셀에서 대표사(첫 번째) 업체명이 입력된 셀을 선택한 뒤 버튼을 눌러 좌표를 동기화하세요.</p>
-          <div className="excel-helper-actions">
-            <button type="button" className="primary" onClick={handleFetchSelection}>선택 셀 동기화</button>
-            <span>{selectionMessage}</span>
-          </div>
-        </section>
+          <section className="excel-helper-section">
+            <h2>엑셀 기준 셀 지정</h2>
+            <p className="section-help">엑셀에서 대표사(첫 번째) 업체명이 입력된 셀을 선택한 뒤 버튼을 눌러 좌표를 동기화하세요.</p>
+            <div className="excel-helper-actions">
+              <button type="button" className="primary" onClick={handleFetchSelection}>선택 셀 동기화</button>
+              <span>{selectionMessage}</span>
+            </div>
+          </section>
 
-        <section className="excel-helper-section" style={{ flex: 1, overflowY: 'auto' }}>
-          <h2>업체 검색 및 엑셀 반영</h2>
-          <div className="excel-helper-search-row">
-            <input
-              className="input"
-              placeholder="업체명 또는 키워드"
-              value={companyQuery}
-              onChange={(e) => setCompanyQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-            />
-            <button type="button" className="btn-soft" onClick={handleSearch} disabled={searchLoading}>
-              {searchLoading ? '검색 중...' : '검색'}
-            </button>
-          </div>
-          {searchError && <div className="error-message" style={{ marginBottom: 12 }}>{searchError}</div>}
-          <div className="table-scroll">
-            <table className="details-table">
-              <thead>
-                <tr>
-                  <th>업체명</th>
-                  <th>대표자</th>
-                  <th>지역</th>
-                  <th>시평액</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(searchResults || []).map((company, idx) => {
-                  const metrics = computeMetrics(company);
-                  const isActive = selectedCompany === company;
-                  const managers = extractManagerNames(company);
-                  const typeKey = String(company?._file_type || fileType || '').toLowerCase();
-                  const typeLabel = FILE_TYPE_LABELS[typeKey] || '';
-                  const femaleOwned = isWomenOwnedCompany(company);
-                  const qualityBadge = getQualityBadgeText(company);
-                  return (
-                    <tr key={idx} className={isActive ? 'row-active' : ''}>
-                      <td>
-                        <div className="company-cell">
-                          <div className="company-name-line">
-                            <span className="company-name-text">{metrics?.name || ''}</span>
-                            {typeLabel && (
-                              <span className={`file-type-badge-small file-type-${typeKey}`}>
-                                {typeLabel}
-                              </span>
-                            )}
-                            {femaleOwned && <span className="badge-female badge-inline" title="여성기업">女</span>}
-                            {qualityBadge && <span className="badge-quality badge-inline">품질 {qualityBadge}</span>}
-                          </div>
-                          {managers.length > 0 && (
-                            <div className="company-manager-badges">
-                              {managers.map((name) => (
-                                <span key={`${idx}-${name}`} className="badge-person">{name}</span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td>{metrics?.representative || ''}</td>
-                      <td>{metrics?.region || ''}</td>
-                      <td>{metrics?.sipyungDisplay || ''}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button type="button" className="btn-sm" onClick={() => setSelectedCompany(company)}>선택</button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {(!searchResults || searchResults.length === 0) && (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: 16 }}>
-                      {searchLoading ? '검색 중입니다...' : '검색 결과가 없습니다.'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="excel-helper-selected">
-            <div>
-              <div className="detail-label">선택된 업체</div>
-              <div className="detail-value">{selectedMetrics?.name || '-'}</div>
-            </div>
-            <div>
-              <div className="detail-label">사업자번호</div>
-              <div className="detail-value">{selectedMetrics?.bizNo || '-'}</div>
-            </div>
-            <div>
-              <div className="detail-label">경영상태점수</div>
-              <div className="detail-value">{evaluatedManagementScore !== null ? formatAmount(evaluatedManagementScore) : (selectedMetrics?.managementDisplay || '-')}</div>
-            </div>
-            <div>
-              <div className="detail-label">실적액</div>
-              <div className="detail-value">{selectedMetrics?.performanceDisplay || '-'}</div>
-            </div>
-            <div>
-              <div className="detail-label">시평액</div>
-              <div className="detail-value">{selectedMetrics?.sipyungDisplay || '-'}</div>
-            </div>
-            <div>
-              <div className="detail-label">가능지분</div>
-              <div className="detail-value">{selectedMetrics?.availableShareDisplay || '-'}</div>
-            </div>
-            {ownerId === 'lh' && (
-              <>
-                <div>
-                  <div className="detail-label">품질점수</div>
-                  <div className="detail-value">{selectedMetrics?.qualityDisplay || '-'}</div>
+          <section className="excel-helper-section" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <h2>협정 문자 생성</h2>
+            <p className="section-help">엑셀에서 협정 목록을 자동으로 읽어 문자를 생성합니다. (A열에 순번이 있는 행을 기준으로 C열부터 업체를 읽습니다)</p>
+            
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ marginBottom: '12px' }}>
+                  <label className="field-label">엑셀 파일 선택</label>
+                  <input type="file" className="input" accept=".xlsx, .xls" onChange={handleFileUpload} />
                 </div>
                 <div>
-                  <div className="detail-label">시공능력평가액</div>
-                  <div className="detail-value">{selectedMetrics?.abilityDisplay || '-'}</div>
+                  <label className="field-label">시트 선택</label>
+                  <select className="input" value={selectedSheet} onChange={handleSheetSelect} disabled={sheetNames.length === 0}>
+                    <option value="">시트를 선택하세요</option>
+                    {sheetNames.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
                 </div>
-              </>
-            )}
-          </div>
+                {uploadedFile && <p className="section-help" style={{ marginTop: 10 }}>선택된 파일: {uploadedFile.name} (시트: {selectedSheet || '없음'})</p>}
+              </div>
 
-          <div className="excel-helper-actions">
-            <div className="excel-helper-share-input">
-              <label className="field-label" style={{ marginBottom: 4 }}>지분 (%)</label>
+              <div className="excel-helper-actions" style={{ marginTop: 'auto' }}>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={handleGenerateAgreement}
+                  disabled={isGeneratingAgreement}
+                  style={{ width: '100%' }}
+                >
+                  {isGeneratingAgreement ? '생성 중...' : '협정 문자 생성'}
+                </button>
+                {isGeneratingAgreement && <span style={{ marginTop: '8px', textAlign: 'center', display: 'block' }}>잠시만 기다려주세요...</span>}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Main Content */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <section className="excel-helper-section" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            <h2>업체 검색 및 엑셀 반영</h2>
+            <div className="excel-helper-search-row">
               <input
                 className="input"
-                value={shareInput}
-                onChange={(e) => setShareInput(e.target.value)}
-                placeholder="예: 40"
+                placeholder="업체명 또는 키워드"
+                value={companyQuery}
+                onChange={(e) => setCompanyQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
               />
+              <button type="button" className="btn-soft" onClick={handleSearch} disabled={searchLoading}>
+                {searchLoading ? '검색 중...' : '검색'}
+              </button>
             </div>
-            <button type="button" className="primary" onClick={handleApplyToExcel}>엑셀에 채우기</button>
-            {excelStatus && <span>{excelStatus}</span>}
-          </div>
-        </section>
+            {searchError && <div className="error-message" style={{ marginBottom: 12 }}>{searchError}</div>}
+            <div className="table-scroll" style={{ flex: 1 }}>
+              <table className="details-table">
+                <thead>
+                  <tr>
+                    <th>업체명</th>
+                    <th>대표자</th>
+                    <th>지역</th>
+                    <th>시평액</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(searchResults || []).map((company, idx) => {
+                    const metrics = computeMetrics(company);
+                    const isActive = selectedCompany === company;
+                    const managers = extractManagerNames(company);
+                    const typeKey = String(company?._file_type || fileType || '').toLowerCase();
+                    const typeLabel = FILE_TYPE_LABELS[typeKey] || '';
+                    const femaleOwned = isWomenOwnedCompany(company);
+                    const qualityBadge = getQualityBadgeText(company);
+                    return (
+                      <tr key={idx} className={isActive ? 'row-active' : ''}>
+                        <td>
+                          <div className="company-cell">
+                            <div className="company-name-line">
+                              <span className="company-name-text">{metrics?.name || ''}</span>
+                              {typeLabel && (
+                                <span className={`file-type-badge-small file-type-${typeKey}`}>
+                                  {typeLabel}
+                                </span>
+                              )}
+                              {femaleOwned && <span className="badge-female badge-inline" title="여성기업">女</span>}
+                              {qualityBadge && <span className="badge-quality badge-inline">품질 {qualityBadge}</span>}
+                            </div>
+                            {managers.length > 0 && (
+                              <div className="company-manager-badges">
+                                {managers.map((name) => (
+                                  <span key={`${idx}-${name}`} className="badge-person">{name}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td>{metrics?.representative || ''}</td>
+                        <td>{metrics?.region || ''}</td>
+                        <td>{metrics?.sipyungDisplay || ''}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button type="button" className="btn-sm" onClick={() => setSelectedCompany(company)}>선택</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {(!searchResults || searchResults.length === 0) && (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: 16 }}>
+                        {searchLoading ? '검색 중입니다...' : '검색 결과가 없습니다.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-        <section className="excel-helper-section">
-          <h2>협정 문자 생성</h2>
-          <p className="section-help">엑셀에서 협정 목록을 자동으로 읽어 문자를 생성합니다. (A열에 순번이 있는 행을 기준으로 C열부터 업체를 읽습니다)</p>
-          <div className="excel-helper-actions" style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
-            <div>
-              <label className="field-label">엑셀 파일 선택</label>
-              <input type="file" className="input" accept=".xlsx, .xls" onChange={handleFileUpload} style={{ width: 'auto' }} />
+            <div className="excel-helper-selected">
+              <div>
+                <div className="detail-label">선택된 업체</div>
+                <div className="detail-value">{selectedMetrics?.name || '-'}</div>
+              </div>
+              <div>
+                <div className="detail-label">사업자번호</div>
+                <div className="detail-value">{selectedMetrics?.bizNo || '-'}</div>
+              </div>
+              <div>
+                <div className="detail-label">경영상태점수</div>
+                <div className="detail-value">{evaluatedManagementScore !== null ? formatAmount(evaluatedManagementScore) : (selectedMetrics?.managementDisplay || '-')}</div>
+              </div>
+              <div>
+                <div className="detail-label">실적액</div>
+                <div className="detail-value">{selectedMetrics?.performanceDisplay || '-'}</div>
+              </div>
+              <div>
+                <div className="detail-label">시평액</div>
+                <div className="detail-value">{selectedMetrics?.sipyungDisplay || '-'}</div>
+              </div>
+              <div>
+                <div className="detail-label">가능지분</div>
+                <div className="detail-value">{selectedMetrics?.availableShareDisplay || '-'}</div>
+              </div>
+              {ownerId === 'lh' && (
+                <>
+                  <div>
+                    <div className="detail-label">품질점수</div>
+                    <div className="detail-value">{selectedMetrics?.qualityDisplay || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="detail-label">시공능력평가액</div>
+                    <div className="detail-value">{selectedMetrics?.abilityDisplay || '-'}</div>
+                  </div>
+                </>
+              )}
             </div>
-            <div>
-              <label className="field-label">시트 선택</label>
-              <select className="input" value={selectedSheet} onChange={handleSheetSelect} disabled={sheetNames.length === 0} style={{ width: 'auto' }}>
-                <option value="">시트를 선택하세요</option>
-                {sheetNames.map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
+
+            <div className="excel-helper-actions">
+              <div className="excel-helper-share-input">
+                <label className="field-label" style={{ marginBottom: 4 }}>지분 (%)</label>
+                <input
+                  className="input"
+                  value={shareInput}
+                  onChange={(e) => setShareInput(e.target.value)}
+                  placeholder="예: 40"
+                />
+              </div>
+              <button type="button" className="primary" onClick={handleApplyToExcel}>엑셀에 채우기</button>
+              {excelStatus && <span>{excelStatus}</span>}
             </div>
-            <button
-              type="button"
-              className="primary"
-              onClick={handleGenerateAgreement}
-              disabled={isGeneratingAgreement} // 로딩 중 비활성화
-            >
-              {isGeneratingAgreement ? '생성 중...' : '협정 문자 생성'} {/* 로딩 텍스트 */}
-            </button>
-            {isGeneratingAgreement && <span style={{ marginLeft: '10px' }}>잠시만 기다려주세요...</span>} {/* 추가 로딩 메시지 */}
-          </div>
-          {uploadedFile && <p className="section-help" style={{ marginTop: 10 }}>선택된 파일: {uploadedFile.name} (시트: {selectedSheet || '없음'})</p>}
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   );
