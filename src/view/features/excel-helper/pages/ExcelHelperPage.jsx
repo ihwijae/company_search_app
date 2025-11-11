@@ -358,9 +358,11 @@ const normalizeShareInput = (input) => {
 
 const normalizeName = (value) => {
   let name = String(value || '').replace(/\s+/g, '').toLowerCase();
-  // Remove (주) or ㈜ from the beginning or end of the name
-  name = name.replace(/^(주|\(주\)|주\))/, ''); // Remove from beginning
-  name = name.replace(/(주|\(주\)|주\))$/, ''); // Remove from end
+  // Remove (주), ㈜, 주), (합) from the beginning or end of the name
+  name = name.replace(/^(주|\(주\)|㈜|주\)|\(합\))/, ''); // Remove from beginning
+  name = name.replace(/(주|\(주\)|㈜|주\)|\(합\))$/, ''); // Remove from end
+  // Remove any remaining special characters or punctuation that might interfere with matching
+  name = name.replace(/[^\w가-힣]/g, ''); // Keep only alphanumeric, Korean characters
   return name;
 };
 
