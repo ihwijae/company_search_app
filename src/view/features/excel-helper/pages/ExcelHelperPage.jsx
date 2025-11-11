@@ -511,6 +511,7 @@ export default function ExcelHelperPage() {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
+  const [baseAmountInput, setBaseAmountInput] = React.useState(''); // 새 상태 추가 (기준금액)
   const [excelStatus, setExcelStatus] = React.useState('');
   const [messageStatus, setMessageStatus] = React.useState('');
   const [messagePreview, setMessagePreview] = React.useState('');

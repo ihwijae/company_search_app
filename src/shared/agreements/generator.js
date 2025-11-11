@@ -36,7 +36,7 @@ function hasDuplicateNames(item) {
 
 export function validateAgreement(item) {
   const errors = [];
-  if (!item?.noticeNo || !String(item.noticeNo).trim()) errors.push('공고번호를 입력하세요');
+  // if (!item?.noticeNo || !String(item.noticeNo).trim()) errors.push('공고번호를 입력하세요'); // 이 라인 제거
   if (!item?.title || !String(item.title).trim()) errors.push('공고명을 입력하세요');
   if (!item?.leader?.name || !String(item.leader.name).trim()) errors.push('대표사를 선택/입력하세요');
   const lShare = normalizeShare(item?.leader?.share);
