@@ -371,16 +371,26 @@ class SearchLogic {
     }
   }
 
-  searchMany(names = []) {
+  searchMany(names = [], options = {}) {
     if (!this.loaded) throw new Error('엑셀 데이터가 로드되지 않았습니다.');
-    const results = [];
-    const nameSet = new Set(names.map(n => String(n).replace(/\s+/g, '').toLowerCase()));
-    for (const name of nameSet) {
-      if (this.nameIndex.has(name)) {
-        results.push(this.nameIndex.get(name));
-      }
+    const uniqueResults = new Map(); // Use a Map to store unique companies by a unique key (e.g., bizNo or full name)
+
+    for (const nameQuery of names) {
+      const searchName = String(nameQuery).trim();
+      if (!searchName) continue;
+
+      // Use the existing 'search' method with a name criteria
+      const resultsForQuery = this.search({ name: searchName }, options);
+      
+      // Add unique results to the map
+      resultsForQuery.forEach(company => {
+        const dedupKey = buildDedupKey(company); // Re-use the existing deduplication key logic
+        if (dedupKey && !uniqueResults.has(dedupKey)) {
+          uniqueResults.set(dedupKey, company);
+        }
+      });
     }
-    return results;
+    return Array.from(uniqueResults.values());
   }
 }
 

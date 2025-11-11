@@ -90,49 +90,6 @@ function registerAllIpcHandlers({ ipcMain, searchService, searchLogics }) {
     }
     return { success: true, data: sanitizeIpcPayload(processed.items) };
   });
-
-  ipcMain.handle('search-many-companies', (event, { names, file_type, options }) => {
-    const allResults = [];
-    const normalizedOptions = parseMaybeJson(options, 'options');
-
-    const searchForNames = (logic, namesToSearch, currentFileType) => {
-      const resultsForType = [];
-      namesToSearch.forEach(name => {
-        const criteria = { name }; // Assuming criteria is just the name
-        try {
-          const res = logic.search(criteria) || [];
-          res.forEach((item) => resultsForType.push({ ...item, _file_type: currentFileType }));
-        } catch (err) {
-          console.warn(`[MAIN][search-many-companies] Search for "${name}" in "${currentFileType}" failed:`, err);
-        }
-      });
-      return resultsForType;
-    };
-
-    if (file_type === 'all') {
-      Object.keys(searchLogics || {}).forEach((key) => {
-        const logic = (searchLogics || {})[key];
-        if (logic && logic.isLoaded && logic.isLoaded()) {
-          allResults.push(...searchForNames(logic, names, key));
-        }
-      });
-    } else {
-      const logic = (searchLogics || {})[file_type];
-      if (logic && logic.isLoaded && logic.isLoaded()) {
-        allResults.push(...searchForNames(logic, names, file_type));
-      }
-    }
-
-    const processed = SearchLogic.postProcessResults(allResults, normalizedOptions || {});
-    if (processed && processed.paginated) {
-      return {
-        success: true,
-        data: sanitizeIpcPayload(processed.items),
-        meta: sanitizeIpcPayload(processed.meta),
-      };
-    }
-    return { success: true, data: sanitizeIpcPayload(processed.items) };
-  });
 }
 
 module.exports = { registerAllIpcHandlers };
