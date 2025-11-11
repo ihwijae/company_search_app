@@ -741,13 +741,13 @@ export default function ExcelHelperPage() {
     setIsGeneratingAgreement(true); // 로딩 시작
     // 0. Validation
     if (!fileType) {
+      setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert('검색 파일(전기/통신/소방)을 먼저 선택하세요.'); // 팝업으로 변경
-      setIsGeneratingAgreement(false); // 로딩 종료
       return;
     }
     if (!noticeTitle.trim() || !noticeNo.trim()) {
+      setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert('공고명/공고번호를 입력하세요.'); // 팝업으로 변경
-      setIsGeneratingAgreement(false); // 로딩 종료
       return;
     }
     
@@ -817,8 +817,8 @@ export default function ExcelHelperPage() {
       }
 
       if (allCompanyNames.size === 0) {
+        setIsGeneratingAgreement(false); // alert 전에 로딩 종료
         alert('엑셀에서 처리할 업체를 찾지 못했습니다.'); // 팝업으로 변경
-        setIsGeneratingAgreement(false); // 로딩 종료 추가
         return;
       }
 
@@ -880,8 +880,8 @@ export default function ExcelHelperPage() {
 
 
       if (allPayloads.length === 0) {
+        setIsGeneratingAgreement(false); // alert 전에 로딩 종료
         alert('유효한 협정 데이터를 찾지 못했습니다.'); // 팝업으로 변경
-        setIsGeneratingAgreement(false); // 로딩 종료 추가
         return;
       }
 
@@ -892,9 +892,11 @@ export default function ExcelHelperPage() {
       } else {
         await navigator.clipboard.writeText(text);
       }
+      setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert(`${allPayloads.length}건의 협정 문자가 클립보드에 복사되었습니다.`); // 팝업으로 변경
 
     } catch (err) {
+      setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert(err.message || '협정 문자 생성에 실패했습니다.'); // 팝업으로 변경
     }
   }, [fileType, noticeTitle, noticeNo, activeOwner.ownerToken]);
