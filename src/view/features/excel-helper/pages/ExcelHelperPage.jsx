@@ -514,7 +514,8 @@ export default function ExcelHelperPage() {
   const [excelStatus, setExcelStatus] = React.useState('');
   const [messageStatus, setMessageStatus] = React.useState('');
   const [messagePreview, setMessagePreview] = React.useState('');
-  const [evaluatedManagementScore, setEvaluatedManagementScore] = React.useState(null); // 새 상태 추가
+  const [evaluatedManagementScore, setEvaluatedManagementScore] = React.useState(null);
+  const [isGeneratingAgreement, setIsGeneratingAgreement] = React.useState(false); // 새 상태 추가
 
   const appliedCellsRef = React.useRef(new Map());
 
@@ -535,7 +536,7 @@ export default function ExcelHelperPage() {
     if (selectedCompany) {
       evaluateManagementScore(selectedCompany, fileType);
     }
-  }, [selectedCompany, fileType, ownerId, rangeId, noticeDateInput]); // 의존성 배열 변경
+  }, [selectedCompany, fileType, ownerId, rangeId, noticeDateInput]);
 
   const evaluateManagementScore = React.useCallback(async (company, fileType) => {
     if (!company || !window.electronAPI?.excelHelperFormulasEvaluate) return null;
@@ -737,13 +738,16 @@ export default function ExcelHelperPage() {
   };
 
   const generateAgreementMessages = React.useCallback(async ({ rowIncrement = 1 } = {}) => {
+    setIsGeneratingAgreement(true); // 로딩 시작
     // 0. Validation
     if (!fileType) {
       alert('검색 파일(전기/통신/소방)을 먼저 선택하세요.'); // 팝업으로 변경
+      setIsGeneratingAgreement(false); // 로딩 종료
       return;
     }
     if (!noticeTitle.trim() || !noticeNo.trim()) {
       alert('공고명/공고번호를 입력하세요.'); // 팝업으로 변경
+      setIsGeneratingAgreement(false); // 로딩 종료
       return;
     }
     
@@ -1096,7 +1100,15 @@ export default function ExcelHelperPage() {
           <h2>협정 문자 생성</h2>
           <p className="section-help">엑셀에서 협정 목록을 자동으로 읽어 문자를 생성합니다. (A열에 순번이 있는 행을 기준으로 C열부터 업체를 읽습니다)</p>
           <div className="excel-helper-actions">
-            <button type="button" className="primary" onClick={handleGenerateAgreement}>협정 문자 생성</button>
+            <button
+              type="button"
+              className="primary"
+              onClick={handleGenerateAgreement}
+              disabled={isGeneratingAgreement} // 로딩 중 비활성화
+            >
+              {isGeneratingAgreement ? '생성 중...' : '협정 문자 생성'} {/* 로딩 텍스트 */}
+            </button>
+            {isGeneratingAgreement && <span style={{ marginLeft: '10px' }}>잠시만 기다려주세요...</span>} {/* 추가 로딩 메시지 */}
           </div>
         </section>
       </div>
