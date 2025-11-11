@@ -535,7 +535,7 @@ export default function ExcelHelperPage() {
     if (selectedCompany) {
       evaluateManagementScore(selectedCompany, fileType);
     }
-  }, [selectedCompany, fileType, evaluateManagementScore]); // evaluateManagementScore를 의존성 배열에 추가
+  }, [selectedCompany, fileType, ownerId, rangeId, noticeDateInput]); // 의존성 배열 변경
 
   const evaluateManagementScore = React.useCallback(async (company, fileType) => {
     if (!company || !window.electronAPI?.excelHelperFormulasEvaluate) return null;
