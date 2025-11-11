@@ -818,6 +818,7 @@ export default function ExcelHelperPage() {
 
       if (allCompanyNames.size === 0) {
         alert('엑셀에서 처리할 업체를 찾지 못했습니다.'); // 팝업으로 변경
+        setIsGeneratingAgreement(false); // 로딩 종료 추가
         return;
       }
 
@@ -880,6 +881,7 @@ export default function ExcelHelperPage() {
 
       if (allPayloads.length === 0) {
         alert('유효한 협정 데이터를 찾지 못했습니다.'); // 팝업으로 변경
+        setIsGeneratingAgreement(false); // 로딩 종료 추가
         return;
       }
 
