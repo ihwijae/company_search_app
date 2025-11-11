@@ -712,7 +712,8 @@ export default function ExcelHelperPage() {
     const offsets = getOffsetsForOwner(ownerId);
     const updates = offsets
       .map((field) => {
-        let source;
+        let source = null; // source 초기화
+        let finalValue = null; // finalValue 초기화
         if (field.key === 'share') {
           source = normalizeShareInput(shareValue);
         } else if (field.key === 'managementScore') {
