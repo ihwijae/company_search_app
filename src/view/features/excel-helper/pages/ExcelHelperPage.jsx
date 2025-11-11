@@ -764,6 +764,7 @@ export default function ExcelHelperPage() {
       }
 
       // 1. GATHER ALL COMPANY NAMES
+      console.log('--- Step 1: Gathering Company Names ---'); // 디버깅 로그 추가
       const allCompanyNames = new Set();
       const allAgreementsData = []; // Will store { row, participants: [{ name, share }] }
       let currentRow = 5;
@@ -779,6 +780,7 @@ export default function ExcelHelperPage() {
 
         const cellValue = checkCellResponse?.items?.[0]?.text || checkCellResponse?.items?.[0]?.value;
         if (!checkCellResponse?.success || !cellValue) {
+          console.log(`Row ${currentRow}: No cell value or read failed. Stopping.`); // 디버깅 로그 추가
           break; // Stop
         }
 
@@ -796,10 +798,12 @@ export default function ExcelHelperPage() {
             const nameItem = slotResponse.items.find(item => item.key === 'name');
             const shareItem = slotResponse.items.find(item => item.key === 'share');
             const rawName = nameItem?.text ?? nameItem?.value ?? '';
+            console.log(`Row ${currentRow}, Slot ${i}: rawName = "${rawName}"`); // 디버깅 로그 추가
             if (rawName) {
               let cleanedName = String(rawName).split('\n')[0].replace(/\s*[\d.,%].*$/, '').trim();
               cleanedName = cleanedName.split('_')[0].trim(); // 언더바 뒤의 내용 제거
               const name = cleanedName; // 최종 이름
+              console.log(`Row ${currentRow}, Slot ${i}: cleanedName = "${cleanedName}", final name = "${name}"`); // 디버깅 로그 추가
               if (name) {
                 allCompanyNames.add(name);
                 rowParticipants.push({
@@ -813,10 +817,15 @@ export default function ExcelHelperPage() {
         
         if (rowParticipants.length > 0) {
           allAgreementsData.push({ row: currentRow, participants: rowParticipants });
+          console.log(`Row ${currentRow}: Participants added:`, rowParticipants); // 디버깅 로그 추가
+        } else {
+          console.log(`Row ${currentRow}: No participants found.`); // 디버깅 로그 추가
         }
 
         currentRow += rowIncrement;
       }
+
+      console.log('All company names gathered:', Array.from(allCompanyNames)); // 디버깅 로그 추가
 
       if (allCompanyNames.size === 0) {
         setIsGeneratingAgreement(false); // alert 전에 로딩 종료
@@ -825,6 +834,7 @@ export default function ExcelHelperPage() {
       }
 
       // 2. BULK SEARCH
+      console.log('--- Step 2: Bulk Search ---'); // 디버깅 로그 추가
       console.log('Names to search:', Array.from(allCompanyNames));
       const searchResponse = await window.electronAPI.searchManyCompanies(Array.from(allCompanyNames), fileType);
       console.log('Bulk search response:', searchResponse);
@@ -836,6 +846,7 @@ export default function ExcelHelperPage() {
       const companySearchResultMap = new Map();
       (searchResponse.data || []).forEach(company => {
         const name = pickFirstValue(company, NAME_FIELDS);
+        console.log(`Search result company: raw name = "${name}", normalized name = "${normalizeName(name)}"`); // 디버깅 로그 추가
         if (name) {
           companySearchResultMap.set(normalizeName(name), company);
         }
@@ -843,19 +854,24 @@ export default function ExcelHelperPage() {
       console.log('Created companySearchResultMap:', companySearchResultMap);
 
       // 3. PROCESS AND GENERATE
+      console.log('--- Step 3: Process and Generate ---'); // 디버깅 로그 추가
       const allPayloads = allAgreementsData.map(agreement => {
         const participants = agreement.participants.map(p => {
           const normalizedParticipantName = normalizeName(p.name);
+          console.log(`Processing participant: original name = "${p.name}", normalized name = "${normalizedParticipantName}"`); // 디버깅 로그 추가
           
           let foundCompany = companySearchResultMap.get(normalizedParticipantName);
           if (!foundCompany) {
+            console.log(`Exact match not found for "${normalizedParticipantName}". Trying startsWith.`); // 디버깅 로그 추가
             for (const [key, company] of companySearchResultMap.entries()) {
               if (key.startsWith(normalizedParticipantName)) {
                 foundCompany = company;
+                console.log(`Found company by startsWith: "${key}" for "${normalizedParticipantName}"`); // 디버깅 로그 추가
                 break;
               }
             }
           }
+          console.log(`Found company for "${p.name}":`, foundCompany); // 디버깅 로그 추가
 
           const bizNo = foundCompany ? (pickFirstValue(foundCompany, BIZ_FIELDS) || '') : '';
           const fullName = foundCompany ? (pickFirstValue(foundCompany, NAME_FIELDS) || p.name) : p.name;
@@ -870,16 +886,21 @@ export default function ExcelHelperPage() {
           return { ...p, name: fullName, bizNo, share: finalShare };
         });
 
-        if (participants.length === 0) return null;
+        if (participants.length === 0) {
+          console.log(`Agreement for row ${agreement.row}: No valid participants. Returning null.`); // 디버깅 로그 추가
+          return null;
+        }
 
         const leader = participants[0];
         const members = participants.slice(1);
         const payload = buildAgreementPayload(activeOwner.ownerToken, noticeInfo, leader, members); // noticeInfoContent에 noticeInfo만 전달
         
         const validation = validateAgreement(payload);
+        console.log(`Agreement for row ${agreement.row}: Payload =`, payload, `Validation =`, validation); // 디버깅 로그 추가
         return validation.ok ? payload : null;
       }).filter(Boolean);
 
+      console.log('Final allPayloads:', allPayloads); // 디버깅 로그 추가
 
       if (allPayloads.length === 0) {
         setIsGeneratingAgreement(false); // alert 전에 로딩 종료
@@ -888,6 +909,7 @@ export default function ExcelHelperPage() {
       }
 
       const text = generateMany(allPayloads);
+      console.log('Generated agreement text:', text); // 디버깅 로그 추가
 
       if (window.electronAPI?.clipboardWriteText) {
         await window.electronAPI.clipboardWriteText(text);
