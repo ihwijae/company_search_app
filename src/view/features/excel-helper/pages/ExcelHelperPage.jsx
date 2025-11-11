@@ -717,24 +717,26 @@ export default function ExcelHelperPage() {
           source = normalizeShareInput(shareValue);
         } else if (field.key === 'managementScore') {
           source = managementScore ?? selectedMetrics[field.key];
-        } else if (field.key === 'name') { // 'name' 필드 처리 추가
+        } else if (field.key === 'name') { // 'name' 필드 처리
           const companyName = selectedMetrics?.name || '';
           const availableShare = selectedMetrics?.availableShareDisplay && selectedMetrics.availableShareDisplay !== '-'
             ? ` ${selectedMetrics.availableShareDisplay}` : '';
           const managers = extractManagerNames(selectedCompany);
           const managerNames = managers.length > 0 ? ` ${managers.join(', ')}` : '';
           source = `${companyName}${availableShare}${managerNames}`;
-          console.log(`[handleApplyToExcel] name field update: companyName="${companyName}", availableShare="${availableShare}", managerNames="${managerNames}", final source="${source}"`); // 디버깅 로그 추가
+          finalValue = source; // name 필드는 coerceExcelValue를 거치지 않고 source를 그대로 사용
+          console.log(`[handleApplyToExcel] name field update: companyName="${companyName}", availableShare="${availableShare}", managerNames="${managerNames}", final source="${source}"`); // 디버깅 로그 유지
         } else {
           source = selectedMetrics[field.key];
+          finalValue = coerceExcelValue(source); // 기존 로직 유지
         }
-        if (source === undefined || source === null || source === '') return null;
-        const value = coerceExcelValue(source);
-        if (value === null || value === '') return null;
+        
+        if (finalValue === undefined || finalValue === null || finalValue === '') return null;
+        
         return {
           rowOffset: field.rowOffset || 0,
           colOffset: field.colOffset || 0,
-          value,
+          value: finalValue, // finalValue 사용
           field: field.key,
         };
       })
