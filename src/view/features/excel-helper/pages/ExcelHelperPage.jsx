@@ -718,11 +718,11 @@ export default function ExcelHelperPage() {
         if (field.key === 'share') {
           source = normalizeShareInput(shareInput);
           finalValue = coerceExcelValue(source);
-          console.log(`[handleApplyToExcel] share field update: shareInput="${shareInput}", normalizedShareInput="${source}", coercedValue="${finalValue}"`); // 디버깅 로그 추가
+
         } else if (field.key === 'managementScore') {
           source = managementScore ?? selectedMetrics[field.key];
           finalValue = coerceExcelValue(source);
-          console.log(`[handleApplyToExcel] managementScore field update: rawValue="${selectedMetrics[field.key]}", managementScore="${managementScore}", coercedValue="${finalValue}"`); // 디버깅 로그 추가
+
         } else if (field.key === 'name') {
           const rawCompanyName = selectedMetrics?.name || '';
           const companyName = normalizeName(rawCompanyName); // normalizeName을 사용하여 법인 형태 제거
@@ -733,17 +733,14 @@ export default function ExcelHelperPage() {
           const managerNames = managers.length > 0 ? ` ${managers.join(', ')}` : '';
           source = `${companyName}${availableShare}${managerNames}`;
           finalValue = source;
-          console.log(`[handleApplyToExcel] name field update: rawCompanyName="${rawCompanyName}", companyName="${companyName}", availableShare="${availableShare}", managerNames="${managerNames}", final source="${source}"`);
+
         } else { // 나머지 필드 (performanceAmount, sipyungAmount 등)
           source = selectedMetrics[field.key];
           finalValue = coerceExcelValue(source);
-          console.log(`[handleApplyToExcel] other field update (${field.key}): rawValue="${selectedMetrics[field.key]}", coercedValue="${finalValue}"`); // 디버깅 로그 추가
+
         }
         
-        if (finalValue === undefined || finalValue === null || finalValue === '') {
-          console.log(`[handleApplyToExcel] field "${field.key}" filtered out due to empty/null finalValue:`, finalValue); // 디버깅 로그 추가
-          return null;
-        }
+
         
         return {
           rowOffset: field.rowOffset || 0,
@@ -767,9 +764,9 @@ export default function ExcelHelperPage() {
         baseColumn,
         updates,
       };
-      console.log('[handleApplyToExcel] Sending payload to Excel:', payload); // 디버깅 로그 추가
+
       const response = await window.electronAPI.excelHelper.applyOffsets(payload);
-      console.log('[handleApplyToExcel] Excel applyOffsets response:', response); // 디버깅 로그 추가
+
       if (!response?.success) throw new Error(response?.message || '엑셀 쓰기에 실패했습니다.');
       rememberAppliedCell({
         workbook: selection.workbook,
@@ -996,7 +993,19 @@ export default function ExcelHelperPage() {
             </div>
             <div>
               <label className="field-label">기준금액 (원)</label>
-              <input className="input" value={baseAmountInput} onChange={(e) => setBaseAmountInput(e.target.value)} placeholder="예: 1000000000 (10억)" />
+              <input
+                className="input"
+                value={formatAmount(baseAmountInput)}
+                onChange={(e) => {
+                  const numericValue = toNumeric(e.target.value);
+                  setBaseAmountInput(numericValue !== null ? String(numericValue) : '');
+                }}
+                onBlur={(e) => {
+                  const numericValue = toNumeric(e.target.value);
+                  setBaseAmountInput(numericValue !== null ? String(numericValue) : '');
+                }}
+                placeholder="예: 1,000,000,000 (10억)"
+              />
             </div>
           </div>
           <div className="helper-grid" style={{ marginTop: 12 }}>
@@ -1044,7 +1053,7 @@ export default function ExcelHelperPage() {
           </div>
         </section>
 
-        <section className="excel-helper-section">
+        <section className="excel-helper-section" style={{ flex: 1, overflowY: 'auto' }}>
           <h2>업체 검색 및 엑셀 반영</h2>
           <div className="excel-helper-search-row">
             <input
