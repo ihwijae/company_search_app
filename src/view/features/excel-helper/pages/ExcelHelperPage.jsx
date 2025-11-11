@@ -798,7 +798,9 @@ export default function ExcelHelperPage() {
             const shareItem = slotResponse.items.find(item => item.key === 'share');
             const rawName = nameItem?.text ?? nameItem?.value ?? '';
             if (rawName) {
-              const name = String(rawName).split('\n')[0].replace(/\s*[\d.,%].*$/, '').trim();
+              let cleanedName = String(rawName).split('\n')[0].replace(/\s*[\d.,%].*$/, '').trim();
+              cleanedName = cleanedName.split('_')[0].trim(); // 언더바 뒤의 내용 제거
+              const name = cleanedName; // 최종 이름
               if (name) {
                 allCompanyNames.add(name);
                 rowParticipants.push({
