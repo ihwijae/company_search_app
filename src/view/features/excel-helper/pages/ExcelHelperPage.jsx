@@ -867,8 +867,10 @@ export default function ExcelHelperPage() {
     }
   }, [fileType, noticeTitle, noticeNo, activeOwner.ownerToken]);
 
-  const handleCopyMessage = () => generateAgreementMessages({ rowIncrement: 1 });
-  const handleCopyMessageLH = () => generateAgreementMessages({ rowIncrement: 2 });
+  const handleGenerateAgreement = () => {
+    const rowIncrement = ownerId === 'lh' ? 2 : 1;
+    generateAgreementMessages({ rowIncrement });
+  };
 
   return (
     <div className="excel-helper-shell">
@@ -1068,8 +1070,7 @@ export default function ExcelHelperPage() {
           <h2>협정 문자 생성</h2>
           <p className="section-help">엑셀에서 협정 목록을 자동으로 읽어 문자를 생성합니다. (A열에 순번이 있는 행을 기준으로 C열부터 업체를 읽습니다)</p>
           <div className="excel-helper-actions">
-            <button type="button" className="primary" onClick={handleCopyMessage}>일반 협정 문자 생성</button>
-            <button type="button" className="primary" onClick={handleCopyMessageLH} style={{ marginLeft: 8 }}>[LH] 협정 문자 생성</button>
+            <button type="button" className="primary" onClick={handleGenerateAgreement}>협정 문자 생성</button>
             {messageStatus && <span>{messageStatus}</span>}
           </div>
           <textarea
