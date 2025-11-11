@@ -114,7 +114,7 @@ export function generateOne(item) {
   });
   lines.push('');
   const leaderShareNum = Number(leaderShareRaw);
-  if (Number.isFinite(leaderShareNum) && leaderShareNum === 100 && effectiveMembers.length === 0) {
+  if (Number.isFinite(leaderShareNum) && (leaderShareNum === 100 || leaderShareNum === 1) && effectiveMembers.length === 0) {
     lines.push('입찰 참여 부탁드립니다.');
   } else {
     lines.push('협정 부탁드립니다.');

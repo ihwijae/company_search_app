@@ -985,6 +985,8 @@ export default function ExcelHelperPage() {
 
       // 3. PROCESS AND GENERATE
       console.log('[generateAgreementMessages] Step 3: Processing and Generating Payloads.');
+      const EXCLUDED_SOLO_COMPANIES = new Set(['에코엠이엔씨', '아람이엔테크', '우진일렉트', '지음쏠라테크'].map(name => normalizeName(name)));
+
       const allPayloads = allAgreementsData.map(agreement => {
         const participants = agreement.participants.map(p => {
           const normalizedParticipantName = normalizeName(p.name);
@@ -1003,34 +1005,40 @@ export default function ExcelHelperPage() {
           const fullName = foundCompany ? (pickFirstValue(foundCompany, NAME_FIELDS) || p.name) : p.name;
           
           let finalShare = p.share;
-          // Convert share to number if it's a string like "51.0%"
-          if (typeof p.share === 'string' && p.share.endsWith('%')) {
-            const numericShare = parseFloat(p.share.replace('%', '')) / 100;
-            if (Number.isFinite(numericShare)) {
-              finalShare = numericShare;
+          const shareAsNumber = parseFloat(String(p.share).replace('%', ''));
+
+          if (Number.isFinite(shareAsNumber)) {
+            if (shareAsNumber > 0 && shareAsNumber <= 1) {
+              finalShare = shareAsNumber * 100;
+            } else {
+              finalShare = shareAsNumber;
             }
-          } else if (typeof p.share === 'number' && p.share > 0 && p.share <= 1) {
-            finalShare = parseFloat((p.share * 100).toFixed(2));
-          } else if (typeof p.share === 'number') {
-            finalShare = parseFloat(p.share.toFixed(2));
+            finalShare = parseFloat(finalShare.toPrecision(12));
+          } else {
+            finalShare = p.share; // Keep original if not a number
           }
           
           return { ...p, name: fullName, bizNo, share: finalShare };
         });
-        console.log(`[generateAgreementMessages] Agreement for row ${agreement.row}: Processed participants:`, participants);
 
         if (participants.length === 0) {
-          console.log(`[generateAgreementMessages] Agreement for row ${agreement.row}: No valid participants after processing. Returning null.`);
           return null;
         }
 
         const leader = participants[0];
         const members = participants.slice(1);
-        const payload = buildAgreementPayload(activeOwner.ownerToken, noticeInfo, leader, members); // noticeInfoContent에 noticeInfo만 전달
-        console.log(`[generateAgreementMessages] Agreement for row ${agreement.row}: Generated payload:`, payload);
-        
+
+        // Exclude specific companies on solo bids
+        const isSoloBid = members.length === 0 && leader.share === 100;
+        const normalizedLeaderName = normalizeName(leader.name);
+
+        if (isSoloBid && EXCLUDED_SOLO_COMPANIES.has(normalizedLeaderName)) {
+          console.log(`[generateAgreementMessages] Excluding solo bid by blacklisted company: ${leader.name}`);
+          return null;
+        }
+
+        const payload = buildAgreementPayload(activeOwner.ownerToken, noticeInfo, leader, members);
         const validation = validateAgreement(payload);
-        console.log(`[generateAgreementMessages] Agreement for row ${agreement.row}: Validation result:`, validation);
         return validation.ok ? payload : null;
       }).filter(Boolean);
       console.log('[generateAgreementMessages] Final allPayloads before generation:', allPayloads);
