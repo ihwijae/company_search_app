@@ -532,7 +532,10 @@ export default function ExcelHelperPage() {
   React.useEffect(() => {
     setShareInput('');
     setEvaluatedManagementScore(null); // selectedCompany 변경 시 초기화
-  }, [selectedCompany]);
+    if (selectedCompany) {
+      evaluateManagementScore(selectedCompany, fileType);
+    }
+  }, [selectedCompany, fileType, evaluateManagementScore]); // evaluateManagementScore를 의존성 배열에 추가
 
   const evaluateManagementScore = React.useCallback(async (company, fileType) => {
     if (!company || !window.electronAPI?.excelHelperFormulasEvaluate) return null;
