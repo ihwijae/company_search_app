@@ -514,6 +514,7 @@ export default function ExcelHelperPage() {
   const [excelStatus, setExcelStatus] = React.useState('');
   const [messageStatus, setMessageStatus] = React.useState('');
   const [messagePreview, setMessagePreview] = React.useState('');
+  const [evaluatedManagementScore, setEvaluatedManagementScore] = React.useState(null); // 새 상태 추가
 
   const appliedCellsRef = React.useRef(new Map());
 
@@ -530,6 +531,7 @@ export default function ExcelHelperPage() {
 
   React.useEffect(() => {
     setShareInput('');
+    setEvaluatedManagementScore(null); // selectedCompany 변경 시 초기화
   }, [selectedCompany]);
 
   const evaluateManagementScore = React.useCallback(async (company, fileType) => {
@@ -571,10 +573,14 @@ export default function ExcelHelperPage() {
         : { agencyId, amount, inputs, noticeDate: noticeDateInput };
       const response = await window.electronAPI.excelHelperFormulasEvaluate(payload);
       const score = Number(response?.data?.management?.score);
-      if (Number.isFinite(score)) return score;
+      if (Number.isFinite(score)) {
+        setEvaluatedManagementScore(score); // 계산된 점수 상태에 저장
+        return score;
+      }
     } catch (err) {
       console.warn('[ExcelHelper] excelHelperFormulasEvaluate failed:', err?.message || err);
     }
+    setEvaluatedManagementScore(null); // 에러 발생 시 초기화
     return null;
   }, [ownerId, rangeId, noticeDateInput]);
 
@@ -1044,7 +1050,7 @@ export default function ExcelHelperPage() {
             </div>
             <div>
               <div className="detail-label">경영상태점수</div>
-              <div className="detail-value">{selectedMetrics?.managementDisplay || '-'}</div>
+              <div className="detail-value">{evaluatedManagementScore !== null ? formatAmount(evaluatedManagementScore) : (selectedMetrics?.managementDisplay || '-')}</div>
             </div>
             <div>
               <div className="detail-label">실적액</div>
