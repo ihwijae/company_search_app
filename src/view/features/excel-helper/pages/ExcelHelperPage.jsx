@@ -810,30 +810,44 @@ export default function ExcelHelperPage() {
         throw new Error('업체 정보 대량 조회에 실패했습니다: ' + searchResponse.message);
       }
       
-      const bizNoMap = new Map();
+      const companySearchResultMap = new Map();
       (searchResponse.data || []).forEach(company => {
         const name = pickFirstValue(company, NAME_FIELDS);
-        const bizNo = pickFirstValue(company, BIZ_FIELDS);
-        if (name && bizNo) {
-          bizNoMap.set(normalizeName(name), bizNo);
+        if (name) {
+          companySearchResultMap.set(normalizeName(name), company);
         }
       });
-      console.log('Created bizNoMap:', bizNoMap);
+      console.log('Created companySearchResultMap:', companySearchResultMap);
 
       // 3. PROCESS AND GENERATE
       setMessageStatus('협정 문자 생성 중...');
       const allPayloads = allAgreementsData.map(agreement => {
         const participants = agreement.participants.map(p => {
           const normalizedParticipantName = normalizeName(p.name);
-          const bizNo = bizNoMap.get(normalizedParticipantName) || '';
-          console.log(`Mapping name "${p.name}" (normalized: "${normalizedParticipantName}") to bizNo: "${bizNo}"`);
+          
+          let foundCompany = companySearchResultMap.get(normalizedParticipantName);
+          if (!foundCompany) {
+            for (const [key, company] of companySearchResultMap.entries()) {
+              if (key.startsWith(normalizedParticipantName)) {
+                foundCompany = company;
+                break;
+              }
+            }
+          }
+
+          const bizNo = foundCompany ? (pickFirstValue(foundCompany, BIZ_FIELDS) || '') : '';
+          const fullName = foundCompany ? (pickFirstValue(foundCompany, NAME_FIELDS) || p.name) : p.name;
+
+          console.log(`Mapping name "${p.name}" (normalized: "${normalizedParticipantName}") to bizNo: "${bizNo}" and fullName: "${fullName}"`);
+          
           let finalShare = p.share;
           if (typeof p.share === 'number' && p.share > 0 && p.share <= 1) {
             finalShare = parseFloat((p.share * 100).toFixed(2));
           } else if (typeof p.share === 'number') {
             finalShare = parseFloat(p.share.toFixed(2));
           }
-          return { ...p, bizNo, share: finalShare };
+          
+          return { ...p, name: fullName, bizNo, share: finalShare };
         });
 
         if (participants.length === 0) return null;
