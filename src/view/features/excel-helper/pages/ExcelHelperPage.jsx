@@ -896,7 +896,7 @@ export default function ExcelHelperPage() {
         const payload = buildAgreementPayload(activeOwner.ownerToken, noticeInfo, leader, members); // noticeInfoContent에 noticeInfo만 전달
         
         const validation = validateAgreement(payload);
-        console.log(`Agreement for row ${agreement.row}: Payload =`, payload, `Validation =`, validation); // 디버깅 로그 추가
+        console.log(`Agreement for row ${agreement.row}: Payload =`, payload, `Validation =`, validation, `Validation Errors =`, validation.errors); // 디버깅 로그 추가
         return validation.ok ? payload : null;
       }).filter(Boolean);
 
