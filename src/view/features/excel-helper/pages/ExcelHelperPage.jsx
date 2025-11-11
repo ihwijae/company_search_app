@@ -714,11 +714,16 @@ export default function ExcelHelperPage() {
       .map((field) => {
         let source = null; // source 초기화
         let finalValue = null; // finalValue 초기화
+
         if (field.key === 'share') {
-          source = normalizeShareInput(shareValue);
+          source = normalizeShareInput(shareInput);
+          finalValue = coerceExcelValue(source);
+          console.log(`[handleApplyToExcel] share field update: shareInput="${shareInput}", normalizedShareInput="${source}", coercedValue="${finalValue}"`); // 디버깅 로그 추가
         } else if (field.key === 'managementScore') {
           source = managementScore ?? selectedMetrics[field.key];
-        } else if (field.key === 'name') { // 'name' 필드 처리
+          finalValue = coerceExcelValue(source);
+          console.log(`[handleApplyToExcel] managementScore field update: rawValue="${selectedMetrics[field.key]}", managementScore="${managementScore}", coercedValue="${finalValue}"`); // 디버깅 로그 추가
+        } else if (field.key === 'name') {
           const rawCompanyName = selectedMetrics?.name || '';
           const companyName = normalizeName(rawCompanyName); // normalizeName을 사용하여 법인 형태 제거
           const availableShareValue = selectedMetrics?.availableShare; // % 기호 없는 숫자 값
@@ -732,14 +737,18 @@ export default function ExcelHelperPage() {
         } else { // 나머지 필드 (performanceAmount, sipyungAmount 등)
           source = selectedMetrics[field.key];
           finalValue = coerceExcelValue(source);
+          console.log(`[handleApplyToExcel] other field update (${field.key}): rawValue="${selectedMetrics[field.key]}", coercedValue="${finalValue}"`); // 디버깅 로그 추가
         }
         
-        if (finalValue === undefined || finalValue === null || finalValue === '') return null;
+        if (finalValue === undefined || finalValue === null || finalValue === '') {
+          console.log(`[handleApplyToExcel] field "${field.key}" filtered out due to empty/null finalValue:`, finalValue); // 디버깅 로그 추가
+          return null;
+        }
         
         return {
           rowOffset: field.rowOffset || 0,
           colOffset: field.colOffset || 0,
-          value: finalValue, // finalValue 사용
+          value: finalValue,
           field: field.key,
         };
       })
