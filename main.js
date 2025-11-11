@@ -496,8 +496,8 @@ function createExcelHelperWindow() {
   }
 
   const win = new BrowserWindow({
-    width: 1280,
-    height: 860,
+    width: 1600,
+    height: 900,
     backgroundColor: '#f5f6fa',
     title: '엑셀 협정 도우미',
     autoHideMenuBar: true,
