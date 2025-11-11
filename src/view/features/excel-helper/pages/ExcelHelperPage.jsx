@@ -874,7 +874,7 @@ export default function ExcelHelperPage() {
 
         const leader = participants[0];
         const members = participants.slice(1);
-        const payload = buildAgreementPayload(activeOwner.ownerToken, noticeInfo, noticeInfo, leader, members); // noticeNo, noticeTitle 대신 noticeInfo 전달
+        const payload = buildAgreementPayload(activeOwner.ownerToken, noticeInfo, leader, members); // noticeInfoContent에 noticeInfo만 전달
         
         const validation = validateAgreement(payload);
         return validation.ok ? payload : null;
