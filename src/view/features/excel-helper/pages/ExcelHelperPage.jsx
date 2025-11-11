@@ -844,11 +844,13 @@ export default function ExcelHelperPage() {
         sourceWorkbook = uploadedWorkbook;
         sourceWorksheet = selectedSheet;
         isUploadedFileSource = true;
+        console.log('[generateAgreementMessages] Using uploaded file as source:', uploadedFile.name, 'Sheet:', selectedSheet);
       } else if (window.electronAPI?.excelHelper) {
         const selectionResponse = await window.electronAPI.excelHelper.getSelection();
         if (!selectionResponse?.success) throw new Error(selectionResponse?.message || '현재 활성화된 엑셀 시트 정보를 가져올 수 없습니다.');
         sourceWorkbook = selectionResponse.data?.Workbook || selectionResponse.data?.workbook || '';
         sourceWorksheet = selectionResponse.data?.Worksheet || selectionResponse.data?.worksheet || '';
+        console.log('[generateAgreementMessages] Using live Excel as source:', sourceWorkbook, 'Sheet:', sourceWorksheet);
       } else {
         throw new Error('엑셀 데이터 소스를 찾을 수 없습니다. 파일을 업로드하거나 엑셀을 동기화해주세요.');
       }
@@ -858,6 +860,7 @@ export default function ExcelHelperPage() {
       }
 
       // 1. GATHER ALL COMPANY NAMES
+      console.log('[generateAgreementMessages] Step 1: Gathering Company Names');
       const allCompanyNames = new Set();
       const allAgreementsData = []; // Will store { row, participants: [{ name, share }] }
       let currentRow = 5;
@@ -870,16 +873,19 @@ export default function ExcelHelperPage() {
           const sheet = sourceWorkbook.Sheets[sourceWorksheet];
           const cellAddress = XLSX.utils.encode_cell({ r: currentRow - 1, c: 0 }); // Column A
           cellValue = sheet[cellAddress] ? XLSX.utils.format_cell(sheet[cellAddress]) : null;
+          console.log(`[generateAgreementMessages] Uploaded File - Row ${currentRow}, Column A (check cell):`, cellValue);
 
           if (cellValue) {
             for (let i = 0; i < MAX_SLOTS; i += 1) {
-              const col = 3 + i; // Column D onwards
-              const nameCellAddress = XLSX.utils.encode_cell({ r: currentRow - 1, c: col - 1 });
+              const col = 3 + i; // Column D onwards (C is 3rd column, so D is 4th, which is index 3)
+              const nameCellAddress = XLSX.utils.encode_cell({ r: currentRow - 1, c: col - 1 }); // C column is index 2, D is 3
               const shareCellAddress = XLSX.utils.encode_cell({ r: currentRow - 1, c: col + 6 - 1 }); // colOffset 6
               
               const nameItem = sheet[nameCellAddress] ? XLSX.utils.format_cell(sheet[nameCellAddress]) : '';
               const shareItem = sheet[shareCellAddress] ? XLSX.utils.format_cell(sheet[shareCellAddress]) : null;
               
+              console.log(`[generateAgreementMessages] Uploaded File - Row ${currentRow}, Slot ${i}: Name Cell: ${nameCellAddress}, Value: "${nameItem}" | Share Cell: ${shareCellAddress}, Value: "${shareItem}"`);
+
               slotResponses.push({
                 success: true,
                 items: [
@@ -898,6 +904,7 @@ export default function ExcelHelperPage() {
             requests: [{ key: 'check', rowOffset: 0, colOffset: 0 }],
           });
           cellValue = checkCellResponse?.items?.[0]?.text || checkCellResponse?.items?.[0]?.value;
+          console.log(`[generateAgreementMessages] Live Excel - Row ${currentRow}, Column A (check cell):`, cellValue);
 
           if (cellValue) {
             for (let i = 0; i < MAX_SLOTS; i += 1) {
@@ -915,6 +922,7 @@ export default function ExcelHelperPage() {
         }
 
         if (!cellValue) {
+          console.log(`[generateAgreementMessages] Stopping at row ${currentRow} due to empty check cell.`);
           break; // Stop
         }
 
@@ -941,10 +949,15 @@ export default function ExcelHelperPage() {
         
         if (rowParticipants.length > 0) {
           allAgreementsData.push({ row: currentRow, participants: rowParticipants });
+          console.log(`[generateAgreementMessages] Row ${currentRow} participants:`, rowParticipants);
+        } else {
+          console.log(`[generateAgreementMessages] Row ${currentRow}: No valid participants found.`);
         }
 
         currentRow += rowIncrement;
       }
+      console.log('[generateAgreementMessages] Final allCompanyNames:', Array.from(allCompanyNames));
+      console.log('[generateAgreementMessages] Final allAgreementsData:', allAgreementsData);
 
       if (allCompanyNames.size === 0) {
         setIsGeneratingAgreement(false); // alert 전에 로딩 종료
@@ -953,7 +966,9 @@ export default function ExcelHelperPage() {
       }
 
       // 2. BULK SEARCH
+      console.log('[generateAgreementMessages] Step 2: Bulk Search for companies.');
       const searchResponse = await window.electronAPI.searchManyCompanies(Array.from(allCompanyNames), fileType);
+      console.log('[generateAgreementMessages] Bulk search response:', searchResponse);
 
       if (!searchResponse.success) {
         throw new Error('업체 정보 대량 조회에 실패했습니다: ' + searchResponse.message);
@@ -966,8 +981,10 @@ export default function ExcelHelperPage() {
           companySearchResultMap.set(normalizeName(name), company);
         }
       });
+      console.log('[generateAgreementMessages] companySearchResultMap:', companySearchResultMap);
 
       // 3. PROCESS AND GENERATE
+      console.log('[generateAgreementMessages] Step 3: Processing and Generating Payloads.');
       const allPayloads = allAgreementsData.map(agreement => {
         const participants = agreement.participants.map(p => {
           const normalizedParticipantName = normalizeName(p.name);
@@ -1006,6 +1023,7 @@ export default function ExcelHelperPage() {
         const validation = validateAgreement(payload);
         return validation.ok ? payload : null;
       }).filter(Boolean);
+      console.log('[generateAgreementMessages] Final allPayloads before generation:', allPayloads);
 
       if (allPayloads.length === 0) {
         setIsGeneratingAgreement(false); // alert 전에 로딩 종료
