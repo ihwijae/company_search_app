@@ -719,17 +719,19 @@ export default function ExcelHelperPage() {
         } else if (field.key === 'managementScore') {
           source = managementScore ?? selectedMetrics[field.key];
         } else if (field.key === 'name') { // 'name' 필드 처리
-          const companyName = selectedMetrics?.name || '';
-          const availableShare = selectedMetrics?.availableShareDisplay && selectedMetrics.availableShareDisplay !== '-'
-            ? ` ${selectedMetrics.availableShareDisplay}` : '';
+          const rawCompanyName = selectedMetrics?.name || '';
+          const companyName = normalizeName(rawCompanyName); // normalizeName을 사용하여 법인 형태 제거
+          const availableShareValue = selectedMetrics?.availableShare; // % 기호 없는 숫자 값
+          const availableShare = Number.isFinite(availableShareValue)
+            ? ` ${availableShareValue}` : ''; // % 기호 없이 숫자만
           const managers = extractManagerNames(selectedCompany);
           const managerNames = managers.length > 0 ? ` ${managers.join(', ')}` : '';
           source = `${companyName}${availableShare}${managerNames}`;
-          finalValue = source; // name 필드는 coerceExcelValue를 거치지 않고 source를 그대로 사용
-          console.log(`[handleApplyToExcel] name field update: companyName="${companyName}", availableShare="${availableShare}", managerNames="${managerNames}", final source="${source}"`); // 디버깅 로그 유지
-        } else {
+          finalValue = source;
+          console.log(`[handleApplyToExcel] name field update: rawCompanyName="${rawCompanyName}", companyName="${companyName}", availableShare="${availableShare}", managerNames="${managerNames}", final source="${source}"`);
+        } else { // 나머지 필드 (performanceAmount, sipyungAmount 등)
           source = selectedMetrics[field.key];
-          finalValue = coerceExcelValue(source); // 기존 로직 유지
+          finalValue = coerceExcelValue(source);
         }
         
         if (finalValue === undefined || finalValue === null || finalValue === '') return null;
