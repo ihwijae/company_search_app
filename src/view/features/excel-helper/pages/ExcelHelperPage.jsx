@@ -190,7 +190,7 @@ const buildAgreementPayload = (ownerToken, noticeInfoContent, leaderEntry, membe
   const isLH = ownerToken === 'LH';
   return {
     owner: ownerToken,
-    noticeNo: noticeInfoContent, // noticeInfo의 전체 내용을 noticeNo로 사용
+    noticeNo: '', // noticeNo 필드는 비워둠
     title: noticeInfoContent,    // noticeInfo의 전체 내용을 title로 사용
     leader: {
       name: leaderEntry.name,
