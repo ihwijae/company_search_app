@@ -249,7 +249,7 @@ const resolveIndustryAverage = (fileType) => {
   return INDUSTRY_AVERAGES[key] || null;
 };
 
-const CREDIT_DATE_PATTERN = /(\d{2,4})[^0-9]{0,3}(\d{1,2})[^0-9]{0,3}(\d{1,2})/;
+const CREDIT_DATE_PATTERN = /(\d{2,4})[^0-9]{0,3}(\d{1,2})[^0-9]{0,3}(\d{1,2})/; // Escaped backslashes for regex
 const CREDIT_DATE_PATTERN_GLOBAL = new RegExp(CREDIT_DATE_PATTERN.source, 'g');
 
 const parseExpiryDateToken = (token) => {
@@ -268,7 +268,7 @@ const parseExpiryDateToken = (token) => {
 const extractExpiryDateFromText = (text) => {
   if (!text) return null;
   const source = String(text);
-  const explicit = source.match(/(~|부터|:)?\s*([0-9]{2,4}[^0-9]{0,3}[0-9]{1,2}[^0-9]{0,3}[0-9]{1,2})\s*(까지|만료|만기)/);
+  const explicit = source.match(/(~|부터|:)?\s*([0-9]{2,4}[^0-9]{0,3}[0-9]{1,2}[^0-9]{0,3}[0-9]{1,2})\s*(까지|만료|만기)/); // Escaped backslashes for regex
   if (explicit) {
     const parsed = parseExpiryDateToken(explicit[2]);
     if (parsed) return parsed;
@@ -342,7 +342,7 @@ const extractCreditGradeDetailed = (company) => {
   const str = String(raw).trim().toUpperCase();
   if (!str) return '';
   const match = str.match(/^([A-Z]{1,3}[0-9]?(?:[+-])?)/);
-  return match ? match[1] : str.split(/[\s(]/)[0];
+  return match ? match[1] : str.split(/[ (]/)[0];
 };
 
 const normalizeShareInput = (input) => {
@@ -358,10 +358,10 @@ const normalizeShareInput = (input) => {
 };
 
 const normalizeName = (value) => {
-  let name = String(value || '').replace(/\s+/g, '').toLowerCase();
+  let name = String(value || '').replace(/\s+/g, '').toLowerCase(); // Escaped backslash for regex
   // Remove (주), ㈜, 주), (합) from the beginning or end of the name
-  name = name.replace(/^(주|\(주\)|㈜|주\)|\(합\))/, ''); // Remove from beginning
-  name = name.replace(/(주|\(주\)|㈜|주\)|\(합\))$/, ''); // Remove from end
+  name = name.replace(/^(주|\(주\)|㈜|주\)|\(합\))/, ''); // Remove from beginning, escaped backslashes for regex
+  name = name.replace(/(주|\(주\)|㈜|주\)|\(합\))$/, ''); // Remove from end, escaped backslashes for regex
   // Remove any remaining special characters or punctuation that might interfere with matching
   // Keep only alphanumeric (excluding underscore), and Korean characters
   name = name.replace(/[^a-zA-Z0-9가-힣]/g, ''); // 언더바 및 기타 특수문자, 한자 제거 (한글만 남김)
@@ -420,7 +420,7 @@ const parseDateLike = (raw) => {
   if (!text) return null;
 
   // Try YYYY-MM-DD or YYYY.MM.DD
-  const dateMatch = text.match(/(\d{4})[^0-9]*(\d{1,2})[^0-9]*(\d{1,2})/);
+  const dateMatch = text.match(/(\d{4})[^0-9]*(\d{1,2})[^0-9]*(\d{1,2})/); // Escaped backslashes for regex
   if (dateMatch) {
     const year = Number(dateMatch[1]);
     const month = Number(dateMatch[2]);
@@ -449,14 +449,14 @@ const parseDateLike = (raw) => {
 const parseBizYearsFromText = (text) => {
   const normalized = String(text || '').trim();
   if (!normalized) return null;
-  const yearMonthMatch = normalized.match(/(\d+(?:\.\d+)?)\s*년\s*(\d+(?:\.\d+)?)?\s*개월?/);
+  const yearMonthMatch = normalized.match(/(\d+(?:\.\d+)?)\s*년\s*(\d+(?:\.\d+)?)?\s*개월?/); // Escaped backslashes for regex
   if (yearMonthMatch) {
     const yearsPart = Number(yearMonthMatch[1]);
     const monthsPart = yearMonthMatch[2] != null ? Number(yearMonthMatch[2]) : 0;
     const total = (Number.isFinite(yearsPart) ? yearsPart : 0) + (Number.isFinite(monthsPart) ? monthsPart / 12 : 0);
     return Number.isFinite(total) && total > 0 ? total : null;
   }
-  const monthsOnlyMatch = normalized.match(/(\d+(?:\.\d+)?)\s*개월/);
+  const monthsOnlyMatch = normalized.match(/(\d+(?:\.\d+)?)\s*개월/); // Escaped backslashes for regex
   if (monthsOnlyMatch) {
     const months = Number(monthsOnlyMatch[1]);
     if (Number.isFinite(months) && months > 0) return months / 12;
@@ -505,6 +505,41 @@ const calculateAvailableShare = (sipyungAmount, baseAmount) => {
 
   const share = (sipyung / base) * 100; // 퍼센트로 계산
   return Number(share.toFixed(2)); // 소수점 둘째 자리까지 반올림
+};
+
+const getValidatedQualityScore = (company) => {
+  const defaultScore = 85;
+  const qualityRaw = pickFirstValue(company, QUALITY_FIELDS);
+
+  if (!qualityRaw || typeof qualityRaw !== 'string') {
+    return defaultScore;
+  }
+
+  const match = String(qualityRaw).match(/(\d+\.?\d*)\s*\((\d{2,4})[.-](\d{1,2})[.-](\d{1,2})\)/); // Escaped backslashes for regex
+
+  if (!match) {
+    return defaultScore;
+  }
+
+  const score = parseFloat(match[1]);
+  let year = parseInt(match[2], 10);
+  const month = parseInt(match[3], 10);
+  const day = parseInt(match[4], 10);
+
+  if (year < 100) {
+    year += 2000;
+  }
+
+  const issueDate = new Date(year, month - 1, day);
+  // The score is valid until May 1st of the year after the issue date.
+  const expiryDate = new Date(issueDate.getFullYear() + 1, 4, 1); // Month is 0-indexed, so 4 is May.
+  const now = new Date();
+
+  if (now >= expiryDate) {
+    return defaultScore; // Expired
+  }
+
+  return score; // Valid
 };
 
 export default function ExcelHelperPage() {
@@ -719,35 +754,32 @@ export default function ExcelHelperPage() {
     const offsets = getOffsetsForOwner(ownerId);
     const updates = offsets
       .map((field) => {
-        let source = null; // source 초기화
-        let finalValue = null; // finalValue 초기화
+        let source = null;
+        let finalValue = null;
 
-        if (field.key === 'share') {
+        if (ownerId === 'lh' && field.key === 'qualityScore') {
+          source = getValidatedQualityScore(selectedCompany);
+          finalValue = coerceExcelValue(source);
+        } else if (field.key === 'share') {
           source = normalizeShareInput(shareInput);
           finalValue = coerceExcelValue(source);
-
         } else if (field.key === 'managementScore') {
           source = managementScore ?? selectedMetrics[field.key];
           finalValue = coerceExcelValue(source);
-
         } else if (field.key === 'name') {
           const rawCompanyName = selectedMetrics?.name || '';
-          const companyName = normalizeName(rawCompanyName); // normalizeName을 사용하여 법인 형태 제거
-          const availableShareValue = selectedMetrics?.availableShare; // % 기호 없는 숫자 값
+          const companyName = normalizeName(rawCompanyName);
+          const availableShareValue = selectedMetrics?.availableShare;
           const availableShare = Number.isFinite(availableShareValue)
-            ? ` ${availableShareValue}` : ''; // % 기호 없이 숫자만
+            ? ` ${availableShareValue}` : '';
           const managers = extractManagerNames(selectedCompany);
           const managerNames = managers.length > 0 ? ` ${managers.join(', ')}` : '';
           source = `${companyName}${availableShare}${managerNames}`;
           finalValue = source;
-
-        } else { // 나머지 필드 (performanceAmount, sipyungAmount 등)
+        } else {
           source = selectedMetrics[field.key];
           finalValue = coerceExcelValue(source);
-
         }
-        
-
         
         return {
           rowOffset: field.rowOffset || 0,
@@ -782,8 +814,8 @@ export default function ExcelHelperPage() {
         column: baseColumn,
       }, selectedMetrics);
       setExcelStatus('엑셀에 값이 반영되었습니다.');
-      setSelection(null); // 선택된 셀 동기화 초기화
-      setSelectionMessage('엑셀에서 업체명이 있는 셀을 선택한 뒤 동기화하세요.'); // 메시지 초기화
+      setSelection(null);
+      setSelectionMessage('엑셀에서 업체명이 있는 셀을 선택한 뒤 동기화하세요.');
     } catch (err) {
       setExcelStatus(err.message || '엑셀 쓰기에 실패했습니다.');
     }
@@ -933,7 +965,7 @@ export default function ExcelHelperPage() {
             const shareItem = slotResponse.items.find(item => item.key === 'share');
             const rawName = nameItem?.text ?? nameItem?.value ?? '';
             if (rawName) {
-              let cleanedName = String(rawName).split('\n')[0].replace(/\s*[\d.,%].*$/, '').trim();
+              let cleanedName = String(rawName).split('\n')[0].replace(/\s*[\d.,%].*$/, '').trim(); // Escaped backslashes for regex
               cleanedName = cleanedName.split('_')[0].trim(); // 언더바 뒤의 내용 제거
               const name = cleanedName; // 최종 이름
               if (name) {

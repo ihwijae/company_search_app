@@ -71,7 +71,7 @@ function evalManagementComposite(inputs, rules, industryAvg) {
   const currentScore = evaluateThresholdScore(currentNorm, def.currentRatio && def.currentRatio.thresholds);
   const yearsScore = evaluateBizYearsScore(years, def.bizYears && def.bizYears.thresholds);
   const qualityScore = evaluateThresholdScore(quality, def.qualityEval && def.qualityEval.thresholds);
-    const scoreRaw = toNumber(debtScore) + toNumber(currentScore) + toNumber(yearsScore) + toNumber(qualityScore);
+    const scoreRaw = toNumber(debtScore) + toNumber(currentScore) + toNumber(yearsScore) + (rules.agencyId !== 'lh' ? toNumber(qualityScore) : 0);
   
     console.log('[EVAL DEBUG] Composite Scores:');
     console.log('[EVAL DEBUG]   Debt Score:    ', debtScore);
@@ -185,6 +185,8 @@ function evaluateScores({ agencyId, amount, inputs = {}, industryAvg } = {}) {
   console.log('[EVAL DEBUG] Selected Agency:', agency.name, '(' + agency.id + ')');
   console.log('[EVAL DEBUG] Selected Tier:', tier.minAmount, '~', tier.maxAmount);
   console.log('[EVAL DEBUG] Rules for Management:', JSON.stringify(rules.management));
+
+  rules.agencyId = agency.id; // Pass agencyId down to subsequent evaluations
 
   const management = evalManagement(inputs, rules, industryAvg);
   const performance = evalPerformance(inputs, rules);
