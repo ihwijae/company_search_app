@@ -356,7 +356,13 @@ const normalizeShareInput = (input) => {
   return numeric;
 };
 
-const normalizeName = (value) => String(value || '').replace(/\s+/g, '').toLowerCase();
+const normalizeName = (value) => {
+  let name = String(value || '').replace(/\s+/g, '').toLowerCase();
+  // Remove (주) or ㈜ from the beginning or end of the name
+  name = name.replace(/^(주|\(주\)|주\))/, ''); // Remove from beginning
+  name = name.replace(/(주|\(주\)|주\))$/, ''); // Remove from end
+  return name;
+};
 
 const makeLocationKey = ({ workbook, worksheet, row, column }) => (
   `${workbook || ''}|${worksheet || ''}|${row || 0}|${column || 0}`
