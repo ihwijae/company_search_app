@@ -185,13 +185,13 @@ const getOffsetsForOwner = (ownerId) => {
   return DEFAULT_OFFSETS;
 };
 
-const buildAgreementPayload = (ownerToken, noticeNo, noticeTitle, leaderEntry, memberEntries) => {
+const buildAgreementPayload = (ownerToken, noticeInfoContent, leaderEntry, memberEntries) => {
   if (!leaderEntry) return null;
   const isLH = ownerToken === 'LH';
   return {
     owner: ownerToken,
-    noticeNo,
-    title: noticeTitle,
+    noticeNo: noticeInfoContent, // noticeInfo의 전체 내용을 noticeNo로 사용
+    title: noticeInfoContent,    // noticeInfo의 전체 내용을 title로 사용
     leader: {
       name: leaderEntry.name,
       share: leaderEntry.share,
@@ -506,8 +506,7 @@ export default function ExcelHelperPage() {
   const [searchError, setSearchError] = React.useState('');
   const [selectedCompany, setSelectedCompany] = React.useState(null);
   const [shareInput, setShareInput] = React.useState('');
-  const [noticeTitle, setNoticeTitle] = React.useState('');
-  const [noticeNo, setNoticeNo] = React.useState('');
+  const [noticeInfo, setNoticeInfo] = React.useState(''); // 새 상태 추가
   const [noticeDateInput, setNoticeDateInput] = React.useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -746,7 +745,7 @@ export default function ExcelHelperPage() {
       alert('검색 파일(전기/통신/소방)을 먼저 선택하세요.'); // 팝업으로 변경
       return;
     }
-    if (!noticeTitle.trim() || !noticeNo.trim()) {
+    if (!noticeInfo.trim()) { // noticeTitle.trim() || !noticeNo.trim() 대신 noticeInfo.trim() 사용
       setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert('공고명/공고번호를 입력하세요.'); // 팝업으로 변경
       return;
@@ -875,7 +874,7 @@ export default function ExcelHelperPage() {
 
         const leader = participants[0];
         const members = participants.slice(1);
-        const payload = buildAgreementPayload(activeOwner.ownerToken, noticeNo, noticeTitle, leader, members);
+        const payload = buildAgreementPayload(activeOwner.ownerToken, noticeInfo, noticeInfo, leader, members); // noticeNo, noticeTitle 대신 noticeInfo 전달
         
         const validation = validateAgreement(payload);
         return validation.ok ? payload : null;
@@ -902,7 +901,7 @@ export default function ExcelHelperPage() {
       setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert(err.message || '협정 문자 생성에 실패했습니다.'); // 팝업으로 변경
     }
-  }, [fileType, noticeTitle, noticeNo, activeOwner.ownerToken]);
+  }, [fileType, noticeInfo, activeOwner.ownerToken]);
 
   const handleGenerateAgreement = () => {
     const rowIncrement = ownerId === 'lh' ? 2 : 1;
@@ -918,12 +917,8 @@ export default function ExcelHelperPage() {
           <p className="section-help">공고 정보와 발주처/금액대를 먼저 선택한 뒤, 엑셀 기준 셀을 동기화하세요.</p>
           <div className="helper-grid">
             <div>
-              <label className="field-label">공고명</label>
-              <input className="input" value={noticeTitle} onChange={(e) => setNoticeTitle(e.target.value)} placeholder="예: ○○○ 공사" />
-            </div>
-            <div>
-              <label className="field-label">공고번호</label>
-              <input className="input" value={noticeNo} onChange={(e) => setNoticeNo(e.target.value)} placeholder="예: 2024-0000" />
+              <label className="field-label">공고명/공고번호</label>
+              <input className="input" value={noticeInfo} onChange={(e) => setNoticeInfo(e.target.value)} placeholder="예: 2024-0000 ○○○ 공사" />
             </div>
             <div>
               <label className="field-label">공고일</label>
