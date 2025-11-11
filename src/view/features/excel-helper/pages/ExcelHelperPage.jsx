@@ -494,6 +494,18 @@ const computeBizYears = (rawValue, baseDate) => {
 };
 // --- End BizYears Calculation Utilities ---
 
+const calculateAvailableShare = (sipyungAmount, baseAmount) => {
+  const sipyung = toNumeric(sipyungAmount);
+  const base = toNumeric(baseAmount);
+
+  if (!Number.isFinite(sipyung) || sipyung <= 0 || !Number.isFinite(base) || base <= 0) {
+    return null; // 유효하지 않은 값이면 계산하지 않음
+  }
+
+  const share = (sipyung / base) * 100; // 퍼센트로 계산
+  return Number(share.toFixed(2)); // 소수점 둘째 자리까지 반올림
+};
+
 export default function ExcelHelperPage() {
   const [ownerId, setOwnerId] = React.useState('mois');
   const [rangeId, setRangeId] = React.useState(OWNER_OPTIONS[0].ranges[0].id);
@@ -529,7 +541,18 @@ export default function ExcelHelperPage() {
     }
   }, [availableRanges, rangeId]);
 
-  const selectedMetrics = React.useMemo(() => computeMetrics(selectedCompany), [selectedCompany]);
+  const selectedMetrics = React.useMemo(() => {
+    const metrics = computeMetrics(selectedCompany);
+    if (metrics) {
+      const availableShare = calculateAvailableShare(metrics.sipyungAmount, baseAmountInput);
+      return {
+        ...metrics,
+        availableShare,
+        availableShareDisplay: availableShare !== null ? `${availableShare}%` : '-',
+      };
+    }
+    return null;
+  }, [selectedCompany, baseAmountInput]); // baseAmountInput을 의존성 배열에 추가
 
   React.useEffect(() => {
     setShareInput('');
@@ -694,6 +717,13 @@ export default function ExcelHelperPage() {
           source = normalizeShareInput(shareValue);
         } else if (field.key === 'managementScore') {
           source = managementScore ?? selectedMetrics[field.key];
+        } else if (field.key === 'name') { // 'name' 필드 처리 추가
+          const companyName = selectedMetrics?.name || '';
+          const availableShare = selectedMetrics?.availableShareDisplay && selectedMetrics.availableShareDisplay !== '-'
+            ? ` ${selectedMetrics.availableShareDisplay}` : '';
+          const managers = extractManagerNames(selectedCompany);
+          const managerNames = managers.length > 0 ? ` ${managers.join(', ')}` : '';
+          source = `${companyName}${availableShare}${managerNames}`;
         } else {
           source = selectedMetrics[field.key];
         }
@@ -947,6 +977,10 @@ export default function ExcelHelperPage() {
               <label className="field-label">공고일</label>
               <input className="input" type="date" value={noticeDateInput} onChange={(e) => setNoticeDateInput(e.target.value)} />
             </div>
+            <div>
+              <label className="field-label">기준금액 (원)</label>
+              <input className="input" value={baseAmountInput} onChange={(e) => setBaseAmountInput(e.target.value)} placeholder="예: 1000000000 (10억)" />
+            </div>
           </div>
           <div className="helper-grid" style={{ marginTop: 12 }}>
             <div>
@@ -1091,6 +1125,10 @@ export default function ExcelHelperPage() {
             <div>
               <div className="detail-label">시평액</div>
               <div className="detail-value">{selectedMetrics?.sipyungDisplay || '-'}</div>
+            </div>
+            <div>
+              <div className="detail-label">가능지분</div>
+              <div className="detail-value">{selectedMetrics?.availableShareDisplay || '-'}</div>
             </div>
             {ownerId === 'lh' && (
               <>
