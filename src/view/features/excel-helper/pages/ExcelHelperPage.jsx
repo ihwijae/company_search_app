@@ -362,7 +362,8 @@ const normalizeName = (value) => {
   name = name.replace(/^(주|\(주\)|㈜|주\)|\(합\))/, ''); // Remove from beginning
   name = name.replace(/(주|\(주\)|㈜|주\)|\(합\))$/, ''); // Remove from end
   // Remove any remaining special characters or punctuation that might interfere with matching
-  name = name.replace(/[^\w가-힣]/g, ''); // Keep only alphanumeric, Korean characters
+  // Keep only alphanumeric (excluding underscore), and Korean characters
+  name = name.replace(/[^a-zA-Z0-9가-힣]/g, ''); // 언더바 및 기타 특수문자, 한자 제거 (한글만 남김)
   return name;
 };
 
