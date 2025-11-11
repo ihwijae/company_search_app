@@ -795,6 +795,10 @@ export default function ExcelHelperPage() {
         currentRow += rowIncrement;
       }
 
+      console.log('--- Excel Data ---');
+      console.log('All Company Names:', Array.from(allCompanyNames));
+      console.log('All Agreements Data:', JSON.stringify(allAgreementsData, null, 2));
+
       if (allCompanyNames.size === 0) {
         setMessageStatus('엑셀에서 처리할 업체를 찾지 못했습니다.');
         return;
@@ -818,6 +822,10 @@ export default function ExcelHelperPage() {
         }
       });
       console.log('Created companySearchResultMap:', companySearchResultMap);
+      console.log('--- Bulk Search Response ---');
+      console.log(JSON.stringify(searchResponse, null, 2));
+      console.log('--- Company Search Result Map ---');
+      console.log(Array.from(companySearchResultMap.entries()));
 
       // 3. PROCESS AND GENERATE
       setMessageStatus('협정 문자 생성 중...');
@@ -825,20 +833,33 @@ export default function ExcelHelperPage() {
         const participants = agreement.participants.map(p => {
           const normalizedParticipantName = normalizeName(p.name);
           
+          console.log(`--- Processing Participant: ${p.name} ---`);
+          console.log(`Normalized Excel Name: "${normalizedParticipantName}"`);
+
           let foundCompany = companySearchResultMap.get(normalizedParticipantName);
+          console.log('Exact match found:', foundCompany ? 'Yes' : 'No');
+
           if (!foundCompany) {
+            console.log('Attempting fuzzy match...');
             for (const [key, company] of companySearchResultMap.entries()) {
+              console.log(`Comparing with map key: "${key}"`);
               if (key.startsWith(normalizedParticipantName)) {
                 foundCompany = company;
+                console.log('Fuzzy match successful!');
                 break;
               }
             }
           }
 
+          if (!foundCompany) {
+              console.log('No match found for this participant.');
+          }
+
           const bizNo = foundCompany ? (pickFirstValue(foundCompany, BIZ_FIELDS) || '') : '';
           const fullName = foundCompany ? (pickFirstValue(foundCompany, NAME_FIELDS) || p.name) : p.name;
 
-          console.log(`Mapping name "${p.name}" (normalized: "${normalizedParticipantName}") to bizNo: "${bizNo}" and fullName: "${fullName}"`);
+          console.log('Final bizNo:', bizNo);
+          console.log('Final fullName:', fullName);
           
           let finalShare = p.share;
           if (typeof p.share === 'number' && p.share > 0 && p.share <= 1) {
