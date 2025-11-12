@@ -71,7 +71,11 @@ function evalManagementComposite(inputs, rules, industryAvg) {
   const currentScore = evaluateThresholdScore(currentNorm, def.currentRatio && def.currentRatio.thresholds);
   const yearsScore = evaluateBizYearsScore(years, def.bizYears && def.bizYears.thresholds);
   const qualityScore = evaluateThresholdScore(quality, def.qualityEval && def.qualityEval.thresholds);
-    const scoreRaw = toNumber(debtScore) + toNumber(currentScore) + toNumber(yearsScore) + (rules.agencyId !== 'lh' ? toNumber(qualityScore) : 0);
+    let scoreRaw = toNumber(debtScore) + toNumber(currentScore) + toNumber(yearsScore) + (rules.agencyId !== 'lh' ? toNumber(qualityScore) : 0);
+  
+    if (comps && typeof comps.scoreMultiplier === 'number' && Number.isFinite(comps.scoreMultiplier)) {
+      scoreRaw *= comps.scoreMultiplier;
+    }
   
     console.log('[EVAL DEBUG] Composite Scores:');
     console.log('[EVAL DEBUG]   Debt Score:    ', debtScore);
@@ -89,7 +93,12 @@ function evalManagementCredit(inputs, rules) {
   if (!credit) return { score: 0, methodId: 'credit' };
   const grade = String(inputs.creditGrade || '').trim().toUpperCase();
   const found = (credit.gradeTable || []).find(g => String(g.grade).toUpperCase() === grade);
-  const raw = found ? toNumber(found.score) : 0;
+  let raw = found ? toNumber(found.score) : 0;
+
+  if (credit && typeof credit.scoreMultiplier === 'number' && Number.isFinite(credit.scoreMultiplier)) {
+    raw *= credit.scoreMultiplier;
+  }
+
   const score = applyRounding(raw, rules.management.rounding);
   return { score, methodId: 'credit', grade, base: found ? found.base : null };
 }

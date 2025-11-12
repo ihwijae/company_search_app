@@ -237,11 +237,9 @@ const resolveRangeAmount = (ownerId, rangeId) => {
   }
   if (amount === null) amount = DEFAULT_RANGE_AMOUNT;
 
-  // Adjust amount for "under X" ranges to ensure correct tier selection
-  if (rangeId.startsWith('under')) {
-    return amount - 1;
-  }
-  return amount;
+  // Subtract 1 to handle the exclusive upper bound (e.g., < 50억)
+  // in the tier selection logic.
+  return amount - 1;
 };
 
 const resolveIndustryAverage = (fileType) => {
@@ -619,7 +617,7 @@ export default function ExcelHelperPage() {
       baseAmount: amount,
     };
 
-    if (agencyId === 'PPS' || agencyId === 'LH') {
+    if (agencyId === 'PPS' || agencyId === 'LH' || (agencyId === 'MOIS' && (rangeId === '30to50' || rangeId === '50to100'))) {
       inputs.bizYears = bizYearsInfo.years;
     }
 
@@ -770,7 +768,7 @@ export default function ExcelHelperPage() {
           const rawCompanyName = selectedMetrics?.name || '';
           const companyName = normalizeName(rawCompanyName);
           const availableShareValue = selectedMetrics?.availableShare;
-          const availableShare = Number.isFinite(availableShareValue)
+          const availableShare = (Number.isFinite(availableShareValue) && availableShareValue < 100)
             ? ` ${availableShareValue}` : '';
           const managers = extractManagerNames(selectedCompany);
           const managerNames = managers.length > 0 ? ` ${managers.join(', ')}` : '';

@@ -15,7 +15,6 @@ const { execSync } = require('child_process');
 const pkg = (() => { try { return require('./package.json'); } catch { return {}; } })();
 
 let formulasCache = null;
-let excelHelperFormulasCache = null; // New cache for Excel Helper formulas
 let recordsDbInstance = null;
 let recordsServiceInstance = null;
 let excelHelperWindow = null;
@@ -33,22 +32,8 @@ const loadMergedFormulasCached = () => {
   return formulasCache;
 };
 
-const loadExcelHelperFormulas = () => {
-  if (excelHelperFormulasCache) return excelHelperFormulasCache;
-  try {
-    // Bust cache to ensure fresh load from disk
-    try { delete require.cache[require.resolve('./src/shared/formulas.excel-helper.json')]; } catch {}
-    // Directly load from the fixed Excel Helper formulas file
-    const excelHelperFormulas = require('./src/shared/formulas.excel-helper.json');
-    excelHelperFormulasCache = excelHelperFormulas;
-  } catch (e) {
-    console.error('[MAIN] Excel Helper formulas load failed:', e?.message || e);
-  }
-  return excelHelperFormulasCache;
-};
 const invalidateFormulasCache = () => {
   formulasCache = null;
-  excelHelperFormulasCache = null; // Invalidate both caches
 };
 
 // Minimize GPU shader cache errors on Windows (cannot create/move cache)
@@ -1729,7 +1714,7 @@ try {
     }
   });
 
-  // New IPC handler for Excel Helper
+  // New IPC handler for Excel Helper - now uses standard formula loading
   ipcMain.handle('excel-helper-formulas-evaluate', async (_event, payload) => {
     try {
       const sanitized = payload && typeof payload === 'object' ? { ...payload } : {};
@@ -1742,21 +1727,8 @@ try {
           if (avg) sanitized.industryAvg = avg;
         }
       }
-      // Load rules specifically for Excel Helper (no user overrides)
-      const excelHelperFormulas = loadExcelHelperFormulas();
-      if (!excelHelperFormulas) throw new Error('Excel Helper formulas not loaded');
-
-      // Temporarily override loadFormulasMerged to use fixed formulas
-      const originalLoadFormulasMerged = formulasMod.loadFormulasMerged;
-      formulasMod.loadFormulasMerged = () => excelHelperFormulas;
-
-      let r;
-      try {
-        r = evaluator.evaluateScores(sanitized);
-      } finally {
-        // Restore original loadFormulasMerged
-        formulasMod.loadFormulasMerged = originalLoadFormulasMerged;
-      }
+      // NOTE: Now uses the standard evaluator which relies on the merged cache
+      const r = evaluator.evaluateScores(sanitized);
       return { success: true, data: r };
     } catch (e) {
       console.error('[MAIN] excel-helper-formulas-evaluate failed:', e?.message || e);

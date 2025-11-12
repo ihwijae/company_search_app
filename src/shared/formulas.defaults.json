@@ -672,58 +672,37 @@
                 {
                   "id": "composite",
                   "label": "요소합산",
-                  "maxScore": 15,
+                  "maxScore": 10,
+                  "scoreMultiplier": 0.666667,
                   "components": {
                     "debtRatio": {
                       "against": "industryAverage",
                       "scale": "lowerIsBetter",
                       "thresholds": [
-                        {
-                          "lt": 0.5,
-                          "score": 8.0
-                        },
-                        {
-                          "lt": 0.75,
-                          "score": 7.2
-                        },
-                        {
-                          "lt": 1.0,
-                          "score": 6.4
-                        },
-                        {
-                          "lt": 1.25,
-                          "score": 5.6
-                        },
-                        {
-                          "gte": 1.25,
-                          "score": 4.8
-                        }
+                        { "lt": 0.5, "score": 7.0 },
+                        { "lt": 0.75, "score": 6.3 },
+                        { "lt": 1.0, "score": 5.6 },
+                        { "lt": 1.25, "score": 4.9 },
+                        { "gte": 1.25, "score": 4.2 }
                       ]
                     },
                     "currentRatio": {
                       "against": "industryAverage",
                       "scale": "higherIsBetter",
                       "thresholds": [
-                        {
-                          "gte": 1.5,
-                          "score": 7.0
-                        },
-                        {
-                          "gte": 1.2,
-                          "score": 6.3
-                        },
-                        {
-                          "gte": 1.0,
-                          "score": 5.6
-                        },
-                        {
-                          "gte": 0.7,
-                          "score": 4.9
-                        },
-                        {
-                          "lt": 0.7,
-                          "score": 4.2
-                        }
+                        { "gte": 1.5, "score": 7.0 },
+                        { "gte": 1.2, "score": 6.3 },
+                        { "gte": 1.0, "score": 5.6 },
+                        { "gte": 0.7, "score": 4.9 },
+                        { "lt": 0.7, "score": 4.2 }
+                      ]
+                    },
+                    "bizYears": {
+                      "scale": "higherIsBetter",
+                      "thresholds": [
+                        { "gteYears": 3, "score": 1.0 },
+                        { "gteYears": 1, "score": 0.9 },
+                        { "ltYears": 1, "score": 0.8 }
                       ]
                     }
                   }
@@ -731,96 +710,31 @@
                 {
                   "id": "credit",
                   "label": "신용평가",
-                  "maxScore": 15,
+                  "maxScore": 10,
+                  "scoreMultiplier": 0.666667,
                   "gradeTable": [
-                    {
-                      "grade": "AAA",
-                      "score": 15
-                    },
-                    {
-                      "grade": "AA+",
-                      "score": 15
-                    },
-                    {
-                      "grade": "AA0",
-                      "score": 15
-                    },
-                    {
-                      "grade": "AA-",
-                      "score": 15
-                    },
-                    {
-                      "grade": "A+",
-                      "score": 15
-                    },
-                    {
-                      "grade": "A0",
-                      "score": 15
-                    },
-                    {
-                      "grade": "A-",
-                      "score": 15
-                    },
-                    {
-                      "grade": "BBB+",
-                      "score": 15
-                    },
-                    {
-                      "grade": "BBB0",
-                      "score": 15
-                    },
-                    {
-                      "grade": "BBB-",
-                      "score": 15
-                    },
-                    {
-                      "grade": "BB+",
-                      "score": 15
-                    },
-                    {
-                      "grade": "BB0",
-                      "score": 15
-                    },
-                    {
-                      "grade": "BB-",
-                      "score": 14
-                    },
-                    {
-                      "grade": "B+",
-                      "score": 13
-                    },
-                    {
-                      "grade": "B0",
-                      "score": 13
-                    },
-                    {
-                      "grade": "B-",
-                      "score": 13
-                    },
-                    {
-                      "grade": "CCC+",
-                      "score": 10
-                    },
-                    {
-                      "grade": "CCC0",
-                      "score": 10
-                    },
-                    {
-                      "grade": "CCC-",
-                      "score": 10
-                    },
-                    {
-                      "grade": "CC",
-                      "score": 10
-                    },
-                    {
-                      "grade": "C",
-                      "score": 10
-                    },
-                    {
-                      "grade": "D",
-                      "score": 10
-                    }
+                    { "grade": "AAA", "score": 15.0 },
+                    { "grade": "AA+", "score": 15.0 },
+                    { "grade": "AA0", "score": 15.0 },
+                    { "grade": "AA-", "score": 15.0 },
+                    { "grade": "A+", "score": 15.0 },
+                    { "grade": "A0", "score": 15.0 },
+                    { "grade": "A-", "score": 15.0 },
+                    { "grade": "BBB+", "score": 15.0 },
+                    { "grade": "BBB0", "score": 15.0 },
+                    { "grade": "BBB-", "score": 15.0 },
+                    { "grade": "BB+", "score": 15.0 },
+                    { "grade": "BB0", "score": 15.0 },
+                    { "grade": "BB-", "score": 14.0 },
+                    { "grade": "B+", "score": 13.0 },
+                    { "grade": "B0", "score": 13.0 },
+                    { "grade": "B-", "score": 13.0 },
+                    { "grade": "CCC+", "score": 10.0 },
+                    { "grade": "CCC0", "score": 10.0 },
+                    { "grade": "CCC-", "score": 10.0 },
+                    { "grade": "CC", "score": 10.0 },
+                    { "grade": "C", "score": 10.0 },
+                    { "grade": "D", "score": 10.0 }
                   ],
                   "note": "행안부 신용평가 기본값"
                 }
