@@ -672,8 +672,7 @@
                 {
                   "id": "composite",
                   "label": "요소합산",
-                  "maxScore": 10,
-                  "scoreMultiplier": 0.666667,
+                  "maxScore": 15,
                   "components": {
                     "debtRatio": {
                       "against": "industryAverage",
@@ -710,8 +709,7 @@
                 {
                   "id": "credit",
                   "label": "신용평가",
-                  "maxScore": 10,
-                  "scoreMultiplier": 0.666667,
+                  "maxScore": 15,
                   "gradeTable": [
                     { "grade": "AAA", "score": 15.0 },
                     { "grade": "AA+", "score": 15.0 },
