@@ -356,14 +356,66 @@ const normalizeShareInput = (input) => {
 };
 
 const normalizeName = (value) => {
-  let name = String(value || '').replace(/\s+/g, '').toLowerCase(); // Escaped backslash for regex
-  // Remove (주), ㈜, 주), (합) from the beginning or end of the name
-  name = name.replace(/^(주|\(주\)|㈜|주\)|\(합\))/, ''); // Remove from beginning, escaped backslashes for regex
-  name = name.replace(/(주|\(주\)|㈜|주\)|\(합\))$/, ''); // Remove from end, escaped backslashes for regex
-  // Remove any remaining special characters or punctuation that might interfere with matching
-  // Keep only alphanumeric (excluding underscore), and Korean characters
-  name = name.replace(/[^a-zA-Z0-9가-힣]/g, ''); // 언더바 및 기타 특수문자, 한자 제거 (한글만 남김)
+  let name = String(value || '').replace(/\s+/g, '').toLowerCase();
+  name = name.replace(/^(주|\(주\)|㈜|주\)|\(합\))/, '');
+  name = name.replace(/(주|\(주\)|㈜|주\)|\(합\))$/, '');
+  name = name.replace(/[^a-zA-Z0-9가-힣]/g, '');
   return name;
+};
+
+const COMMON_SURNAMES = new Set([
+  '김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황',
+  '안', '송', '류', '유', '홍', '전', '민', '구', '우', '문', '양', '손', '배', '백', '허', '노',
+  '심', '하', '곽', '성', '차', '주', '우', '채', '남', '원', '방', '표', '변', '염', '여', '석',
+  '설', '선', '현', '나', '진', '지', '위', '도', '연', '길', '엄', '복', '제', '탁', '공', '기',
+]);
+
+const COMPANY_SUFFIX_DENY = new Set([
+  '건설', '전기', '전력', '토건', '토목', '산업', '정보', '통신', '소방', '기술', '기계', '기전', '기공',
+  '환경', '시스템', '테크', '설비', '전설', '플랜트', '이엔지', '이엔씨', '엔지', '엔씨', '건축',
+]);
+
+const CORPORATE_PREFIX_PATTERN = /(주식회사|유한회사|농업회사법인|사단법인|재단법인|합자회사|합명회사|법인)$/;
+const JOB_TITLE_TOKENS = new Set(['부장', '차장', '과장', '팀장', '대리', '대표', '실장', '소장', '이사', '사장', '전무', '상무', '부사장', '주임', '사원']);
+
+const looksLikePersonName = (token) => {
+  if (!token) return false;
+  const normalized = token.replace(/[^가-힣]/g, '');
+  if (!/^[가-힣]{2,3}$/.test(normalized)) return false;
+  if (!COMMON_SURNAMES.has(normalized[0])) return false;
+  if (COMPANY_SUFFIX_DENY.has(normalized)) return false;
+  return true;
+};
+
+const cleanCompanyName = (rawName) => {
+  if (!rawName) return '';
+  let primary = String(rawName).split('\n')[0];
+  primary = primary.replace(/\s*[\d.,%].*$/, '');
+  primary = primary.split('_')[0];
+  let trimmed = primary.replace(/\s+/g, ' ').trim();
+  if (!trimmed) return '';
+
+  let tokens = trimmed.split(' ').filter(Boolean);
+  while (tokens.length > 1) {
+    const last = tokens[tokens.length - 1];
+    const normalized = last.replace(/[^가-힣]/g, '');
+    if (!normalized) {
+      tokens.pop();
+      continue;
+    }
+    if (JOB_TITLE_TOKENS.has(normalized)) {
+      tokens.pop();
+      continue;
+    }
+    const precedingRaw = tokens.slice(0, -1).join(' ').trim();
+    if (!precedingRaw) break;
+    const precedingNormalized = precedingRaw.replace(/[^가-힣]/g, '');
+    if (!looksLikePersonName(normalized)) break;
+    if (CORPORATE_PREFIX_PATTERN.test(precedingNormalized)) break;
+    tokens.pop();
+    break;
+  }
+  return tokens.join(' ').trim();
 };
 
 const makeLocationKey = ({ workbook, worksheet, row, column }) => (
@@ -962,17 +1014,13 @@ export default function ExcelHelperPage() {
             const nameItem = slotResponse.items.find(item => item.key === 'name');
             const shareItem = slotResponse.items.find(item => item.key === 'share');
             const rawName = nameItem?.text ?? nameItem?.value ?? '';
-            if (rawName) {
-              let cleanedName = String(rawName).split('\n')[0].replace(/\s*[\d.,%].*$/, '').trim(); // Escaped backslashes for regex
-              cleanedName = cleanedName.split('_')[0].trim(); // 언더바 뒤의 내용 제거
-              const name = cleanedName; // 최종 이름
-              if (name) {
-                allCompanyNames.add(name);
-                rowParticipants.push({
-                  name,
-                  share: shareItem?.value ?? null,
-                });
-              }
+            const cleanedName = cleanCompanyName(rawName);
+            if (cleanedName) {
+              allCompanyNames.add(cleanedName);
+              rowParticipants.push({
+                name: cleanedName,
+                share: shareItem?.value ?? null,
+              });
             }
           }
         }
