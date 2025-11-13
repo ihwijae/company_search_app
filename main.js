@@ -13,6 +13,9 @@ const { ExcelAutomationService } = require('./src/main/features/excel/excelAutom
 const os = require('os');
 const { execSync } = require('child_process');
 const pkg = (() => { try { return require('./package.json'); } catch { return {}; } })();
+const APP_DISPLAY_NAME = '협정보조';
+const EXCEL_HELPER_TITLE = '엑셀 협정 도우미';
+try { app.setName(APP_DISPLAY_NAME); } catch {}
 
 let formulasCache = null;
 let recordsDbInstance = null;
@@ -428,6 +431,7 @@ function createWindow() {
     width: bounds.width,
     height: bounds.height,
     backgroundColor: '#e0ecff',
+    title: APP_DISPLAY_NAME,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#e0ecff',
@@ -439,6 +443,7 @@ function createWindow() {
     },
   });
   mainWindowRef = mainWindow;
+  try { mainWindow.setTitle(APP_DISPLAY_NAME); } catch {}
 
   // 李??곹깭 ?대깽?몃줈 ???
   ['resize', 'move', 'maximize', 'unmaximize', 'restore'].forEach(evt => {
@@ -484,7 +489,7 @@ function createExcelHelperWindow() {
     width: 1600,
     height: 900,
     backgroundColor: '#f5f6fa',
-    title: '엑셀 협정 도우미',
+    title: EXCEL_HELPER_TITLE,
     autoHideMenuBar: true,
     showInTaskbar: true,
     titleBarStyle: 'hidden',
@@ -508,6 +513,8 @@ function createExcelHelperWindow() {
   } else {
     win.loadFile(path.join(__dirname, 'dist', 'index.html'), { hash: '/excel-helper' });
   }
+
+  try { win.setTitle(EXCEL_HELPER_TITLE); } catch {}
 
   return win;
 }

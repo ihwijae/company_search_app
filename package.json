@@ -1,7 +1,7 @@
 {
-  "name": "company-search-app",
+  "name": "협정보조",
   "version": "1.0.0",
-  "description": "Company Search Program",
+  "description": "협정보조 - Excel 협정 도우미",
   "author": "Your Name",
   "main": "main.js",
   "scripts": {
@@ -40,7 +40,7 @@
   },
   "build": {
     "appId": "com.company.searchapp",
-    "productName": "CompanySearch",
+    "productName": "협정보조",
     "directories": {
       "output": "release"
     },
