@@ -618,8 +618,8 @@ const getValidatedQualityScore = (company) => {
 };
 
 export default function ExcelHelperPage() {
-  const [ownerId, setOwnerId] = React.useState('mois');
-  const [rangeId, setRangeId] = React.useState(OWNER_OPTIONS[0].ranges[0].id);
+  const [ownerId, setOwnerId] = React.useState('');
+  const [rangeId, setRangeId] = React.useState('');
   const [fileType, setFileType] = React.useState('');
   const [selection, setSelection] = React.useState(null);
   const [selectionMessage, setSelectionMessage] = React.useState('엑셀에서 업체명이 있는 셀을 선택한 뒤 동기화하세요.');
@@ -649,10 +649,15 @@ export default function ExcelHelperPage() {
 
   const appliedCellsRef = React.useRef(new Map());
 
-  const activeOwner = OWNER_OPTIONS.find((o) => o.id === ownerId) || OWNER_OPTIONS[0];
-  const availableRanges = activeOwner.ranges;
+  const activeOwner = React.useMemo(() => OWNER_OPTIONS.find((o) => o.id === ownerId) || null, [ownerId]);
+  const ownerToken = activeOwner?.ownerToken || '';
+  const availableRanges = activeOwner?.ranges || [];
 
   React.useEffect(() => {
+    if (!availableRanges.length) {
+      if (rangeId !== '') setRangeId('');
+      return;
+    }
     if (!availableRanges.some((r) => r.id === rangeId)) {
       setRangeId(availableRanges[0]?.id || '');
     }
@@ -907,11 +912,7 @@ export default function ExcelHelperPage() {
         const workbook = XLSX.read(data, { type: 'array' });
         setUploadedWorkbook(workbook);
         setSheetNames(workbook.SheetNames);
-        if (workbook.SheetNames.length > 0) {
-          setSelectedSheet(workbook.SheetNames[0]); // Select first sheet by default
-        } else {
-          setSelectedSheet('');
-        }
+        setSelectedSheet('');
       };
       reader.readAsArrayBuffer(file);
     } else {
@@ -930,9 +931,24 @@ export default function ExcelHelperPage() {
   const generateAgreementMessages = React.useCallback(async () => {
     setIsGeneratingAgreement(true); // 로딩 시작
     // 0. Validation
+    if (!ownerId) {
+      setIsGeneratingAgreement(false);
+      alert('발주처를 선택하세요.');
+      return;
+    }
     if (!fileType) {
       setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert('검색 파일(전기/통신/소방)을 먼저 선택하세요.'); // 팝업으로 변경
+      return;
+    }
+    if (!uploadedWorkbook) {
+      setIsGeneratingAgreement(false);
+      alert('협정 대상 엑셀 파일을 업로드하세요.');
+      return;
+    }
+    if (!selectedSheet) {
+      setIsGeneratingAgreement(false);
+      alert('엑셀 시트를 선택하세요.');
       return;
     }
     if (!noticeInfo.trim()) { // noticeTitle.trim() || !noticeNo.trim() 대신 noticeInfo.trim() 사용
@@ -1159,7 +1175,7 @@ export default function ExcelHelperPage() {
           return null;
         }
 
-        const payload = buildAgreementPayload(activeOwner.ownerToken, noticeInfo, leader, members);
+        const payload = buildAgreementPayload(ownerToken, noticeInfo, leader, members);
         const validation = validateAgreement(payload);
         return validation.ok ? payload : null;
       }).filter(Boolean);
@@ -1185,7 +1201,7 @@ export default function ExcelHelperPage() {
       setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert(err.message || '협정 문자 생성에 실패했습니다.'); // 팝업으로 변경
     }
-  }, [fileType, noticeInfo, activeOwner.ownerToken, uploadedWorkbook, selectedSheet, ownerId]);
+  }, [fileType, noticeInfo, ownerToken, uploadedWorkbook, selectedSheet, ownerId, uploadedFile]);
 
   const handleGenerateAgreement = () => {
     generateAgreementMessages();
@@ -1242,7 +1258,15 @@ export default function ExcelHelperPage() {
               </div>
               <div>
                 <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>금액대</label>
-                <select className="input" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
+                <select
+                  className="input"
+                  value={rangeId}
+                  onChange={(e) => setRangeId(e.target.value)}
+                  disabled={!ownerId}
+                >
+                  <option value="">
+                    {ownerId ? '금액대를 선택하세요' : '발주처를 먼저 선택하세요'}
+                  </option>
                   {availableRanges.map((range) => (
                     <option key={range.id} value={range.id}>{range.label}</option>
                   ))}
