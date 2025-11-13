@@ -186,13 +186,26 @@ const getOffsetsForOwner = (ownerId) => {
   return DEFAULT_OFFSETS;
 };
 
+const deriveNoticeFields = (noticeInfoContent) => {
+  const raw = String(noticeInfoContent || '').trim();
+  if (!raw) {
+    return { noticeNo: '', title: '' };
+  }
+  const tokenMatch = raw.match(/^(\S+)\s+([\s\S]+)$/);
+  if (tokenMatch && /\d/.test(tokenMatch[1])) {
+    return { noticeNo: tokenMatch[1], title: tokenMatch[2].trim() };
+  }
+  return { noticeNo: '', title: raw };
+};
+
 const buildAgreementPayload = (ownerToken, noticeInfoContent, leaderEntry, memberEntries) => {
   if (!leaderEntry) return null;
+  const noticeFields = deriveNoticeFields(noticeInfoContent);
   const isLH = ownerToken === 'LH';
   return {
     owner: ownerToken,
-    noticeNo: '', // noticeNo 필드는 비워둠
-    title: noticeInfoContent,    // noticeInfo의 전체 내용을 title로 사용
+    noticeNo: noticeFields.noticeNo,
+    title: noticeFields.title,
     leader: {
       name: leaderEntry.name,
       share: leaderEntry.share,

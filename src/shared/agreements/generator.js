@@ -84,10 +84,29 @@ export function generateOne(item) {
   const lines = [];
   const owner = String(item.owner || '').trim();
   const ownerDisplayName = owner === 'LH' ? '한국토지주택공사' : owner;
+  const mainLine = [String(item.noticeNo || '').trim(), String(item.title || '').trim()]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
 
-  if (needsHeader(owner)) lines.push(`[${ownerDisplayName}]`);
-  lines.push(`${item.noticeNo} ${item.title}`);
-  lines.push('');
+  if (owner === 'LH') {
+    const lhHeader = [ownerDisplayName, String(item.noticeNo || '').trim()].filter(Boolean).join(' ').trim();
+    if (lhHeader) {
+      lines.push(lhHeader);
+    } else if (ownerDisplayName) {
+      lines.push(ownerDisplayName);
+    }
+    if (String(item.title || '').trim()) {
+      lines.push(String(item.title).trim());
+    }
+    lines.push('');
+  } else {
+    if (needsHeader(owner)) lines.push(`[${ownerDisplayName}]`);
+    if (mainLine) {
+      lines.push(mainLine);
+    }
+    lines.push('');
+  }
 
   const leaderName = String(item.leader?.name || '').trim();
   const leaderShareRaw = item.leader?.share;
