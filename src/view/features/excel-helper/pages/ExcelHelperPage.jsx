@@ -902,7 +902,7 @@ export default function ExcelHelperPage() {
     setSelectedSheet(event.target.value);
   };
 
-  const generateAgreementMessages = React.useCallback(async ({ rowIncrement = 1 } = {}) => {
+  const generateAgreementMessages = React.useCallback(async () => {
     setIsGeneratingAgreement(true); // 로딩 시작
     // 0. Validation
     if (!fileType) {
@@ -946,6 +946,9 @@ export default function ExcelHelperPage() {
       const allCompanyNames = new Set();
       const allAgreementsData = []; // Will store { row, participants: [{ name, share }] }
       let currentRow = 5;
+      const isLhOwner = ownerId === 'lh';
+      const maxConsecutiveEmptyRows = isLhOwner ? 2 : 1;
+      let consecutiveEmptyRows = 0;
 
       while (currentRow < 100) { // Safety break at 100 rows
         let cellValue = null;
@@ -1005,7 +1008,12 @@ export default function ExcelHelperPage() {
 
         if (!cellValue) {
           console.log(`[generateAgreementMessages] Stopping at row ${currentRow} due to empty check cell.`);
-          break; // Stop
+          consecutiveEmptyRows += 1;
+          if (!isLhOwner || consecutiveEmptyRows >= maxConsecutiveEmptyRows) {
+            break; // Stop
+          }
+          currentRow += 1;
+          continue;
         }
 
         const rowParticipants = [];
@@ -1028,11 +1036,22 @@ export default function ExcelHelperPage() {
         if (rowParticipants.length > 0) {
           allAgreementsData.push({ row: currentRow, participants: rowParticipants });
           console.log(`[generateAgreementMessages] Row ${currentRow} participants:`, rowParticipants);
+          consecutiveEmptyRows = 0;
         } else {
           console.log(`[generateAgreementMessages] Row ${currentRow}: No valid participants found.`);
+          if (isLhOwner) {
+            consecutiveEmptyRows += 1;
+            if (consecutiveEmptyRows >= maxConsecutiveEmptyRows) {
+              break;
+            }
+          } else {
+            consecutiveEmptyRows = 0;
+          }
+          currentRow += 1;
+          continue;
         }
 
-        currentRow += rowIncrement;
+        currentRow += 1;
       }
       console.log('[generateAgreementMessages] Final allCompanyNames:', Array.from(allCompanyNames));
       console.log('[generateAgreementMessages] Final allAgreementsData:', allAgreementsData);
@@ -1141,11 +1160,10 @@ export default function ExcelHelperPage() {
       setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert(err.message || '협정 문자 생성에 실패했습니다.'); // 팝업으로 변경
     }
-  }, [fileType, noticeInfo, activeOwner.ownerToken, uploadedWorkbook, selectedSheet]);
+  }, [fileType, noticeInfo, activeOwner.ownerToken, uploadedWorkbook, selectedSheet, ownerId]);
 
   const handleGenerateAgreement = () => {
-    const rowIncrement = ownerId === 'lh' ? 2 : 1;
-    generateAgreementMessages({ rowIncrement });
+    generateAgreementMessages();
   };
 
   return (
