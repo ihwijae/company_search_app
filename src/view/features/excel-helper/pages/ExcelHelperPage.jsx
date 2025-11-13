@@ -387,9 +387,30 @@ const looksLikePersonName = (token) => {
   return true;
 };
 
+const stripTrailingPersonSuffix = (text) => {
+  if (!text) return '';
+  const normalized = text.replace(/[^가-힣]/g, '');
+  if (normalized.length <= 3) return text;
+  for (let len = 3; len >= 2; len -= 1) {
+    const suffix = normalized.slice(-len);
+    if (!looksLikePersonName(suffix)) continue;
+    const prefix = normalized.slice(0, -len);
+    if (!prefix || prefix.length < 3) continue;
+    if (looksLikePersonName(prefix) && prefix.length <= 3) continue;
+    const idx = text.lastIndexOf(suffix);
+    if (idx > 0) {
+      const candidate = text.slice(0, idx).trim();
+      if (candidate) return candidate;
+    }
+  }
+  return text;
+};
+
 const cleanCompanyName = (rawName) => {
   if (!rawName) return '';
-  let primary = String(rawName).split('\n')[0];
+  const original = String(rawName);
+  let primary = original.split('\n')[0];
+  const hasDelimiterHints = /[0-9_%]/.test(primary) || original.includes('_');
   primary = primary.replace(/\s*[\d.,%].*$/, '');
   primary = primary.split('_')[0];
   let trimmed = primary.replace(/\s+/g, ' ').trim();
@@ -415,7 +436,11 @@ const cleanCompanyName = (rawName) => {
     tokens.pop();
     break;
   }
-  return tokens.join(' ').trim();
+  let result = tokens.join(' ').trim();
+  if (tokens.length <= 1 && hasDelimiterHints) {
+    result = stripTrailingPersonSuffix(result);
+  }
+  return result;
 };
 
 const makeLocationKey = ({ workbook, worksheet, row, column }) => (
