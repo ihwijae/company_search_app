@@ -25,6 +25,12 @@ export default function App() {
 
   const path = (route.replace('#', '') || '/search');
 
+  React.useEffect(() => {
+    if (path !== '/excel-helper') {
+      document.title = '협정보조';
+    }
+  }, [path]);
+
   let Screen = SearchPage;
   switch (path) {
     case '/lh/under50':

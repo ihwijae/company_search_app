@@ -631,6 +631,14 @@ const getValidatedQualityScore = (company) => {
 };
 
 export default function ExcelHelperPage() {
+  React.useEffect(() => {
+    const previousTitle = document.title;
+    document.title = '엑셀 협정 도우미';
+    return () => {
+      document.title = previousTitle || '협정보조';
+    };
+  }, []);
+
   const strongLabelStyle = React.useMemo(() => ({
     display: 'block',
     marginBottom: '6px',
