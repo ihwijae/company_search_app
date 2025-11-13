@@ -618,6 +618,21 @@ const getValidatedQualityScore = (company) => {
 };
 
 export default function ExcelHelperPage() {
+  const strongLabelStyle = React.useMemo(() => ({
+    display: 'block',
+    marginBottom: '6px',
+    fontWeight: 600,
+    fontSize: '14px',
+    color: '#0f172a',
+  }), []);
+  const searchFileHighlightStyle = React.useMemo(() => ({
+    border: '2px solid #2563eb',
+    background: '#eff6ff',
+    borderRadius: '10px',
+    padding: '10px 12px',
+    boxShadow: '0 1px 2px rgba(37, 99, 235, 0.15)',
+  }), []);
+
   const [ownerId, setOwnerId] = React.useState('');
   const [rangeId, setRangeId] = React.useState('');
   const [fileType, setFileType] = React.useState('');
@@ -1216,15 +1231,15 @@ export default function ExcelHelperPage() {
           <section className="excel-helper-section">
             <div className="helper-grid">
               <div>
-                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>공고명/공고번호</label>
+                <label className="field-label" style={strongLabelStyle}>공고명/공고번호</label>
                 <input className="input" value={noticeInfo} onChange={(e) => setNoticeInfo(e.target.value)} placeholder="예: 2024-0000 ○○○ 공사" />
               </div>
               <div>
-                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>공고일</label>
+                <label className="field-label" style={strongLabelStyle}>공고일</label>
                 <input className="input" type="date" value={noticeDateInput} onChange={(e) => setNoticeDateInput(e.target.value)} />
               </div>
               <div>
-                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>기준금액 (원)</label>
+                <label className="field-label" style={strongLabelStyle}>기준금액 (원)</label>
                 <input
                   className="input"
                   value={formatAmount(baseAmountInput)}
@@ -1242,7 +1257,7 @@ export default function ExcelHelperPage() {
             </div>
             <div className="helper-grid" style={{ marginTop: 12 }}>
               <div>
-                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>발주처</label>
+                <label className="field-label" style={strongLabelStyle}>발주처</label>
                 <div className="button-group">
                   {OWNER_OPTIONS.map((option) => (
                     <button
@@ -1257,7 +1272,7 @@ export default function ExcelHelperPage() {
                 </div>
               </div>
               <div>
-                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>금액대</label>
+                <label className="field-label" style={strongLabelStyle}>금액대</label>
                 <select
                   className="input"
                   value={rangeId}
@@ -1273,13 +1288,15 @@ export default function ExcelHelperPage() {
                 </select>
               </div>
               <div>
-                <label className="field-label" style={{ display: 'block', marginBottom: '6px' }}>검색 파일 (필수)</label>
-                <select className="input" value={fileType} onChange={(e) => setFileType(e.target.value)}>
-                  <option value="">선택하세요</option>
-                  {FILE_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                <div style={searchFileHighlightStyle}>
+                  <label className="field-label" style={strongLabelStyle}>검색 파일 (필수)</label>
+                  <select className="input" value={fileType} onChange={(e) => setFileType(e.target.value)}>
+                    <option value="">선택하세요</option>
+                    {FILE_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </section>
@@ -1300,11 +1317,11 @@ export default function ExcelHelperPage() {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ marginBottom: '12px' }}>
-                  <label className="field-label">엑셀 파일 선택</label>
+                  <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
                   <input type="file" className="input" accept=".xlsx, .xls" onChange={handleFileUpload} />
                 </div>
                 <div>
-                  <label className="field-label">시트 선택</label>
+                  <label className="field-label" style={strongLabelStyle}>시트 선택</label>
                   <select className="input" value={selectedSheet} onChange={handleSheetSelect} disabled={sheetNames.length === 0}>
                     <option value="">시트를 선택하세요</option>
                     {sheetNames.map((name) => (
