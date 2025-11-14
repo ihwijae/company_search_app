@@ -56,6 +56,22 @@ const ShareInput = ({ value, onChange, className = '', style = {}, placeholder =
   );
 };
 
+const deriveNoticeFields = (noticeInfoContent) => {
+  const raw = String(noticeInfoContent || '').trim();
+  if (!raw) {
+    return { noticeNo: '', title: '' };
+  }
+  const tokenMatch = raw.match(/^(\S+)\s+([\s\S]+)$/);
+  if (tokenMatch && /\d/.test(tokenMatch[1])) {
+    return { noticeNo: tokenMatch[1], title: tokenMatch[2].trim() };
+  }
+  return { noticeNo: '', title: raw };
+};
+
+const composeNoticeInfo = (noticeNo, title) => {
+  return [String(noticeNo || '').trim(), String(title || '').trim()].filter(Boolean).join(' ').trim();
+};
+
 // CompanySearchModal moved to shared component
 
 function EditAgreementModal({ open, value, onChange, onClose, onSave, onSearchLeader, onSearchMember, error }) {
@@ -70,7 +86,7 @@ function EditAgreementModal({ open, value, onChange, onClose, onSave, onSearchLe
             {error}
           </div>
         )}
-        {/* 상단 영역: 발주처/공고번호 */}
+        {/* 상단 영역: 발주처/공고 정보 */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
           <div style={{ flex: 1 }}>
             <label>발주처</label>
@@ -78,15 +94,19 @@ function EditAgreementModal({ open, value, onChange, onClose, onSave, onSearchLe
               {OWNERS.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </div>
-          <div style={{ flex: 1 }}>
-            <label>공고번호</label>
-            <input type="text" className="filter-input" value={it.noticeNo} onChange={(e)=>onChange({ ...it, noticeNo: e.target.value })} />
+          <div style={{ flex: 2 }}>
+            <label>공고번호/공고명</label>
+            <input
+              type="text"
+              className="filter-input"
+              value={composeNoticeInfo(it.noticeNo, it.title)}
+              onChange={(e) => {
+                const next = deriveNoticeFields(e.target.value);
+                onChange({ ...it, noticeNo: next.noticeNo, title: next.title });
+              }}
+              placeholder="예: R25BK01030907-000 ○○사업 전기공사"
+            />
           </div>
-        </div>
-        {/* 공고명 */}
-        <div style={{ marginBottom: 10 }}>
-          <label>공고명</label>
-          <input type="text" className="filter-input" value={it.title} onChange={(e)=>onChange({ ...it, title: e.target.value })} />
         </div>
         {/* 공종 */}
         <div style={{ marginBottom: 12 }}>
@@ -158,8 +178,7 @@ function AgreementsPage() {
   const [active, setActive] = useState(initialActive);
   const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false });
   const [owner, setOwner] = useState(initialOwner);
-  const [noticeNo, setNoticeNo] = useState('');
-  const [title, setTitle] = useState('');
+  const [noticeInfo, setNoticeInfo] = useState('');
   const [typeKey, setTypeKey] = useState('');
 
   const [leader, setLeader] = useState({ name: '', share: '51', bizNo: '' });
@@ -256,10 +275,11 @@ function AgreementsPage() {
       window.alert('공종을 선택해 주세요.');
       return;
     }
+    const noticeFields = deriveNoticeFields(noticeInfo);
     const item = {
       owner,
-      noticeNo: noticeNo.trim(),
-      title: title.trim(),
+      noticeNo: noticeFields.noticeNo,
+      title: noticeFields.title,
       type: toInternalType(typeKey),
       leader: { ...leader, share: String(leader.share).trim() },
       members: members.map(m => ({ ...m, share: String(m.share).trim() })),
@@ -432,23 +452,25 @@ function AgreementsPage() {
               <h1 className="main-title" style={{ marginTop: 0 }}>협정 문자 생성</h1>
               <div className="search-filter-section">
                 <div className="filter-grid">
-                  <div className="filter-item">
-                    <label>발주처</label>
-                    <select className="filter-input" value={owner} onChange={(e)=>setOwner(e.target.value)}>
-                      {OWNERS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </div>
-                  <div className="filter-item">
-                    <label>공고번호</label>
-                    <input type="text" className="filter-input" value={noticeNo} onChange={(e)=>setNoticeNo(e.target.value)} placeholder="예: R25BK01030907-000" />
-                  </div>
-                  <div className="filter-item" style={{ gridColumn: 'span 2' }}>
-                    <label>공고명</label>
-                    <input type="text" className="filter-input" value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="예: ○○사업 전기공사" />
-                  </div>
-                </div>
+              <div className="filter-item">
+                <label>발주처</label>
+                <select className="filter-input" value={owner} onChange={(e)=>setOwner(e.target.value)}>
+                  {OWNERS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div className="filter-item" style={{ gridColumn: 'span 2' }}>
+                <label>공고번호/공고명</label>
+                <input
+                  type="text"
+                  className="filter-input"
+                  value={noticeInfo}
+                  onChange={(e)=>setNoticeInfo(e.target.value)}
+                  placeholder="예: R25BK01030907-000 ○○사업 전기공사"
+                />
               </div>
             </div>
+          </div>
+        </div>
 
             <div className="panel" style={{ gridColumn: '1 / -1' }}>
               <h3 style={{ marginTop: 0 }}>협정 구성</h3>
