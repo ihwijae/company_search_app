@@ -683,6 +683,14 @@ export default function ExcelHelperPage() {
   const [sheetNames, setSheetNames] = React.useState([]);
   const [selectedSheet, setSelectedSheet] = React.useState('');
 
+  const resetAgreementContext = React.useCallback(() => {
+    setNoticeInfo('');
+    setBaseAmountInput('');
+    setOwnerId('');
+    setRangeId('');
+    setFileType('');
+  }, []);
+
   const appliedCellsRef = React.useRef(new Map());
 
   const activeOwner = React.useMemo(() => OWNER_OPTIONS.find((o) => o.id === ownerId) || null, [ownerId]);
@@ -1232,12 +1240,13 @@ export default function ExcelHelperPage() {
       }
       setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert(`${allPayloads.length}건의 협정 문자가 클립보드에 복사되었습니다.`); // 팝업으로 변경
+      resetAgreementContext();
 
     } catch (err) {
       setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert(err.message || '협정 문자 생성에 실패했습니다.'); // 팝업으로 변경
     }
-  }, [fileType, noticeInfo, ownerToken, uploadedWorkbook, selectedSheet, ownerId, uploadedFile]);
+  }, [fileType, noticeInfo, ownerToken, uploadedWorkbook, selectedSheet, ownerId, uploadedFile, resetAgreementContext]);
 
   const handleGenerateAgreement = () => {
     generateAgreementMessages();
@@ -1311,12 +1320,18 @@ export default function ExcelHelperPage() {
               <div>
                 <div style={searchFileHighlightStyle}>
                   <label className="field-label" style={strongLabelStyle}>검색 파일 (필수)</label>
-                  <select className="input" value={fileType} onChange={(e) => setFileType(e.target.value)}>
-                    <option value="">선택하세요</option>
+                  <div className="button-group">
                     {FILE_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={fileType === option.value ? 'btn-chip active' : 'btn-chip'}
+                        onClick={() => setFileType(option.value)}
+                      >
+                        {option.label}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
               </div>
             </div>
