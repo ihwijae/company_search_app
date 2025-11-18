@@ -9,6 +9,30 @@ import {
   extractManagerNames,
 } from '../../../../utils/companyIndicators.js';
 
+const REGION_WINDOW_STORAGE_KEY = '__regionSearchWindow';
+
+const getStoredRegionWindow = () => {
+  if (typeof window === 'undefined') return null;
+  const existing = window[REGION_WINDOW_STORAGE_KEY];
+  if (existing && !existing.closed) return existing;
+  return null;
+};
+
+const storeRegionWindow = (target) => {
+  if (typeof window === 'undefined') return;
+  if (target && !target.closed) {
+    window[REGION_WINDOW_STORAGE_KEY] = target;
+  } else {
+    delete window[REGION_WINDOW_STORAGE_KEY];
+  }
+};
+
+const getStoredPortalContainer = () => {
+  const win = getStoredRegionWindow();
+  if (!win || win.closed || !win.document) return null;
+  return win.document.getElementById('candidates-window-root');
+};
+
 const DATE_PATTERN = /(\d{2,4})[.\-/년\s]*(\d{1,2})[.\-/월\s]*(\d{1,2})/;
 
 const SIPYUNG_RESOLVERS = [
@@ -156,8 +180,8 @@ export default function CandidatesModal({
   onApply,
   readOnly = false,
 }) {
-  const popupRef = useRef(null);
-  const [portalContainer, setPortalContainer] = useState(null);
+  const popupRef = useRef(getStoredRegionWindow());
+  const [portalContainer, setPortalContainer] = useState(() => getStoredPortalContainer());
   const [applying, setApplying] = useState(false);
   const [params, setParams] = useState({
     entryAmount: '',
@@ -199,6 +223,9 @@ export default function CandidatesModal({
     base.setHours(0, 0, 0, 0);
     return base;
   }, []);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => () => { isMountedRef.current = false; }, []);
 
   const closeWindow = useCallback(() => {
     const win = popupRef.current;
@@ -211,13 +238,40 @@ export default function CandidatesModal({
     }
     popupRef.current = null;
     setPortalContainer(null);
+    storeRegionWindow(null);
   }, []);
+
+  const attachBeforeUnload = useCallback((target) => {
+    if (!target) return;
+    if (target.__candidatesCleanup) {
+      try { target.__candidatesCleanup(); } catch {}
+      delete target.__candidatesCleanup;
+    }
+    const handler = () => {
+      if (popupRef.current === target) {
+        popupRef.current = null;
+      }
+      storeRegionWindow(null);
+      if (isMountedRef.current) {
+        setPortalContainer(null);
+        onClose?.();
+      }
+    };
+    target.addEventListener('beforeunload', handler);
+    target.__candidatesCleanup = () => target.removeEventListener('beforeunload', handler);
+  }, [onClose]);
 
   const ensureWindow = useCallback(() => {
     if (typeof window === 'undefined') return;
 
+    if (!popupRef.current) {
+      const stored = getStoredRegionWindow();
+      if (stored) popupRef.current = stored;
+    }
+
     if (popupRef.current && popupRef.current.closed) {
       popupRef.current = null;
+      storeRegionWindow(null);
       setPortalContainer(null);
     }
 
@@ -241,25 +295,29 @@ export default function CandidatesModal({
       child.document.body.appendChild(root);
       copyDocumentStyles(document, child.document);
       setPortalContainer(root);
-      const handleBeforeUnload = () => {
-        popupRef.current = null;
-        setPortalContainer(null);
-        onClose?.();
-      };
-      child.addEventListener('beforeunload', handleBeforeUnload);
-      child.__candidatesCleanup = () => child.removeEventListener('beforeunload', handleBeforeUnload);
+      storeRegionWindow(child);
+      attachBeforeUnload(child);
     } else {
       const win = popupRef.current;
+      storeRegionWindow(win);
       if (win.document && win.document.readyState === 'complete') {
         copyDocumentStyles(document, win.document);
       }
-      if (!portalContainer && win.document) {
-        const existingRoot = win.document.getElementById('candidates-window-root');
-        if (existingRoot) setPortalContainer(existingRoot);
+      if (win.document) {
+        let root = win.document.getElementById('candidates-window-root');
+        if (!root) {
+          root = win.document.createElement('div');
+          root.id = 'candidates-window-root';
+          win.document.body.appendChild(root);
+        }
+        if (!portalContainer || portalContainer !== root) {
+          setPortalContainer(root);
+        }
       }
+      attachBeforeUnload(win);
       try { win.focus(); } catch {}
     }
-  }, [onClose, portalContainer]);
+  }, [attachBeforeUnload, portalContainer]);
 
   const normalizedOwnerId = String(ownerId || '').toUpperCase();
   const isPpsOwner = normalizedOwnerId === 'PPS';
@@ -279,8 +337,6 @@ export default function CandidatesModal({
       closeWindow();
     }
   }, [open, ensureWindow, closeWindow]);
-
-  useEffect(() => () => { closeWindow(); }, [closeWindow]);
 
   useEffect(() => {
     if (!open) return;
@@ -1256,7 +1312,14 @@ const industryToLabel = (type) => {
                     && Number.isFinite(creditMax)
                     && creditMax > 0
                     && Math.abs(creditScoreValue - creditMax) < 1e-6;
-                  if (managementMax > 0 && (combinedIsMax || creditIsMax)) {
+                  const combinedMatchesManagement = managementMax > 0
+                    && Math.abs(managementMax - combinedMax) < 1e-6;
+                  const creditMatchesManagement = managementMax > 0
+                    && Number.isFinite(creditMax)
+                    && Math.abs(managementMax - creditMax) < 1e-6;
+                  const shouldSnapToMax = (combinedMatchesManagement && combinedIsMax)
+                    || (creditMatchesManagement && creditIsMax);
+                  if (shouldSnapToMax) {
                     managementScore = managementMax;
                   }
                   const managementIsMax = managementMax > 0 && Math.abs(managementScore - managementMax) < 1e-6;

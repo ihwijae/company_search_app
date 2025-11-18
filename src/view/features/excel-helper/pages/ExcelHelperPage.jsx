@@ -54,7 +54,6 @@ const BIZ_FIELDS = ['사업자번호', 'bizNo', '사업자 번호'];
 const MANAGEMENT_FIELDS = ['경영상태점수', '경영점수', '관리점수', '경영상태 점수'];
 const PERFORMANCE_FIELDS = ['5년 실적', '5년실적', '최근5년실적합계', '최근5년실적'];
 const SIPYUNG_FIELDS = ['시평', '시평액', '시평금액', '시평액(원)', '시평금액(원)'];
-const ABILITY_FIELDS = ['시공능력평가액', '시공능력평가', '시공능력 평가'];
 const QUALITY_FIELDS = ['품질점수', '품질평가', '품질평가점수'];
 const REGION_FIELDS = ['대표지역', '지역'];
 const REPRESENTATIVE_FIELDS = ['대표자', '대표자명'];
@@ -82,17 +81,14 @@ const RANGE_AMOUNT_PRESETS = {
 };
 const DEFAULT_RANGE_AMOUNT = 50 * WON;
 
+const DEFAULT_SIPYUNG_COL_OFFSET = 38;
+
 const DEFAULT_OFFSETS = [
   { key: 'name', label: '업체명', rowOffset: 0, colOffset: 0 },
   { key: 'share', label: '지분', rowOffset: 0, colOffset: 6 },
   { key: 'managementScore', label: '경영상태점수', rowOffset: 0, colOffset: 13 },
   { key: 'performanceAmount', label: '실적액', rowOffset: 0, colOffset: 20 },
-  { key: 'sipyungAmount', label: '시평액', rowOffset: 0, colOffset: 38 },
-];
-
-const LH_EXTRA_OFFSETS = [
-  { key: 'qualityScore', label: '품질점수', rowOffset: 1, colOffset: 6 },
-  { key: 'abilityAmount', label: '시공능력평가액', rowOffset: 0, colOffset: 41 },
+  { key: 'sipyungAmount', label: '시평액', rowOffset: 0, colOffset: DEFAULT_SIPYUNG_COL_OFFSET },
 ];
 
 const MAX_SLOTS = 5;
@@ -153,13 +149,11 @@ const computeMetrics = (company) => {
   const managementRaw = pickFirstValue(company, MANAGEMENT_FIELDS);
   const performanceRaw = pickFirstValue(company, PERFORMANCE_FIELDS);
   const sipyungRaw = pickFirstValue(company, SIPYUNG_FIELDS);
-  const abilityRaw = pickFirstValue(company, ABILITY_FIELDS);
   const qualityRaw = pickFirstValue(company, QUALITY_FIELDS);
 
   const managementScore = toNumeric(managementRaw) ?? managementRaw ?? '';
   const performanceAmount = toNumeric(performanceRaw) ?? performanceRaw ?? '';
   const sipyungAmount = toNumeric(sipyungRaw) ?? sipyungRaw ?? '';
-  const abilityAmount = toNumeric(abilityRaw) ?? abilityRaw ?? '';
   const qualityScore = toNumeric(qualityRaw) ?? qualityRaw ?? '';
 
   return {
@@ -173,17 +167,40 @@ const computeMetrics = (company) => {
     performanceDisplay: formatAmount(performanceRaw || performanceAmount),
     sipyungAmount,
     sipyungDisplay: formatAmount(sipyungRaw || sipyungAmount),
-    abilityAmount,
-    abilityDisplay: formatAmount(abilityRaw || abilityAmount),
     qualityScore,
     qualityDisplay: formatAmount(qualityRaw || qualityScore),
     raw: company,
   };
 };
 
-const getOffsetsForOwner = (ownerId) => {
-  if (ownerId === 'lh') return [...DEFAULT_OFFSETS, ...LH_EXTRA_OFFSETS];
-  return DEFAULT_OFFSETS;
+const resolveSipyungColumnOffset = (ownerId, rangeId) => {
+  const ownerKey = String(ownerId || '').toLowerCase();
+  if (ownerKey !== 'lh') {
+    return DEFAULT_SIPYUNG_COL_OFFSET;
+  }
+  if (rangeId === 'under50') {
+    return 41;
+  }
+  if (rangeId === '50to100') {
+    return 43;
+  }
+  return DEFAULT_SIPYUNG_COL_OFFSET;
+};
+
+const getOffsetsForOwner = (ownerId, rangeId) => {
+  const ownerKey = String(ownerId || '').toLowerCase();
+  const sipyungOffset = resolveSipyungColumnOffset(ownerKey, rangeId);
+  const ownerOffsets = DEFAULT_OFFSETS.map((item) => (
+    item.key === 'sipyungAmount'
+      ? { ...item, colOffset: sipyungOffset }
+      : item
+  ));
+
+  if (ownerKey === 'lh') {
+    return [...ownerOffsets, { key: 'qualityScore', label: '품질점수', rowOffset: 1, colOffset: 6 }];
+  }
+
+  return ownerOffsets;
 };
 
 const deriveNoticeFields = (noticeInfoContent) => {
@@ -875,7 +892,7 @@ export default function ExcelHelperPage() {
       ? evaluatedManagement
       : parseNumericInput(selectedMetrics.managementScore);
 
-    const offsets = getOffsetsForOwner(ownerId);
+    const offsets = getOffsetsForOwner(ownerId, rangeId);
     const updates = offsets
       .map((field) => {
         let source = null;
@@ -1494,10 +1511,6 @@ export default function ExcelHelperPage() {
                   <div>
                     <div className="detail-label">품질점수</div>
                     <div className="detail-value">{selectedMetrics?.qualityDisplay || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="detail-label">시공능력평가액</div>
-                    <div className="detail-value">{selectedMetrics?.abilityDisplay || '-'}</div>
                   </div>
                 </>
               )}

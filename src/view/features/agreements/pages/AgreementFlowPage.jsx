@@ -3,7 +3,12 @@ import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import AmountInput from '../../../../components/AmountInput.jsx';
-import CandidatesModal from '../components/CandidatesModal.jsx';
+import {
+  getRegionSearchState,
+  openRegionSearch,
+  subscribeRegionSearch,
+  updateRegionSearchProps,
+} from '../components/regionSearchStore.js';
 import { useAgreementBoard } from '../context/AgreementBoardContext.jsx';
 import { BASE_ROUTES, findMenuByKey } from '../../../../shared/navigation.js';
 import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
@@ -80,7 +85,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     const saved = loadPersisted(`${storageKey}:dutyRegions`, []);
     return Array.isArray(saved) ? saved.filter((name) => typeof name === 'string') : [];
   });
-  const [regionSearchOpen, setRegionSearchOpen] = React.useState(false);
+  const regionSearchSessionRef = React.useRef(null);
 
   const toFileType = (industry) => {
     if (industry === '전기') return 'eung';
@@ -472,13 +477,52 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     if (menu) window.location.hash = menu.hash;
   };
 
+  const buildRegionSearchPayload = useCallback(() => ({
+    ownerId,
+    menuKey,
+    rangeId: menuKey,
+    fileType: currentFileType,
+    noticeNo: form.noticeNo,
+    noticeTitle: form.title,
+    noticeDate: form.noticeDate,
+    industryLabel: form.industry,
+    entryAmount: form.entryQualificationAmount || '',
+    entryMode,
+    baseAmount: form.baseAmount,
+    estimatedAmount: form.estimatedPrice,
+    bidAmount: form.bidAmount,
+    bidRate: form.bidRate,
+    adjustmentRate: form.adjustmentRate,
+    perfectPerformanceAmount,
+    dutyRegions,
+    ratioBaseAmount: isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount || ''),
+    defaultExcludeSingle: true,
+    readOnly: true,
+  }), [ownerId, menuKey, currentFileType, form.noticeNo, form.title, form.noticeDate, form.industry, form.entryQualificationAmount, entryMode, form.baseAmount, form.estimatedPrice, form.bidAmount, form.bidRate, form.adjustmentRate, perfectPerformanceAmount, dutyRegions, isPPS, form.ratioBaseAmount]);
+
   const handleOpenRegionSearch = useCallback(() => {
-    setRegionSearchOpen(true);
+    const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    regionSearchSessionRef.current = sessionId;
+    const payload = { ...buildRegionSearchPayload(), sessionId };
+    openRegionSearch(payload);
+  }, [buildRegionSearchPayload]);
+
+  React.useEffect(() => {
+    const unsubscribe = subscribeRegionSearch((next) => {
+      if (!next.open && next.props?.sessionId === regionSearchSessionRef.current) {
+        regionSearchSessionRef.current = null;
+      }
+    });
+    return unsubscribe;
   }, []);
 
-  const handleCloseRegionSearch = useCallback(() => {
-    setRegionSearchOpen(false);
-  }, []);
+  React.useEffect(() => {
+    const sessionId = regionSearchSessionRef.current;
+    if (!sessionId) return;
+    const currentState = getRegionSearchState();
+    if (!currentState.open || currentState.props?.sessionId !== sessionId) return;
+    updateRegionSearchProps(buildRegionSearchPayload(), sessionId);
+  }, [buildRegionSearchPayload]);
 
   const handleOpenBoard = useCallback(() => {
     openBoard({
@@ -723,30 +767,6 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
           </div>
         </div>
       </div>
-      <CandidatesModal
-        open={regionSearchOpen}
-        onClose={handleCloseRegionSearch}
-        ownerId={ownerId}
-        menuKey={menuKey}
-        rangeId={menuKey}
-        fileType={currentFileType}
-        noticeNo={form.noticeNo}
-        noticeTitle={form.title}
-        noticeDate={form.noticeDate}
-        industryLabel={form.industry}
-        entryAmount={form.entryQualificationAmount || ''}
-        entryMode={entryMode}
-        baseAmount={form.baseAmount}
-        estimatedAmount={form.estimatedPrice}
-        bidAmount={form.bidAmount}
-        bidRate={form.bidRate}
-        adjustmentRate={form.adjustmentRate}
-        perfectPerformanceAmount={perfectPerformanceAmount}
-        dutyRegions={dutyRegions}
-        ratioBaseAmount={isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount || '')}
-        defaultExcludeSingle
-        readOnly
-      />
     </div>
   );
 }

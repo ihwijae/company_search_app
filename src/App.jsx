@@ -14,6 +14,7 @@ import MOIS30To50Page from './view/features/agreements/pages/MOIS30To50Page.jsx'
 import MOIS50To100Page from './view/features/agreements/pages/MOIS50To100Page.jsx';
 import { AgreementBoardProvider } from './view/features/agreements/context/AgreementBoardContext.jsx';
 import ExcelHelperPage from './view/features/excel-helper/pages/ExcelHelperPage.jsx';
+import RegionSearchWindowHost from './view/features/agreements/components/RegionSearchWindowHost.jsx';
 
 export default function App() {
   const [route, setRoute] = React.useState(window.location.hash || '#/search');
@@ -78,6 +79,7 @@ export default function App() {
   return (
     <AgreementBoardProvider>
       <Screen />
+      <RegionSearchWindowHost />
     </AgreementBoardProvider>
   );
 }
