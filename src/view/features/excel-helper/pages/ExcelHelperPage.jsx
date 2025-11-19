@@ -1686,6 +1686,7 @@ export default function ExcelHelperPage() {
                       const region = pickFirstValue(option, REGION_FIELDS) || '-';
                       const typeKey = String(option?._file_type || '').toLowerCase();
                       const typeLabel = FILE_TYPE_LABELS[typeKey] || '';
+                      const managers = extractManagerNames(option);
                       return (
                         <button
                           key={optionKey}
@@ -1699,6 +1700,13 @@ export default function ExcelHelperPage() {
                           </div>
                           <div className="excel-helper-modal__option-meta">사업자번호 {bizNo}</div>
                           <div className="excel-helper-modal__option-meta">대표자 {representative} · 지역 {region}</div>
+                          {managers.length > 0 && (
+                            <div className="excel-helper-modal__option-managers">
+                              {managers.map((manager) => (
+                                <span key={`${optionKey}-${manager}`} className="badge-person">{manager}</span>
+                              ))}
+                            </div>
+                          )}
                         </button>
                       );
                     })}
