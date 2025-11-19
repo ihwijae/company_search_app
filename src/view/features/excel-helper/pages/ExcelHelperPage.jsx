@@ -389,6 +389,7 @@ const normalizeName = (value) => {
   let name = String(value || '').replace(/\s+/g, '').toLowerCase();
   name = name.replace(/^(주|\(주\)|㈜|주\)|\(합\))/, '');
   name = name.replace(/(주|\(주\)|㈜|주\)|\(합\))$/, '');
+  name = name.replace(/이앤/g, '이엔');
   name = name.replace(/[^a-zA-Z0-9가-힣]/g, '');
   return name;
 };
