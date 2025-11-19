@@ -92,7 +92,6 @@ const DEFAULT_OFFSETS = [
 ];
 
 const MAX_SLOTS = 5;
-const EXCLUDED_SOLO_COMPANIES = new Set(['에코엠이엔씨', '아람이엔테크', '우진일렉트', '지음쏠라테크'].map(name => normalizeName(name)));
 
 const pickFirstValue = (company, keys) => {
   if (!company || !Array.isArray(keys)) return '';
@@ -393,6 +392,8 @@ const normalizeName = (value) => {
   name = name.replace(/[^a-zA-Z0-9가-힣]/g, '');
   return name;
 };
+
+const EXCLUDED_SOLO_COMPANIES = new Set(['에코엠이엔씨', '아람이엔테크', '우진일렉트', '지음쏠라테크'].map((name) => normalizeName(name)));
 
 const normalizeBizNumber = (value) => {
   if (!value && value !== 0) return '';
