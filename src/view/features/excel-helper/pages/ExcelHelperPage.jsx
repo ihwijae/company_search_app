@@ -494,6 +494,18 @@ const cleanCompanyName = (rawName) => {
   return result;
 };
 
+const buildRerunNameCandidates = (name) => {
+  if (!name) return [];
+  const base = String(name).trim();
+  if (!base) return [];
+  const variants = new Set();
+  const swapToAen = base.replace(/이엔/g, '이앤');
+  if (swapToAen !== base) variants.add(swapToAen);
+  const swapToEn = base.replace(/이앤/g, '이엔');
+  if (swapToEn !== base) variants.add(swapToEn);
+  return Array.from(variants);
+};
+
 const makeLocationKey = ({ workbook, worksheet, row, column }) => (
   `${workbook || ''}|${worksheet || ''}|${row || 0}|${column || 0}`
 );
@@ -1353,6 +1365,30 @@ export default function ExcelHelperPage() {
         companySearchResultMap.get(normalized).push(company);
       });
       console.log('[generateAgreementMessages] companySearchResultMap:', companySearchResultMap);
+
+      const rerunNames = new Set();
+      normalizedCompanyDisplayMap.forEach((displayName, normalized) => {
+        if (companySearchResultMap.has(normalized)) return;
+        const candidates = buildRerunNameCandidates(displayName);
+        candidates.forEach((candidate) => rerunNames.add(candidate));
+      });
+
+      if (rerunNames.size > 0) {
+        console.log('[generateAgreementMessages] Rerunning search for candidates:', Array.from(rerunNames));
+        const rerunResponse = await window.electronAPI.searchManyCompanies(Array.from(rerunNames), fileType);
+        console.log('[generateAgreementMessages] Rerun search response:', rerunResponse);
+        if (rerunResponse.success) {
+          (rerunResponse.data || []).forEach((company) => {
+            const name = pickFirstValue(company, NAME_FIELDS);
+            const normalized = normalizeName(name);
+            if (!normalized) return;
+            if (!companySearchResultMap.has(normalized)) {
+              companySearchResultMap.set(normalized, []);
+            }
+            companySearchResultMap.get(normalized).push(company);
+          });
+        }
+      }
 
       const conflictDisplayMap = new Map();
       allAgreementsData.forEach((agreement) => {
