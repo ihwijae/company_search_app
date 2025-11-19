@@ -208,6 +208,20 @@ button.primary:hover { background: var(--accent-2); }
 .excel-helper-search-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .excel-helper-selected { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
 .excel-helper-share-input { min-width: 150px; }
+.excel-helper-modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 1000; }
+.excel-helper-modal { width: min(760px, 100%); max-height: calc(100vh - 120px); background: #fff; border-radius: 18px; box-shadow: 0 20px 60px rgba(15, 23, 42, 0.35); display: flex; flex-direction: column; }
+.excel-helper-modal__header { padding: 20px 24px 0; }
+.excel-helper-modal__header h3 { margin: 0 0 6px; font-size: 18px; }
+.excel-helper-modal__header p { margin: 0; color: #6b7280; font-size: 14px; }
+.excel-helper-modal__body { padding: 16px 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+.excel-helper-modal__conflict-title { font-weight: 600; margin-bottom: 8px; }
+.excel-helper-modal__options { display: flex; flex-direction: column; gap: 8px; }
+.excel-helper-modal__option { text-align: left; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; background: #f9fafb; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+.excel-helper-modal__option:hover { border-color: #2563eb; }
+.excel-helper-modal__option.active { border-color: #2563eb; background: #ebf2ff; }
+.excel-helper-modal__option-name { font-weight: 600; display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.excel-helper-modal__option-meta { font-size: 13px; color: #6b7280; }
+.excel-helper-modal__footer { padding: 16px 24px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 12px; }
 .button-group { display: flex; flex-wrap: wrap; gap: 8px; }
 .btn-chip { border: 1px solid #d0d5dd; background: #fff; border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--subtle); transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
 .btn-chip.active { background: rgba(37, 99, 235, 0.12); border-color: var(--accent); color: var(--accent-2); }

@@ -92,6 +92,7 @@ const DEFAULT_OFFSETS = [
 ];
 
 const MAX_SLOTS = 5;
+const EXCLUDED_SOLO_COMPANIES = new Set(['에코엠이엔씨', '아람이엔테크', '우진일렉트', '지음쏠라테크'].map(name => normalizeName(name)));
 
 const pickFirstValue = (company, keys) => {
   if (!company || !Array.isArray(keys)) return '';
@@ -391,6 +392,22 @@ const normalizeName = (value) => {
   name = name.replace(/(주|\(주\)|㈜|주\)|\(합\))$/, '');
   name = name.replace(/[^a-zA-Z0-9가-힣]/g, '');
   return name;
+};
+
+const normalizeBizNumber = (value) => {
+  if (!value && value !== 0) return '';
+  return String(value).replace(/[^0-9]/g, '');
+};
+
+const buildCompanyOptionKey = (company) => {
+  if (!company || typeof company !== 'object') return '';
+  const typeToken = String(company?._file_type || '').trim().toLowerCase();
+  const biz = normalizeBizNumber(pickFirstValue(company, BIZ_FIELDS));
+  if (biz) return typeToken ? `${typeToken}|biz:${biz}` : `biz:${biz}`;
+  const name = String(pickFirstValue(company, NAME_FIELDS) || '').trim();
+  if (name) return typeToken ? `${typeToken}|name:${name}` : `name:${name}`;
+  const fallback = String(company?.id || company?.rowIndex || company?.row || '');
+  return fallback ? `${typeToken}|row:${fallback}` : typeToken || Math.random().toString(36).slice(2);
 };
 
 const COMMON_SURNAMES = new Set([
@@ -699,6 +716,9 @@ export default function ExcelHelperPage() {
   const [uploadedWorkbook, setUploadedWorkbook] = React.useState(null);
   const [sheetNames, setSheetNames] = React.useState([]);
   const [selectedSheet, setSelectedSheet] = React.useState('');
+  const [pendingAgreementContext, setPendingAgreementContext] = React.useState(null);
+  const [companyConflictSelections, setCompanyConflictSelections] = React.useState({});
+  const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
 
   const resetAgreementContext = React.useCallback(() => {
     setNoticeInfo('');
@@ -989,8 +1009,148 @@ export default function ExcelHelperPage() {
     setSelectedSheet(event.target.value);
   };
 
+  const continueAgreementGeneration = React.useCallback(async (context, selectionOverrides = null) => {
+    const agreements = Array.isArray(context?.agreements) ? context.agreements : [];
+    const candidateEntries = context?.candidatesMap instanceof Map
+      ? Array.from(context.candidatesMap.entries())
+      : Array.isArray(context?.candidatesMap)
+        ? context.candidatesMap
+        : [];
+    const candidatesMap = new Map(candidateEntries);
+    if (!agreements.length) {
+      throw new Error('유효한 협정 데이터를 찾지 못했습니다.');
+    }
+
+    const selectionMap = selectionOverrides || companyConflictSelections;
+
+    const allPayloads = agreements.map((agreement) => {
+      const participants = agreement.participants.map((p) => {
+        const normalizedParticipantName = normalizeName(p.name);
+        let candidates = normalizedParticipantName ? (candidatesMap.get(normalizedParticipantName) || []) : [];
+        if (normalizedParticipantName && !candidates.length) {
+          for (const [key, list] of candidatesMap.entries()) {
+            if (key.startsWith(normalizedParticipantName) && list.length) {
+              candidates = list;
+              break;
+            }
+          }
+        }
+
+        let foundCompany = null;
+        if (candidates.length === 1) {
+          foundCompany = candidates[0];
+        } else if (candidates.length > 1) {
+          const savedKey = selectionMap?.[normalizedParticipantName];
+          if (savedKey) {
+            foundCompany = candidates.find((candidate) => buildCompanyOptionKey(candidate) === savedKey) || null;
+          }
+          if (!foundCompany) {
+            foundCompany = candidates[0];
+          }
+        }
+
+        const targetCompany = foundCompany || candidates[0] || null;
+        const bizNo = targetCompany ? (pickFirstValue(targetCompany, BIZ_FIELDS) || '') : '';
+        const fullName = targetCompany ? (pickFirstValue(targetCompany, NAME_FIELDS) || p.name) : p.name;
+
+        let finalShare = p.share;
+        const shareAsNumber = parseFloat(String(p.share).replace('%', ''));
+        if (Number.isFinite(shareAsNumber)) {
+          if (shareAsNumber > 0 && shareAsNumber <= 1) {
+            finalShare = shareAsNumber * 100;
+          } else {
+            finalShare = shareAsNumber;
+          }
+          finalShare = parseFloat(finalShare.toPrecision(12));
+        }
+
+        return { ...p, name: fullName, bizNo, share: finalShare };
+      }).filter(Boolean);
+
+      if (participants.length === 0) {
+        return null;
+      }
+
+      const leader = participants[0];
+      const members = participants.slice(1);
+      const isSoloBid = members.length === 0 && Number(leader.share) === 100;
+      const normalizedLeaderName = normalizeName(leader.name);
+      if (isSoloBid && EXCLUDED_SOLO_COMPANIES.has(normalizedLeaderName)) {
+        console.log(`[generateAgreementMessages] Excluding solo bid by blacklisted company: ${leader.name}`);
+        return null;
+      }
+
+      const payload = buildAgreementPayload(ownerToken, noticeInfo, leader, members);
+      const validation = validateAgreement(payload);
+      return validation.ok ? payload : null;
+    }).filter(Boolean);
+
+    console.log('[generateAgreementMessages] Final allPayloads before generation:', allPayloads);
+
+    if (!allPayloads.length) {
+      throw new Error('유효한 협정 데이터를 찾지 못했습니다.');
+    }
+
+    const text = generateMany(allPayloads);
+    if (window.electronAPI?.clipboardWriteText) {
+      await window.electronAPI.clipboardWriteText(text);
+    } else {
+      await navigator.clipboard.writeText(text);
+    }
+    alert(`${allPayloads.length}건의 협정 문자가 클립보드에 복사되었습니다.`);
+    resetAgreementContext();
+    setPendingAgreementContext(null);
+  }, [companyConflictSelections, noticeInfo, ownerToken, resetAgreementContext]);
+
+  const handleCompanyConflictPick = React.useCallback((normalizedName, company) => {
+    if (!normalizedName || !company) return;
+    const key = buildCompanyOptionKey(company);
+    setCompanyConflictSelections((prev) => ({
+      ...prev,
+      [normalizedName]: key,
+    }));
+  }, []);
+
+  const handleCompanyConflictCancel = React.useCallback(() => {
+    setCompanyConflictModal({ open: false, entries: [], isResolving: false });
+    setPendingAgreementContext(null);
+  }, []);
+
+  const handleCompanyConflictConfirm = React.useCallback(async () => {
+    if (!pendingAgreementContext) {
+      setCompanyConflictModal({ open: false, entries: [], isResolving: false });
+      return;
+    }
+
+    const unresolved = (companyConflictModal.entries || []).filter((entry) => {
+      const selectedKey = companyConflictSelections?.[entry.normalizedName];
+      if (!selectedKey) return true;
+      return !entry.options.some((option) => buildCompanyOptionKey(option) === selectedKey);
+    });
+
+    if (unresolved.length > 0) {
+      alert('중복된 업체마다 하나씩 선택해 주세요.');
+      return;
+    }
+
+    setCompanyConflictModal((prev) => ({ ...prev, isResolving: true }));
+    setIsGeneratingAgreement(true);
+    try {
+      await continueAgreementGeneration(pendingAgreementContext, companyConflictSelections);
+      setCompanyConflictModal({ open: false, entries: [], isResolving: false });
+      setPendingAgreementContext(null);
+    } catch (err) {
+      alert(err.message || '협정 문자 생성에 실패했습니다.');
+      setCompanyConflictModal((prev) => ({ ...prev, isResolving: false }));
+    } finally {
+      setIsGeneratingAgreement(false);
+    }
+  }, [companyConflictModal.entries, companyConflictSelections, continueAgreementGeneration, pendingAgreementContext]);
+
   const generateAgreementMessages = React.useCallback(async () => {
     setIsGeneratingAgreement(true); // 로딩 시작
+    setPendingAgreementContext(null);
+    setCompanyConflictModal({ open: false, entries: [], isResolving: false });
     // 0. Validation
     if (!ownerId) {
       setIsGeneratingAgreement(false);
@@ -1047,6 +1207,7 @@ export default function ExcelHelperPage() {
       console.log('[generateAgreementMessages] Step 1: Gathering Company Names');
       const allCompanyNames = new Set();
       const allAgreementsData = []; // Will store { row, participants: [{ name, share }] }
+      const normalizedCompanyDisplayMap = new Map();
       let currentRow = 5;
       const isLhOwner = ownerId === 'lh';
       const maxConsecutiveEmptyRows = isLhOwner ? 2 : 1;
@@ -1127,6 +1288,10 @@ export default function ExcelHelperPage() {
             const cleanedName = cleanCompanyName(rawName);
             if (cleanedName) {
               allCompanyNames.add(cleanedName);
+              const normalizedCompanyName = normalizeName(cleanedName);
+              if (normalizedCompanyName && !normalizedCompanyDisplayMap.has(normalizedCompanyName)) {
+                normalizedCompanyDisplayMap.set(normalizedCompanyName, cleanedName);
+              }
               rowParticipants.push({
                 name: cleanedName,
                 share: shareItem?.value ?? null,
@@ -1174,96 +1339,63 @@ export default function ExcelHelperPage() {
       }
       
       const companySearchResultMap = new Map();
-      (searchResponse.data || []).forEach(company => {
+      (searchResponse.data || []).forEach((company) => {
         const name = pickFirstValue(company, NAME_FIELDS);
-        if (name) {
-          companySearchResultMap.set(normalizeName(name), company);
+        const normalized = normalizeName(name);
+        if (!normalized) return;
+        if (!companySearchResultMap.has(normalized)) {
+          companySearchResultMap.set(normalized, []);
         }
+        companySearchResultMap.get(normalized).push(company);
       });
       console.log('[generateAgreementMessages] companySearchResultMap:', companySearchResultMap);
 
-      // 3. PROCESS AND GENERATE
-      console.log('[generateAgreementMessages] Step 3: Processing and Generating Payloads.');
-      const EXCLUDED_SOLO_COMPANIES = new Set(['에코엠이엔씨', '아람이엔테크', '우진일렉트', '지음쏠라테크'].map(name => normalizeName(name)));
-
-      const allPayloads = allAgreementsData.map(agreement => {
-        const participants = agreement.participants.map(p => {
-          const normalizedParticipantName = normalizeName(p.name);
-          
-          let foundCompany = companySearchResultMap.get(normalizedParticipantName);
-          if (!foundCompany) {
-            for (const [key, company] of companySearchResultMap.entries()) {
-              if (key.startsWith(normalizedParticipantName)) {
-                foundCompany = company;
-                break;
-              }
-            }
+      const conflictDisplayMap = new Map();
+      allAgreementsData.forEach((agreement) => {
+        agreement.participants.forEach((participant) => {
+          const normalized = normalizeName(participant.name);
+          if (normalized && !conflictDisplayMap.has(normalized)) {
+            conflictDisplayMap.set(normalized, participant.name);
           }
-
-          const bizNo = foundCompany ? (pickFirstValue(foundCompany, BIZ_FIELDS) || '') : '';
-          const fullName = foundCompany ? (pickFirstValue(foundCompany, NAME_FIELDS) || p.name) : p.name;
-          
-          let finalShare = p.share;
-          const shareAsNumber = parseFloat(String(p.share).replace('%', ''));
-
-          if (Number.isFinite(shareAsNumber)) {
-            if (shareAsNumber > 0 && shareAsNumber <= 1) {
-              finalShare = shareAsNumber * 100;
-            } else {
-              finalShare = shareAsNumber;
-            }
-            finalShare = parseFloat(finalShare.toPrecision(12));
-          } else {
-            finalShare = p.share; // Keep original if not a number
-          }
-          
-          return { ...p, name: fullName, bizNo, share: finalShare };
         });
+      });
 
-        if (participants.length === 0) {
-          return null;
-        }
+      const conflictEntries = [];
+      for (const [normalized, displayName] of conflictDisplayMap.entries()) {
+        const candidates = companySearchResultMap.get(normalized) || [];
+        if (candidates.length <= 1) continue;
+        const savedKey = companyConflictSelections?.[normalized];
+        const hasValidSelection = savedKey
+          ? candidates.some((candidate) => buildCompanyOptionKey(candidate) === savedKey)
+          : false;
+        if (hasValidSelection) continue;
+        conflictEntries.push({
+          normalizedName: normalized,
+          displayName: normalizedCompanyDisplayMap.get(normalized) || displayName || normalized,
+          options: candidates,
+        });
+      }
 
-        const leader = participants[0];
-        const members = participants.slice(1);
+      const context = {
+        agreements: allAgreementsData,
+        candidatesMap: Array.from(companySearchResultMap.entries()),
+      };
 
-        // Exclude specific companies on solo bids
-        const isSoloBid = members.length === 0 && leader.share === 100;
-        const normalizedLeaderName = normalizeName(leader.name);
-
-        if (isSoloBid && EXCLUDED_SOLO_COMPANIES.has(normalizedLeaderName)) {
-          console.log(`[generateAgreementMessages] Excluding solo bid by blacklisted company: ${leader.name}`);
-          return null;
-        }
-
-        const payload = buildAgreementPayload(ownerToken, noticeInfo, leader, members);
-        const validation = validateAgreement(payload);
-        return validation.ok ? payload : null;
-      }).filter(Boolean);
-      console.log('[generateAgreementMessages] Final allPayloads before generation:', allPayloads);
-
-      if (allPayloads.length === 0) {
-        setIsGeneratingAgreement(false); // alert 전에 로딩 종료
-        alert('유효한 협정 데이터를 찾지 못했습니다.'); // 팝업으로 변경
+      if (conflictEntries.length > 0) {
+        setPendingAgreementContext(context);
+        setCompanyConflictModal({ open: true, entries: conflictEntries, isResolving: false });
+        setIsGeneratingAgreement(false);
         return;
       }
 
-      const text = generateMany(allPayloads);
-
-      if (window.electronAPI?.clipboardWriteText) {
-        await window.electronAPI.clipboardWriteText(text);
-      } else {
-        await navigator.clipboard.writeText(text);
-      }
-      setIsGeneratingAgreement(false); // alert 전에 로딩 종료
-      alert(`${allPayloads.length}건의 협정 문자가 클립보드에 복사되었습니다.`); // 팝업으로 변경
-      resetAgreementContext();
+      await continueAgreementGeneration(context);
+      setIsGeneratingAgreement(false);
 
     } catch (err) {
       setIsGeneratingAgreement(false); // alert 전에 로딩 종료
       alert(err.message || '협정 문자 생성에 실패했습니다.'); // 팝업으로 변경
     }
-  }, [fileType, noticeInfo, ownerToken, uploadedWorkbook, selectedSheet, ownerId, uploadedFile, resetAgreementContext]);
+  }, [fileType, noticeInfo, ownerToken, uploadedWorkbook, selectedSheet, ownerId, uploadedFile, companyConflictSelections, continueAgreementGeneration, resetAgreementContext]);
 
   const handleGenerateAgreement = () => {
     generateAgreementMessages();
@@ -1532,6 +1664,61 @@ export default function ExcelHelperPage() {
           </section>
         </div>
       </div>
+      {companyConflictModal.open && (
+        <div className="excel-helper-modal-overlay" role="presentation">
+          <div className="excel-helper-modal" role="dialog" aria-modal="true">
+            <header className="excel-helper-modal__header">
+              <h3>중복된 업체 선택</h3>
+              <p>동일한 이름의 업체가 여러 건 조회되었습니다. 각 업체에 맞는 자료를 선택해 주세요.</p>
+            </header>
+            <div className="excel-helper-modal__body">
+              {(companyConflictModal.entries || []).map((entry) => (
+                <div key={entry.normalizedName} className="excel-helper-modal__conflict">
+                  <div className="excel-helper-modal__conflict-title">{entry.displayName}</div>
+                  <div className="excel-helper-modal__options">
+                    {entry.options.map((option) => {
+                      const optionKey = buildCompanyOptionKey(option);
+                      const selectedKey = companyConflictSelections?.[entry.normalizedName];
+                      const isActive = selectedKey === optionKey;
+                      const bizNo = pickFirstValue(option, BIZ_FIELDS) || '-';
+                      const representative = pickFirstValue(option, REPRESENTATIVE_FIELDS) || '-';
+                      const region = pickFirstValue(option, REGION_FIELDS) || '-';
+                      const typeKey = String(option?._file_type || '').toLowerCase();
+                      const typeLabel = FILE_TYPE_LABELS[typeKey] || '';
+                      return (
+                        <button
+                          key={optionKey}
+                          type="button"
+                          className={isActive ? 'excel-helper-modal__option active' : 'excel-helper-modal__option'}
+                          onClick={() => handleCompanyConflictPick(entry.normalizedName, option)}
+                        >
+                          <div className="excel-helper-modal__option-name">
+                            {pickFirstValue(option, NAME_FIELDS) || entry.displayName}
+                            {typeLabel && <span className={`file-type-badge-small file-type-${typeKey}`}>{typeLabel}</span>}
+                          </div>
+                          <div className="excel-helper-modal__option-meta">사업자번호 {bizNo}</div>
+                          <div className="excel-helper-modal__option-meta">대표자 {representative} · 지역 {region}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <footer className="excel-helper-modal__footer">
+              <button type="button" className="btn-soft" onClick={handleCompanyConflictCancel} disabled={companyConflictModal.isResolving}>취소</button>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleCompanyConflictConfirm}
+                disabled={companyConflictModal.isResolving}
+              >
+                {companyConflictModal.isResolving ? '처리 중...' : '선택 완료'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
