@@ -458,8 +458,9 @@ const cleanCompanyName = (rawName) => {
   if (!rawName) return '';
   const original = String(rawName);
   let primary = original.split('\n')[0];
+  primary = primary.replace(/\r/g, '');
   const hasDelimiterHints = /[0-9_%]/.test(primary) || original.includes('_');
-  primary = primary.replace(/\s*[\d.,%].*$/, '');
+  primary = primary.replace(/\s*[\d.,%][\s\S]*$/, '');
   primary = primary.split('_')[0];
   let trimmed = primary.replace(/\s+/g, ' ').trim();
   if (!trimmed) return '';
