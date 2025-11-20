@@ -2,6 +2,7 @@
 
 const ExcelJS = require('exceljs');
 const { RELATIVE_OFFSETS: RELATIVE_OFFSETS } = require('./config.js'); 
+const CREDIT_GRADE_ORDER = require('./src/shared/creditGrades.json');
 
 // --- Helper Functions (Python 원본과 동일 기능) ---
 const parseAmount = (value) => {
@@ -124,6 +125,34 @@ const dedupeCompanies = (list) => {
   return deduped;
 };
 
+const CREDIT_GRADE_RANK = Array.isArray(CREDIT_GRADE_ORDER)
+  ? CREDIT_GRADE_ORDER.map((grade) => String(grade || '').trim().toUpperCase()).reduce((map, grade, index) => {
+    if (grade) map.set(grade, index);
+    return map;
+  }, new Map())
+  : new Map();
+
+const extractCreditGradeToken = (value) => {
+  if (value === null || value === undefined) return '';
+  const source = String(value).trim();
+  if (!source) return '';
+  const cleaned = source.replace(/\s+/g, ' ').toUpperCase();
+  const match = cleaned.match(/^([A-Z]{1,3}[0-9]?(?:[+-])?)/);
+  if (match && match[1]) return match[1];
+  const token = cleaned.split(/[\s(]/)[0] || '';
+  return token.replace(/[^A-Z0-9+-]/g, '') || '';
+};
+
+const getCreditGradeRank = (gradeToken) => {
+  if (!gradeToken) return Number.POSITIVE_INFINITY;
+  const normalized = String(gradeToken).trim().toUpperCase();
+  if (!normalized) return Number.POSITIVE_INFINITY;
+  if (CREDIT_GRADE_RANK.has(normalized)) {
+    return CREDIT_GRADE_RANK.get(normalized);
+  }
+  return Number.POSITIVE_INFINITY;
+};
+
 class SearchLogic {
   constructor(filePath) {
     this.filePath = filePath;
@@ -242,6 +271,11 @@ class SearchLogic {
                       const manager = SearchLogic.extractManagerName(companyData["비고"]);
                       if (manager) companyData["담당자명"] = manager;
                     } catch {}
+                    const normalizedCreditGrade = extractCreditGradeToken(companyData['신용평가']);
+                    if (normalizedCreditGrade) {
+                      companyData._creditGrade = normalizedCreditGrade;
+                    }
+                    companyData._creditGradeRank = getCreditGradeRank(normalizedCreditGrade);
                     this.allCompanies.push(companyData);
                 }
             }
@@ -331,6 +365,19 @@ class SearchLogic {
     if (criteria.manager) {
       const searchManager = criteria.manager.toLowerCase();
       results = results.filter(comp => String(comp["비고"] || '').toLowerCase().includes(searchManager));
+    }
+    const minCreditRaw = criteria.min_credit_grade || criteria.minCreditGrade || '';
+    const minCreditGrade = extractCreditGradeToken(minCreditRaw);
+    const minCreditRank = getCreditGradeRank(minCreditGrade);
+    if (minCreditGrade && Number.isFinite(minCreditRank)) {
+      results = results.filter((comp) => {
+        const rankValue = comp && comp._creditGradeRank;
+        const effectiveRank = Number.isFinite(rankValue)
+          ? rankValue
+          : getCreditGradeRank(extractCreditGradeToken(comp && comp['신용평가']));
+        if (!Number.isFinite(effectiveRank)) return false;
+        return effectiveRank <= minCreditRank;
+      });
     }
     const rangeFilters = { sipyung: '시평', '3y': '3년 실적', '5y': '5년 실적' };
      for (const key in rangeFilters) {

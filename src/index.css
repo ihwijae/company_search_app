@@ -99,7 +99,8 @@ body {
 .filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.25rem; /* 필터 간 간격 줄임 */
+  column-gap: 1.25rem;
+  row-gap: 0.75rem; /* 상하 간격 축소로 스크롤 최소화 */
 }
 .filter-item { display: flex; flex-direction: column; }
 .filter-item label { font-weight: 600; margin-bottom: 0.25rem; font-size: 0.875rem; color: var(--medium-gray-text); }

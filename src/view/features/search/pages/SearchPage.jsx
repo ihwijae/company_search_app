@@ -7,11 +7,15 @@ import Sidebar from '../../../../components/Sidebar';
 import Drawer from '../../../../components/Drawer';
 import { INDUSTRY_AVERAGES, DEBT_RATIO_WARN_FACTOR, CURRENT_RATIO_WARN_FACTOR } from '../../../../ratios.js';
 import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
+import CREDIT_GRADE_ORDER from '../../../../shared/creditGrades.json';
 
 // --- Helper Functions & Components (변경 없음) ---
 const formatNumber = (value) => { if (!value && value !== 0) return ''; const num = String(value).replace(/,/g, ''); return isNaN(num) ? String(value) : Number(num).toLocaleString(); };
 const SIPYUNG_KEYS = ['시평', '시평액', '시평금액', '시평액(원)', '시평금액(원)', 'sipyung', 'rating'];
 const PERF5Y_KEYS = ['5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적', 'perf5y', 'performance5y'];
+const CREDIT_GRADE_OPTIONS = Array.isArray(CREDIT_GRADE_ORDER)
+  ? CREDIT_GRADE_ORDER.map((grade) => String(grade || '').trim()).filter(Boolean)
+  : [];
 
 const resolveCompanyValue = (company, keys) => {
   if (!company || !Array.isArray(keys)) return null;
@@ -85,6 +89,7 @@ const createDefaultFilters = () => ({
   max_3y: '',
   min_5y: '',
   max_5y: '',
+  min_credit_grade: '',
 });
 
 const composeCompanyKey = (company, fallbackIndex = null) => {
@@ -431,6 +436,14 @@ function App() {
     });
     criteria.includeRegions = criteria.includeRegions.filter((r) => r && r !== '전체');
     criteria.excludeRegions = criteria.excludeRegions.filter((r) => r && r !== '전체');
+    if (typeof criteria.min_credit_grade === 'string') {
+      const trimmed = criteria.min_credit_grade.trim();
+      if (trimmed) {
+        criteria.min_credit_grade = trimmed.toUpperCase();
+      } else {
+        delete criteria.min_credit_grade;
+      }
+    }
     return criteria;
   }, [filters]);
 
@@ -864,7 +877,8 @@ function App() {
       min_3y: '',
       max_3y: '',
       min_5y: '',
-      max_5y: ''
+      max_5y: '',
+      min_credit_grade: '',
     }));
   };
 
@@ -1080,6 +1094,19 @@ function App() {
                   placeholder="제외할 지역을 선택하세요"
                 />
                 <div className="filter-item"><label>담당자</label><input type="text" name="manager" value={filters.manager} onChange={handleFilterChange} className="filter-input" /></div>
+                <div className="filter-item"><label>신용평가</label>
+                  <select
+                    name="min_credit_grade"
+                    value={filters.min_credit_grade}
+                    onChange={handleFilterChange}
+                    className="filter-input"
+                  >
+                    <option value="">무관</option>
+                    {CREDIT_GRADE_OPTIONS.map((grade) => (
+                      <option key={grade} value={grade}>{grade} 이상</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="filter-item range"><label>시평액 범위</label><div className="range-inputs"><input type="text" name="min_sipyung" value={filters.min_sipyung} onChange={handleFilterChange} placeholder="최소" className="filter-input" /><span>~</span><input type="text" name="max_sipyung" value={filters.max_sipyung} onChange={handleFilterChange} placeholder="최대" className="filter-input" /></div></div>
                 <div className="filter-item range"><label>3년 실적 범위</label><div className="range-inputs"><input type="text" name="min_3y" value={filters.min_3y} onChange={handleFilterChange} placeholder="최소" className="filter-input" /><span>~</span><input type="text" name="max_3y" value={filters.max_3y} onChange={handleFilterChange} placeholder="최대" className="filter-input" /></div></div>
                 <div className="filter-item range"><label>5년 실적 범위</label><div className="range-inputs"><input type="text" name="min_5y" value={filters.min_5y} onChange={handleFilterChange} placeholder="최소" className="filter-input" /><span>~</span><input type="text" name="max_5y" value={filters.max_5y} onChange={handleFilterChange} placeholder="최대" className="filter-input" /></div></div>
