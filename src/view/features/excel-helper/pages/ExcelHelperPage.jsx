@@ -426,6 +426,7 @@ const COMPANY_SUFFIX_DENY = new Set([
 ]);
 
 const CORPORATE_PREFIX_PATTERN = /(주식회사|유한회사|농업회사법인|사단법인|재단법인|합자회사|합명회사|법인)$/;
+const TRAILING_HANJA_PATTERN = /[\u3400-\u9FFF\uF900-\uFAFF]+$/u;
 const JOB_TITLE_TOKENS = new Set(['부장', '차장', '과장', '팀장', '대리', '대표', '실장', '소장', '이사', '사장', '전무', '상무', '부사장', '주임', '사원']);
 
 const looksLikePersonName = (token) => {
@@ -490,6 +491,12 @@ const cleanCompanyName = (rawName) => {
   let result = tokens.join(' ').trim();
   if (tokens.length <= 1 && hasDelimiterHints) {
     result = stripTrailingPersonSuffix(result);
+  }
+  if (hasDelimiterHints) {
+    const strippedHanja = result.replace(TRAILING_HANJA_PATTERN, '').trim();
+    if (strippedHanja && strippedHanja !== result && /[a-zA-Z0-9가-힣]/.test(strippedHanja)) {
+      result = strippedHanja;
+    }
   }
   return result;
 };
