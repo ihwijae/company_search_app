@@ -421,7 +421,7 @@ const COMMON_SURNAMES = new Set([
 ]);
 
 const COMPANY_SUFFIX_DENY = new Set([
-  '건설', '전기', '전력', '토건', '토목', '산업', '정보', '통신', '소방', '기술', '기계', '기전', '기공',
+  '건설', '공사', '전기', '전력', '토건', '토목', '산업', '정보', '통신', '소방', '기술', '기계', '기전', '기공',
   '환경', '시스템', '테크', '설비', '전설', '플랜트', '이엔지', '이엔씨', '엔지', '엔씨', '건축',
 ]);
 
@@ -435,6 +435,9 @@ const looksLikePersonName = (token) => {
   if (!/^[가-힣]{2,3}$/.test(normalized)) return false;
   if (!COMMON_SURNAMES.has(normalized[0])) return false;
   if (COMPANY_SUFFIX_DENY.has(normalized)) return false;
+  for (const suffix of COMPANY_SUFFIX_DENY) {
+    if (suffix && suffix !== normalized && normalized.endsWith(suffix)) return false;
+  }
   return true;
 };
 
