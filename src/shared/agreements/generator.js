@@ -66,8 +66,14 @@ function isPPS(owner) {
   return /조달청|PPS/.test(s);
 }
 
+function isKRail(owner) {
+  const s = String(owner || '').trim();
+  if (!s) return false;
+  return /국가철도/.test(s);
+}
+
 function needsHeader(owner) {
-  return !isMOIS(owner) && !isPPS(owner);
+  return !isMOIS(owner) && !isPPS(owner) && !isKRail(owner);
 }
 
 function leaderNeedsBizNo(owner) {
@@ -93,6 +99,17 @@ export function generateOne(item) {
     const lhHeader = [ownerDisplayName, String(item.noticeNo || '').trim()].filter(Boolean).join(' ').trim();
     if (lhHeader) {
       lines.push(lhHeader);
+    } else if (ownerDisplayName) {
+      lines.push(ownerDisplayName);
+    }
+    if (String(item.title || '').trim()) {
+      lines.push(String(item.title).trim());
+    }
+    lines.push('');
+  } else if (isKRail(owner)) {
+    const krailHeader = [ownerDisplayName, String(item.noticeNo || '').trim()].filter(Boolean).join(' ').trim();
+    if (krailHeader) {
+      lines.push(krailHeader);
     } else if (ownerDisplayName) {
       lines.push(ownerDisplayName);
     }
