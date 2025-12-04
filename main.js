@@ -17,6 +17,23 @@ const APP_DISPLAY_NAME = '협정보조';
 const EXCEL_HELPER_TITLE = '엑셀 협정 도우미';
 try { app.setName(APP_DISPLAY_NAME); } catch {}
 
+const resolveAppIconPath = () => {
+  const candidates = [
+    path.join(process.resourcesPath || '', 'icon.ico'),
+    path.join(process.resourcesPath || '', 'build', 'icon', 'icon.ico'),
+    path.join(__dirname, 'build', 'icon', 'icon.ico'),
+    path.join(__dirname, 'build', 'icon.ico'),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      if (candidate && fs.existsSync(candidate)) return candidate;
+    } catch {}
+  }
+  return null;
+};
+
+const APP_ICON_PATH = resolveAppIconPath();
+
 let formulasCache = null;
 let recordsDbInstance = null;
 let recordsServiceInstance = null;
@@ -432,6 +449,7 @@ function createWindow() {
     height: bounds.height,
     backgroundColor: '#e0ecff',
     title: APP_DISPLAY_NAME,
+    icon: APP_ICON_PATH || undefined,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#e0ecff',
@@ -490,6 +508,7 @@ function createExcelHelperWindow() {
     height: 900,
     backgroundColor: '#f5f6fa',
     title: EXCEL_HELPER_TITLE,
+    icon: APP_ICON_PATH || undefined,
     autoHideMenuBar: true,
     showInTaskbar: true,
     titleBarStyle: 'hidden',

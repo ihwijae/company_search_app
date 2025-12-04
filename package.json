@@ -48,6 +48,7 @@
       "main.js",
       "preload.js",
       "dist/**",
+      "build/icon/**",
       "searchLogic.js",
       "src/main/**",
       "src/shared/**",
