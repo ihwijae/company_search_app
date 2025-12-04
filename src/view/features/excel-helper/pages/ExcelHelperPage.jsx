@@ -35,6 +35,15 @@ const OWNER_OPTIONS = [
       { id: '50to100', label: '50억~100억' },
     ],
   },
+  {
+    id: 'krail',
+    label: '국가철도공단',
+    ownerToken: '국가철도공단',
+    ranges: [
+      { id: 'under50', label: '50억 미만' },
+      { id: '50to100', label: '50억~100억' },
+    ],
+  },
 ];
 
 const FILE_TYPE_OPTIONS = [
@@ -75,6 +84,10 @@ const RANGE_AMOUNT_PRESETS = {
     '50to100': 100 * WON,
   },
   lh: {
+    under50: 50 * WON,
+    '50to100': 100 * WON,
+  },
+  krail: {
     under50: 50 * WON,
     '50to100': 100 * WON,
   },
