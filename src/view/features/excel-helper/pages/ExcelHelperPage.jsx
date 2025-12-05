@@ -127,13 +127,20 @@ const getCoefficientMultiplier = (value, options) => {
   return target ? Number(target.multiplier) : 1;
 };
 
+const getTechnicianCount = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 1) return 1;
+  return Math.floor(num);
+};
+
 const computeTechnicianScore = (entry) => {
   if (!entry) return 0;
   const base = getTechnicianGradePoints(entry.grade);
   if (base <= 0) return 0;
   const career = getCoefficientMultiplier(entry.careerCoeff, CAREER_COEFFICIENT_OPTIONS);
   const management = getCoefficientMultiplier(entry.managementCoeff, MANAGEMENT_COEFFICIENT_OPTIONS);
-  return base * career * management;
+  const count = getTechnicianCount(entry.count);
+  return base * career * management * count;
 };
 
 const DEFAULT_OFFSETS = [
@@ -829,6 +836,7 @@ export default function ExcelHelperPage() {
         grade: TECHNICIAN_GRADE_OPTIONS[0]?.value || 'special',
         careerCoeff: 'none',
         managementCoeff: 'none',
+        count: '1',
       },
     ]);
   }, []);
@@ -1837,7 +1845,19 @@ export default function ExcelHelperPage() {
                           ))}
                         </select>
                       </div>
-                      <div className="excel-helper-technician-score">점수 {computeTechnicianScore(entry).toFixed(2)}</div>
+                      <div className="excel-helper-technician-field technician-count-field">
+                        <label>인원수</label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={entry.count || '1'}
+                          onChange={(e) => updateTechnicianEntry(entry.id, 'count', e.target.value)}
+                        />
+                      </div>
+                      <div className="excel-helper-technician-score">
+                        점수 {computeTechnicianScore(entry).toFixed(2)}
+                      </div>
                       <button
                         type="button"
                         className="btn-icon"
