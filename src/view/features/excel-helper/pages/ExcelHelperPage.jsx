@@ -235,29 +235,44 @@ const computeMetrics = (company) => {
 
 const resolveSipyungColumnOffset = (ownerId, rangeId) => {
   const ownerKey = String(ownerId || '').toLowerCase();
-  if (ownerKey !== 'lh') {
+  if (ownerKey === 'lh') {
+    if (rangeId === 'under50') {
+      return 41;
+    }
+    if (rangeId === '50to100') {
+      return 43;
+    }
     return DEFAULT_SIPYUNG_COL_OFFSET;
   }
-  if (rangeId === 'under50') {
-    return 41;
+
+  if (ownerKey === 'krail') {
+    if (rangeId === 'under50') {
+      return 45; // AV (C 기준 +45)
+    }
+    return 46; // AW (C 기준 +46)
   }
-  if (rangeId === '50to100') {
-    return 43;
-  }
+
   return DEFAULT_SIPYUNG_COL_OFFSET;
 };
 
 const getOffsetsForOwner = (ownerId, rangeId) => {
   const ownerKey = String(ownerId || '').toLowerCase();
   const sipyungOffset = resolveSipyungColumnOffset(ownerKey, rangeId);
-  const ownerOffsets = DEFAULT_OFFSETS.map((item) => (
+  let ownerOffsets = DEFAULT_OFFSETS.map((item) => (
     item.key === 'sipyungAmount'
       ? { ...item, colOffset: sipyungOffset }
       : item
   ));
 
   if (ownerKey === 'lh') {
-    return [...ownerOffsets, { key: 'qualityScore', label: '품질점수', rowOffset: 1, colOffset: 6 }];
+    ownerOffsets = [...ownerOffsets, { key: 'qualityScore', label: '품질점수', rowOffset: 1, colOffset: 6 }];
+  }
+
+  if (ownerKey === 'krail') {
+    ownerOffsets = [
+      ...ownerOffsets,
+      { key: 'technicianScore', label: '기술자점수', rowOffset: 0, colOffset: 27 },
+    ];
   }
 
   return ownerOffsets;
@@ -1058,6 +1073,12 @@ export default function ExcelHelperPage() {
           const managerNames = managers.length > 0 ? ` ${managers.join(', ')}` : '';
           source = `${companyName}${availableShare}${managerNames}`;
           finalValue = source;
+        } else if (field.key === 'technicianScore') {
+          if (!technicianEntries.length) {
+            return null;
+          }
+          source = Number(technicianScoreTotal.toFixed(2));
+          finalValue = coerceExcelValue(source);
         } else {
           source = selectedMetrics[field.key];
           finalValue = coerceExcelValue(source);
