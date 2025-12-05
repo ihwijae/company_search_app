@@ -94,7 +94,47 @@ const RANGE_AMOUNT_PRESETS = {
 };
 const DEFAULT_RANGE_AMOUNT = 50 * WON;
 
+const TECHNICIAN_GRADE_OPTIONS = [
+  { value: 'special', label: '특급', points: 1.0 },
+  { value: 'advanced', label: '고급', points: 0.75 },
+  { value: 'intermediate', label: '중급', points: 0.5 },
+  { value: 'entry', label: '초급', points: 0.25 },
+];
+
+const CAREER_COEFFICIENT_OPTIONS = [
+  { value: 'none', label: '없음', multiplier: 1.0 },
+  { value: '5plus', label: '5년 이상', multiplier: 1.1 },
+  { value: '9plus', label: '9년 이상', multiplier: 1.15 },
+  { value: '12plus', label: '12년 이상', multiplier: 1.2 },
+];
+
+const MANAGEMENT_COEFFICIENT_OPTIONS = [
+  { value: 'none', label: '없음', multiplier: 1.0 },
+  { value: '3plus', label: '3년 이상', multiplier: 1.1 },
+  { value: '6plus', label: '6년 이상', multiplier: 1.15 },
+  { value: '9plus', label: '9년 이상', multiplier: 1.2 },
+];
+
 const DEFAULT_SIPYUNG_COL_OFFSET = 38;
+
+const getTechnicianGradePoints = (value) => {
+  const target = TECHNICIAN_GRADE_OPTIONS.find((option) => option.value === value);
+  return target ? Number(target.points) : 0;
+};
+
+const getCoefficientMultiplier = (value, options) => {
+  const target = options.find((option) => option.value === value);
+  return target ? Number(target.multiplier) : 1;
+};
+
+const computeTechnicianScore = (entry) => {
+  if (!entry) return 0;
+  const base = getTechnicianGradePoints(entry.grade);
+  if (base <= 0) return 0;
+  const career = getCoefficientMultiplier(entry.careerCoeff, CAREER_COEFFICIENT_OPTIONS);
+  const management = getCoefficientMultiplier(entry.managementCoeff, MANAGEMENT_COEFFICIENT_OPTIONS);
+  return base * career * management;
+};
 
 const DEFAULT_OFFSETS = [
   { key: 'name', label: '업체명', rowOffset: 0, colOffset: 0 },
@@ -749,6 +789,7 @@ export default function ExcelHelperPage() {
   const [messagePreview, setMessagePreview] = React.useState('');
   const [evaluatedManagementScore, setEvaluatedManagementScore] = React.useState(null);
   const [isGeneratingAgreement, setIsGeneratingAgreement] = React.useState(false); // 새 상태 추가
+  const [technicianEntries, setTechnicianEntries] = React.useState([]);
 
   // New states for file upload
   const [uploadedFile, setUploadedFile] = React.useState(null);
@@ -772,6 +813,39 @@ export default function ExcelHelperPage() {
   const activeOwner = React.useMemo(() => OWNER_OPTIONS.find((o) => o.id === ownerId) || null, [ownerId]);
   const ownerToken = activeOwner?.ownerToken || '';
   const availableRanges = activeOwner?.ranges || [];
+  const isKrailOwner = ownerId === 'krail';
+
+  React.useEffect(() => {
+    if (!isKrailOwner && technicianEntries.length > 0) {
+      setTechnicianEntries([]);
+    }
+  }, [isKrailOwner, technicianEntries.length]);
+
+  const addTechnicianEntry = React.useCallback(() => {
+    setTechnicianEntries((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        grade: TECHNICIAN_GRADE_OPTIONS[0]?.value || 'special',
+        careerCoeff: 'none',
+        managementCoeff: 'none',
+      },
+    ]);
+  }, []);
+
+  const updateTechnicianEntry = React.useCallback((id, field, value) => {
+    setTechnicianEntries((prev) => prev.map((entry) => (
+      entry.id === id ? { ...entry, [field]: value } : entry
+    )));
+  }, []);
+
+  const removeTechnicianEntry = React.useCallback((id) => {
+    setTechnicianEntries((prev) => prev.filter((entry) => entry.id !== id));
+  }, []);
+
+  const technicianScoreTotal = React.useMemo(() => {
+    return technicianEntries.reduce((sum, entry) => sum + computeTechnicianScore(entry), 0);
+  }, [technicianEntries]);
 
   React.useEffect(() => {
     if (!availableRanges.length) {
@@ -1710,6 +1784,73 @@ export default function ExcelHelperPage() {
                 </>
               )}
             </div>
+
+            {isKrailOwner && (
+              <div className="excel-helper-technicians-panel">
+                <div className="excel-helper-technicians-header">
+                  <div>
+                    <div className="detail-label">기술자 점수 합계</div>
+                    <div className="excel-helper-technicians-total">{technicianScoreTotal.toFixed(2)}</div>
+                  </div>
+                  <button type="button" className="btn-soft" onClick={addTechnicianEntry}>
+                    기술자 추가
+                  </button>
+                </div>
+                <p className="excel-helper-technicians-hint">각 기술자별 등급과 경력/관리 계수를 입력하면 자동으로 점수가 합산됩니다. 경력·관리 계수는 기본값이 "없음"입니다.</p>
+                <div className="excel-helper-technicians-list">
+                  {technicianEntries.length === 0 && (
+                    <div className="excel-helper-technicians-empty">추가된 기술자가 없습니다. "기술자 추가" 버튼을 눌러 입력을 시작하세요.</div>
+                  )}
+                  {technicianEntries.map((entry, index) => (
+                    <div key={entry.id} className="excel-helper-technician-row">
+                      <div className="excel-helper-technician-index">기술자 {index + 1}</div>
+                      <div className="excel-helper-technician-field">
+                        <label>등급</label>
+                        <select
+                          value={entry.grade}
+                          onChange={(e) => updateTechnicianEntry(entry.id, 'grade', e.target.value)}
+                        >
+                          {TECHNICIAN_GRADE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="excel-helper-technician-field">
+                        <label>경력계수</label>
+                        <select
+                          value={entry.careerCoeff}
+                          onChange={(e) => updateTechnicianEntry(entry.id, 'careerCoeff', e.target.value)}
+                        >
+                          {CAREER_COEFFICIENT_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="excel-helper-technician-field">
+                        <label>관리능력계수</label>
+                        <select
+                          value={entry.managementCoeff}
+                          onChange={(e) => updateTechnicianEntry(entry.id, 'managementCoeff', e.target.value)}
+                        >
+                          {MANAGEMENT_COEFFICIENT_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="excel-helper-technician-score">점수 {computeTechnicianScore(entry).toFixed(2)}</div>
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        onClick={() => removeTechnicianEntry(entry.id)}
+                        aria-label="기술자 삭제"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="excel-helper-actions">
               <div className="excel-helper-share-input">

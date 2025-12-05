@@ -229,14 +229,38 @@
               },
               "mode": "ratio-bands",
               "thresholds": [
-                { "minRatio": 0.8, "score": 15 },
-                { "minRatio": 0.7, "score": 13 },
-                { "minRatio": 0.6, "score": 11 },
-                { "minRatio": 0.5, "score": 9 },
-                { "minRatio": 0.4, "score": 7 },
-                { "minRatio": 0.3, "score": 5 },
-                { "minRatio": 0.2, "score": 3 },
-                { "minRatio": 0.0, "score": 1 }
+                {
+                  "minRatio": 0.8,
+                  "score": 15
+                },
+                {
+                  "minRatio": 0.7,
+                  "score": 13
+                },
+                {
+                  "minRatio": 0.6,
+                  "score": 11
+                },
+                {
+                  "minRatio": 0.5,
+                  "score": 9
+                },
+                {
+                  "minRatio": 0.4,
+                  "score": 7
+                },
+                {
+                  "minRatio": 0.3,
+                  "score": 5
+                },
+                {
+                  "minRatio": 0.2,
+                  "score": 3
+                },
+                {
+                  "minRatio": 0.0,
+                  "score": 1
+                }
               ]
             },
             "notes": "LH 50억 미만 기본값(클린 버전 기준)",
@@ -266,30 +290,69 @@
                       "against": "industryAverage",
                       "scale": "lowerIsBetter",
                       "thresholds": [
-                        { "lt": 0.5, "score": 7.0 },
-                        { "lt": 0.75, "score": 6.2 },
-                        { "lt": 1.0, "score": 5.4 },
-                        { "lt": 1.25, "score": 4.6 },
-                        { "gte": 1.25, "score": 3.8 }
+                        {
+                          "lt": 0.5,
+                          "score": 7.0
+                        },
+                        {
+                          "lt": 0.75,
+                          "score": 6.2
+                        },
+                        {
+                          "lt": 1.0,
+                          "score": 5.4
+                        },
+                        {
+                          "lt": 1.25,
+                          "score": 4.6
+                        },
+                        {
+                          "gte": 1.25,
+                          "score": 3.8
+                        }
                       ]
                     },
                     "currentRatio": {
                       "against": "industryAverage",
                       "scale": "higherIsBetter",
                       "thresholds": [
-                        { "gte": 1.5, "score": 7.0 },
-                        { "gte": 1.2, "score": 6.2 },
-                        { "gte": 1.0, "score": 5.4 },
-                        { "gte": 0.7, "score": 4.6 },
-                        { "lt": 0.7, "score": 3.8 }
+                        {
+                          "gte": 1.5,
+                          "score": 7.0
+                        },
+                        {
+                          "gte": 1.2,
+                          "score": 6.2
+                        },
+                        {
+                          "gte": 1.0,
+                          "score": 5.4
+                        },
+                        {
+                          "gte": 0.7,
+                          "score": 4.6
+                        },
+                        {
+                          "lt": 0.7,
+                          "score": 3.8
+                        }
                       ]
                     },
                     "bizYears": {
                       "scale": "higherIsBetter",
                       "thresholds": [
-                        { "gteYears": 3, "score": 1.0 },
-                        { "gteYears": 1, "score": 0.9 },
-                        { "ltYears": 1, "score": 0.8 }
+                        {
+                          "gteYears": 3,
+                          "score": 1.0
+                        },
+                        {
+                          "gteYears": 1,
+                          "score": 0.9
+                        },
+                        {
+                          "ltYears": 1,
+                          "score": 0.8
+                        }
                       ]
                     }
                   }
@@ -299,28 +362,116 @@
                   "label": "신용평가",
                   "maxScore": 15,
                   "gradeTable": [
-                    { "grade": "AAA", "base": 35.0, "score": 15.0 },
-                    { "grade": "AA+", "base": 35.0, "score": 15.0 },
-                    { "grade": "AA0", "base": 35.0, "score": 15.0 },
-                    { "grade": "AA-", "base": 35.0, "score": 15.0 },
-                    { "grade": "A+", "base": 35.0, "score": 15.0 },
-                    { "grade": "A0", "base": 35.0, "score": 15.0 },
-                    { "grade": "A-", "base": 35.0, "score": 15.0 },
-                    { "grade": "BBB+", "base": 35.0, "score": 15.0 },
-                    { "grade": "BBB0", "base": 35.0, "score": 15.0 },
-                    { "grade": "BBB-", "base": 35.0, "score": 15.0 },
-                    { "grade": "BB+", "base": 35.0, "score": 15.0 },
-                    { "grade": "BB0", "base": 35.0, "score": 15.0 },
-                    { "grade": "BB-", "base": 34.1, "score": 14.614 },
-                    { "grade": "B+", "base": 33.3, "score": 14.271 },
-                    { "grade": "B0", "base": 33.3, "score": 14.271 },
-                    { "grade": "B-", "base": 33.3, "score": 14.271 },
-                    { "grade": "CCC+", "base": 30.0, "score": 12.857 },
-                    { "grade": "CCC0", "base": 30.0, "score": 12.857 },
-                    { "grade": "CCC-", "base": 30.0, "score": 12.857 },
-                    { "grade": "CC", "base": 30.0, "score": 12.857 },
-                    { "grade": "C", "base": 30.0, "score": 12.857 },
-                    { "grade": "D", "base": 30.0, "score": 12.857 }
+                    {
+                      "grade": "AAA",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB-",
+                      "base": 34.1,
+                      "score": 14.614
+                    },
+                    {
+                      "grade": "B+",
+                      "base": 33.3,
+                      "score": 14.271
+                    },
+                    {
+                      "grade": "B0",
+                      "base": 33.3,
+                      "score": 14.271
+                    },
+                    {
+                      "grade": "B-",
+                      "base": 33.3,
+                      "score": 14.271
+                    },
+                    {
+                      "grade": "CCC+",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CCC0",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CCC-",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CC",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "C",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "D",
+                      "base": 30.0,
+                      "score": 12.857
+                    }
                   ],
                   "note": "조달청 신용평가 기본값"
                 }
@@ -338,14 +489,38 @@
               "maxScore": 15,
               "mode": "ratio-bands",
               "thresholds": [
-                { "minRatio": 1.0, "score": 15 },
-                { "minRatio": 0.8, "score": 13 },
-                { "minRatio": 0.6, "score": 11 },
-                { "minRatio": 0.5, "score": 9 },
-                { "minRatio": 0.4, "score": 7 },
-                { "minRatio": 0.3, "score": 5 },
-                { "minRatio": 0.2, "score": 3 },
-                { "minRatio": 0.0, "score": 1 }
+                {
+                  "minRatio": 1.0,
+                  "score": 15
+                },
+                {
+                  "minRatio": 0.8,
+                  "score": 13
+                },
+                {
+                  "minRatio": 0.6,
+                  "score": 11
+                },
+                {
+                  "minRatio": 0.5,
+                  "score": 9
+                },
+                {
+                  "minRatio": 0.4,
+                  "score": 7
+                },
+                {
+                  "minRatio": 0.3,
+                  "score": 5
+                },
+                {
+                  "minRatio": 0.2,
+                  "score": 3
+                },
+                {
+                  "minRatio": 0.0,
+                  "score": 1
+                }
               ]
             },
             "notes": "조달청 50억 미만 기본값",
@@ -369,30 +544,69 @@
                       "against": "industryAverage",
                       "scale": "lowerIsBetter",
                       "thresholds": [
-                        { "lt": 0.5, "score": 7.0 },
-                        { "lt": 0.75, "score": 6.2 },
-                        { "lt": 1.0, "score": 5.4 },
-                        { "lt": 1.25, "score": 4.6 },
-                        { "gte": 1.25, "score": 3.8 }
+                        {
+                          "lt": 0.5,
+                          "score": 7.0
+                        },
+                        {
+                          "lt": 0.75,
+                          "score": 6.2
+                        },
+                        {
+                          "lt": 1.0,
+                          "score": 5.4
+                        },
+                        {
+                          "lt": 1.25,
+                          "score": 4.6
+                        },
+                        {
+                          "gte": 1.25,
+                          "score": 3.8
+                        }
                       ]
                     },
                     "currentRatio": {
                       "against": "industryAverage",
                       "scale": "higherIsBetter",
                       "thresholds": [
-                        { "gte": 1.5, "score": 7.0 },
-                        { "gte": 1.2, "score": 6.2 },
-                        { "gte": 1.0, "score": 5.4 },
-                        { "gte": 0.7, "score": 4.6 },
-                        { "lt": 0.7, "score": 3.8 }
+                        {
+                          "gte": 1.5,
+                          "score": 7.0
+                        },
+                        {
+                          "gte": 1.2,
+                          "score": 6.2
+                        },
+                        {
+                          "gte": 1.0,
+                          "score": 5.4
+                        },
+                        {
+                          "gte": 0.7,
+                          "score": 4.6
+                        },
+                        {
+                          "lt": 0.7,
+                          "score": 3.8
+                        }
                       ]
                     },
                     "bizYears": {
                       "scale": "higherIsBetter",
                       "thresholds": [
-                        { "gteYears": 3, "score": 1.0 },
-                        { "gteYears": 1, "score": 0.9 },
-                        { "ltYears": 1, "score": 0.8 }
+                        {
+                          "gteYears": 3,
+                          "score": 1.0
+                        },
+                        {
+                          "gteYears": 1,
+                          "score": 0.9
+                        },
+                        {
+                          "ltYears": 1,
+                          "score": 0.8
+                        }
                       ]
                     }
                   }
@@ -402,28 +616,116 @@
                   "label": "신용평가",
                   "maxScore": 15,
                   "gradeTable": [
-                    { "grade": "AAA", "base": 35.0, "score": 15.0 },
-                    { "grade": "AA+", "base": 35.0, "score": 15.0 },
-                    { "grade": "AA0", "base": 35.0, "score": 15.0 },
-                    { "grade": "AA-", "base": 35.0, "score": 15.0 },
-                    { "grade": "A+", "base": 35.0, "score": 15.0 },
-                    { "grade": "A0", "base": 35.0, "score": 15.0 },
-                    { "grade": "A-", "base": 35.0, "score": 15.0 },
-                    { "grade": "BBB+", "base": 35.0, "score": 15.0 },
-                    { "grade": "BBB0", "base": 35.0, "score": 15.0 },
-                    { "grade": "BBB-", "base": 35.0, "score": 15.0 },
-                    { "grade": "BB+", "base": 35.0, "score": 15.0 },
-                    { "grade": "BB0", "base": 35.0, "score": 15.0 },
-                    { "grade": "BB-", "base": 34.1, "score": 14.614 },
-                    { "grade": "B+", "base": 33.3, "score": 14.271 },
-                    { "grade": "B0", "base": 33.3, "score": 14.271 },
-                    { "grade": "B-", "base": 33.3, "score": 14.271 },
-                    { "grade": "CCC+", "base": 30.0, "score": 12.857 },
-                    { "grade": "CCC0", "base": 30.0, "score": 12.857 },
-                    { "grade": "CCC-", "base": 30.0, "score": 12.857 },
-                    { "grade": "CC", "base": 30.0, "score": 12.857 },
-                    { "grade": "C", "base": 30.0, "score": 12.857 },
-                    { "grade": "D", "base": 30.0, "score": 12.857 }
+                    {
+                      "grade": "AAA",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB-",
+                      "base": 34.1,
+                      "score": 14.614
+                    },
+                    {
+                      "grade": "B+",
+                      "base": 33.3,
+                      "score": 14.271
+                    },
+                    {
+                      "grade": "B0",
+                      "base": 33.3,
+                      "score": 14.271
+                    },
+                    {
+                      "grade": "B-",
+                      "base": 33.3,
+                      "score": 14.271
+                    },
+                    {
+                      "grade": "CCC+",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CCC0",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CCC-",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CC",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "C",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "D",
+                      "base": 30.0,
+                      "score": 12.857
+                    }
                   ],
                   "note": "조달청 신용평가 기본값"
                 }
@@ -441,14 +743,38 @@
               "maxScore": 15,
               "mode": "ratio-bands",
               "thresholds": [
-                { "minRatio": 1.0, "score": 15 },
-                { "minRatio": 0.8, "score": 13 },
-                { "minRatio": 0.6, "score": 11 },
-                { "minRatio": 0.5, "score": 9 },
-                { "minRatio": 0.4, "score": 7 },
-                { "minRatio": 0.3, "score": 5 },
-                { "minRatio": 0.2, "score": 3 },
-                { "minRatio": 0.0, "score": 1 }
+                {
+                  "minRatio": 1.0,
+                  "score": 15
+                },
+                {
+                  "minRatio": 0.8,
+                  "score": 13
+                },
+                {
+                  "minRatio": 0.6,
+                  "score": 11
+                },
+                {
+                  "minRatio": 0.5,
+                  "score": 9
+                },
+                {
+                  "minRatio": 0.4,
+                  "score": 7
+                },
+                {
+                  "minRatio": 0.3,
+                  "score": 5
+                },
+                {
+                  "minRatio": 0.2,
+                  "score": 3
+                },
+                {
+                  "minRatio": 0.0,
+                  "score": 1
+                }
               ]
             },
             "notes": "조달청 50억~100억 기본값",
@@ -647,14 +973,38 @@
               },
               "mode": "ratio-bands",
               "thresholds": [
-                { "minRatio": 0.8, "score": 15 },
-                { "minRatio": 0.7, "score": 13 },
-                { "minRatio": 0.6, "score": 11 },
-                { "minRatio": 0.5, "score": 9 },
-                { "minRatio": 0.4, "score": 7 },
-                { "minRatio": 0.3, "score": 5 },
-                { "minRatio": 0.2, "score": 3 },
-                { "minRatio": 0.0, "score": 1 }
+                {
+                  "minRatio": 0.8,
+                  "score": 15
+                },
+                {
+                  "minRatio": 0.7,
+                  "score": 13
+                },
+                {
+                  "minRatio": 0.6,
+                  "score": 11
+                },
+                {
+                  "minRatio": 0.5,
+                  "score": 9
+                },
+                {
+                  "minRatio": 0.4,
+                  "score": 7
+                },
+                {
+                  "minRatio": 0.3,
+                  "score": 5
+                },
+                {
+                  "minRatio": 0.2,
+                  "score": 3
+                },
+                {
+                  "minRatio": 0.0,
+                  "score": 1
+                }
               ]
             },
             "notes": "행안부 30억 미만 기본값",
@@ -678,30 +1028,69 @@
                       "against": "industryAverage",
                       "scale": "lowerIsBetter",
                       "thresholds": [
-                        { "lt": 0.5, "score": 7.0 },
-                        { "lt": 0.75, "score": 6.3 },
-                        { "lt": 1.0, "score": 5.6 },
-                        { "lt": 1.25, "score": 4.9 },
-                        { "gte": 1.25, "score": 4.2 }
+                        {
+                          "lt": 0.5,
+                          "score": 7.0
+                        },
+                        {
+                          "lt": 0.75,
+                          "score": 6.3
+                        },
+                        {
+                          "lt": 1.0,
+                          "score": 5.6
+                        },
+                        {
+                          "lt": 1.25,
+                          "score": 4.9
+                        },
+                        {
+                          "gte": 1.25,
+                          "score": 4.2
+                        }
                       ]
                     },
                     "currentRatio": {
                       "against": "industryAverage",
                       "scale": "higherIsBetter",
                       "thresholds": [
-                        { "gte": 1.5, "score": 7.0 },
-                        { "gte": 1.2, "score": 6.3 },
-                        { "gte": 1.0, "score": 5.6 },
-                        { "gte": 0.7, "score": 4.9 },
-                        { "lt": 0.7, "score": 4.2 }
+                        {
+                          "gte": 1.5,
+                          "score": 7.0
+                        },
+                        {
+                          "gte": 1.2,
+                          "score": 6.3
+                        },
+                        {
+                          "gte": 1.0,
+                          "score": 5.6
+                        },
+                        {
+                          "gte": 0.7,
+                          "score": 4.9
+                        },
+                        {
+                          "lt": 0.7,
+                          "score": 4.2
+                        }
                       ]
                     },
                     "bizYears": {
                       "scale": "higherIsBetter",
                       "thresholds": [
-                        { "gteYears": 3, "score": 1.0 },
-                        { "gteYears": 1, "score": 0.9 },
-                        { "ltYears": 1, "score": 0.8 }
+                        {
+                          "gteYears": 3,
+                          "score": 1.0
+                        },
+                        {
+                          "gteYears": 1,
+                          "score": 0.9
+                        },
+                        {
+                          "ltYears": 1,
+                          "score": 0.8
+                        }
                       ]
                     }
                   }
@@ -711,28 +1100,94 @@
                   "label": "신용평가",
                   "maxScore": 15,
                   "gradeTable": [
-                    { "grade": "AAA", "score": 15.0 },
-                    { "grade": "AA+", "score": 15.0 },
-                    { "grade": "AA0", "score": 15.0 },
-                    { "grade": "AA-", "score": 15.0 },
-                    { "grade": "A+", "score": 15.0 },
-                    { "grade": "A0", "score": 15.0 },
-                    { "grade": "A-", "score": 15.0 },
-                    { "grade": "BBB+", "score": 15.0 },
-                    { "grade": "BBB0", "score": 15.0 },
-                    { "grade": "BBB-", "score": 15.0 },
-                    { "grade": "BB+", "score": 15.0 },
-                    { "grade": "BB0", "score": 15.0 },
-                    { "grade": "BB-", "score": 14.0 },
-                    { "grade": "B+", "score": 13.0 },
-                    { "grade": "B0", "score": 13.0 },
-                    { "grade": "B-", "score": 13.0 },
-                    { "grade": "CCC+", "score": 10.0 },
-                    { "grade": "CCC0", "score": 10.0 },
-                    { "grade": "CCC-", "score": 10.0 },
-                    { "grade": "CC", "score": 10.0 },
-                    { "grade": "C", "score": 10.0 },
-                    { "grade": "D", "score": 10.0 }
+                    {
+                      "grade": "AAA",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA+",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA0",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA-",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A+",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A0",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A-",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB+",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB0",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB-",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB+",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB0",
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB-",
+                      "score": 14.0
+                    },
+                    {
+                      "grade": "B+",
+                      "score": 13.0
+                    },
+                    {
+                      "grade": "B0",
+                      "score": 13.0
+                    },
+                    {
+                      "grade": "B-",
+                      "score": 13.0
+                    },
+                    {
+                      "grade": "CCC+",
+                      "score": 10.0
+                    },
+                    {
+                      "grade": "CCC0",
+                      "score": 10.0
+                    },
+                    {
+                      "grade": "CCC-",
+                      "score": 10.0
+                    },
+                    {
+                      "grade": "CC",
+                      "score": 10.0
+                    },
+                    {
+                      "grade": "C",
+                      "score": 10.0
+                    },
+                    {
+                      "grade": "D",
+                      "score": 10.0
+                    }
                   ],
                   "note": "행안부 신용평가 기본값"
                 }
@@ -759,14 +1214,38 @@
               },
               "mode": "ratio-bands",
               "thresholds": [
-                { "minRatio": 0.8, "score": 15 },
-                { "minRatio": 0.7, "score": 13 },
-                { "minRatio": 0.6, "score": 11 },
-                { "minRatio": 0.5, "score": 9 },
-                { "minRatio": 0.4, "score": 7 },
-                { "minRatio": 0.3, "score": 5 },
-                { "minRatio": 0.2, "score": 3 },
-                { "minRatio": 0.0, "score": 1 }
+                {
+                  "minRatio": 0.8,
+                  "score": 15
+                },
+                {
+                  "minRatio": 0.7,
+                  "score": 13
+                },
+                {
+                  "minRatio": 0.6,
+                  "score": 11
+                },
+                {
+                  "minRatio": 0.5,
+                  "score": 9
+                },
+                {
+                  "minRatio": 0.4,
+                  "score": 7
+                },
+                {
+                  "minRatio": 0.3,
+                  "score": 5
+                },
+                {
+                  "minRatio": 0.2,
+                  "score": 3
+                },
+                {
+                  "minRatio": 0.0,
+                  "score": 1
+                }
               ]
             },
             "notes": "행안부 30억~50억 기본값",
@@ -959,6 +1438,524 @@
               }
             },
             "notes": "행안부 50억~100억 기본값 (임시)",
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "krail",
+      "name": "국가철도공단",
+      "tiers": [
+        {
+          "minAmount": 0,
+          "maxAmount": 5000000000,
+          "rules": {
+            "management": {
+              "methodSelection": "max",
+              "methods": [
+                {
+                  "id": "composite",
+                  "label": "요소합산",
+                  "maxScore": 15,
+                  "components": {
+                    "debtRatio": {
+                      "against": "industryAverage",
+                      "scale": "lowerIsBetter",
+                      "thresholds": [
+                        {
+                          "lt": 0.5,
+                          "score": 7.0
+                        },
+                        {
+                          "lt": 0.75,
+                          "score": 6.3
+                        },
+                        {
+                          "lt": 1.0,
+                          "score": 5.6
+                        },
+                        {
+                          "lt": 1.25,
+                          "score": 4.9
+                        },
+                        {
+                          "gte": 1.25,
+                          "score": 4.2
+                        }
+                      ]
+                    },
+                    "currentRatio": {
+                      "against": "industryAverage",
+                      "scale": "higherIsBetter",
+                      "thresholds": [
+                        {
+                          "gte": 1.5,
+                          "score": 6.5
+                        },
+                        {
+                          "gte": 1.2,
+                          "score": 5.7
+                        },
+                        {
+                          "gte": 1.0,
+                          "score": 5.0
+                        },
+                        {
+                          "gte": 0.7,
+                          "score": 4.3
+                        },
+                        {
+                          "lt": 0.7,
+                          "score": 3.6
+                        }
+                      ]
+                    },
+                    "bizYears": {
+                      "scale": "higherIsBetter",
+                      "thresholds": [
+                        {
+                          "gteYears": 3,
+                          "score": 1.5
+                        },
+                        {
+                          "gteYears": 1,
+                          "score": 1.3
+                        },
+                        {
+                          "ltYears": 1,
+                          "score": 1.1
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "id": "credit",
+                  "label": "신용평가",
+                  "maxScore": 15,
+                  "gradeTable": [
+                    {
+                      "grade": "AAA",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB-",
+                      "base": 34.5,
+                      "score": 14.786
+                    },
+                    {
+                      "grade": "B+",
+                      "base": 34.0,
+                      "score": 14.571
+                    },
+                    {
+                      "grade": "B0",
+                      "base": 34.0,
+                      "score": 14.571
+                    },
+                    {
+                      "grade": "B-",
+                      "base": 34.0,
+                      "score": 14.571
+                    },
+                    {
+                      "grade": "CCC+",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CCC0",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CCC-",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CC",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "C",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "D",
+                      "base": 30.0,
+                      "score": 12.857
+                    }
+                  ],
+                  "note": "국가철도공단 신용평가 (35점 만점을 15점으로 환산)"
+                }
+              ],
+              "rounding": {
+                "method": "truncate",
+                "digits": 2
+              },
+              "industryAverage": {
+                "source": "default",
+                "override": null
+              }
+            },
+            "performance": {
+              "maxScore": 15,
+              "mode": "ratio-bands",
+              "thresholds": [
+                {
+                  "minRatio": 1.0,
+                  "score": 15
+                },
+                {
+                  "minRatio": 0.8,
+                  "score": 13
+                },
+                {
+                  "minRatio": 0.6,
+                  "score": 11
+                },
+                {
+                  "minRatio": 0.5,
+                  "score": 9
+                },
+                {
+                  "minRatio": 0.4,
+                  "score": 7
+                },
+                {
+                  "minRatio": 0.3,
+                  "score": 5
+                },
+                {
+                  "minRatio": 0.2,
+                  "score": 3
+                },
+                {
+                  "minRatio": 0.0,
+                  "score": 1
+                }
+              ]
+            },
+            "notes": "국가철도공단 50억 미만 기본값",
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        },
+        {
+          "minAmount": 5000000000,
+          "maxAmount": 10000000000,
+          "rules": {
+            "management": {
+              "methodSelection": "max",
+              "methods": [
+                {
+                  "id": "composite",
+                  "label": "요소합산",
+                  "maxScore": 15,
+                  "components": {
+                    "debtRatio": {
+                      "against": "industryAverage",
+                      "scale": "lowerIsBetter",
+                      "thresholds": [
+                        {
+                          "lt": 0.5,
+                          "score": 7.0
+                        },
+                        {
+                          "lt": 0.75,
+                          "score": 6.3
+                        },
+                        {
+                          "lt": 1.0,
+                          "score": 5.6
+                        },
+                        {
+                          "lt": 1.25,
+                          "score": 4.9
+                        },
+                        {
+                          "gte": 1.25,
+                          "score": 4.2
+                        }
+                      ]
+                    },
+                    "currentRatio": {
+                      "against": "industryAverage",
+                      "scale": "higherIsBetter",
+                      "thresholds": [
+                        {
+                          "gte": 1.5,
+                          "score": 6.0
+                        },
+                        {
+                          "gte": 1.2,
+                          "score": 5.4
+                        },
+                        {
+                          "gte": 1.0,
+                          "score": 4.8
+                        },
+                        {
+                          "gte": 0.7,
+                          "score": 4.2
+                        },
+                        {
+                          "lt": 0.7,
+                          "score": 3.6
+                        }
+                      ]
+                    },
+                    "bizYears": {
+                      "scale": "higherIsBetter",
+                      "thresholds": [
+                        {
+                          "gteYears": 5,
+                          "score": 2.0
+                        },
+                        {
+                          "gteYears": 3,
+                          "score": 1.7
+                        },
+                        {
+                          "gteYears": 2,
+                          "score": 1.5
+                        },
+                        {
+                          "ltYears": 2,
+                          "score": 1.3
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "id": "credit",
+                  "label": "신용평가",
+                  "maxScore": 15,
+                  "gradeTable": [
+                    {
+                      "grade": "AAA",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "AA-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "A-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BBB-",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB+",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB0",
+                      "base": 35.0,
+                      "score": 15.0
+                    },
+                    {
+                      "grade": "BB-",
+                      "base": 34.5,
+                      "score": 14.786
+                    },
+                    {
+                      "grade": "B+",
+                      "base": 34.0,
+                      "score": 14.571
+                    },
+                    {
+                      "grade": "B0",
+                      "base": 34.0,
+                      "score": 14.571
+                    },
+                    {
+                      "grade": "B-",
+                      "base": 34.0,
+                      "score": 14.571
+                    },
+                    {
+                      "grade": "CCC+",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CCC0",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CCC-",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "CC",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "C",
+                      "base": 30.0,
+                      "score": 12.857
+                    },
+                    {
+                      "grade": "D",
+                      "base": 30.0,
+                      "score": 12.857
+                    }
+                  ],
+                  "note": "국가철도공단 신용평가 (35점 만점을 15점으로 환산)"
+                }
+              ],
+              "rounding": {
+                "method": "truncate",
+                "digits": 2
+              },
+              "industryAverage": {
+                "source": "default",
+                "override": null
+              }
+            },
+            "performance": {
+              "maxScore": 15,
+              "mode": "ratio-bands",
+              "thresholds": [
+                {
+                  "minRatio": 1.0,
+                  "score": 15
+                },
+                {
+                  "minRatio": 0.8,
+                  "score": 13
+                },
+                {
+                  "minRatio": 0.6,
+                  "score": 11
+                },
+                {
+                  "minRatio": 0.5,
+                  "score": 9
+                },
+                {
+                  "minRatio": 0.4,
+                  "score": 7
+                },
+                {
+                  "minRatio": 0.3,
+                  "score": 5
+                },
+                {
+                  "minRatio": 0.2,
+                  "score": 3
+                },
+                {
+                  "minRatio": 0.0,
+                  "score": 1
+                }
+              ]
+            },
+            "notes": "국가철도공단 50억~100억 기본값",
             "effectiveFrom": null,
             "effectiveTo": null
           }
