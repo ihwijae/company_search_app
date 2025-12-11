@@ -366,6 +366,12 @@ class SearchLogic {
       const searchManager = criteria.manager.toLowerCase();
       results = results.filter(comp => String(comp["비고"] || '').toLowerCase().includes(searchManager));
     }
+    if (criteria.bizNumber) {
+      const searchBiz = normalizeBizNumber(criteria.bizNumber);
+      if (searchBiz) {
+        results = results.filter((comp) => normalizeBizNumber(comp['사업자번호']).includes(searchBiz));
+      }
+    }
     const minCreditRaw = criteria.min_credit_grade || criteria.minCreditGrade || '';
     const minCreditGrade = extractCreditGradeToken(minCreditRaw);
     const minCreditRank = getCreditGradeRank(minCreditGrade);

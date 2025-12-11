@@ -80,6 +80,7 @@ const normalizeFileType = (value) => {
 
 const createDefaultFilters = () => ({
   name: '',
+  bizNumber: '',
   includeRegions: [],
   excludeRegions: [],
   manager: '',
@@ -160,6 +161,15 @@ const findMatchIndexByKey = (dataset, key, globalOffset = 0) => {
 const normalizeBizNumber = (value) => {
   if (value === null || value === undefined) return '';
   return String(value).replace(/[^0-9]/g, '').trim();
+};
+
+const formatBizNumberDisplay = (value) => {
+  if (value === null || value === undefined) return '';
+  const digits = String(value).replace(/[^0-9]/g, '').slice(0, 10);
+  if (!digits) return '';
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
 };
 
 const formatSmppTimestamp = (value) => {
@@ -461,6 +471,12 @@ function App() {
     });
     criteria.includeRegions = criteria.includeRegions.filter((r) => r && r !== '전체');
     criteria.excludeRegions = criteria.excludeRegions.filter((r) => r && r !== '전체');
+    const bizDigits = normalizeBizNumber(filters.bizNumber);
+    if (bizDigits) {
+      criteria.bizNumber = bizDigits;
+    } else {
+      delete criteria.bizNumber;
+    }
     if (typeof criteria.min_credit_grade === 'string') {
       const trimmed = criteria.min_credit_grade.trim();
       if (trimmed) {
@@ -826,6 +842,25 @@ function App() {
     if (numberFields.includes(name)) { setFilters(prev => ({ ...prev, [name]: formatNumber(value) })); } else { setFilters(prev => ({ ...prev, [name]: value })); }
   };
 
+  const handleBizNumberChange = React.useCallback((nextValue) => {
+    const formatted = formatBizNumberDisplay(nextValue || '');
+    setFilters((prev) => {
+      if (prev.bizNumber === formatted) return prev;
+      return { ...prev, bizNumber: formatted };
+    });
+  }, []);
+
+  const handleBizNumberInput = (e) => {
+    handleBizNumberChange(e.target.value);
+  };
+
+  const handleBizNumberPaste = (e) => {
+    const clipboard = e.clipboardData?.getData('text/plain');
+    if (!clipboard) return;
+    e.preventDefault();
+    handleBizNumberChange(clipboard);
+  };
+
   const toggleRegionSelection = React.useCallback((current, region, optionsList) => {
     const exists = current.includes(region);
     const next = exists ? current.filter((r) => r !== region) : [...current, region];
@@ -894,6 +929,7 @@ function App() {
     setFilters(prev => ({
       ...prev,
       name: '',
+      bizNumber: '',
       includeRegions: [],
       excludeRegions: [],
       manager: '',
@@ -1182,6 +1218,17 @@ function App() {
               <div className="filter-grid" onKeyDown={handleKeyDown}>
                 <div className="filter-item"><label>&nbsp;</label><button onClick={handleResetFilters} className="reset-button" disabled={isLoading}>{"\uD544\uD130 \uCD08\uAE30\uD654"}</button></div>
                 <div className="filter-item"><label>업체명</label><input type="text" name="name" value={filters.name} onChange={handleFilterChange} onKeyDown={handleKeyDown} className="filter-input" /></div>
+                <div className="filter-item"><label>사업자번호</label>
+                  <input
+                    type="text"
+                    name="bizNumber"
+                    value={filters.bizNumber}
+                    onChange={handleBizNumberInput}
+                    onPaste={handleBizNumberPaste}
+                    onKeyDown={handleKeyDown}
+                    className="filter-input"
+                  />
+                </div>
                 <RegionSelector
                   label="지역 포함"
                   options={regionOptions}
