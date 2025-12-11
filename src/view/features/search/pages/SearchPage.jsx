@@ -157,6 +157,23 @@ const findMatchIndexByKey = (dataset, key, globalOffset = 0) => {
   return -1;
 };
 
+const normalizeBizNumber = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/[^0-9]/g, '').trim();
+};
+
+const formatSmppTimestamp = (value) => {
+  if (!value && value !== 0) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${yyyy}.${mm}.${dd} ${hh}:${min}`;
+};
+
 // Parse percent-like strings into numbers, e.g., "123.4%" -> 123.4
 const parsePercentNumber = (v) => { if (v === null || v === undefined) return NaN; const s = String(v).replace(/[%%%\\s,]/g, ''); const n = Number(s); return Number.isFinite(n) ? n : NaN; };
 
@@ -391,6 +408,8 @@ function App() {
   };
   const [selectedCompanyKey, setSelectedCompanyKey] = useState(initialKey);
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [smppStatus, setSmppStatus] = useState({ busy: false, bizNo: '' });
+  const [smppResults, setSmppResults] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState({ isOpen: false, message: '' });
@@ -401,6 +420,12 @@ function App() {
   const lastRequestIdRef = useRef(0);
   const selectedCompanyKeyRef = useRef(selectedCompanyKey);
   const lastAutoSearchRef = useRef({ fileType, sortKey, sortDir, onlyLatest, onlyLHQuality, onlyWomenOwned });
+  const selectedBizNumber = React.useMemo(() => normalizeBizNumber(selectedCompany?.['사업자번호']), [selectedCompany]);
+  const currentSmppResult = selectedBizNumber ? smppResults[selectedBizNumber] : null;
+  const smppBusyForSelected = smppStatus.busy && smppStatus.bizNo === selectedBizNumber;
+  const smppSupported = typeof window !== 'undefined'
+    && window.electronAPI
+    && typeof window.electronAPI.smppCheckOne === 'function';
 
   useEffect(() => {
     selectedCompanyKeyRef.current = selectedCompanyKey;
@@ -961,6 +986,86 @@ function App() {
   const handleCopySipyung = () => handleCopyField('시평액', SIPYUNG_KEYS);
   const handleCopyPerf5y = () => handleCopyField('5년 실적', PERF5Y_KEYS);
 
+  const handleSmppLookup = React.useCallback(async () => {
+    const bizNo = selectedBizNumber;
+    const api = typeof window !== 'undefined' ? window.electronAPI : null;
+    if (!bizNo) {
+      setDialog({ isOpen: true, message: '사업자등록번호가 없는 업체입니다.' });
+      return;
+    }
+    if (!api || typeof api.smppCheckOne !== 'function') {
+      const message = '이 버전에서는 실시간 조회를 지원하지 않습니다.';
+      setSmppResults((prev) => ({
+        ...prev,
+        [bizNo]: { features: null, fetchedAt: new Date().toISOString(), error: message },
+      }));
+      setSmppStatus({ busy: false, bizNo: '' });
+      return;
+    }
+    setSmppStatus({ busy: true, bizNo });
+    try {
+      const response = await api.smppCheckOne({ bizNo });
+      if (!response?.success) {
+        throw new Error(response?.message || '실시간 조회에 실패했습니다.');
+      }
+      const payload = response.data || {};
+      setSmppResults((prev) => ({
+        ...prev,
+        [bizNo]: {
+          features: payload.features || null,
+          fetchedAt: payload.fetchedAt || new Date().toISOString(),
+          error: payload.error || null,
+        },
+      }));
+      setSmppStatus({ busy: false, bizNo: '' });
+    } catch (err) {
+      const message = err?.message || '실시간 조회에 실패했습니다.';
+      setSmppResults((prev) => ({
+        ...prev,
+        [bizNo]: { features: null, fetchedAt: new Date().toISOString(), error: message },
+      }));
+      setSmppStatus({ busy: false, bizNo: '' });
+    }
+  }, [selectedBizNumber]);
+
+  const renderSmppStatus = (featureKey) => {
+    if (!selectedBizNumber) {
+      return null;
+    }
+    if (smppBusyForSelected && !currentSmppResult) {
+      return <span className="smpp-status-text">실시간 조회 중...</span>;
+    }
+    if (!currentSmppResult) return null;
+    if (currentSmppResult.error) {
+      return <span className="smpp-error-text">실시간 오류: {currentSmppResult.error}</span>;
+    }
+    const feature = currentSmppResult.features?.[featureKey];
+    if (!feature) {
+      return <span className="smpp-muted-text">실시간 데이터가 없습니다.</span>;
+    }
+    if (!feature.exists) {
+      return <span className="smpp-muted-text">실시간: 해당사항 없음</span>;
+    }
+    const confirmDate = (feature.confirmDate || '').trim();
+    const expireDate = (feature.expireDate || '').trim();
+    let rangeText = '';
+    if (confirmDate && expireDate) {
+      rangeText = `${confirmDate}~${expireDate}`;
+    } else if (confirmDate || expireDate) {
+      rangeText = confirmDate || expireDate;
+    }
+    if (!rangeText) {
+      return <span className="smpp-muted-text">실시간 데이터가 부족합니다.</span>;
+    }
+    const timestamp = currentSmppResult.fetchedAt ? formatSmppTimestamp(currentSmppResult.fetchedAt) : '';
+    return (
+      <span className="smpp-result-text">
+        실시간 {rangeText}
+        {timestamp && <span className="smpp-result-meta"> · {timestamp}</span>}
+      </span>
+    );
+  };
+
   useEffect(() => {
     const safeTotal = totalPages && totalPages > 0 ? totalPages : 1;
     const clamped = Math.min(Math.max(page, 1), safeTotal);
@@ -1023,6 +1128,8 @@ function App() {
       sortKey,
       sortDir,
       onlyLatest,
+      onlyLHQuality,
+      onlyWomenOwned,
       selectedIndex,
       selectedCompanyKey,
       page: currentPage,
@@ -1328,26 +1435,58 @@ function App() {
                               }
                             }
                           } catch (_) { }
+                          const isSmppSmallRow = /소기업/.test(key) || /중소기업/.test(key);
+                          const isSmppWomenRow = /여성/.test(key);
+                          const smppFeatureKey = isSmppSmallRow ? 'small' : (isSmppWomenRow ? 'women' : null);
+                          const showSmppButton = Boolean(smppFeatureKey);
+                          const smppStatusNode = smppFeatureKey ? renderSmppStatus(smppFeatureKey) : null;
+                          const smppButtonDisabled = !selectedBizNumber || smppBusyForSelected || !smppSupported;
+                          const smppButtonTitle = !selectedBizNumber
+                            ? '사업자등록번호가 없습니다.'
+                            : (!smppSupported ? '실시간 조회를 지원하지 않는 환경입니다.' : '');
+
                           return (
                             <tr key={key} className={isWrappable ? 'wrappable-row' : ''}>
                               <th>{key}</th>
                               <td>
                                 <div className="value-cell">
                                   <div className="value-with-status">
-                                    <span className={`status-dot ${getStatusClass(status)}`} title={status}></span>
-                                    <span className={extraClass}>{displayValue}</span>
-                                    {ratioBadgeText && (
-                                      <span className={ratioBadgeClass} title="업종 평균 대비 비율">
-                                        {ratioBadgeText}
-                                      </span>
-                                    )}
-                                    {durationBadgeText && (
-                                      <span className={durationBadgeClass} title="영업기간 기준 뱃지">
-                                        {durationBadgeText}
-                                      </span>
+                                    <div className="value-main">
+                                      <span className={`status-dot ${getStatusClass(status)}`} title={status}></span>
+                                      <span className={extraClass}>{displayValue}</span>
+                                      {ratioBadgeText && (
+                                        <span className={ratioBadgeClass} title="업종 평균 대비 비율">
+                                          {ratioBadgeText}
+                                        </span>
+                                      )}
+                                      {durationBadgeText && (
+                                        <span className={durationBadgeClass} title="영업기간 기준 뱃지">
+                                          {durationBadgeText}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {smppStatusNode && (
+                                      <div className="smpp-result-line">
+                                        {smppStatusNode}
+                                      </div>
                                     )}
                                   </div>
-                                  <button onClick={() => handleCopySingle(key, displayValue)} className="copy-single-button" title={`${key} 복사`}>복사</button>
+                                  <div className="value-actions">
+                                    {showSmppButton && (
+                                      <button
+                                        type="button"
+                                        onClick={handleSmppLookup}
+                                        className="smpp-lookup-button"
+                                        disabled={smppButtonDisabled}
+                                        title={smppButtonDisabled ? smppButtonTitle : ''}
+                                      >
+                                        {smppBusyForSelected ? '조회 중...' : '실시간 조회'}
+                                      </button>
+                                    )}
+                                    <button onClick={() => handleCopySingle(key, displayValue)} className="copy-single-button" title={`${key} 복사`}>
+                                      복사
+                                    </button>
+                                  </div>
                                 </div>
                               </td>
                             </tr>

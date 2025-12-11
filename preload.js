@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       : ipcRenderer.invoke('search-companies', { criteria, file_type, options })
   ),
   searchManyCompanies: (names, file_type, options) => ipcRenderer.invoke('search-many-companies', { names, file_type, options }),
+  smppCheckOne: (payload) => ipcRenderer.invoke('smpp:check-one', payload),
   
   // (異붽?) ?덈줈??API?ㅼ쓣 ?깅줉?⑸땲??
   checkFiles: () => ipcRenderer.invoke('check-files'),

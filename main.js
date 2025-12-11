@@ -61,6 +61,24 @@ try { app.commandLine.appendSwitch('disable-gpu-shader-disk-cache'); } catch {}
 
 // --- 설정 ---
 let FILE_PATHS = { eung: '', tongsin: '', sobang: '' };
+let SMPP_CREDENTIALS = { id: 'jium2635', password: 'jium2635' };
+
+const sanitizeSmppCredentials = (payload = {}) => {
+  const id = typeof payload.id === 'string' ? payload.id.trim() : '';
+  const password = typeof payload.password === 'string' ? payload.password.trim() : '';
+  return { id, password };
+};
+
+const buildConfigSnapshot = () => ({
+  filePaths: {
+    eung: FILE_PATHS.eung || '',
+    tongsin: FILE_PATHS.tongsin || '',
+    sobang: FILE_PATHS.sobang || '',
+  },
+  smpp: sanitizeSmppCredentials(SMPP_CREDENTIALS),
+});
+
+const getSmppCredentials = () => sanitizeSmppCredentials(SMPP_CREDENTIALS);
 
 const FILE_TYPE_ALIASES = {
   eung: 'eung',
@@ -295,8 +313,11 @@ function loadConfig() {
     try {
         if (fs.existsSync(CONFIG_PATH)) {
             const rawConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8')) || {};
+            const filePathSource = (rawConfig && typeof rawConfig.filePaths === 'object')
+                ? rawConfig.filePaths
+                : rawConfig;
             const normalizedConfig = { eung: '', tongsin: '', sobang: '' };
-            Object.entries(rawConfig).forEach(([key, value]) => {
+            Object.entries(filePathSource || {}).forEach(([key, value]) => {
                 const normKey = normalizeFileType(key);
                 if (!normKey || normKey === 'all') return;
                 if (normKey === 'eung' || normKey === 'tongsin' || normKey === 'sobang') {
@@ -306,15 +327,20 @@ function loadConfig() {
                 }
             });
             FILE_PATHS = { ...FILE_PATHS, ...normalizedConfig };
-            const sanitizedForSave = {
+            FILE_PATHS = {
                 eung: FILE_PATHS.eung,
                 tongsin: FILE_PATHS.tongsin,
                 sobang: FILE_PATHS.sobang,
             };
-            FILE_PATHS = sanitizedForSave;
-            console.log('[MAIN] 설정 파일 로드 완료:', FILE_PATHS);
-            if (JSON.stringify(rawConfig) !== JSON.stringify(sanitizedForSave)) {
-                saveConfig();
+
+            const smppSource = (rawConfig && typeof rawConfig.smpp === 'object') ? rawConfig.smpp : {};
+            SMPP_CREDENTIALS = sanitizeSmppCredentials(smppSource);
+
+            const snapshot = buildConfigSnapshot();
+            const shouldRewrite = JSON.stringify(rawConfig) !== JSON.stringify(snapshot);
+            console.log('[MAIN] 설정 파일 로드 완료 (경로만 표시):', snapshot.filePaths);
+            if (shouldRewrite) {
+                saveConfig(snapshot);
             }
         } else {
             console.log('[MAIN] 설정 파일이 없습니다. 기본값으로 동작합니다.');
@@ -324,10 +350,11 @@ function loadConfig() {
     }
 }
 
-function saveConfig() {
+function saveConfig(payload) {
     try {
-        fs.writeFileSync(CONFIG_PATH, JSON.stringify(FILE_PATHS, null, 2));
-        console.log('[MAIN] 설정 저장:', CONFIG_PATH);
+        const snapshot = payload || buildConfigSnapshot();
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(snapshot, null, 2));
+        console.log('[MAIN] 설정 저장 완료 (경로만 표시):', snapshot.filePaths);
     } catch (err) {
         console.error('[MAIN] 설정 저장 실패:', err);
     }
@@ -762,6 +789,13 @@ try {
   });
 } catch (e) {
   console.error('[MAIN] SearchService 초기화/바인딩 실패:', e);
+}
+
+try {
+  const { registerSmppIpcHandlers } = require('./src/main/features/smpp/ipc');
+  registerSmppIpcHandlers({ ipcMain, getSmppCredentials });
+} catch (err) {
+  console.error('[MAIN] SMPP IPC 등록 실패:', err);
 }
 
 // Copy 1-column CSV to clipboard (preserve in-cell line breaks for Excel)
