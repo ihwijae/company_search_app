@@ -63,6 +63,19 @@ try { app.commandLine.appendSwitch('disable-gpu-shader-disk-cache'); } catch {}
 let FILE_PATHS = { eung: '', tongsin: '', sobang: '' };
 let SMPP_CREDENTIALS = { id: 'jium2635', password: 'jium2635' };
 
+const registerSmppFallbackHandler = (message = 'SMPP 기능이 초기화되지 않았습니다.') => {
+  try {
+    if (ipcMain.removeHandler) {
+      try { ipcMain.removeHandler('smpp:check-one'); } catch {}
+    }
+    ipcMain.handle('smpp:check-one', async () => ({ success: false, message }));
+  } catch (err) {
+    console.error('[MAIN] SMPP fallback 등록 실패:', err);
+  }
+};
+
+registerSmppFallbackHandler();
+
 const sanitizeSmppCredentials = (payload = {}) => {
   const id = typeof payload.id === 'string' ? payload.id.trim() : '';
   const password = typeof payload.password === 'string' ? payload.password.trim() : '';
@@ -79,6 +92,11 @@ const buildConfigSnapshot = () => ({
 });
 
 const getSmppCredentials = () => sanitizeSmppCredentials(SMPP_CREDENTIALS);
+const setSmppCredentials = (payload = {}) => {
+  SMPP_CREDENTIALS = sanitizeSmppCredentials(payload);
+  saveConfig();
+  return getSmppCredentials();
+};
 
 const FILE_TYPE_ALIASES = {
   eung: 'eung',
@@ -344,6 +362,7 @@ function loadConfig() {
             }
         } else {
             console.log('[MAIN] 설정 파일이 없습니다. 기본값으로 동작합니다.');
+            saveConfig();
         }
     } catch (err) {
         console.error('[MAIN] 설정 파일 로드 실패:', err);
@@ -695,6 +714,20 @@ try {
     return ok ? { success: true } : { success: false, message: 'write failed' };
   });
 
+  if (ipcMain.removeHandler) {
+    try { ipcMain.removeHandler('smpp:get-creds'); } catch {}
+    try { ipcMain.removeHandler('smpp:set-creds'); } catch {}
+  }
+  ipcMain.handle('smpp:get-creds', async () => ({ success: true, data: getSmppCredentials() }));
+  ipcMain.handle('smpp:set-creds', async (_event, payload = {}) => {
+    const sanitized = sanitizeSmppCredentials(payload);
+    if (!sanitized.id || !sanitized.password) {
+      return { success: false, message: 'ID와 비밀번호를 모두 입력하세요.' };
+    }
+    const stored = setSmppCredentials(sanitized);
+    return { success: true, data: stored };
+  });
+
   // File selection and per-type routes
   if (ipcMain.removeHandler) ipcMain.removeHandler('select-file');
   ipcMain.handle('select-file', async (_event, fileType) => {
@@ -794,8 +827,10 @@ try {
 try {
   const { registerSmppIpcHandlers } = require('./src/main/features/smpp/ipc');
   registerSmppIpcHandlers({ ipcMain, getSmppCredentials });
+  console.log('[MAIN] SMPP IPC 핸들러 등록 완료');
 } catch (err) {
   console.error('[MAIN] SMPP IPC 등록 실패:', err);
+  registerSmppFallbackHandler('SMPP IPC 초기화에 실패했습니다. 설정을 확인하세요.');
 }
 
 // Copy 1-column CSV to clipboard (preserve in-cell line breaks for Excel)

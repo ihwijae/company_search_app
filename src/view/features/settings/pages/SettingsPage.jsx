@@ -122,6 +122,9 @@ export default function SettingsPage() {
 
   const [rulesModalOpen, setRulesModalOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [smppForm, setSmppForm] = React.useState({ id: '', password: '' });
+  const [smppMessage, setSmppMessage] = React.useState('');
+  const [smppSaving, setSmppSaving] = React.useState(false);
 
   const load = React.useCallback(async ({ preserveSelection = false, silent = false } = {}) => {
     if (!silent) setStatus('로딩...');
@@ -174,6 +177,48 @@ export default function SettingsPage() {
   React.useEffect(() => {
     selectionRef.current = { agencyId, tierIdx };
   }, [agencyId, tierIdx]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!window.electronAPI?.smppGetCredentials) return;
+      try {
+        const resp = await window.electronAPI.smppGetCredentials();
+        if (mounted && resp?.success && resp.data) {
+          setSmppForm({ id: resp.data.id || '', password: '' });
+        }
+      } catch (err) {
+        if (mounted) setSmppMessage(err?.message || 'SMPP 정보를 불러오지 못했습니다.');
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const handleSmppChange = (field, value) => {
+    setSmppForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSmppSave = async () => {
+    if (!window.electronAPI?.smppSetCredentials) return;
+    setSmppSaving(true);
+    setSmppMessage('');
+    try {
+      const payload = {
+        id: smppForm.id?.trim?.() || '',
+        password: smppForm.password || '',
+      };
+      const resp = await window.electronAPI.smppSetCredentials(payload);
+      if (!resp?.success) {
+        throw new Error(resp?.message || '저장에 실패했습니다.');
+      }
+      setSmppForm((prev) => ({ ...prev, password: '' }));
+      setSmppMessage('저장되었습니다. 검색 화면에서 실시간 조회를 다시 시도하세요.');
+    } catch (err) {
+      setSmppMessage(err?.message || '저장 실패');
+    } finally {
+      setSmppSaving(false);
+    }
+  };
 
   // (no-op) rules editor is now a modal and lazy-loads its data
 
@@ -644,6 +689,46 @@ export default function SettingsPage() {
                 <button className="btn-soft" onClick={exportSettings} disabled={busy}>설정 내보내기</button>
                 <button className="btn-soft" onClick={importSettings} disabled={busy}>설정 가져오기</button>
                 {status && <span style={{ color: '#6b7280' }}>{status}</span>}
+              </div>
+            </div>
+
+            <div className="panel" style={{ gridColumn: '1 / -1' }}>
+              <h3 style={{ marginTop: 0 }}>실시간 SMPP 계정</h3>
+              <p style={{ margin: '4px 0 12px', color: '#6b7280' }}>
+                ID와 비밀번호를 저장하면 config.json이 자동으로 갱신되고, 검색 상세 화면의 실시간 조회 버튼이 이 계정으로 동작합니다.
+              </p>
+              <div className="filter-grid">
+                <div className="filter-item">
+                  <label>SMPP ID</label>
+                  <input
+                    className="filter-input"
+                    value={smppForm.id}
+                    onChange={(e) => handleSmppChange('id', e.target.value)}
+                    placeholder="예: jium2635"
+                  />
+                </div>
+                <div className="filter-item">
+                  <label>SMPP 비밀번호</label>
+                  <input
+                    className="filter-input"
+                    type="password"
+                    value={smppForm.password}
+                    onChange={(e) => handleSmppChange('password', e.target.value)}
+                    placeholder="●●●●"
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  className="btn-soft"
+                  onClick={handleSmppSave}
+                  disabled={smppSaving || !smppForm.id.trim() || !smppForm.password}
+                >
+                  {smppSaving ? '저장 중...' : '저장'}
+                </button>
+                {smppMessage && (
+                  <span style={{ color: smppMessage.includes('실패') ? '#dc2626' : '#16a34a' }}>{smppMessage}</span>
+                )}
               </div>
             </div>
 

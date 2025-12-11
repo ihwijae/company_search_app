@@ -1,7 +1,17 @@
 const axios = require('axios');
 const { CookieJar } = require('tough-cookie');
-const { wrapper } = require('axios-cookiejar-support');
 const cheerio = require('cheerio');
+
+const loadCookieJarSupport = (() => {
+  let cached = null;
+  return async () => {
+    if (cached) return cached;
+    const mod = await import('axios-cookiejar-support');
+    const fn = mod?.default || mod?.axiosCookieJarSupport || mod?.wrapper;
+    cached = typeof fn === 'function' ? fn : (() => {});
+    return cached;
+  };
+})();
 
 const USER_AGENT = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
@@ -23,12 +33,18 @@ async function createSmppClient(userId, password) {
   }
 
   const jar = new CookieJar();
-  const client = wrapper(axios.create({
+  const client = axios.create({
     jar,
     withCredentials: true,
     timeout: REQUEST_TIMEOUT_MS,
     headers: { 'User-Agent': USER_AGENT },
-  }));
+  });
+  try {
+    const applySupport = await loadCookieJarSupport();
+    applySupport(client);
+  } catch (err) {
+    console.warn('[SMPP] 쿠키 지원 초기화 실패:', err?.message || err);
+  }
 
   const pre = await client.get(LOGIN_PAGE_URL, {
     headers: { 'User-Agent': USER_AGENT },
