@@ -59,6 +59,11 @@ async function checkSingleCorp(userId, password, bizNo) {
     }
 
     const features = parseCorpFeatures(summaryHtml);
+    console.log('[SMPP] lookup success:', {
+      bizNo: normalizedBizNo,
+      women: features?.women,
+      small: features?.small,
+    });
     return {
       bizNo: normalizedBizNo,
       features,

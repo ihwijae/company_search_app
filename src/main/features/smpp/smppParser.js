@@ -28,7 +28,13 @@ function parseCorpFeatures(html) {
   };
 
   if (!label.length) return result;
-  const table = label.nextAll('table').first();
+  let table = label.nextAll('table').first();
+  if (!table.length) {
+    table = label.nextAll().find('table').first();
+  }
+  if (!table.length) {
+    table = label.parent().find('table').first();
+  }
   if (!table.length) return result;
   const rows = table.find('tbody tr');
   rows.each((_, tr) => {
