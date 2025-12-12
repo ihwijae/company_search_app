@@ -27,6 +27,15 @@ const OWNER_OPTIONS = [
     ],
   },
   {
+    id: 'ex',
+    label: '한국도로공사',
+    ownerToken: '한국도로공사',
+    ranges: [
+      { id: 'under50', label: '50억 미만' },
+      { id: '50to100', label: '50억~100억' },
+    ],
+  },
+  {
     id: 'lh',
     label: 'LH',
     ownerToken: 'LH',
@@ -80,6 +89,10 @@ const RANGE_AMOUNT_PRESETS = {
     '50to100': 100 * WON,
   },
   pps: {
+    under50: 50 * WON,
+    '50to100': 100 * WON,
+  },
+  ex: {
     under50: 50 * WON,
     '50to100': 100 * WON,
   },
