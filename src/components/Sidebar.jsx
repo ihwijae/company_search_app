@@ -94,21 +94,21 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
           <img
             src={emailIcon}
             alt="메일"
-            style={{ width: 18, height: 18, objectFit: 'contain' }}
+            style={{ width: 22, height: 22, objectFit: 'contain' }}
           />
         ))}
         {item('excel-helper', '엑셀도우미', (
           <img
             src={excelIcon}
             alt="엑셀"
-            style={{ width: 18, height: 18, objectFit: 'contain' }}
+            style={{ width: 22, height: 22, objectFit: 'contain' }}
           />
         ))}
         {item('agreements', '협정', (
           <img
             src={mmsIcon}
             alt="협정"
-            style={{ width: 18, height: 18, objectFit: 'contain' }}
+            style={{ width: 22, height: 22, objectFit: 'contain' }}
           />
         ))}
 
