@@ -1,5 +1,8 @@
 import React from 'react';
 import { AGREEMENT_GROUPS, findMenuByHash, findMenuByKey } from '../shared/navigation.js';
+import excelIcon from '../assets/excel.png';
+import mmsIcon from '../assets/mms.png';
+import emailIcon from '../assets/email.png';
 
 export default function Sidebar({ active, onSelect, fileStatuses, collapsed = true }) {
   const anyLoaded = !!(fileStatuses?.eung || fileStatuses?.tongsin || fileStatuses?.sobang);
@@ -87,9 +90,27 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
       <nav className="nav">
         {item('search', '검색', '🔍')}
         {item('records', '실적', '📊')}
-        {item('mail', '메일', '✉️')}
-        {item('excel-helper', '엑셀도우미', '📑')}
-        {item('agreements', '협정', '🤝')}
+        {item('mail', '메일', (
+          <img
+            src={emailIcon}
+            alt="메일"
+            style={{ width: 18, height: 18, objectFit: 'contain' }}
+          />
+        ))}
+        {item('excel-helper', '엑셀도우미', (
+          <img
+            src={excelIcon}
+            alt="엑셀"
+            style={{ width: 18, height: 18, objectFit: 'contain' }}
+          />
+        ))}
+        {item('agreements', '협정', (
+          <img
+            src={mmsIcon}
+            alt="협정"
+            style={{ width: 18, height: 18, objectFit: 'contain' }}
+          />
+        ))}
 
         {AGREEMENT_GROUPS.map((group) => {
           const isOpen = openGroupId === group.id;
