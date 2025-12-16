@@ -78,6 +78,7 @@ const REPRESENTATIVE_FIELDS = ['대표자', '대표자명'];
 const DEBT_RATIO_FIELDS = ['부채비율', '부채 비율', 'debtRatio', 'DebtRatio'];
 const CURRENT_RATIO_FIELDS = ['유동비율', 'currentRatio', 'CurrentRatio'];
 const BIZ_YEARS_FIELDS = ['영업기간', '업력', 'bizYears', 'bizyears', '업력(년)', '업력'];
+const AGENCIES_ALWAYS_REQUIRE_BIZ_YEARS = new Set(['PPS', 'LH', 'EX', 'KRAIL']);
 const CREDIT_GRADE_FIELDS = ['creditGrade', 'creditGradeText', '신용등급', '신용평가등급', '신용평가', '신용등급(최근)'];
 const CREDIT_EXPIRED_FIELDS = ['creditExpired', '신용만료', '신용평가만료'];
 const CREDIT_TRUE_SET = new Set(['Y', 'YES', 'TRUE', 'EXPIRED']);
@@ -929,7 +930,9 @@ export default function ExcelHelperPage() {
       baseAmount: amount,
     };
 
-    if (agencyId === 'PPS' || agencyId === 'LH' || (agencyId === 'MOIS' && (rangeId === '30to50' || rangeId === '50to100'))) {
+    const agencyNeedsBizYears = AGENCIES_ALWAYS_REQUIRE_BIZ_YEARS.has(agencyId)
+      || (agencyId === 'MOIS' && (rangeId === '30to50' || rangeId === '50to100'));
+    if (agencyNeedsBizYears) {
       inputs.bizYears = bizYearsInfo.years;
     }
 

@@ -49,6 +49,9 @@ async function createSmppClient(userId, password) {
   const pre = await client.get(LOGIN_PAGE_URL, {
     headers: { 'User-Agent': USER_AGENT },
   });
+  try {
+    console.log('[SMPP] login page status:', pre?.status);
+  } catch {}
   const $ = cheerio.load(pre.data || '');
   const form = $('form[name="loginForm"], form#loginForm').first();
   if (!form.length) {
@@ -67,16 +70,26 @@ async function createSmppClient(userId, password) {
   formData.password = password;
 
   const payload = encodeForm(formData);
-  const resp = await client.post(LOGIN_ACTION_URL, payload, {
-    headers: {
-      'User-Agent': USER_AGENT,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Origin: 'https://www.smpp.go.kr',
-      Referer: LOGIN_PAGE_URL,
-    },
-    maxRedirects: 5,
-    validateStatus: (status) => status >= 200 && status < 400,
-  });
+  let resp;
+  try {
+    resp = await client.post(LOGIN_ACTION_URL, payload, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Origin: 'https://www.smpp.go.kr',
+        Referer: LOGIN_PAGE_URL,
+      },
+      maxRedirects: 5,
+      validateStatus: (status) => status >= 200 && status < 400,
+    });
+    console.log('[SMPP] login action status:', resp?.status);
+  } catch (err) {
+    console.error('[SMPP] login request failed:', err?.message, err?.response?.status);
+    if (err?.response?.status === 403) {
+      console.error('[SMPP] login response body preview:', String(err?.response?.data || '').slice(0, 200));
+    }
+    throw err;
+  }
 
   const body = resp?.data ? String(resp.data) : '';
   if (body.includes('아이디 입력') && body.includes('loginForm')) {
@@ -118,15 +131,31 @@ async function fetchListHtml(client, bizNo) {
     pageUnit: '15',
   });
 
-  const resp = await client.post(LIST_URL, payload, {
-    headers: {
-      'User-Agent': USER_AGENT,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Referer: LIST_URL,
-    },
-  });
+  try {
+    console.log('[SMPP] list request start:', { bizNo: digits });
+  } catch {}
 
-  return resp?.data ? String(resp.data) : '';
+  try {
+    const resp = await client.post(LIST_URL, payload, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Referer: LIST_URL,
+      },
+    });
+
+    try {
+      console.log('[SMPP] list response status:', resp?.status);
+    } catch {}
+
+    return resp?.data ? String(resp.data) : '';
+  } catch (err) {
+    console.error('[SMPP] list request failed:', err?.message, err?.response?.status);
+    if (err?.response?.status === 403) {
+      console.error('[SMPP] list response body preview:', String(err?.response?.data || '').slice(0, 200));
+    }
+    throw err;
+  }
 }
 
 async function fetchSummaryHtmlFromList(client, listHtml, bizNo) {
@@ -150,16 +179,32 @@ async function fetchSummaryHtmlFromList(client, listHtml, bizNo) {
     payload.searchBsnmNo = digits;
   }
 
-  const resp = await client.post(SUMMARY_URL, encodeForm(payload), {
-    headers: {
-      'User-Agent': USER_AGENT,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Origin: 'https://www.smpp.go.kr',
-      Referer: LIST_URL,
-    },
-  });
+  try {
+    console.log('[SMPP] summary request start:', { bizNo: digits });
+  } catch {}
 
-  return resp?.data ? String(resp.data) : '';
+  try {
+    const resp = await client.post(SUMMARY_URL, encodeForm(payload), {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Origin: 'https://www.smpp.go.kr',
+        Referer: LIST_URL,
+      },
+    });
+
+    try {
+      console.log('[SMPP] summary response status:', resp?.status);
+    } catch {}
+
+    return resp?.data ? String(resp.data) : '';
+  } catch (err) {
+    console.error('[SMPP] summary request failed:', err?.message, err?.response?.status);
+    if (err?.response?.status === 403) {
+      console.error('[SMPP] summary response body preview:', String(err?.response?.data || '').slice(0, 200));
+    }
+    throw err;
+  }
 }
 
 module.exports = {

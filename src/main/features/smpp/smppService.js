@@ -44,9 +44,11 @@ async function checkSingleCorp(userId, password, bizNo) {
   }
 
   try {
+    console.log('[SMPP] lookup start:', normalizedBizNo);
     const client = await ensureClient(userId, password);
     let listHtml = await fetchListHtml(client, normalizedBizNo);
     if (looksLikeLoginPage(listHtml)) {
+      console.warn('[SMPP] session looked expired, relogging...');
       cachedClient = await createSmppClient(userId, password);
       cachedCreds = { id: userId, password };
       lastLoginAt = Date.now();
