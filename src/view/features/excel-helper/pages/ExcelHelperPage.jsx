@@ -554,7 +554,7 @@ const cleanCompanyName = (rawName) => {
   const original = String(rawName);
   let primary = original.split('\n')[0];
   primary = primary.replace(/\r/g, '');
-  const hasDelimiterHints = /[0-9_%]/.test(primary) || original.includes('_');
+  const hasDelimiterHints = /[0-9_%]/.test(primary) || /[_\n\r]/.test(original);
   primary = primary.replace(/\s*[\d.,%][\s\S]*$/, '');
   primary = primary.split('_')[0];
   let trimmed = primary.replace(/\s+/g, ' ').trim();
@@ -1209,7 +1209,8 @@ export default function ExcelHelperPage() {
 
         const targetCompany = foundCompany || candidates[0] || null;
         const bizNo = targetCompany ? (pickFirstValue(targetCompany, BIZ_FIELDS) || '') : '';
-        const fullName = targetCompany ? (pickFirstValue(targetCompany, NAME_FIELDS) || p.name) : p.name;
+        const fullNameRaw = targetCompany ? (pickFirstValue(targetCompany, NAME_FIELDS) || p.name) : p.name;
+        const fullName = cleanCompanyName(fullNameRaw) || cleanCompanyName(p.name) || fullNameRaw;
 
         let finalShare = p.share;
         const shareAsNumber = parseFloat(String(p.share).replace('%', ''));
