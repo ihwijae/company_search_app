@@ -1234,7 +1234,12 @@ export default function ExcelHelperPage() {
     }
   };
 
-  const handleClearUploadedFile = React.useCallback(() => {
+  const handleClearUploadedFile = React.useCallback((event) => {
+    if (event?.target?.value) {
+      // reset file input value so same file can be selected again
+      // eslint-disable-next-line no-param-reassign
+      event.target.value = '';
+    }
     setUploadedFile(null);
     setUploadedWorkbook(null);
     setSheetNames([]);
@@ -1821,12 +1826,12 @@ export default function ExcelHelperPage() {
               <div>
                 <div style={{ marginBottom: '12px' }}>
                   <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
-                  <input type="file" className="input" accept=".xlsx, .xls" onChange={handleFileUpload} />
+                  <input type="file" className="input" accept=".xlsx, .xls" onChange={handleFileUpload} onClick={(e) => { e.target.value = ''; }} />
                   <button
                     type="button"
                     className="btn-soft"
                     style={{ marginTop: '8px' }}
-                    onClick={handleClearUploadedFile}
+                    onClick={(e) => handleClearUploadedFile(e)}
                     disabled={!uploadedFile}
                   >
                     업로드 파일 지우기
