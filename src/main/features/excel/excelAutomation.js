@@ -108,6 +108,7 @@ $ErrorActionPreference = 'Stop'
 $payloadJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBase64))
 $payload = $payloadJson | ConvertFrom-Json
 if (-not $payload) { throw 'payload 파싱에 실패했습니다.' }
+try { Add-Type -AssemblyName System.Drawing } catch {}
 $excel = $null
 try {
   $excel = [Runtime.InteropServices.Marshal]::GetActiveObject('Excel.Application')
@@ -149,6 +150,20 @@ foreach ($update in $payload.updates) {
     } else {
       $cell.Value2 = [string]$value
     }
+  }
+  if ($update.fillColor) {
+    try {
+      $hex = [string]$update.fillColor
+      if ([string]::IsNullOrWhiteSpace($hex) -eq $false) {
+        if (-not $hex.StartsWith('#')) { $hex = '#'+$hex }
+        $colorObj = [System.Drawing.ColorTranslator]::FromHtml($hex)
+        $cell.Interior.Color = $colorObj.ToArgb()
+      }
+    } catch {}
+  } elseif ($update.clearFill) {
+    try {
+      $cell.Interior.ColorIndex = -4142
+    } catch {}
   }
 }
 [pscustomobject]@{ success = $true } | ConvertTo-Json -Compress

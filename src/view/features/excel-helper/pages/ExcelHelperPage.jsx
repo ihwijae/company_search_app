@@ -213,6 +213,8 @@ const coerceExcelValue = (value) => {
   return String(value).trim();
 };
 
+const MANAGEMENT_WARNING_FILL = '#f97316';
+
 const computeMetrics = (company) => {
   if (!company) return null;
   const name = pickFirstValue(company, NAME_FIELDS) || '';
@@ -824,6 +826,7 @@ export default function ExcelHelperPage() {
   const [messageStatus, setMessageStatus] = React.useState('');
   const [messagePreview, setMessagePreview] = React.useState('');
   const [evaluatedManagementScore, setEvaluatedManagementScore] = React.useState(null);
+  const [managementScoreMeta, setManagementScoreMeta] = React.useState({ maxScore: null, isPerfect: false });
   const [isGeneratingAgreement, setIsGeneratingAgreement] = React.useState(false); // 새 상태 추가
   const [technicianEntries, setTechnicianEntries] = React.useState([]);
 
@@ -910,6 +913,7 @@ export default function ExcelHelperPage() {
   React.useEffect(() => {
     setShareInput('');
     setEvaluatedManagementScore(null); // selectedCompany 변경 시 초기화
+    setManagementScoreMeta({ maxScore: null, isPerfect: false });
     if (selectedCompany) {
       evaluateManagementScore(selectedCompany, fileType);
     }
@@ -956,14 +960,21 @@ export default function ExcelHelperPage() {
         : { agencyId, amount, inputs, noticeDate: noticeDateInput };
       const response = await window.electronAPI.excelHelperFormulasEvaluate(payload);
       const score = Number(response?.data?.management?.score);
+      const metaMax = Number(response?.data?.management?.meta?.maxScore);
+      const metaIsPerfect = Boolean(response?.data?.management?.meta?.isPerfect);
       if (Number.isFinite(score)) {
         setEvaluatedManagementScore(score); // 계산된 점수 상태에 저장
+        setManagementScoreMeta({
+          maxScore: Number.isFinite(metaMax) ? metaMax : null,
+          isPerfect: metaIsPerfect || (Number.isFinite(metaMax) && Math.abs(score - metaMax) < 1e-6),
+        });
         return score;
       }
     } catch (err) {
       console.warn('[ExcelHelper] excelHelperFormulasEvaluate failed:', err?.message || err);
     }
     setEvaluatedManagementScore(null); // 에러 발생 시 초기화
+    setManagementScoreMeta({ maxScore: null, isPerfect: false });
     return null;
   }, [ownerId, rangeId, noticeDateInput]);
 
@@ -1069,6 +1080,8 @@ export default function ExcelHelperPage() {
       .map((field) => {
         let source = null;
         let finalValue = null;
+        let fillColor = null;
+        let clearFill = false;
 
         if (ownerId === 'lh' && field.key === 'qualityScore') {
           source = getValidatedQualityScore(selectedCompany);
@@ -1079,6 +1092,17 @@ export default function ExcelHelperPage() {
         } else if (field.key === 'managementScore') {
           source = managementScore ?? selectedMetrics[field.key];
           finalValue = coerceExcelValue(source);
+          const numericScore = Number(source);
+          const numericMax = Number(managementScoreMeta.maxScore);
+          if (Number.isFinite(numericScore) && Number.isFinite(numericMax)) {
+            if (Math.abs(numericScore - numericMax) > 1e-6) {
+              fillColor = MANAGEMENT_WARNING_FILL;
+            } else {
+              clearFill = true;
+            }
+          } else if (managementScoreMeta.isPerfect) {
+            clearFill = true;
+          }
         } else if (field.key === 'name') {
           const rawCompanyName = selectedMetrics?.name || '';
           const companyName = normalizeName(rawCompanyName);
@@ -1100,12 +1124,15 @@ export default function ExcelHelperPage() {
           finalValue = coerceExcelValue(source);
         }
         
-        return {
+        const updatePayload = {
           rowOffset: field.rowOffset || 0,
           colOffset: field.colOffset || 0,
           value: finalValue,
           field: field.key,
         };
+        if (fillColor) updatePayload.fillColor = fillColor;
+        if (clearFill) updatePayload.clearFill = true;
+        return updatePayload;
       })
       .filter(Boolean);
 

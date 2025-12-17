@@ -38,6 +38,14 @@ function evaluateThresholdScore(value, thresholds) {
   return toNumber(last && last.score);
 }
 
+function getThresholdMaxScore(thresholds) {
+  if (!Array.isArray(thresholds)) return 0;
+  return thresholds.reduce((max, item) => {
+    const val = toNumber(item && item.score);
+    return Number.isFinite(val) ? Math.max(max, val) : max;
+  }, 0);
+}
+
 function evaluateBizYearsScore(years, thresholds) {
   for (const t of thresholds || []) {
     if (typeof t.gteYears === 'number' && years >= t.gteYears) return toNumber(t.score);
@@ -80,9 +88,22 @@ function evalManagementComposite(inputs, rules, industryAvg) {
     console.log('[EVAL DEBUG]   Raw Total:     ', scoreRaw);
     console.log('[EVAL DEBUG] --------------------------');
   
-    const score = applyRounding(scoreRaw, rules.management.rounding);
-    return { score, parts: { debtScore, currentScore, yearsScore, qualityScore }, methodId: 'composite' };
+  const score = applyRounding(scoreRaw, rules.management.rounding);
+  const debtMax = getThresholdMaxScore(def.debtRatio && def.debtRatio.thresholds);
+  const currentMax = getThresholdMaxScore(def.currentRatio && def.currentRatio.thresholds);
+  const yearsMax = getThresholdMaxScore(def.bizYears && def.bizYears.thresholds);
+  const qualityMax = getThresholdMaxScore(def.qualityEval && def.qualityEval.thresholds);
+  let compositeMaxScore = Number(comps.maxScore);
+  if (!Number.isFinite(compositeMaxScore) || compositeMaxScore <= 0) {
+    compositeMaxScore = toNumber(debtMax) + toNumber(currentMax) + toNumber(yearsMax) + (rules.agencyId !== 'lh' ? toNumber(qualityMax) : 0);
   }
+  return {
+    score,
+    parts: { debtScore, currentScore, yearsScore, qualityScore },
+    methodId: 'composite',
+    maxScore: Number.isFinite(compositeMaxScore) && compositeMaxScore > 0 ? compositeMaxScore : null,
+  };
+}
 
 function evalManagementCredit(inputs, rules) {
   const credit = (rules.management && rules.management.methods && rules.management.methods.find(m => m.id === 'credit')) || null;
@@ -91,18 +112,32 @@ function evalManagementCredit(inputs, rules) {
   const found = (credit.gradeTable || []).find(g => String(g.grade).toUpperCase() === grade);
   const raw = found ? toNumber(found.score) : 0;
   const score = applyRounding(raw, rules.management.rounding);
-  return { score, methodId: 'credit', grade, base: found ? found.base : null };
+  const maxFromTable = getThresholdMaxScore(credit.gradeTable);
+  const creditMaxScore = Number.isFinite(Number(credit.maxScore)) && Number(credit.maxScore) > 0
+    ? Number(credit.maxScore)
+    : (maxFromTable > 0 ? maxFromTable : null);
+  return { score, methodId: 'credit', grade, base: found ? found.base : null, maxScore: creditMaxScore };
 }
 
 function evalManagement(inputs, rules, industryAvg) {
   const composite = evalManagementComposite(inputs, rules, industryAvg);
   const credit = evalManagementCredit(inputs, rules);
   const selection = (rules.management && rules.management.methodSelection) || 'max';
-  if (selection === 'max') {
-    return composite.score >= credit.score ? { chosen: 'composite', composite, credit, score: composite.score } : { chosen: 'credit', composite, credit, score: credit.score };
-  }
-  // Otherwise, fall back to composite
-  return { chosen: 'composite', composite, credit, score: composite.score };
+  const result = (() => {
+    if (selection === 'max') {
+      return composite.score >= credit.score
+        ? { chosen: 'composite', composite, credit, score: composite.score }
+        : { chosen: 'credit', composite, credit, score: credit.score };
+    }
+    return { chosen: 'composite', composite, credit, score: composite.score };
+  })();
+  const compositeMax = Number.isFinite(Number(composite.maxScore)) ? Number(composite.maxScore) : null;
+  const creditMax = Number.isFinite(Number(credit.maxScore)) ? Number(credit.maxScore) : null;
+  const resolvedMax = Math.max(compositeMax || 0, creditMax || 0) || compositeMax || creditMax || null;
+  const isPerfect = Number.isFinite(resolvedMax) && resolvedMax > 0
+    ? Math.abs(result.score - resolvedMax) < 1e-6
+    : false;
+  return { ...result, meta: { maxScore: resolvedMax, isPerfect } };
 }
 
 function evalPerformance(inputs, rules) {
