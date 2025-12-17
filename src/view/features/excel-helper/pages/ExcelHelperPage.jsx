@@ -837,6 +837,8 @@ export default function ExcelHelperPage() {
   const [isGeneratingAgreement, setIsGeneratingAgreement] = React.useState(false); // 새 상태 추가
   const [technicianEntries, setTechnicianEntries] = React.useState([]);
   const [selectedRegions, setSelectedRegions] = React.useState([]);
+  const [regionMenuOpen, setRegionMenuOpen] = React.useState(false);
+  const regionMenuContainerRef = React.useRef(null);
 
   // New states for file upload
   const [uploadedFile, setUploadedFile] = React.useState(null);
@@ -1013,6 +1015,17 @@ export default function ExcelHelperPage() {
   const handleClearRegions = React.useCallback(() => {
     setSelectedRegions([]);
   }, []);
+
+  React.useEffect(() => {
+    if (!regionMenuOpen) return undefined;
+    const handleClickOutside = (event) => {
+      if (regionMenuContainerRef.current && !regionMenuContainerRef.current.contains(event.target)) {
+        setRegionMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [regionMenuOpen]);
 
   const handleFetchSelection = async () => {
     setSelectionMessage('엑셀 선택 정보를 확인 중...');
@@ -1682,31 +1695,6 @@ export default function ExcelHelperPage() {
                   placeholder="예: 1,000,000,000 (10억)"
                 />
               </div>
-              <div>
-                <label className="field-label" style={strongLabelStyle}>지역사 강조</label>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {REGION_OPTIONS.map((region) => {
-                      const active = selectedRegions.includes(region);
-                      return (
-                        <button
-                          key={region}
-                          type="button"
-                          className={active ? 'btn-chip active' : 'btn-chip'}
-                          style={{ minWidth: '60px' }}
-                          onClick={() => handleToggleRegion(region)}
-                        >
-                          {region}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#475569' }}>
-                    <span>선택된 지역사는 업체명 셀을 노란색으로 표시합니다.</span>
-                    <button type="button" className="btn-soft" onClick={handleClearRegions} disabled={selectedRegions.length === 0}>선택 해제</button>
-                  </div>
-                </div>
-              </div>
             </div>
             <div className="helper-grid" style={{ marginTop: 12 }}>
               <div>
@@ -1831,6 +1819,65 @@ export default function ExcelHelperPage() {
               <button type="button" className="btn-soft" onClick={handleSearch} disabled={searchLoading}>
                 {searchLoading ? '검색 중...' : '검색'}
               </button>
+              <div ref={regionMenuContainerRef} style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  className="btn-soft"
+                  onClick={() => setRegionMenuOpen((prev) => !prev)}
+                >
+                  {selectedRegions.length > 0 ? `지역사 강조 (${selectedRegions.length})` : '지역사 강조'}
+                </button>
+                {regionMenuOpen && (
+                  <div
+                    className="region-dropdown-menu"
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      marginTop: '6px',
+                      background: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      padding: '12px',
+                      width: '260px',
+                      boxShadow: '0 10px 25px rgba(15, 23, 42, 0.2)',
+                      zIndex: 20,
+                    }}
+                  >
+                    <div style={{ marginBottom: '8px', fontWeight: 600, fontSize: '13px', color: '#0f172a' }}>지역사 강조</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
+                      {REGION_OPTIONS.map((region) => {
+                        const active = selectedRegions.includes(region);
+                        return (
+                          <label
+                            key={region}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 4px',
+                              borderRadius: '6px',
+                              background: active ? '#fee5b6' : 'transparent',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={active}
+                              onChange={() => handleToggleRegion(region)}
+                            />
+                            <span style={{ fontSize: '13px' }}>{region}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '12px', color: '#475569' }}>
+                      <button type="button" className="btn-soft" onClick={handleClearRegions} disabled={selectedRegions.length === 0}>선택 해제</button>
+                      <button type="button" className="btn-soft" onClick={() => setRegionMenuOpen(false)}>닫기</button>
+                    </div>
+                    <div style={{ marginTop: '6px', fontSize: '11px', color: '#94a3b8' }}>선택한 지역 업체의 이름 셀을 노란색으로 표시합니다.</div>
+                  </div>
+                )}
+              </div>
             </div>
             {searchError && <div className="error-message" style={{ marginBottom: 12 }}>{searchError}</div>}
             <div className="table-scroll" style={{ flex: 1 }}>
