@@ -157,7 +157,8 @@ foreach ($update in $payload.updates) {
       if ([string]::IsNullOrWhiteSpace($hex) -eq $false) {
         if (-not $hex.StartsWith('#')) { $hex = '#'+$hex }
         $colorObj = [System.Drawing.ColorTranslator]::FromHtml($hex)
-        $cell.Interior.Color = $colorObj.ToArgb()
+        $oleColor = [System.Drawing.ColorTranslator]::ToOle($colorObj)
+        $cell.Interior.Color = $oleColor
       }
     } catch {}
   } elseif ($update.clearFill) {
