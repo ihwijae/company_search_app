@@ -213,7 +213,7 @@ const coerceExcelValue = (value) => {
   return String(value).trim();
 };
 
-const MANAGEMENT_WARNING_FILL = '#f97316';
+const MANAGEMENT_WARNING_FILL = '#ffc000';
 
 const computeMetrics = (company) => {
   if (!company) return null;
