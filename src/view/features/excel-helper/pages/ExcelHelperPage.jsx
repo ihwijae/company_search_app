@@ -1708,7 +1708,6 @@ export default function ExcelHelperPage() {
                                   gap: '4px',
                                   padding: '2px 4px',
                                   borderRadius: '6px',
-                                  background: active ? '#fee5b6' : 'transparent',
                                   cursor: 'pointer',
                                 }}
                               >
