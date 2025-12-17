@@ -214,6 +214,13 @@ const coerceExcelValue = (value) => {
 };
 
 const MANAGEMENT_WARNING_FILL = '#ffc000';
+const REGION_HIGHLIGHT_FILL = '#ffff00';
+const REGION_OPTIONS = [
+  '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산',
+  '서울', '세종', '울산', '인천', '전남', '전북', '제주', '충남', '충북',
+];
+
+const normalizeRegionLabel = (value) => String(value || '').replace(/\s+/g, '').toLowerCase();
 
 const computeMetrics = (company) => {
   if (!company) return null;
@@ -829,6 +836,7 @@ export default function ExcelHelperPage() {
   const [managementScoreMeta, setManagementScoreMeta] = React.useState({ maxScore: null, isPerfect: false });
   const [isGeneratingAgreement, setIsGeneratingAgreement] = React.useState(false); // 새 상태 추가
   const [technicianEntries, setTechnicianEntries] = React.useState([]);
+  const [selectedRegions, setSelectedRegions] = React.useState([]);
 
   // New states for file upload
   const [uploadedFile, setUploadedFile] = React.useState(null);
@@ -845,6 +853,7 @@ export default function ExcelHelperPage() {
     setOwnerId('');
     setRangeId('');
     setFileType('');
+    setSelectedRegions([]);
   }, []);
 
   const appliedCellsRef = React.useRef(new Map());
@@ -909,6 +918,10 @@ export default function ExcelHelperPage() {
     }
     return null;
   }, [selectedCompany, baseAmountInput]); // baseAmountInput을 의존성 배열에 추가
+
+  const selectedRegionSet = React.useMemo(() => (
+    new Set(selectedRegions.map((region) => normalizeRegionLabel(region)))
+  ), [selectedRegions]);
 
   React.useEffect(() => {
     setShareInput('');
@@ -986,6 +999,19 @@ export default function ExcelHelperPage() {
       bizNo: companyInfo?.bizNo || '',
       location,
     });
+  }, []);
+
+  const handleToggleRegion = React.useCallback((region) => {
+    if (!region) return;
+    setSelectedRegions((prev) => (
+      prev.includes(region)
+        ? prev.filter((item) => item !== region)
+        : [...prev, region]
+    ));
+  }, []);
+
+  const handleClearRegions = React.useCallback(() => {
+    setSelectedRegions([]);
   }, []);
 
   const handleFetchSelection = async () => {
@@ -1113,6 +1139,12 @@ export default function ExcelHelperPage() {
           const managerNames = managers.length > 0 ? ` ${managers.join(', ')}` : '';
           source = `${companyName}${availableShare}${managerNames}`;
           finalValue = source;
+          const normalizedCompanyRegion = normalizeRegionLabel(selectedMetrics?.region);
+          if (selectedRegionSet.size > 0 && normalizedCompanyRegion && selectedRegionSet.has(normalizedCompanyRegion)) {
+            fillColor = REGION_HIGHLIGHT_FILL;
+          } else if (selectedRegionSet.size > 0) {
+            clearFill = true;
+          }
         } else if (field.key === 'technicianScore') {
           if (!technicianEntries.length) {
             return null;
@@ -1649,6 +1681,31 @@ export default function ExcelHelperPage() {
                   }}
                   placeholder="예: 1,000,000,000 (10억)"
                 />
+              </div>
+              <div>
+                <label className="field-label" style={strongLabelStyle}>지역사 강조</label>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {REGION_OPTIONS.map((region) => {
+                      const active = selectedRegions.includes(region);
+                      return (
+                        <button
+                          key={region}
+                          type="button"
+                          className={active ? 'btn-chip active' : 'btn-chip'}
+                          style={{ minWidth: '60px' }}
+                          onClick={() => handleToggleRegion(region)}
+                        >
+                          {region}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#475569' }}>
+                    <span>선택된 지역사는 업체명 셀을 노란색으로 표시합니다.</span>
+                    <button type="button" className="btn-soft" onClick={handleClearRegions} disabled={selectedRegions.length === 0}>선택 해제</button>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="helper-grid" style={{ marginTop: 12 }}>
