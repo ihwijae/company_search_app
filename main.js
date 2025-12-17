@@ -35,6 +35,7 @@ const resolveAppIconPath = () => {
 const APP_ICON_PATH = resolveAppIconPath();
 
 let formulasCache = null;
+let formulasDefaultsCache = null;
 let recordsDbInstance = null;
 let recordsServiceInstance = null;
 let excelHelperWindow = null;
@@ -52,8 +53,32 @@ const loadMergedFormulasCached = () => {
   return formulasCache;
 };
 
+const loadFormulasDefaultsCached = () => {
+  if (formulasDefaultsCache) return formulasDefaultsCache;
+  try {
+    formulasDefaultsCache = require('./src/shared/formulas.defaults.json');
+  } catch (e) {
+    console.warn('[MAIN] formulas defaults load failed:', e?.message || e);
+    formulasDefaultsCache = { agencies: [] };
+  }
+  return formulasDefaultsCache;
+};
+
+const resolveFormulasDocument = ({ preferDefaults = false } = {}) => {
+  if (preferDefaults) {
+    return loadFormulasDefaultsCached();
+  }
+  const merged = loadMergedFormulasCached();
+  if (merged && Array.isArray(merged.agencies) && merged.agencies.length > 0) {
+    return merged;
+  }
+  return loadFormulasDefaultsCached();
+};
+
 const invalidateFormulasCache = () => {
   formulasCache = null;
+  formulasDefaultsCache = null;
+  try { delete require.cache[require.resolve('./src/shared/formulas.defaults.json')]; } catch {}
 };
 
 // Minimize GPU shader cache errors on Windows (cannot create/move cache)
@@ -1043,8 +1068,6 @@ try {
       const normalizedOwnerId = String(ownerId || '').toLowerCase();
       const normalizedMenuKey = String(menuKey || '').toLowerCase();
 
-      const formulasMerged = loadMergedFormulasCached();
-
       const toScore = (value) => {
         const num = Number(value);
         return Number.isFinite(num) ? num : 0;
@@ -1270,17 +1293,9 @@ try {
       };
 
       const getAgencyOverrides = () => {
-        const fromFormulas = (() => {
-          if (!formulasMerged || !Array.isArray(formulasMerged.agencies)) return null;
-          const agency = formulasMerged.agencies.find((a) => String(a.id || '').toLowerCase() === normalizedOwnerId) || null;
-          if (!agency) return null;
-          const { tier, effectiveAmount } = selectTierForAgency(agency, tierAmount);
-          return buildOverridesFromTier(tier, effectiveAmount);
-        })();
-        if (fromFormulas) return fromFormulas;
-
-        const agencies = rulesDoc && Array.isArray(rulesDoc.agencies) ? rulesDoc.agencies : null;
-        if (!agencies) return {};
+        const formulasDoc = resolveFormulasDocument({ preferDefaults: true });
+        const agencies = Array.isArray(formulasDoc && formulasDoc.agencies) ? formulasDoc.agencies : [];
+        if (!agencies.length) return {};
         const agency = agencies.find((a) => String(a.id || '').toLowerCase() === normalizedOwnerId) || null;
         if (!agency) return {};
         const { tier, effectiveAmount } = selectTierForAgency(agency, tierAmount);
@@ -1423,6 +1438,7 @@ try {
                 baseAmount: baseAmountNumber,
               },
               industryAvg,
+              useDefaultsOnly: true,
             });
             const parts = evalResult && evalResult.management && evalResult.management.composite && evalResult.management.composite.parts;
             if (parts) {
@@ -1455,6 +1471,7 @@ try {
               creditGrade: creditGradeRaw,
             },
             industryAvg,
+            useDefaultsOnly: true,
           });
           const parts = evalResult && evalResult.management && evalResult.management.composite && evalResult.management.composite.parts;
           if (parts) {
@@ -1822,7 +1839,7 @@ try {
           if (avg) sanitized.industryAvg = avg;
         }
       }
-      // NOTE: Now uses the standard evaluator which relies on the merged cache
+      sanitized.useDefaultsOnly = true;
       const r = evaluator.evaluateScores(sanitized);
       return { success: true, data: r };
     } catch (e) {

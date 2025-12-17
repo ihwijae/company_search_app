@@ -1,7 +1,7 @@
 // Evaluation engine skeleton: computes scores from merged formulas
 // CommonJS module to be usable from Electron main and renderer bundles.
 
-const { loadFormulasMerged } = require('./formulas');
+const { loadFormulasMerged, loadFormulasDefaults } = require('./formulas');
 
 function toNumber(v) {
   const n = Number(v);
@@ -174,8 +174,15 @@ function pickTierByAmount(tiers = [], amount) {
   return tiers.find(t => a >= toNumber(t.minAmount) && a < toNumber(t.maxAmount)) || tiers[0];
 }
 
-function evaluateScores({ agencyId, amount, inputs = {}, industryAvg } = {}) {
-  const formulas = loadFormulasMerged();
+function resolveFormulasDocument(useDefaultsOnly) {
+  if (useDefaultsOnly) {
+    return loadFormulasDefaults();
+  }
+  return loadFormulasMerged();
+}
+
+function evaluateScores({ agencyId, amount, inputs = {}, industryAvg, useDefaultsOnly } = {}) {
+  const formulas = resolveFormulasDocument(useDefaultsOnly);
   const agency = (formulas.agencies || []).find(a => String(a.id || '').toLowerCase() === String(agencyId || '').toLowerCase()) || (formulas.agencies || [])[0];
   if (!agency) return { ok: false, error: 'NO_AGENCY' };
   const tier = pickTierByAmount(agency.tiers || [], amount);

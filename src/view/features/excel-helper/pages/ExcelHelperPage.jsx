@@ -1150,8 +1150,8 @@ export default function ExcelHelperPage() {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         setUploadedWorkbook(workbook);
-        setSheetNames(workbook.SheetNames);
-        setSelectedSheet('');
+        setSheetNames(workbook.SheetNames || []);
+        setSelectedSheet(workbook.SheetNames?.[0] || '');
       };
       reader.readAsArrayBuffer(file);
     } else {
@@ -1161,6 +1161,13 @@ export default function ExcelHelperPage() {
       setSelectedSheet('');
     }
   };
+
+  const handleClearUploadedFile = React.useCallback(() => {
+    setUploadedFile(null);
+    setUploadedWorkbook(null);
+    setSheetNames([]);
+    setSelectedSheet('');
+  }, []);
 
   // Handle sheet selection
   const handleSheetSelect = (event) => {
@@ -1687,6 +1694,15 @@ export default function ExcelHelperPage() {
                 <div style={{ marginBottom: '12px' }}>
                   <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
                   <input type="file" className="input" accept=".xlsx, .xls" onChange={handleFileUpload} />
+                  <button
+                    type="button"
+                    className="btn-soft"
+                    style={{ marginTop: '8px' }}
+                    onClick={handleClearUploadedFile}
+                    disabled={!uploadedFile}
+                  >
+                    업로드 파일 지우기
+                  </button>
                 </div>
                 <div>
                   <label className="field-label" style={strongLabelStyle}>시트 선택</label>

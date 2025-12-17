@@ -114,7 +114,12 @@ function loadFormulasMerged() {
   return merged;
 }
 
+function loadFormulasDefaults() {
+  return deepClone(defaults);
+}
+
 module.exports = {
   loadFormulasMerged,
+  loadFormulasDefaults,
   _internals: { mergeAgencies, mergeTiers, loadUserOverrides, getUserDataDirSafe }
 };
