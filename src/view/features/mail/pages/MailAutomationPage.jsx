@@ -30,6 +30,25 @@ const SEED_CONTACTS = [
 const ITEMS_PER_PAGE = 10;
 const normalizeVendorName = (name = '') => name.replace(/\s+/g, '').toLowerCase();
 const trimValue = (value) => (typeof value === 'string' ? value.trim() : '');
+const DEFAULT_BODY_TEMPLATE = `
+<div style="font-family:'Malgun Gothic',Dotum,Arial,sans-serif;font-size:15px;color:#1f2933;line-height:1.6;">
+  <p style="margin:0 0 12px;color:#0455c0;font-size:16px;font-weight:bold;">
+    {{owner}} "{{announcementNumber}} {{announcementName}}"의 입찰내역을 보내드립니다.
+  </p>
+  <p style="margin:0 0 12px;">
+    이메일에 첨부된 <span style="font-weight:bold;text-decoration:underline;">ENC 파일</span> 1개만 입찰서에 첨부하셔서 투찰해 주시기 바랍니다.<br />
+    함께 첨부된 엑셀파일은 투찰 시 금액 확인용이니 <span style="font-weight:bold;text-decoration:underline;">절대로 첨부하지 마시기 바랍니다.</span>
+  </p>
+  <p style="margin:0 0 18px;">좋은 결과 있으시기 바랍니다.</p>
+  <hr style="border:none;border-top:1px solid #c9ced6;margin:16px 0;" />
+  <p style="margin:4px 0;">공사명 : <strong>{{announcementName}}</strong></p>
+  <p style="margin:4px 0;">공고번호 : <strong>{{announcementNumber}}</strong></p>
+  <p style="margin:4px 0;">
+    <strong><span style="color:#d22b2b;">{{vendorName}} 투찰금액 : {{tenderAmount}}</span></strong>
+  </p>
+  <p style="margin:12px 0;color:#0455c0;font-weight:bold;font-size:18px;">ENC 파일만 첨부하세요!!!</p>
+  <p style="margin:4px 0;">투찰마감일 {{closingDate}}</p>
+</div>`;
 
 export default function MailAutomationPage() {
   const [activeMenu, setActiveMenu] = React.useState('mail');
@@ -39,18 +58,7 @@ export default function MailAutomationPage() {
   const [contacts, setContacts] = React.useState(SEED_CONTACTS);
   const [vendorAmounts, setVendorAmounts] = React.useState({});
   const [subjectTemplate, setSubjectTemplate] = React.useState('{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}');
-  const [bodyTemplate, setBodyTemplate] = React.useState(
-    '안녕하세요, {{vendorName}} 담당자님.\n\n'
-    + '{{owner}} "{{announcementNumber}} {{announcementName}}"의 입찰내역을 보내드립니다.\n\n'
-    + '이메일에 첨부된 ENC 파일 1개만 입찰서에 첨부하셔서 투찰해 주시기 바랍니다.\n'
-    + '함께 첨부된 엑셀 파일은 투찰 시 금액 확인용이니 절대로 첨부하지 마시기 바랍니다.\n\n'
-    + '좋은 결과 있으시기 바랍니다.\n\n'
-    + '공사명 : {{announcementName}}\n'
-    + '공고번호 : {{announcementNumber}}\n\n'
-    + '{{vendorName}} 투찰금액 : {{tenderAmount}}\n\n'
-    + 'ENC 파일만 첨부하세요!!!\n\n'
-    + '투찰마감일 {{closingDate}}\n'
-  );
+  const [bodyTemplate, setBodyTemplate] = React.useState(DEFAULT_BODY_TEMPLATE);
   const [smtpProfile, setSmtpProfile] = React.useState('gmail');
   const [senderName, setSenderName] = React.useState('');
   const [senderEmail, setSenderEmail] = React.useState('');
@@ -725,6 +733,7 @@ export default function MailAutomationPage() {
                   본문 템플릿
                   <textarea rows={6} value={bodyTemplate} onChange={(event) => setBodyTemplate(event.target.value)} />
                 </label>
+                <p className="mail-hint">HTML 태그/스타일을 그대로 입력하면 실제 메일 본문에 적용됩니다.</p>
                 <button type="button" className="btn-soft" onClick={handleTemplatePreview}>치환 미리보기</button>
               </div>
 
