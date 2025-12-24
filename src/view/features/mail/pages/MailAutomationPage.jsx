@@ -514,6 +514,25 @@ export default function MailAutomationPage() {
     setStatusMessage('새 수신자를 추가했습니다. 업체명과 이메일을 입력해 주세요.');
   };
 
+  const buildRecipientContext = React.useCallback((recipient) => ({
+    announcementNumber: projectInfo.announcementNumber || '',
+    announcementName: projectInfo.announcementName || '',
+    owner: projectInfo.owner || '',
+    closingDate: projectInfo.closingDate || '',
+    baseAmount: projectInfo.baseAmount || '',
+    vendorName: recipient.vendorName || '',
+    tenderAmount: recipient.tenderAmount || '',
+  }), [projectInfo]);
+
+  const buildFallbackText = React.useCallback((context) => ([
+    `${context.owner || ''} "${context.announcementNumber || ''} ${context.announcementName || ''}"`,
+    '',
+    `공사명 : ${context.announcementName || '-'}`,
+    `공고번호 : ${context.announcementNumber || '-'}`,
+    `투찰금액 : ${context.tenderAmount || '-'}`,
+    `투찰마감일 : ${context.closingDate || '-'}`,
+  ].join('\n')), []);
+
   const handleSendAll = React.useCallback(async () => {
     if (sending) return;
     const ready = recipients.filter((item) => trimValue(item.email) && Array.isArray(item.attachments) && item.attachments.length > 0);
@@ -683,25 +702,6 @@ export default function MailAutomationPage() {
       setStatusMessage(error?.message ? `테스트 메일 실패: ${error.message}` : '테스트 메일 발송 중 오류가 발생했습니다.');
     }
   }, [resolveSmtpConfig, projectInfo, recipients, subjectTemplate, bodyTemplate]);
-
-  const buildRecipientContext = React.useCallback((recipient) => ({
-    announcementNumber: projectInfo.announcementNumber || '',
-    announcementName: projectInfo.announcementName || '',
-    owner: projectInfo.owner || '',
-    closingDate: projectInfo.closingDate || '',
-    baseAmount: projectInfo.baseAmount || '',
-    vendorName: recipient.vendorName || '',
-    tenderAmount: recipient.tenderAmount || '',
-  }), [projectInfo]);
-
-  const buildFallbackText = React.useCallback((context) => ([
-    `${context.owner || ''} "${context.announcementNumber || ''} ${context.announcementName || ''}"`,
-    '',
-    `공사명 : ${context.announcementName || '-'}`,
-    `공고번호 : ${context.announcementNumber || '-'}`,
-    `투찰금액 : ${context.tenderAmount || '-'}`,
-    `투찰마감일 : ${context.closingDate || '-'}`,
-  ].join('\n')), []);
 
   const handleTemplatePreview = () => {
     setStatusMessage('템플릿 치환 결과는 구현 시 미리보기 창으로 제공할 예정입니다.');
