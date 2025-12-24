@@ -1072,7 +1072,7 @@ export default function MailAutomationPage() {
         </div>
       </div>
       {previewOpen && (
-        <div className="mail-addressbook-overlay" role="presentation" onClick={() => setPreviewOpen(false)}>
+        <div className="mail-addressbook-overlay" role="presentation">
           <div
             className="mail-addressbook-modal"
             role="dialog"
@@ -1094,7 +1094,7 @@ export default function MailAutomationPage() {
         </div>
       )}
       {addressBookOpen && (
-        <div className="mail-addressbook-overlay" role="presentation" onClick={handleCloseAddressBook}>
+        <div className="mail-addressbook-overlay" role="presentation">
           <div
             className="mail-addressbook-modal"
             role="dialog"
