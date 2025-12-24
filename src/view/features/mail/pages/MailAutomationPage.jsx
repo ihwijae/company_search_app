@@ -68,7 +68,7 @@ export default function MailAutomationPage() {
   const [vendorAmounts, setVendorAmounts] = React.useState({});
   const [subjectTemplate, setSubjectTemplate] = React.useState('{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}');
   const [bodyTemplate, setBodyTemplate] = React.useState(DEFAULT_BODY_TEMPLATE);
-  const [smtpProfile, setSmtpProfile] = React.useState('gmail');
+  const [smtpProfile, setSmtpProfile] = React.useState('naver');
   const [senderName, setSenderName] = React.useState('');
   const [senderEmail, setSenderEmail] = React.useState('');
   const [replyTo, setReplyTo] = React.useState('');
@@ -820,15 +820,6 @@ export default function MailAutomationPage() {
                   <label>
                     <input
                       type="radio"
-                      value="gmail"
-                      checked={smtpProfile === 'gmail'}
-                      onChange={(event) => setSmtpProfile(event.target.value)}
-                    />
-                    Gmail (smtp.gmail.com)
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
                       value="naver"
                       checked={smtpProfile === 'naver'}
                       onChange={(event) => setSmtpProfile(event.target.value)}
@@ -854,23 +845,7 @@ export default function MailAutomationPage() {
                     발신 이메일
                     <input value={senderEmail} onChange={(event) => setSenderEmail(event.target.value)} placeholder="example@company.com" />
                   </label>
-                  <label>
-                    회신 이메일 (선택)
-                    <input value={replyTo} onChange={(event) => setReplyTo(event.target.value)} placeholder="reply@example.com" />
-                  </label>
                 </div>
-                {smtpProfile === 'gmail' && (
-                  <label>
-                    Gmail 앱 비밀번호
-                    <input
-                      type="password"
-                      value={gmailPassword}
-                      onChange={(event) => setGmailPassword(event.target.value)}
-                      placeholder="16자리 앱 비밀번호"
-                    />
-                    <span className="mail-hint">Google 계정 보안 설정에서 앱 비밀번호를 발급해야 합니다.</span>
-                  </label>
-                )}
                 {smtpProfile === 'naver' && (
                   <label>
                     SMTP 비밀번호
