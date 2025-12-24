@@ -2,6 +2,7 @@ import React from 'react';
 import Sidebar from '../../../../components/Sidebar';
 import * as XLSX from 'xlsx';
 import 'xlsx/dist/cpexcel.js';
+import seedContacts from '../addressBook.seed.json';
 
 const DEFAULT_PROJECT_INFO = {
   announcementNumber: '공고번호를 불러오세요',
@@ -13,13 +14,7 @@ const DEFAULT_PROJECT_INFO = {
 
 const SEED_RECIPIENTS = [];
 
-const SEED_CONTACTS = [
-  { id: 1, vendorName: '㈜한빛건설', contactName: '김현수 차장', email: 'hs.kim@example.com' },
-  { id: 2, vendorName: '빛돌ENG', contactName: '이서준 팀장', email: 'sj.lee@example.com' },
-  { id: 3, vendorName: '세광이엔씨', contactName: '박민아 대리', email: 'mina.park@example.com' },
-  { id: 4, vendorName: '하람산업', contactName: '정우성 부장', email: 'ws.jung@example.com' },
-  { id: 5, vendorName: '가람기술', contactName: '최은지 과장', email: 'ej.choi@example.com' },
-];
+const SEED_CONTACTS = Array.isArray(seedContacts) ? seedContacts : [];
 
 const ITEMS_PER_PAGE = 10;
 const normalizeVendorName = (name = '') => name.replace(/\s+/g, '').toLowerCase();
