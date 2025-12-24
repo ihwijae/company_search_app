@@ -15,6 +15,9 @@ const DEFAULT_PROJECT_INFO = {
 const SEED_RECIPIENTS = [];
 
 const SEED_CONTACTS = Array.isArray(seedContacts) ? seedContacts : [];
+const GLOBAL_RECIPIENTS = Object.freeze([
+  { name: '조세희 상무님', email: 'superssay@naver.com' },
+]);
 
 const ITEMS_PER_PAGE = 10;
 const normalizeVendorName = (name = '') => name.replace(/\s+/g, '').toLowerCase();
@@ -78,6 +81,7 @@ export default function MailAutomationPage() {
   const [addressBookOpen, setAddressBookOpen] = React.useState(false);
   const [addressBookTargetId, setAddressBookTargetId] = React.useState(null);
   const [sending, setSending] = React.useState(false);
+  const [includeGlobalRecipients, setIncludeGlobalRecipients] = React.useState(false);
 
   const excelInputRef = React.useRef(null);
   const attachmentInputs = React.useRef({});
@@ -513,6 +517,14 @@ export default function MailAutomationPage() {
     });
     setStatusMessage('새 수신자를 추가했습니다. 업체명과 이메일을 입력해 주세요.');
   };
+
+  const handleApplyGlobalRecipient = React.useCallback(() => {
+    setIncludeGlobalRecipients((prev) => {
+      const next = !prev;
+      setStatusMessage(next ? '공통 수신자가 모든 메일에 추가됩니다.' : '공통 수신자 추가를 해제했습니다.');
+      return next;
+    });
+  }, []);
 
   const handleApplyGlobalRecipient = React.useCallback(() => {
     const GLOBAL_EMAIL = 'superssay@naver.com';
@@ -964,7 +976,13 @@ export default function MailAutomationPage() {
                 <h2>업체 목록</h2>
                 <div className="mail-recipient-actions">
                   <button type="button" className="btn-soft" onClick={() => handleOpenAddressBook()}>주소록</button>
-                  <button type="button" className="btn-soft" onClick={handleApplyGlobalRecipient}>수신자 공통 전부 추가</button>
+                  <button
+                    type="button"
+                    className={`btn-soft ${includeGlobalRecipients ? 'btn-soft--active' : ''}`}
+                    onClick={handleApplyGlobalRecipient}
+                  >
+                    {includeGlobalRecipients ? '공통 수신자 포함 중' : '수신자 공통 전부 추가'}
+                  </button>
                   <button type="button" className="btn-soft" onClick={handleAddRecipient}>업체 추가</button>
                   <button type="button" className="btn-primary" onClick={handleSendAll} disabled={sending}>{sending ? '발송 중...' : '전체 발송'}</button>
                 </div>

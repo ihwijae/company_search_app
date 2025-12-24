@@ -2471,6 +2471,12 @@ body {
   gap: 8px;
 }
 
+.btn-soft--active {
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0369a1;
+}
+
 .mail-recipients-table {
   flex: 1 1 auto;
   border: 1px solid #e2e8f0;
