@@ -52,6 +52,7 @@ async function sendTestMail(payload = {}) {
 
   const subject = payload.message?.subject || '[테스트] SMTP 연결 확인';
   const text = payload.message?.text || '이 메일은 SMTP 연결 테스트용으로 발송되었습니다.';
+  const html = payload.message?.html;
   const replyTo = sanitizeString(payload.message?.replyTo);
 
   const info = await transporter.sendMail({
@@ -60,6 +61,7 @@ async function sendTestMail(payload = {}) {
     replyTo: replyTo || undefined,
     subject,
     text,
+    html: html ? String(html) : undefined,
   });
 
   try { await transporter.close?.(); } catch {}

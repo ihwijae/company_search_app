@@ -30,6 +30,23 @@ const SEED_CONTACTS = [
 const ITEMS_PER_PAGE = 10;
 const normalizeVendorName = (name = '') => name.replace(/\s+/g, '').toLowerCase();
 const trimValue = (value) => (typeof value === 'string' ? value.trim() : '');
+const replaceTemplateTokens = (template, context = {}) => {
+  if (!template) return '';
+  return String(template).replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_match, key) => {
+    const value = context[key];
+    return value === undefined || value === null ? '' : String(value);
+  });
+};
+
+const stripHtmlTags = (html) => {
+  if (!html) return '';
+  return String(html)
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+    .replace(/<\s*\/p\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{2,}/g, '\n\n')
+    .trim();
+};
 const DEFAULT_BODY_TEMPLATE = `
 <div style="font-family:'Malgun Gothic',Dotum,Arial,sans-serif;font-size:15px;color:#1f2933;line-height:1.6;">
   <p style="margin:0 0 12px;color:#0455c0;font-size:16px;font-weight:bold;">
@@ -492,21 +509,37 @@ export default function MailAutomationPage() {
       return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
     })();
 
-    const subjectBase = projectInfo.announcementName || 'SMTP 연결 확인';
+    const sampleRecipient = recipients.find((item) => item.vendorName || item.tenderAmount) || recipients[0] || null;
+    const templateContext = {
+      announcementNumber: projectInfo.announcementNumber || '',
+      announcementName: projectInfo.announcementName || '',
+      owner: projectInfo.owner || '',
+      closingDate: projectInfo.closingDate || '',
+      baseAmount: projectInfo.baseAmount || '',
+      vendorName: sampleRecipient?.vendorName || '',
+      tenderAmount: sampleRecipient?.tenderAmount || '',
+    };
+
+    const resolvedSubjectCore = replaceTemplateTokens(subjectTemplate || '', templateContext).trim();
+    const resolvedBodyHtml = replaceTemplateTokens(bodyTemplate || '', templateContext).trim();
+
     const summaryLines = [
       '이 메일은 협정보조에서 SMTP 설정을 확인하기 위해 발송된 테스트 메일입니다.',
       '',
-      `공고번호: ${projectInfo.announcementNumber || '-'}`,
-      `공고명: ${projectInfo.announcementName || '-'}`,
-      `발주처: ${projectInfo.owner || '-'}`,
-      `입찰마감일시: ${projectInfo.closingDate || '-'}`,
-      `기초금액: ${projectInfo.baseAmount || '-'}`,
+      `공고번호: ${templateContext.announcementNumber || '-'}`,
+      `공고명: ${templateContext.announcementName || '-'}`,
+      `발주처: ${templateContext.owner || '-'}`,
+      `입찰마감일시: ${templateContext.closingDate || '-'}`,
+      `기초금액: ${templateContext.baseAmount || '-'}`,
       '',
       `발송 계정: ${trimmedSenderEmail}`,
       `발송 시각: ${timestamp}`,
       '',
       '※ 본 메일은 테스트 용도로만 발송되었습니다.',
     ];
+
+    const plainBodyFallback = resolvedBodyHtml ? stripHtmlTags(resolvedBodyHtml) : summaryLines.join('\n');
+    const finalSubject = `[테스트] ${resolvedSubjectCore || (projectInfo.announcementName || 'SMTP 연결 확인')} (${timestamp})`;
 
     setStatusMessage('테스트 메일을 보내는 중입니다...');
     try {
@@ -517,8 +550,9 @@ export default function MailAutomationPage() {
           fromName: trimValue(senderName),
           to: trimmedSenderEmail,
           replyTo: trimValue(replyTo) || undefined,
-          subject: `[테스트] ${subjectBase} (${timestamp})`,
-          text: summaryLines.join('\n'),
+          subject: finalSubject,
+          text: plainBodyFallback,
+          html: resolvedBodyHtml || undefined,
         },
       });
       if (response?.success) {
@@ -532,7 +566,7 @@ export default function MailAutomationPage() {
       console.error('[mail] test send failed', error);
       setStatusMessage(error?.message ? `테스트 메일 실패: ${error.message}` : '테스트 메일 발송 중 오류가 발생했습니다.');
     }
-  }, [smtpProfile, senderEmail, senderName, replyTo, gmailPassword, naverPassword, customProfile, projectInfo]);
+  }, [smtpProfile, senderEmail, senderName, replyTo, gmailPassword, naverPassword, customProfile, projectInfo, recipients, subjectTemplate, bodyTemplate]);
 
   const handleTemplatePreview = () => {
     setStatusMessage('템플릿 치환 결과는 구현 시 미리보기 창으로 제공할 예정입니다.');
