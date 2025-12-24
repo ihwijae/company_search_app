@@ -3,6 +3,7 @@ import Sidebar from '../../../../components/Sidebar';
 import * as XLSX from 'xlsx';
 import 'xlsx/dist/cpexcel.js';
 import seedContacts from '../addressBook.seed.json';
+import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 
 const DEFAULT_PROJECT_INFO = {
   announcementNumber: '공고번호를 불러오세요',
@@ -64,7 +65,8 @@ export default function MailAutomationPage() {
   const [excelFile, setExcelFile] = React.useState(null);
   const [projectInfo, setProjectInfo] = React.useState(DEFAULT_PROJECT_INFO);
   const [recipients, setRecipients] = React.useState(SEED_RECIPIENTS);
-  const [contacts, setContacts] = React.useState(SEED_CONTACTS);
+  const persistedContacts = React.useMemo(() => loadPersisted('mail:addressBook', SEED_CONTACTS), []);
+  const [contacts, setContacts] = React.useState(persistedContacts);
   const [vendorAmounts, setVendorAmounts] = React.useState({});
   const [subjectTemplate, setSubjectTemplate] = React.useState('{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}');
   const [bodyTemplate, setBodyTemplate] = React.useState(DEFAULT_BODY_TEMPLATE);
@@ -89,7 +91,7 @@ export default function MailAutomationPage() {
   const excelInputRef = React.useRef(null);
   const attachmentInputs = React.useRef({});
   const recipientIdRef = React.useRef(SEED_RECIPIENTS.length + 1);
-  const contactIdRef = React.useRef(SEED_CONTACTS.length + 1);
+  const contactIdRef = React.useRef(persistedContacts.length + 1);
   const contactsFileInputRef = React.useRef(null);
   const contactIndex = React.useMemo(() => {
     const index = new Map();
@@ -104,6 +106,11 @@ export default function MailAutomationPage() {
       });
     });
     return index;
+  }, [contacts]);
+
+  React.useEffect(() => {
+    savePersisted('mail:addressBook', contacts);
+    contactIdRef.current = contacts.length + 1;
   }, [contacts]);
   const contactIndexRef = React.useRef(new Map());
 
@@ -1137,6 +1144,7 @@ export default function MailAutomationPage() {
                 <button type="button" className="btn-sm btn-soft" onClick={handleAddContact}>주소 추가</button>
                 <button type="button" className="btn-sm btn-soft" onClick={() => contactsFileInputRef.current?.click()}>가져오기</button>
                 <button type="button" className="btn-sm btn-soft" onClick={handleExportContacts} disabled={!contacts.length}>내보내기</button>
+                <button type="button" className="btn-sm btn-primary" onClick={() => { savePersisted('mail:addressBook', contacts); setStatusMessage('주소록을 저장했습니다.'); }}>저장</button>
                 <button type="button" className="btn-sm btn-muted" onClick={handleCloseAddressBook}>닫기</button>
               </div>
               <div className="mail-addressbook-search">
