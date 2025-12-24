@@ -86,5 +86,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   mail: {
     sendTest: (payload) => ipcRenderer.invoke('mail:send-test', payload),
+    sendBatch: (payload) => ipcRenderer.invoke('mail:send-batch', payload),
   },
 });

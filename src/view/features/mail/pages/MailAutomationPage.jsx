@@ -77,12 +77,72 @@ export default function MailAutomationPage() {
   const [currentPage, setCurrentPageState] = React.useState(1);
   const [addressBookOpen, setAddressBookOpen] = React.useState(false);
   const [addressBookTargetId, setAddressBookTargetId] = React.useState(null);
+  const [sending, setSending] = React.useState(false);
 
   const excelInputRef = React.useRef(null);
   const attachmentInputs = React.useRef({});
   const recipientIdRef = React.useRef(SEED_RECIPIENTS.length + 1);
   const contactIdRef = React.useRef(SEED_CONTACTS.length + 1);
   const contactsFileInputRef = React.useRef(null);
+
+  const resolveSmtpConfig = React.useCallback(() => {
+    const trimmedSenderEmail = trimValue(senderEmail);
+    if (!trimmedSenderEmail) {
+      throw new Error('발신 이메일을 입력해 주세요.');
+    }
+    const base = {
+      senderEmail: trimmedSenderEmail,
+      senderName: trimValue(senderName),
+      replyTo: trimValue(replyTo),
+    };
+    if (smtpProfile === 'gmail') {
+      if (!gmailPassword) {
+        throw new Error('Gmail 앱 비밀번호를 입력해 주세요.');
+      }
+      return {
+        ...base,
+        connection: {
+          host: 'smtp.gmail.com',
+          port: 465,
+          secure: true,
+          auth: { user: trimmedSenderEmail, pass: gmailPassword },
+        },
+      };
+    }
+    if (smtpProfile === 'naver') {
+      if (!naverPassword) {
+        throw new Error('네이버 SMTP 비밀번호를 입력해 주세요.');
+      }
+      return {
+        ...base,
+        connection: {
+          host: 'smtp.naver.com',
+          port: 465,
+          secure: true,
+          auth: { user: trimmedSenderEmail, pass: naverPassword },
+        },
+      };
+    }
+    const host = trimValue(customProfile.host);
+    if (!host) {
+      throw new Error('SMTP 호스트를 입력해 주세요.');
+    }
+    const username = trimValue(customProfile.username) || trimmedSenderEmail;
+    const password = customProfile.password;
+    if (!password) {
+      throw new Error('SMTP 비밀번호를 입력해 주세요.');
+    }
+    const portNumber = Number(customProfile.port) || (customProfile.secure ? 465 : 587);
+    return {
+      ...base,
+      connection: {
+        host,
+        port: portNumber,
+        secure: Boolean(customProfile.secure),
+        auth: { user: username, pass: password },
+      },
+    };
+  }, [smtpProfile, senderEmail, senderName, replyTo, gmailPassword, naverPassword, customProfile]);
 
   React.useEffect(() => {
     window.location.hash = '#/mail';
@@ -409,8 +469,8 @@ export default function MailAutomationPage() {
       if (item.id !== recipientId) return item;
       const updated = {
         ...item,
-        vendorName: contact.vendorName || item.vendorName || '',
-        contactName: contact.contactName || item.contactName || '',
+        vendorName: item.vendorName || contact.vendorName || '',
+        contactName: contact.contactName || contact.vendorName || item.contactName || '',
         email: contact.email || item.email || '',
       };
       const normalized = normalizeVendorName(contact.vendorName);
@@ -454,14 +514,91 @@ export default function MailAutomationPage() {
     setStatusMessage('새 수신자를 추가했습니다. 업체명과 이메일을 입력해 주세요.');
   };
 
-  const handleSendAll = () => {
-    const ready = recipients.filter((item) => item.email && item.attachments.length);
+  const handleSendAll = React.useCallback(async () => {
+    if (sending) return;
+    const ready = recipients.filter((item) => trimValue(item.email) && Array.isArray(item.attachments) && item.attachments.length > 0);
     if (!ready.length) {
       alert('발송 대상이 없습니다. 이메일과 첨부를 확인해 주세요.');
       return;
     }
-    setStatusMessage(`총 ${ready.length}건 발송 준비 완료 (발신: ${senderEmail || '미입력'}, 회신: ${replyTo || '미지정'}, 프로필: ${smtpProfile}). SMTP 연동 후 실제 발송 로직을 연결합니다.`);
-  };
+
+    const mailApi = window.electronAPI?.mail;
+    if (typeof mailApi?.sendBatch !== 'function') {
+      setStatusMessage('이 빌드에서는 메일 발송 기능을 사용할 수 없습니다.');
+      return;
+    }
+
+    let smtpConfig;
+    try {
+      smtpConfig = resolveSmtpConfig();
+    } catch (error) {
+      setStatusMessage(error?.message || 'SMTP 설정을 확인해 주세요.');
+      return;
+    }
+
+    const readyIds = new Set(ready.map((item) => item.id));
+    setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '발송 중' } : item)));
+    setSending(true);
+    setStatusMessage(`총 ${ready.length}건 발송을 시작합니다...`);
+
+    const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
+    const messages = ready.map((recipient) => {
+      const context = buildRecipientContext(recipient);
+      const resolvedSubject = replaceTemplateTokens(subjectTemplate || '', context).trim() || `${context.announcementName || '입찰'} 안내`;
+      const resolvedBodyHtml = replaceTemplateTokens(bodyTemplate || '', context).trim();
+      const plainText = stripHtmlTags(resolvedBodyHtml) || buildFallbackText(context);
+      const attachments = (recipient.attachments || [])
+        .map((file) => {
+          const filePath = file?.path || file?.webkitRelativePath;
+          if (!filePath) return null;
+          const filename = file?.name || filePath.split(/[/\\]/).pop();
+          return { path: filePath, filename };
+        })
+        .filter(Boolean);
+      return {
+        recipientId: recipient.id,
+        to: trimValue(recipient.email),
+        from: smtpConfig.senderEmail,
+        fromName: smtpConfig.senderName,
+        replyTo: smtpConfig.replyTo || undefined,
+        subject: resolvedSubject,
+        text: `${plainText}\n\n발송 시각: ${timestamp}`,
+        html: resolvedBodyHtml || undefined,
+        attachments,
+      };
+    });
+
+    try {
+      const delayMs = Math.max(0, Number(sendDelay) || 0) * 1000;
+      const response = await mailApi.sendBatch({
+        connection: smtpConfig.connection,
+        messages,
+        delayMs,
+      });
+      if (response?.success) {
+        const results = response.results || [];
+        const resultMap = new Map(results.map((item) => [item.recipientId, item]));
+        setRecipients((prev) => prev.map((item) => {
+          if (!readyIds.has(item.id)) return item;
+          const result = resultMap.get(item.id);
+          if (!result) return { ...item, status: '완료' };
+          return { ...item, status: result.success ? '완료' : '실패' };
+        }));
+        const successCount = results.filter((item) => item.success).length;
+        const failCount = results.filter((item) => !item.success).length;
+        setStatusMessage(`발송 완료: 성공 ${successCount}건 / 실패 ${failCount}건`);
+      } else {
+        setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '실패' } : item)));
+        setStatusMessage(response?.message || '메일 발송에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('[mail] send batch failed', error);
+      setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '실패' } : item)));
+      setStatusMessage(error?.message || '메일 발송 중 오류가 발생했습니다.');
+    } finally {
+      setSending(false);
+    }
+  }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay]);
 
   const handleTestMail = React.useCallback(async () => {
     const api = window.electronAPI?.mail?.sendTest;
@@ -469,61 +606,14 @@ export default function MailAutomationPage() {
       setStatusMessage('이 빌드에서는 테스트 메일 기능을 사용할 수 없습니다.');
       return;
     }
-
-    const trimmedSenderEmail = trimValue(senderEmail);
-    if (!trimmedSenderEmail) {
-      setStatusMessage('발신 이메일을 입력해 주세요.');
+    let smtpConfig;
+    try {
+      smtpConfig = resolveSmtpConfig();
+    } catch (error) {
+      setStatusMessage(error?.message || 'SMTP 설정을 확인해 주세요.');
       return;
     }
-
-    let connection = null;
-    if (smtpProfile === 'gmail') {
-      if (!gmailPassword) {
-        setStatusMessage('Gmail 앱 비밀번호를 입력해 주세요.');
-        return;
-      }
-      connection = {
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        auth: { user: trimmedSenderEmail, pass: gmailPassword },
-      };
-    } else if (smtpProfile === 'naver') {
-      if (!naverPassword) {
-        setStatusMessage('네이버 SMTP 비밀번호를 입력해 주세요.');
-        return;
-      }
-      connection = {
-        host: 'smtp.naver.com',
-        port: 465,
-        secure: true,
-        auth: { user: trimmedSenderEmail, pass: naverPassword },
-      };
-    } else {
-      const host = trimValue(customProfile.host);
-      const username = trimValue(customProfile.username) || trimmedSenderEmail;
-      const password = customProfile.password;
-      if (!host) {
-        setStatusMessage('SMTP 호스트를 입력해 주세요.');
-        return;
-      }
-      if (!password) {
-        setStatusMessage('SMTP 비밀번호를 입력해 주세요.');
-        return;
-      }
-      const portNumber = Number(customProfile.port) || (customProfile.secure ? 465 : 587);
-      connection = {
-        host,
-        port: portNumber,
-        secure: Boolean(customProfile.secure),
-        auth: { user: username, pass: password },
-      };
-    }
-
-    if (!connection) {
-      setStatusMessage('SMTP 설정을 확인해 주세요.');
-      return;
-    }
+    const { connection, senderEmail: trimmedSenderEmail, senderName: normalizedSenderName, replyTo: normalizedReplyTo } = smtpConfig;
 
     const timestamp = (() => {
       const now = new Date();
@@ -573,9 +663,9 @@ export default function MailAutomationPage() {
         connection,
         message: {
           from: trimmedSenderEmail,
-          fromName: trimValue(senderName),
+          fromName: normalizedSenderName,
           to: trimmedSenderEmail,
-          replyTo: trimValue(replyTo) || undefined,
+          replyTo: normalizedReplyTo || undefined,
           subject: finalSubject,
           text: plainBodyFallback,
           html: resolvedBodyHtml || undefined,
@@ -592,7 +682,26 @@ export default function MailAutomationPage() {
       console.error('[mail] test send failed', error);
       setStatusMessage(error?.message ? `테스트 메일 실패: ${error.message}` : '테스트 메일 발송 중 오류가 발생했습니다.');
     }
-  }, [smtpProfile, senderEmail, senderName, replyTo, gmailPassword, naverPassword, customProfile, projectInfo, recipients, subjectTemplate, bodyTemplate]);
+  }, [resolveSmtpConfig, projectInfo, recipients, subjectTemplate, bodyTemplate]);
+
+  const buildRecipientContext = React.useCallback((recipient) => ({
+    announcementNumber: projectInfo.announcementNumber || '',
+    announcementName: projectInfo.announcementName || '',
+    owner: projectInfo.owner || '',
+    closingDate: projectInfo.closingDate || '',
+    baseAmount: projectInfo.baseAmount || '',
+    vendorName: recipient.vendorName || '',
+    tenderAmount: recipient.tenderAmount || '',
+  }), [projectInfo]);
+
+  const buildFallbackText = React.useCallback((context) => ([
+    `${context.owner || ''} "${context.announcementNumber || ''} ${context.announcementName || ''}"`,
+    '',
+    `공사명 : ${context.announcementName || '-'}`,
+    `공고번호 : ${context.announcementNumber || '-'}`,
+    `투찰금액 : ${context.tenderAmount || '-'}`,
+    `투찰마감일 : ${context.closingDate || '-'}`,
+  ].join('\n')), []);
 
   const handleTemplatePreview = () => {
     setStatusMessage('템플릿 치환 결과는 구현 시 미리보기 창으로 제공할 예정입니다.');
@@ -813,7 +922,7 @@ export default function MailAutomationPage() {
                 <div className="mail-recipient-actions">
                   <button type="button" className="btn-soft" onClick={() => handleOpenAddressBook()}>주소록</button>
                   <button type="button" className="btn-soft" onClick={handleAddRecipient}>업체 추가</button>
-                  <button type="button" className="btn-primary" onClick={handleSendAll}>전체 발송</button>
+                  <button type="button" className="btn-primary" onClick={handleSendAll} disabled={sending}>{sending ? '발송 중...' : '전체 발송'}</button>
                 </div>
               </header>
 

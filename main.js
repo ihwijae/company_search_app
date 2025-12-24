@@ -10,7 +10,7 @@ const { RecordsService } = require('./src/main/features/records/recordsService.j
 const { registerRecordsIpcHandlers } = require('./src/main/features/records/ipc.js');
 const industryAverages = require('./src/shared/industryAverages.json');
 const { ExcelAutomationService } = require('./src/main/features/excel/excelAutomation.js');
-const { sendTestMail } = require('./src/main/features/mail/smtpService.js');
+const { sendTestMail, sendBulkMail } = require('./src/main/features/mail/smtpService.js');
 const os = require('os');
 const { execSync } = require('child_process');
 const pkg = (() => { try { return require('./package.json'); } catch { return {}; } })();
@@ -904,6 +904,21 @@ try {
   });
 } catch (err) {
   console.error('[MAIN] mail:send-test IPC wiring failed:', err);
+}
+
+try {
+  if (ipcMain.removeHandler) ipcMain.removeHandler('mail:send-batch');
+  ipcMain.handle('mail:send-batch', async (_event, payload = {}) => {
+    try {
+      const results = await sendBulkMail(payload);
+      return { success: true, results };
+    } catch (err) {
+      console.error('[MAIN] mail:send-batch failed:', err?.message || err);
+      return { success: false, message: err?.message || '메일 발송에 실패했습니다.' };
+    }
+  });
+} catch (err) {
+  console.error('[MAIN] mail:send-batch IPC wiring failed:', err);
 }
 
 try {
