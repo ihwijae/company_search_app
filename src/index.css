@@ -2733,6 +2733,24 @@ body {
   border-radius: 12px;
 }
 
+.mail-template-preview {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mail-template-preview__body {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  background: #f8fafc;
+  max-height: 420px;
+  overflow: auto;
+  font-size: 14px;
+  color: #0f172a;
+}
+
 .records-pagination {
   margin: 16px 0 0;
   display: flex;

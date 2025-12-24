@@ -82,6 +82,8 @@ export default function MailAutomationPage() {
   const [addressBookTargetId, setAddressBookTargetId] = React.useState(null);
   const [sending, setSending] = React.useState(false);
   const [includeGlobalRecipients, setIncludeGlobalRecipients] = React.useState(false);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [previewData, setPreviewData] = React.useState({ subject: '', html: '', text: '' });
 
   const excelInputRef = React.useRef(null);
   const attachmentInputs = React.useRef({});
@@ -729,9 +731,21 @@ export default function MailAutomationPage() {
     }
   }, [resolveSmtpConfig, projectInfo, recipients, subjectTemplate, bodyTemplate]);
 
-  const handleTemplatePreview = () => {
-    setStatusMessage('템플릿 치환 결과는 구현 시 미리보기 창으로 제공할 예정입니다.');
-  };
+  const handleTemplatePreview = React.useCallback(() => {
+    const sampleRecipient = recipients.find((item) => item.vendorName || item.tenderAmount || item.email) || {
+      id: 0,
+      vendorName: '업체명',
+      contactName: '담당자',
+      email: 'sample@example.com',
+      tenderAmount: '123,456,789 원',
+    };
+    const context = buildRecipientContext(sampleRecipient);
+    const subject = replaceTemplateTokens(subjectTemplate || '', context).trim() || `${context.announcementName || '입찰'} 안내`;
+    const html = replaceTemplateTokens(bodyTemplate || '', context).trim();
+    const text = stripHtmlTags(html) || buildFallbackText(context);
+    setPreviewData({ subject, html, text });
+    setPreviewOpen(true);
+  }, [recipients, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText]);
 
   const totalPages = React.useMemo(() => (
     recipients.length ? Math.max(1, Math.ceil(recipients.length / ITEMS_PER_PAGE)) : 1
@@ -1055,6 +1069,28 @@ export default function MailAutomationPage() {
           </div>
         </div>
       </div>
+      {previewOpen && (
+        <div className="mail-addressbook-overlay" role="presentation" onClick={() => setPreviewOpen(false)}>
+          <div
+            className="mail-addressbook-modal"
+            role="dialog"
+            aria-modal="true"
+            style={{ maxWidth: 720 }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="mail-addressbook-modal__header">
+              <h2>템플릿 미리보기</h2>
+              <div className="mail-addressbook-modal__actions">
+                <button type="button" className="btn-sm btn-muted" onClick={() => setPreviewOpen(false)}>닫기</button>
+              </div>
+            </header>
+            <div className="mail-template-preview">
+              <p><strong>제목</strong> {previewData.subject || '(제목 없음)'}</p>
+              <div className="mail-template-preview__body" dangerouslySetInnerHTML={{ __html: previewData.html || previewData.text.replace(/\n/g, '<br />') }} />
+            </div>
+          </div>
+        </div>
+      )}
       {addressBookOpen && (
         <div className="mail-addressbook-overlay" role="presentation" onClick={handleCloseAddressBook}>
           <div
