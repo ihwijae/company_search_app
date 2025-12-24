@@ -217,6 +217,8 @@ export default function CandidatesModal({
   const [onlyLatest, setOnlyLatest] = useState(false);
   const [bidTouched, setBidTouched] = useState(false);
   const bidAutoRef = useRef('');
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
   const readOnlyMode = Boolean(readOnly);
   const today = useMemo(() => {
     const base = new Date();
@@ -226,6 +228,29 @@ export default function CandidatesModal({
   const isMountedRef = useRef(true);
 
   useEffect(() => () => { isMountedRef.current = false; }, []);
+
+  const hideToast = useCallback(() => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToast(null);
+  }, []);
+
+  const showToast = useCallback((message, tone = 'info') => {
+    if (!message) return;
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToast({ message, tone, id: Date.now() });
+    toastTimerRef.current = setTimeout(() => {
+      toastTimerRef.current = null;
+      setToast(null);
+    }, 2400);
+  }, []);
+
+  useEffect(() => () => { hideToast(); }, [hideToast]);
 
   const closeWindow = useCallback(() => {
     const win = popupRef.current;
@@ -546,12 +571,12 @@ const industryToLabel = (type) => {
       } else {
         throw new Error('clipboard unavailable');
       }
-      window.alert('업체 정보가 클립보드에 복사되었습니다.');
+      showToast('업체 정보가 클립보드에 복사되었습니다.', 'success');
     } catch (err) {
       console.error('[CandidatesModal] copy failed', err);
-      window.alert('복사에 실패했습니다. 다시 시도해 주세요.');
+      showToast('복사에 실패했습니다. 다시 시도해 주세요.', 'error');
     }
-  }, []);
+  }, [showToast]);
 
   function formatAmount(value) {
     if (value === null || value === undefined) return '-';
@@ -586,21 +611,21 @@ const industryToLabel = (type) => {
     const resolved = resolveCandidateValue(candidate, resolvers);
     const numeric = parseAmountValue(resolved);
     if (numeric === null) {
-      window.alert(`${label} 정보를 찾을 수 없습니다.`);
+      showToast(`${label} 정보를 찾을 수 없습니다.`, 'error');
       return;
     }
     const formatted = formatAmount(numeric);
     if (!formatted || formatted === '-') {
-      window.alert(`${label} 정보를 찾을 수 없습니다.`);
+      showToast(`${label} 정보를 찾을 수 없습니다.`, 'error');
       return;
     }
     const ok = await copyPlainText(formatted);
     if (ok) {
-      window.alert(`${label}이(가) 복사되었습니다.`);
+      showToast(`${label}이(가) 복사되었습니다.`, 'success');
     } else {
-      window.alert('복사에 실패했습니다. 다시 시도해 주세요.');
+      showToast('복사에 실패했습니다. 다시 시도해 주세요.', 'error');
     }
-  }, [copyPlainText]);
+  }, [copyPlainText, showToast]);
 
   const handleCopySipyungField = useCallback((candidate) => {
     handleCopyAmountField(candidate, SIPYUNG_RESOLVERS, '시평액');
@@ -1055,6 +1080,42 @@ const industryToLabel = (type) => {
 
   return createPortal(
     <div className="candidates-window">
+      {toast && (
+        <div
+          className="candidates-toast"
+          role="status"
+          aria-live="polite"
+          style={{
+            position: 'fixed',
+            top: 24,
+            right: 24,
+            minWidth: 240,
+            maxWidth: 360,
+            padding: '12px 16px',
+            borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
+            backgroundColor: toast.tone === 'error' ? '#fee2e2' : '#ecfccb',
+            color: toast.tone === 'error' ? '#991b1b' : '#14532d',
+            border: `1px solid ${toast.tone === 'error' ? '#fecdd3' : '#d9f99d'}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            fontSize: 13,
+            zIndex: 9999,
+          }}
+        >
+          <span style={{ fontWeight: 600 }}>{toast.message}</span>
+          <button
+            type="button"
+            onClick={hideToast}
+            className="btn-soft"
+            style={{ padding: '4px 10px', fontSize: 12 }}
+          >
+            닫기
+          </button>
+        </div>
+      )}
       <header className="candidates-window__header">
         <div className="candidates-window__header-details">
           <div className="header-title-line">
