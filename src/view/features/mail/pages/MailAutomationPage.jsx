@@ -514,6 +514,35 @@ export default function MailAutomationPage() {
     setStatusMessage('새 수신자를 추가했습니다. 업체명과 이메일을 입력해 주세요.');
   };
 
+  const handleApplyGlobalRecipient = React.useCallback(() => {
+    const GLOBAL_EMAIL = 'superssay@naver.com';
+    const GLOBAL_NAME = '조세희 상무님';
+    if (!GLOBAL_EMAIL) return;
+    const alreadyExists = recipients.some((item) => trimValue(item.email) === GLOBAL_EMAIL);
+    if (alreadyExists) {
+      setStatusMessage(`${GLOBAL_NAME}은(는) 이미 목록에 있습니다.`);
+      return;
+    }
+    const nextId = recipientIdRef.current;
+    recipientIdRef.current += 1;
+    const nextRecipient = {
+      id: nextId,
+      vendorName: GLOBAL_NAME,
+      contactName: GLOBAL_NAME,
+      email: GLOBAL_EMAIL,
+      tenderAmount: '',
+      attachments: [],
+      status: '대기',
+    };
+    setRecipients((prev) => {
+      const nextList = [...prev, nextRecipient];
+      const lastPage = Math.max(1, Math.ceil(nextList.length / ITEMS_PER_PAGE));
+      setCurrentPageState(lastPage);
+      return nextList;
+    });
+    setStatusMessage(`${GLOBAL_NAME}을(를) 수신자 목록에 추가했습니다.`);
+  }, [recipients]);
+
   const buildRecipientContext = React.useCallback((recipient) => ({
     announcementNumber: projectInfo.announcementNumber || '',
     announcementName: projectInfo.announcementName || '',
@@ -566,6 +595,13 @@ export default function MailAutomationPage() {
       const resolvedSubject = replaceTemplateTokens(subjectTemplate || '', context).trim() || `${context.announcementName || '입찰'} 안내`;
       const resolvedBodyHtml = replaceTemplateTokens(bodyTemplate || '', context).trim();
       const plainText = stripHtmlTags(resolvedBodyHtml) || buildFallbackText(context);
+      const recipientDisplayName = trimValue(recipient.contactName) || trimValue(recipient.vendorName);
+      const recipientAddress = (() => {
+        const email = trimValue(recipient.email);
+        if (!email) return '';
+        if (recipientDisplayName) return `${recipientDisplayName} <${email}>`;
+        return email;
+      })();
       const attachments = (recipient.attachments || [])
         .map((file) => {
           const filePath = file?.path || file?.webkitRelativePath;
@@ -576,7 +612,7 @@ export default function MailAutomationPage() {
         .filter(Boolean);
       return {
         recipientId: recipient.id,
-        to: trimValue(recipient.email),
+        to: recipientAddress,
         from: smtpConfig.senderEmail,
         fromName: smtpConfig.senderName,
         replyTo: smtpConfig.replyTo || undefined,
@@ -928,6 +964,7 @@ export default function MailAutomationPage() {
                 <h2>업체 목록</h2>
                 <div className="mail-recipient-actions">
                   <button type="button" className="btn-soft" onClick={() => handleOpenAddressBook()}>주소록</button>
+                  <button type="button" className="btn-soft" onClick={handleApplyGlobalRecipient}>수신자 공통 전부 추가</button>
                   <button type="button" className="btn-soft" onClick={handleAddRecipient}>업체 추가</button>
                   <button type="button" className="btn-primary" onClick={handleSendAll} disabled={sending}>{sending ? '발송 중...' : '전체 발송'}</button>
                 </div>
