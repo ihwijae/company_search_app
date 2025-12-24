@@ -2695,6 +2695,18 @@ body {
   flex-wrap: wrap;
 }
 
+.mail-addressbook-search {
+  margin-top: 10px;
+}
+
+.mail-addressbook-search input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
 .mail-addressbook-modal__body {
   padding: 16px 20px;
   display: flex;

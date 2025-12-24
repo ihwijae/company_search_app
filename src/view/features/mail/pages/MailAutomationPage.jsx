@@ -84,6 +84,7 @@ export default function MailAutomationPage() {
   const [includeGlobalRecipients, setIncludeGlobalRecipients] = React.useState(false);
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [previewData, setPreviewData] = React.useState({ subject: '', html: '', text: '' });
+  const [addressBookQuery, setAddressBookQuery] = React.useState('');
 
   const excelInputRef = React.useRef(null);
   const attachmentInputs = React.useRef({});
@@ -364,6 +365,7 @@ export default function MailAutomationPage() {
   const handleCloseAddressBook = React.useCallback(() => {
     setAddressBookOpen(false);
     setAddressBookTargetId(null);
+    setAddressBookQuery('');
   }, []);
 
   const formatTenderAmountInput = React.useCallback((rawValue) => {
@@ -1107,6 +1109,13 @@ export default function MailAutomationPage() {
                 <button type="button" className="btn-sm btn-soft" onClick={handleExportContacts} disabled={!contacts.length}>내보내기</button>
                 <button type="button" className="btn-sm btn-muted" onClick={handleCloseAddressBook}>닫기</button>
               </div>
+              <div className="mail-addressbook-search">
+                <input
+                  value={addressBookQuery}
+                  onChange={(event) => setAddressBookQuery(event.target.value)}
+                  placeholder="업체명/담당자/이메일 검색"
+                />
+              </div>
               <input
                 ref={contactsFileInputRef}
                 type="file"
@@ -1116,7 +1125,15 @@ export default function MailAutomationPage() {
               />
             </header>
             <div className="mail-addressbook-modal__body">
-              {contacts.length ? contacts.map((contact) => (
+              {contacts.length ? contacts
+                .filter((contact) => {
+                  if (!addressBookQuery) return true;
+                  const keyword = addressBookQuery.trim().toLowerCase();
+                  if (!keyword) return true;
+                  return [contact.vendorName, contact.contactName, contact.email]
+                    .some((value) => (value || '').toLowerCase().includes(keyword));
+                })
+                .map((contact) => (
                 <div key={contact.id} className="mail-addressbook-modal__row">
                   <input
                     value={contact.vendorName}
