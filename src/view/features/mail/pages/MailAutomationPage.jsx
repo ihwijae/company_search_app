@@ -1144,7 +1144,13 @@ export default function MailAutomationPage() {
                 <button type="button" className="btn-sm btn-soft" onClick={handleAddContact}>주소 추가</button>
                 <button type="button" className="btn-sm btn-soft" onClick={() => contactsFileInputRef.current?.click()}>가져오기</button>
                 <button type="button" className="btn-sm btn-soft" onClick={handleExportContacts} disabled={!contacts.length}>내보내기</button>
-                <button type="button" className="btn-sm btn-primary" onClick={() => { savePersisted('mail:addressBook', contacts); setStatusMessage('주소록을 저장했습니다.'); }}>저장</button>
+                <button
+                  type="button"
+                  className="btn-sm btn-primary"
+                  onClick={() => { savePersisted('mail:addressBook', contacts); alert('주소록을 저장했습니다.'); }}
+                >
+                  저장
+                </button>
                 <button type="button" className="btn-sm btn-muted" onClick={handleCloseAddressBook}>닫기</button>
               </div>
               <div className="mail-addressbook-search">
