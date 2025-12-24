@@ -1087,13 +1087,14 @@ const industryToLabel = (type) => {
           aria-live="polite"
           style={{
             position: 'fixed',
-            top: 24,
-            right: 24,
-            minWidth: 240,
-            maxWidth: 360,
-            padding: '12px 16px',
-            borderRadius: 10,
-            boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
+            top: 28,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            minWidth: 280,
+            maxWidth: 460,
+            padding: '14px 18px',
+            borderRadius: 12,
+            boxShadow: '0 18px 60px rgba(15, 23, 42, 0.2)',
             backgroundColor: toast.tone === 'error' ? '#fee2e2' : '#ecfccb',
             color: toast.tone === 'error' ? '#991b1b' : '#14532d',
             border: `1px solid ${toast.tone === 'error' ? '#fecdd3' : '#d9f99d'}`,
@@ -1110,7 +1111,7 @@ const industryToLabel = (type) => {
             type="button"
             onClick={hideToast}
             className="btn-soft"
-            style={{ padding: '4px 10px', fontSize: 12 }}
+            style={{ padding: '4px 12px', fontSize: 12 }}
           >
             닫기
           </button>
