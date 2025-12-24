@@ -38,8 +38,19 @@ export default function MailAutomationPage() {
   const [recipients, setRecipients] = React.useState(SEED_RECIPIENTS);
   const [contacts, setContacts] = React.useState(SEED_CONTACTS);
   const [vendorAmounts, setVendorAmounts] = React.useState({});
-  const [subjectTemplate, setSubjectTemplate] = React.useState('[{{announcementName}}] 투찰 자료 전달드립니다.');
-  const [bodyTemplate, setBodyTemplate] = React.useState('안녕하세요, {{vendorName}} 담당자님.\n\n공고번호: {{announcementNumber}}\n발주처: {{owner}}\n입찰마감: {{closingDate}}\n기초금액: {{baseAmount}}\n투찰금액: {{tenderAmount}}\n\n첨부된 자료 확인 부탁드립니다.\n감사합니다.');
+  const [subjectTemplate, setSubjectTemplate] = React.useState('{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}');
+  const [bodyTemplate, setBodyTemplate] = React.useState(
+    '안녕하세요, {{vendorName}} 담당자님.\n\n'
+    + '{{owner}} "{{announcementNumber}} {{announcementName}}"의 입찰내역을 보내드립니다.\n\n'
+    + '이메일에 첨부된 ENC 파일 1개만 입찰서에 첨부하셔서 투찰해 주시기 바랍니다.\n'
+    + '함께 첨부된 엑셀 파일은 투찰 시 금액 확인용이니 절대로 첨부하지 마시기 바랍니다.\n\n'
+    + '좋은 결과 있으시기 바랍니다.\n\n'
+    + '공사명 : {{announcementName}}\n'
+    + '공고번호 : {{announcementNumber}}\n\n'
+    + '{{vendorName}} 투찰금액 : {{tenderAmount}}\n\n'
+    + 'ENC 파일만 첨부하세요!!!\n\n'
+    + '투찰마감일 {{closingDate}}\n'
+  );
   const [smtpProfile, setSmtpProfile] = React.useState('gmail');
   const [senderName, setSenderName] = React.useState('');
   const [senderEmail, setSenderEmail] = React.useState('');
@@ -160,35 +171,58 @@ export default function MailAutomationPage() {
         };
 
         const amountMap = {};
+        const vendorEntries = [];
         let emptyStreak = 0;
         for (let row = 8; row < 1000; row += 1) {
           const vendor = getText(`C${row}`);
           const amountCell = getCell(`D${row}`);
-          if (!vendor) {
+          const hasContent = Boolean(vendor || (amountCell && amountCell.v));
+          if (!hasContent) {
             emptyStreak += 1;
             if (emptyStreak >= 3) break;
             continue;
           }
           emptyStreak = 0;
+          const formattedAmount = formatAmount(amountCell);
           const normalized = normalizeVendorName(vendor);
-          if (!normalized) continue;
-          amountMap[normalized] = formatAmount(amountCell);
+          if (normalized) {
+            amountMap[normalized] = formattedAmount;
+          }
+          if (vendor) {
+            vendorEntries.push({
+              id: vendorEntries.length + 1,
+              vendorName: vendor,
+              contactName: '',
+              email: '',
+              tenderAmount: formattedAmount,
+              attachments: [],
+              status: '대기',
+            });
+          }
         }
 
         setVendorAmounts(amountMap);
-        const updatedRecipients = recipients.map((item) => {
-          const normalized = normalizeVendorName(item.vendorName);
-          const amount = normalized ? amountMap[normalized] : '';
-          if (amount) {
-            return { ...item, tenderAmount: amount };
-          }
-          return item;
-        });
-        const matched = updatedRecipients.filter((item) => !!item.tenderAmount).length;
-        setRecipients(updatedRecipients);
+        if (vendorEntries.length > 0) {
+          setRecipients(vendorEntries);
+          recipientIdRef.current = vendorEntries.length + 1;
+          setCurrentPageState(1);
+          setStatusMessage(`엑셀에서 공고 정보를 불러왔습니다. (공고번호: ${extracted.announcementNumber}, 업체 ${vendorEntries.length}건)`);
+        } else {
+          let matched = 0;
+          const nextRecipients = recipients.map((item) => {
+            const normalized = normalizeVendorName(item.vendorName);
+            const amount = normalized ? amountMap[normalized] : '';
+            if (amount) {
+              matched += 1;
+              return { ...item, tenderAmount: amount };
+            }
+            return item;
+          });
+          setRecipients(nextRecipients);
+          setStatusMessage(`엑셀에서 공고 정보를 불러왔습니다. (공고번호: ${extracted.announcementNumber}, 업체 매칭 ${matched}건)`);
+        }
 
         setProjectInfo(extracted);
-        setStatusMessage(`엑셀에서 공고 정보를 불러왔습니다. (공고번호: ${extracted.announcementNumber}, 업체 매칭 ${matched}건)`);
       } catch (error) {
         console.error('[mail] excel parsing failed', error);
         setProjectInfo(DEFAULT_PROJECT_INFO);
