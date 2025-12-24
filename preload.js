@@ -84,4 +84,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     exportDatabase: () => ipcRenderer.invoke('records:export-database'),
     importDatabase: () => ipcRenderer.invoke('records:import-database'),
   },
+  mail: {
+    sendTest: (payload) => ipcRenderer.invoke('mail:send-test', payload),
+  },
 });

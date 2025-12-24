@@ -29,6 +29,7 @@ const SEED_CONTACTS = [
 
 const ITEMS_PER_PAGE = 10;
 const normalizeVendorName = (name = '') => name.replace(/\s+/g, '').toLowerCase();
+const trimValue = (value) => (typeof value === 'string' ? value.trim() : '');
 
 export default function MailAutomationPage() {
   const [activeMenu, setActiveMenu] = React.useState('mail');
@@ -377,9 +378,119 @@ export default function MailAutomationPage() {
     setStatusMessage(`총 ${ready.length}건 발송 준비 완료 (발신: ${senderEmail || '미입력'}, 회신: ${replyTo || '미지정'}, 프로필: ${smtpProfile}). SMTP 연동 후 실제 발송 로직을 연결합니다.`);
   };
 
-  const handleTestMail = () => {
-    setStatusMessage(`SMTP 테스트: 프로필=${smtpProfile}, 발신=${senderEmail || '미입력'}. 실제 발송 로직을 연결하면 결과가 표시됩니다.`);
-  };
+  const handleTestMail = React.useCallback(async () => {
+    const api = window.electronAPI?.mail?.sendTest;
+    if (typeof api !== 'function') {
+      setStatusMessage('이 빌드에서는 테스트 메일 기능을 사용할 수 없습니다.');
+      return;
+    }
+
+    const trimmedSenderEmail = trimValue(senderEmail);
+    if (!trimmedSenderEmail) {
+      setStatusMessage('발신 이메일을 입력해 주세요.');
+      return;
+    }
+
+    let connection = null;
+    if (smtpProfile === 'gmail') {
+      if (!gmailPassword) {
+        setStatusMessage('Gmail 앱 비밀번호를 입력해 주세요.');
+        return;
+      }
+      connection = {
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: { user: trimmedSenderEmail, pass: gmailPassword },
+      };
+    } else if (smtpProfile === 'naver') {
+      if (!naverPassword) {
+        setStatusMessage('네이버 SMTP 비밀번호를 입력해 주세요.');
+        return;
+      }
+      connection = {
+        host: 'smtp.naver.com',
+        port: 465,
+        secure: true,
+        auth: { user: trimmedSenderEmail, pass: naverPassword },
+      };
+    } else {
+      const host = trimValue(customProfile.host);
+      const username = trimValue(customProfile.username) || trimmedSenderEmail;
+      const password = customProfile.password;
+      if (!host) {
+        setStatusMessage('SMTP 호스트를 입력해 주세요.');
+        return;
+      }
+      if (!password) {
+        setStatusMessage('SMTP 비밀번호를 입력해 주세요.');
+        return;
+      }
+      const portNumber = Number(customProfile.port) || (customProfile.secure ? 465 : 587);
+      connection = {
+        host,
+        port: portNumber,
+        secure: Boolean(customProfile.secure),
+        auth: { user: username, pass: password },
+      };
+    }
+
+    if (!connection) {
+      setStatusMessage('SMTP 설정을 확인해 주세요.');
+      return;
+    }
+
+    const timestamp = (() => {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+    })();
+
+    const subjectBase = projectInfo.announcementName || 'SMTP 연결 확인';
+    const summaryLines = [
+      '이 메일은 협정보조에서 SMTP 설정을 확인하기 위해 발송된 테스트 메일입니다.',
+      '',
+      `공고번호: ${projectInfo.announcementNumber || '-'}`,
+      `공고명: ${projectInfo.announcementName || '-'}`,
+      `발주처: ${projectInfo.owner || '-'}`,
+      `입찰마감일시: ${projectInfo.closingDate || '-'}`,
+      `기초금액: ${projectInfo.baseAmount || '-'}`,
+      '',
+      `발송 계정: ${trimmedSenderEmail}`,
+      `발송 시각: ${timestamp}`,
+      '',
+      '※ 본 메일은 테스트 용도로만 발송되었습니다.',
+    ];
+
+    setStatusMessage('테스트 메일을 보내는 중입니다...');
+    try {
+      const response = await api({
+        connection,
+        message: {
+          from: trimmedSenderEmail,
+          fromName: trimValue(senderName),
+          to: trimmedSenderEmail,
+          replyTo: trimValue(replyTo) || undefined,
+          subject: `[테스트] ${subjectBase} (${timestamp})`,
+          text: summaryLines.join('\n'),
+        },
+      });
+      if (response?.success) {
+        const acceptedList = response?.data?.accepted || response?.accepted || [];
+        const accepted = Array.isArray(acceptedList) && acceptedList.length ? acceptedList[0] : trimmedSenderEmail;
+        setStatusMessage(`테스트 메일 발송 완료: ${accepted}. 메일함을 확인해 주세요.`);
+      } else {
+        setStatusMessage(response?.message ? `테스트 메일 실패: ${response.message}` : '테스트 메일 발송에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('[mail] test send failed', error);
+      setStatusMessage(error?.message ? `테스트 메일 실패: ${error.message}` : '테스트 메일 발송 중 오류가 발생했습니다.');
+    }
+  }, [smtpProfile, senderEmail, senderName, replyTo, gmailPassword, naverPassword, customProfile, projectInfo]);
 
   const handleTemplatePreview = () => {
     setStatusMessage('템플릿 치환 결과는 구현 시 미리보기 창으로 제공할 예정입니다.');
