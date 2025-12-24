@@ -526,35 +526,6 @@ export default function MailAutomationPage() {
     });
   }, []);
 
-  const handleApplyGlobalRecipient = React.useCallback(() => {
-    const GLOBAL_EMAIL = 'superssay@naver.com';
-    const GLOBAL_NAME = '조세희 상무님';
-    if (!GLOBAL_EMAIL) return;
-    const alreadyExists = recipients.some((item) => trimValue(item.email) === GLOBAL_EMAIL);
-    if (alreadyExists) {
-      setStatusMessage(`${GLOBAL_NAME}은(는) 이미 목록에 있습니다.`);
-      return;
-    }
-    const nextId = recipientIdRef.current;
-    recipientIdRef.current += 1;
-    const nextRecipient = {
-      id: nextId,
-      vendorName: GLOBAL_NAME,
-      contactName: GLOBAL_NAME,
-      email: GLOBAL_EMAIL,
-      tenderAmount: '',
-      attachments: [],
-      status: '대기',
-    };
-    setRecipients((prev) => {
-      const nextList = [...prev, nextRecipient];
-      const lastPage = Math.max(1, Math.ceil(nextList.length / ITEMS_PER_PAGE));
-      setCurrentPageState(lastPage);
-      return nextList;
-    });
-    setStatusMessage(`${GLOBAL_NAME}을(를) 수신자 목록에 추가했습니다.`);
-  }, [recipients]);
-
   const buildRecipientContext = React.useCallback((recipient) => ({
     announcementNumber: projectInfo.announcementNumber || '',
     announcementName: projectInfo.announcementName || '',
