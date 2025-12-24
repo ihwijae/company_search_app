@@ -108,6 +108,27 @@ export default function MailAutomationPage() {
     return index;
   }, [contacts]);
 
+  const resolveContactForVendor = React.useCallback((vendor) => {
+    const normalized = normalizeVendorName(vendor);
+    if (!normalized) return null;
+    const candidates = contactIndex.get(normalized);
+    if (!candidates || candidates.length === 0) return null;
+    if (candidates.length === 1) {
+      const best = candidates[0];
+      return {
+        contactName: best.contactName || '',
+        email: best.email || '',
+        note: null,
+      };
+    }
+    const summary = candidates.map((c) => c.contactName || c.email || '담당자').join(', ');
+    return {
+      contactName: `[중복 확인] ${summary}`,
+      email: '',
+      note: '중복 담당자 확인 필요',
+    };
+  }, [contactIndex]);
+
   React.useEffect(() => {
     savePersisted('mail:addressBook', contacts);
     contactIdRef.current = contacts.length + 1;
@@ -293,13 +314,12 @@ export default function MailAutomationPage() {
             amountMap[normalized] = formattedAmount;
           }
           if (vendor) {
-            const contactsForVendor = contactIndex.get(normalizeVendorName(vendor));
-            const primaryContact = contactsForVendor && contactsForVendor.length ? contactsForVendor[0] : null;
+            const resolvedContact = resolveContactForVendor(vendor);
             vendorEntries.push({
               id: vendorEntries.length + 1,
               vendorName: vendor,
-              contactName: primaryContact?.contactName || '',
-              email: primaryContact?.email || '',
+              contactName: resolvedContact?.contactName || '',
+              email: resolvedContact?.email || '',
               tenderAmount: formattedAmount,
               attachments: [],
               status: '대기',
@@ -320,13 +340,12 @@ export default function MailAutomationPage() {
             const amount = normalized ? amountMap[normalized] : '';
             if (amount) {
               matched += 1;
-              const contactsForVendor = contactIndex.get(normalized);
-              const primaryContact = contactsForVendor && contactsForVendor.length ? contactsForVendor[0] : null;
+              const resolvedContact = resolveContactForVendor(item.vendorName);
               return {
                 ...item,
                 tenderAmount: amount,
-                contactName: item.contactName || primaryContact?.contactName || '',
-                email: item.email || primaryContact?.email || '',
+                contactName: item.contactName || resolvedContact?.contactName || '',
+                email: item.email || resolvedContact?.email || '',
               };
             }
             return item;
@@ -361,11 +380,14 @@ export default function MailAutomationPage() {
         const updated = { ...item, vendorName: value };
         const match = vendorAmounts[normalizeVendorName(value)];
         if (match) updated.tenderAmount = match;
-        const contactsForVendor = contactIndex.get(normalizeVendorName(value));
-        if (contactsForVendor && contactsForVendor.length) {
-          const best = contactsForVendor[0];
-          if (!updated.contactName && best.contactName) updated.contactName = best.contactName;
-          if (!updated.email && best.email) updated.email = best.email;
+        const resolvedContact = resolveContactForVendor(value);
+        if (resolvedContact) {
+          if (!updated.contactName && resolvedContact.contactName) {
+            updated.contactName = resolvedContact.contactName;
+          }
+          if (!updated.email && resolvedContact.email) {
+            updated.email = resolvedContact.email;
+          }
         }
         return updated;
       }));
