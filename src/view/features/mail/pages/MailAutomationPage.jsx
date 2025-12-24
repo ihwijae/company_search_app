@@ -446,8 +446,8 @@ export default function MailAutomationPage() {
             email: item.email || '',
           };
         });
-        setContacts((prev) => [...prev, ...imported]);
-        setStatusMessage(`주소록 ${importedCount}건을 가져왔습니다.`);
+        setContacts(imported);
+        setStatusMessage(`주소록을 ${importedCount}건으로 덮어썼습니다.`);
       } catch (error) {
         console.error('[mail] contacts import failed', error);
         setStatusMessage('주소록 파일을 읽지 못했습니다. JSON 형식을 확인해 주세요.');
