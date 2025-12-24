@@ -11,13 +11,7 @@ const DEFAULT_PROJECT_INFO = {
   baseAmount: '기초금액을 불러오세요',
 };
 
-const SEED_RECIPIENTS = [
-  { id: 1, vendorName: '㈜한빛건설', contactName: '김현수 차장', email: 'hs.kim@example.com', tenderAmount: '', attachments: [], status: '대기' },
-  { id: 2, vendorName: '빛돌ENG', contactName: '이서준 팀장', email: 'sj.lee@example.com', tenderAmount: '', attachments: [], status: '대기' },
-  { id: 3, vendorName: '세광이엔씨', contactName: '박민아 대리', email: 'mina.park@example.com', tenderAmount: '', attachments: [], status: '대기' },
-  { id: 4, vendorName: '하람산업', contactName: '정우성 부장', email: 'ws.jung@example.com', tenderAmount: '', attachments: [], status: '대기' },
-  { id: 5, vendorName: '가람기술', contactName: '최은지 과장', email: 'ej.choi@example.com', tenderAmount: '', attachments: [], status: '대기' },
-];
+const SEED_RECIPIENTS = [];
 
 const SEED_CONTACTS = [
   { id: 1, vendorName: '㈜한빛건설', contactName: '김현수 차장', email: 'hs.kim@example.com' },
@@ -87,6 +81,7 @@ export default function MailAutomationPage() {
   const [statusMessage, setStatusMessage] = React.useState('');
   const [currentPage, setCurrentPageState] = React.useState(1);
   const [addressBookOpen, setAddressBookOpen] = React.useState(false);
+  const [addressBookTargetId, setAddressBookTargetId] = React.useState(null);
 
   const excelInputRef = React.useRef(null);
   const attachmentInputs = React.useRef({});
@@ -287,12 +282,28 @@ export default function MailAutomationPage() {
 
   const handleAttachmentChange = (id, event) => {
     const files = Array.from(event.target.files || []);
-    setRecipients((prev) => prev.map((item) => (item.id === id ? { ...item, attachments: files } : item)));
+    if (!files.length) return;
+    setRecipients((prev) => prev.map((item) => {
+      if (item.id !== id) return item;
+      const next = [...(item.attachments || []), ...files];
+      return { ...item, attachments: next };
+    }));
+    if (event.target) event.target.value = '';
   };
 
   const handleRemoveAttachments = (id) => {
     setRecipients((prev) => prev.map((item) => (item.id === id ? { ...item, attachments: [] } : item)));
   };
+
+  const handleOpenAddressBook = React.useCallback((targetId = null) => {
+    setAddressBookTargetId(targetId);
+    setAddressBookOpen(true);
+  }, []);
+
+  const handleCloseAddressBook = React.useCallback(() => {
+    setAddressBookOpen(false);
+    setAddressBookTargetId(null);
+  }, []);
 
   const formatTenderAmountInput = React.useCallback((rawValue) => {
     if (!rawValue) return '';
@@ -396,6 +407,26 @@ export default function MailAutomationPage() {
       return nextList;
     });
   };
+
+  const handleApplyContactToRecipient = React.useCallback((recipientId, contact) => {
+    if (!recipientId || !contact) return;
+    setRecipients((prev) => prev.map((item) => {
+      if (item.id !== recipientId) return item;
+      const updated = {
+        ...item,
+        vendorName: contact.vendorName || item.vendorName || '',
+        contactName: contact.contactName || item.contactName || '',
+        email: contact.email || item.email || '',
+      };
+      const normalized = normalizeVendorName(contact.vendorName);
+      if (normalized && vendorAmounts[normalized]) {
+        updated.tenderAmount = vendorAmounts[normalized];
+      }
+      return updated;
+    }));
+    setStatusMessage(`주소록 정보를 적용했습니다: ${contact.vendorName || contact.contactName || ''}`);
+    handleCloseAddressBook();
+  }, [vendorAmounts, handleCloseAddressBook]);
 
   const handleRemoveRecipient = (id) => {
     setRecipients((prev) => {
@@ -785,7 +816,7 @@ export default function MailAutomationPage() {
               <header className="mail-panel__header">
                 <h2>업체 목록</h2>
                 <div className="mail-recipient-actions">
-                  <button type="button" className="btn-soft" onClick={() => setAddressBookOpen(true)}>주소록</button>
+                  <button type="button" className="btn-soft" onClick={() => handleOpenAddressBook()}>주소록</button>
                   <button type="button" className="btn-soft" onClick={handleAddRecipient}>업체 추가</button>
                   <button type="button" className="btn-primary" onClick={handleSendAll}>전체 발송</button>
                 </div>
@@ -812,12 +843,20 @@ export default function MailAutomationPage() {
                         placeholder="업체명"
                       />
                     </span>
-                    <span>
+                    <span className="mail-recipient-contact">
                       <input
                         value={recipient.contactName}
                         onChange={(event) => handleRecipientFieldChange(recipient.id, 'contactName', event.target.value)}
                         placeholder="담당자"
                       />
+                      <button
+                        type="button"
+                        className="mail-contact-picker"
+                        onClick={() => handleOpenAddressBook(recipient.id)}
+                        title="주소록에서 불러오기"
+                      >
+                        🔍
+                      </button>
                     </span>
                     <span>
                       <input
@@ -905,7 +944,7 @@ export default function MailAutomationPage() {
         </div>
       </div>
       {addressBookOpen && (
-        <div className="mail-addressbook-overlay" role="presentation" onClick={() => setAddressBookOpen(false)}>
+        <div className="mail-addressbook-overlay" role="presentation" onClick={handleCloseAddressBook}>
           <div
             className="mail-addressbook-modal"
             role="dialog"
@@ -918,7 +957,7 @@ export default function MailAutomationPage() {
                 <button type="button" className="btn-sm btn-soft" onClick={handleAddContact}>주소 추가</button>
                 <button type="button" className="btn-sm btn-soft" onClick={() => contactsFileInputRef.current?.click()}>가져오기</button>
                 <button type="button" className="btn-sm btn-soft" onClick={handleExportContacts} disabled={!contacts.length}>내보내기</button>
-                <button type="button" className="btn-sm btn-muted" onClick={() => setAddressBookOpen(false)}>닫기</button>
+                <button type="button" className="btn-sm btn-muted" onClick={handleCloseAddressBook}>닫기</button>
               </div>
               <input
                 ref={contactsFileInputRef}
@@ -947,7 +986,19 @@ export default function MailAutomationPage() {
                     placeholder="example@company.com"
                   />
                   <div className="mail-addressbook-modal__row-actions">
-                    <button type="button" className="btn-sm btn-soft" onClick={() => handleUseContact(contact)}>추가</button>
+                    <button
+                      type="button"
+                      className="btn-sm btn-soft"
+                      onClick={() => {
+                        if (addressBookTargetId) {
+                          handleApplyContactToRecipient(addressBookTargetId, contact);
+                        } else {
+                          handleUseContact(contact);
+                        }
+                      }}
+                    >
+                      {addressBookTargetId ? '적용' : '추가'}
+                    </button>
                     <button type="button" className="btn-sm btn-muted" onClick={() => handleRemoveContact(contact.id)}>삭제</button>
                   </div>
                 </div>

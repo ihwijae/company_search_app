@@ -2538,6 +2538,28 @@ body {
   gap: 6px;
 }
 
+.mail-recipient-contact {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.mail-contact-picker {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d4d4d8;
+  border-radius: 6px;
+  background: #f8fafc;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mail-contact-picker:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
 .mail-recipient-status {
   font-size: 12px;
   padding: 4px 8px;
