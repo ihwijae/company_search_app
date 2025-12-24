@@ -91,6 +91,21 @@ export default function MailAutomationPage() {
   const recipientIdRef = React.useRef(SEED_RECIPIENTS.length + 1);
   const contactIdRef = React.useRef(SEED_CONTACTS.length + 1);
   const contactsFileInputRef = React.useRef(null);
+  const contactIndex = React.useMemo(() => {
+    const index = new Map();
+    contacts.forEach((contact) => {
+      const raw = contact.vendorName || '';
+      if (!raw) return;
+      raw.split(',').forEach((part) => {
+        const key = normalizeVendorName(part);
+        if (!key) return;
+        if (!index.has(key)) index.set(key, []);
+        index.get(key).push(contact);
+      });
+    });
+    return index;
+  }, [contacts]);
+  const contactIndexRef = React.useRef(new Map());
 
   const resolveSmtpConfig = React.useCallback(() => {
     const trimmedSenderEmail = trimValue(senderEmail);
@@ -271,11 +286,13 @@ export default function MailAutomationPage() {
             amountMap[normalized] = formattedAmount;
           }
           if (vendor) {
+            const contactsForVendor = contactIndex.get(normalizeVendorName(vendor));
+            const primaryContact = contactsForVendor && contactsForVendor.length ? contactsForVendor[0] : null;
             vendorEntries.push({
               id: vendorEntries.length + 1,
               vendorName: vendor,
-              contactName: '',
-              email: '',
+              contactName: primaryContact?.contactName || '',
+              email: primaryContact?.email || '',
               tenderAmount: formattedAmount,
               attachments: [],
               status: '대기',
@@ -296,7 +313,14 @@ export default function MailAutomationPage() {
             const amount = normalized ? amountMap[normalized] : '';
             if (amount) {
               matched += 1;
-              return { ...item, tenderAmount: amount };
+              const contactsForVendor = contactIndex.get(normalized);
+              const primaryContact = contactsForVendor && contactsForVendor.length ? contactsForVendor[0] : null;
+              return {
+                ...item,
+                tenderAmount: amount,
+                contactName: item.contactName || primaryContact?.contactName || '',
+                email: item.email || primaryContact?.email || '',
+              };
             }
             return item;
           });
@@ -330,6 +354,12 @@ export default function MailAutomationPage() {
         const updated = { ...item, vendorName: value };
         const match = vendorAmounts[normalizeVendorName(value)];
         if (match) updated.tenderAmount = match;
+        const contactsForVendor = contactIndex.get(normalizeVendorName(value));
+        if (contactsForVendor && contactsForVendor.length) {
+          const best = contactsForVendor[0];
+          if (!updated.contactName && best.contactName) updated.contactName = best.contactName;
+          if (!updated.email && best.email) updated.email = best.email;
+        }
         return updated;
       }));
       return;
