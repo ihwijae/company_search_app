@@ -604,8 +604,15 @@ export default function MailAutomationPage() {
           return { ...item, status: result.success ? '완료' : '실패' };
         }));
         const successCount = results.filter((item) => item.success).length;
-        const failCount = results.filter((item) => !item.success).length;
-        setStatusMessage(`발송 완료: 성공 ${successCount}건 / 실패 ${failCount}건`);
+        const failures = results.filter((item) => !item.success);
+        const failCount = failures.length;
+        if (failCount > 0) {
+          const reason = failures[0]?.error || '원인을 확인해 주세요.';
+          console.error('[mail] 일부 발송 실패', failures);
+          setStatusMessage(`발송 완료: 성공 ${successCount}건 / 실패 ${failCount}건 (예: ${reason})`);
+        } else {
+          setStatusMessage(`발송 완료: 성공 ${successCount}건`);
+        }
       } else {
         setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '실패' } : item)));
         setStatusMessage(response?.message || '메일 발송에 실패했습니다.');
