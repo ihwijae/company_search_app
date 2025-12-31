@@ -168,6 +168,7 @@ export default function MailAutomationPage() {
   const [senderName, setSenderName] = React.useState(() => initialDraft.senderName || '');
   const [senderEmail, setSenderEmail] = React.useState(() => initialDraft.senderEmail || '');
   const [replyTo, setReplyTo] = React.useState(() => initialDraft.replyTo || '');
+  const [smtpProfileName, setSmtpProfileName] = React.useState(() => initialDraft.smtpProfileName || '');
   const [gmailPassword, setGmailPassword] = React.useState('');
   const [naverPassword, setNaverPassword] = React.useState('');
   const [customProfile, setCustomProfile] = React.useState(() => {
@@ -290,6 +291,7 @@ export default function MailAutomationPage() {
       senderName,
       senderEmail,
       replyTo,
+      smtpProfileName,
       customProfile: {
         host: customProfile.host || '',
         port: customProfile.port || '587',
@@ -314,6 +316,7 @@ export default function MailAutomationPage() {
     customProfile.port,
     customProfile.secure,
     customProfile.username,
+    smtpProfileName,
   ]);
 
   React.useEffect(() => {
@@ -775,10 +778,11 @@ export default function MailAutomationPage() {
   };
 
   const handleSaveSmtpProfile = React.useCallback(() => {
-    const label = window.prompt('SMTP 프로필 이름을 입력해 주세요.', senderEmail || senderName || '');
-    if (!label) return;
-    const trimmed = label.trim();
-    if (!trimmed) return;
+    const trimmed = trimValue(smtpProfileName) || trimValue(senderEmail) || trimValue(senderName);
+    if (!trimmed) {
+      alert('SMTP 프로필 이름을 입력해 주세요.');
+      return;
+    }
     const profileData = {
       name: trimmed,
       smtpProfile,
@@ -809,10 +813,11 @@ export default function MailAutomationPage() {
     if (nextId) {
       setSelectedSmtpProfileId(nextId);
     }
+    setSmtpProfileName(trimmed);
     if (nextMessage) {
       setStatusMessage(nextMessage);
     }
-  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile]);
+  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName]);
 
   const handleLoadSmtpProfile = React.useCallback(() => {
     if (!selectedSmtpProfileId) {
@@ -831,6 +836,7 @@ export default function MailAutomationPage() {
     setGmailPassword(profile.gmailPassword || '');
     setNaverPassword(profile.naverPassword || '');
     setCustomProfile({ ...DEFAULT_CUSTOM_PROFILE, ...profile.customProfile });
+    setSmtpProfileName(profile.name || '');
     setStatusMessage(`SMTP 프로필 '${profile.name}'을 불러왔습니다.`);
   }, [selectedSmtpProfileId, smtpProfiles]);
 
@@ -849,9 +855,11 @@ export default function MailAutomationPage() {
     setSenderName('');
     setSenderEmail('');
     setReplyTo('');
+    setSmtpProfileName('');
     setGmailPassword('');
     setNaverPassword('');
     setCustomProfile({ ...EMPTY_MAIL_STATE.customProfile });
+    setSelectedSmtpProfileId('');
     setStatusMessage('메일 작성 내용을 초기화했습니다.');
     setCurrentPageState(1);
   }, []);
@@ -1180,6 +1188,29 @@ export default function MailAutomationPage() {
 
               <div className="mail-section">
                 <h3>SMTP 프로필</h3>
+                <div className="mail-smtp-profile-manager">
+                  <label>
+                    SMTP 프로필 이름
+                    <input value={smtpProfileName} onChange={(event) => setSmtpProfileName(event.target.value)} placeholder="예: 본사_네이버" />
+                  </label>
+                  <div className="mail-smtp-profile-buttons">
+                    <button type="button" className="btn-soft" onClick={handleSaveSmtpProfile}>현재 설정 저장</button>
+                  </div>
+                  <label>
+                    저장된 SMTP 프로필
+                    <select value={selectedSmtpProfileId} onChange={(event) => setSelectedSmtpProfileId(event.target.value)}>
+                      <option value="">프로필을 선택해 주세요</option>
+                      {smtpProfiles.map((profile) => (
+                        <option key={profile.id} value={profile.id}>
+                          {profile.name} {profile.senderEmail ? `(${profile.senderEmail})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="mail-smtp-profile-buttons">
+                    <button type="button" className="btn-soft" onClick={handleLoadSmtpProfile} disabled={!smtpProfiles.length}>불러오기</button>
+                  </div>
+                </div>
                 <div className="mail-smtp-options">
                   <label>
                     <input
@@ -1209,23 +1240,6 @@ export default function MailAutomationPage() {
                     발신 이메일
                     <input value={senderEmail} onChange={(event) => setSenderEmail(event.target.value)} placeholder="example@company.com" />
                   </label>
-                </div>
-                <div className="mail-smtp-profile-manager">
-                  <label>
-                    저장된 SMTP 프로필
-                    <select value={selectedSmtpProfileId} onChange={(event) => setSelectedSmtpProfileId(event.target.value)}>
-                      <option value="">프로필을 선택해 주세요</option>
-                      {smtpProfiles.map((profile) => (
-                        <option key={profile.id} value={profile.id}>
-                          {profile.name} {profile.senderEmail ? `(${profile.senderEmail})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="mail-smtp-profile-buttons">
-                    <button type="button" className="btn-soft" onClick={handleLoadSmtpProfile} disabled={!smtpProfiles.length}>불러오기</button>
-                    <button type="button" className="btn-soft" onClick={handleSaveSmtpProfile}>현재 설정 저장</button>
-                  </div>
                 </div>
                 {smtpProfile === 'naver' && (
                   <label>
