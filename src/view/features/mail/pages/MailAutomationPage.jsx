@@ -97,8 +97,8 @@ const stripHtmlTags = (html) => {
     .trim();
 };
 const DEFAULT_BODY_TEMPLATE = `
-<div style="font-family:'Malgun Gothic',Dotum,Arial,sans-serif;font-size:15px;color:#1f2933;line-height:1.6;">
-  <p style="margin:0 0 12px;color:#0455c0;font-size:16px;font-weight:bold;">
+<div style="font-family:'Malgun Gothic',Dotum,Arial,sans-serif;font-size:17px;color:#1f2933;line-height:1.65;">
+  <p style="margin:0 0 12px;color:#0455c0;font-size:20px;font-weight:bold;">
     {{owner}} "{{announcementNumber}} {{announcementName}}"의 입찰내역을 보내드립니다.
   </p>
   <p style="margin:0 0 12px;">
@@ -112,9 +112,24 @@ const DEFAULT_BODY_TEMPLATE = `
   <p style="margin:4px 0;">
     <strong><span style="color:#d22b2b;">{{vendorName}} 투찰금액 : {{tenderAmount}}</span></strong>
   </p>
-  <p style="margin:12px 0;color:#0455c0;font-weight:bold;font-size:18px;">ENC 파일만 첨부하세요!!!</p>
+  <p style="margin:12px 0;color:#0455c0;font-weight:bold;font-size:22px;">ENC 파일만 첨부하세요!!!</p>
   <p style="margin:4px 0;">투찰마감일 {{closingDate}}</p>
 </div>`;
+
+const EMPTY_MAIL_STATE = {
+  projectInfo: { ...DEFAULT_PROJECT_INFO },
+  recipients: [],
+  vendorAmounts: {},
+  subjectTemplate: '{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}',
+  bodyTemplate: DEFAULT_BODY_TEMPLATE,
+  smtpProfile: 'naver',
+  senderName: '',
+  senderEmail: '',
+  replyTo: '',
+  customProfile: { host: '', port: '587', secure: true, username: '', password: '' },
+  sendDelay: 1,
+  includeGlobalRecipients: false,
+};
 
 export default function MailAutomationPage() {
   const draftRef = React.useRef(null);
@@ -713,6 +728,28 @@ export default function MailAutomationPage() {
     setStatusMessage('새 수신자를 추가했습니다. 업체명과 이메일을 입력해 주세요.');
   };
 
+  const handleResetDraft = React.useCallback(() => {
+    const confirmed = window.confirm('현재 메일 작성 내용을 모두 비울까요?');
+    if (!confirmed) return;
+    setExcelFile(null);
+    setProjectInfo({ ...DEFAULT_PROJECT_INFO });
+    setRecipients([]);
+    setVendorAmounts({});
+    setSubjectTemplate(EMPTY_MAIL_STATE.subjectTemplate);
+    setBodyTemplate(EMPTY_MAIL_STATE.bodyTemplate);
+    setSendDelay(EMPTY_MAIL_STATE.sendDelay);
+    setIncludeGlobalRecipients(false);
+    setSmtpProfile(EMPTY_MAIL_STATE.smtpProfile);
+    setSenderName('');
+    setSenderEmail('');
+    setReplyTo('');
+    setGmailPassword('');
+    setNaverPassword('');
+    setCustomProfile({ ...EMPTY_MAIL_STATE.customProfile });
+    setStatusMessage('메일 작성 내용을 초기화했습니다.');
+    setCurrentPageState(1);
+  }, []);
+
   const handleApplyGlobalRecipient = React.useCallback(() => {
     setIncludeGlobalRecipients((prev) => {
       const next = !prev;
@@ -1143,6 +1180,7 @@ export default function MailAutomationPage() {
                 <h2>업체 목록</h2>
                 <div className="mail-recipient-actions">
                   <button type="button" className="btn-soft" onClick={() => handleOpenAddressBook()}>주소록</button>
+                  <button type="button" className="btn-soft" onClick={handleResetDraft}>비우기</button>
                   <button
                     type="button"
                     className={`btn-soft ${includeGlobalRecipients ? 'btn-soft--active' : ''}`}
