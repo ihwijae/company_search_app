@@ -974,6 +974,14 @@ function MailAutomationPageInner() {
       return;
     }
 
+    const progressChannel = `mail:progress:${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    let unsubscribeProgress = null;
+    if (typeof mailApi?.onProgress === 'function') {
+      unsubscribeProgress = mailApi.onProgress(progressChannel, (count) => {
+        setProgressModal((prev) => ({ ...prev, processed: Math.min(count || 0, prev.total) }));
+      });
+    }
+
     const readyIds = new Set(ready.map((item) => item.id));
     setProgressModal({ open: true, total: ready.length, processed: 0, complete: false });
     setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '발송 중' } : item)));
@@ -1014,9 +1022,7 @@ function MailAutomationPageInner() {
         connection: smtpConfig.connection,
         messages,
         delayMs,
-        onProgress: (count) => {
-          setProgressModal((prev) => ({ ...prev, processed: Math.min(count, prev.total) }));
-        },
+        progressChannel,
       });
       if (response?.success) {
         const results = response.results || [];
@@ -1040,6 +1046,7 @@ function MailAutomationPageInner() {
         }
       } else {
         setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '실패' } : item)));
+        setProgressModal((prev) => ({ ...prev, complete: true }));
         showStatusMessage(response?.message || '메일 발송에 실패했습니다.', { type: 'error' });
       }
     } catch (error) {
@@ -1050,6 +1057,9 @@ function MailAutomationPageInner() {
     } finally {
       setSending(false);
       setTimeout(() => setProgressModal({ open: false, total: 0, processed: 0, complete: false }), 800);
+      if (unsubscribeProgress) {
+        try { unsubscribeProgress(); } catch {}
+      }
     }
   }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay, buildRecipientHeader, notify, showStatusMessage]);
 

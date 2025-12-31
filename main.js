@@ -908,9 +908,17 @@ try {
 
 try {
   if (ipcMain.removeHandler) ipcMain.removeHandler('mail:send-batch');
-  ipcMain.handle('mail:send-batch', async (_event, payload = {}) => {
+  ipcMain.handle('mail:send-batch', async (event, payload = {}) => {
     try {
-      const results = await sendBulkMail(payload);
+      const { progressChannel, ...rest } = payload || {};
+      const results = await sendBulkMail({
+        ...rest,
+        onProgress: (count) => {
+          if (progressChannel) {
+            try { event.sender.send(progressChannel, count); } catch {}
+          }
+        },
+      });
       return { success: true, results };
     } catch (err) {
       console.error('[MAIN] mail:send-batch failed:', err?.message || err);

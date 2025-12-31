@@ -87,5 +87,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   mail: {
     sendTest: (payload) => ipcRenderer.invoke('mail:send-test', payload),
     sendBatch: (payload) => ipcRenderer.invoke('mail:send-batch', payload),
+    onProgress: (channel, callback) => {
+      if (!channel || typeof callback !== 'function') return () => {};
+      const listener = (_event, data) => callback(data);
+      ipcRenderer.on(channel, listener);
+      return () => ipcRenderer.removeListener(channel, listener);
+    },
   },
 });
