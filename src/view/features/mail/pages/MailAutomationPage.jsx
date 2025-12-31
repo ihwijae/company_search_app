@@ -835,9 +835,9 @@ function MailAutomationPageInner() {
     }
     setSmtpProfileName(trimmed);
     if (nextMessage) {
-      showStatusMessage(nextMessage, { type: 'success', title: 'SMTP 프로필 저장' });
+      notify({ type: 'success', title: 'SMTP 프로필 저장', message: nextMessage });
     }
-  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, showStatusMessage, notify]);
+  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, notify]);
 
   const handleLoadSmtpProfile = React.useCallback(() => {
     if (!selectedSmtpProfileId) {
