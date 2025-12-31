@@ -774,7 +774,6 @@ function MailAutomationPageInner() {
       setCurrentPageState((prevPage) => Math.min(prevPage, totalPages));
       return nextList;
     });
-    showStatusMessage('수신자 목록에서 항목을 삭제했습니다.');
   };
 
   const handleAddRecipient = () => {
@@ -836,7 +835,7 @@ function MailAutomationPageInner() {
     }
     setSmtpProfileName(trimmed);
     if (nextMessage) {
-      showStatusMessage(nextMessage);
+      showStatusMessage(nextMessage, { type: 'success', title: 'SMTP 프로필 저장' });
     }
   }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, showStatusMessage, notify]);
 

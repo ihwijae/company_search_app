@@ -2686,19 +2686,25 @@ body {
 }
 
 .toast__close {
-  border: none;
-  background: rgba(15, 23, 42, 0.04);
-  color: #94a3b8;
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(248, 250, 252, 0.85);
+  color: #64748b;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
 }
 
 .toast__close:hover {
-  background: rgba(15, 23, 42, 0.08);
+  background: rgba(148, 163, 184, 0.15);
+  color: #334155;
+  border-color: rgba(100, 116, 139, 0.8);
 }
 
 .toast--success { border-left-color: #22c55e; }
