@@ -103,13 +103,14 @@ async function sendTestMail(payload = {}) {
 }
 
 async function sendBulkMail(payload = {}) {
-  const { connection, messages = [], delayMs = 0 } = payload;
+  const { connection, messages = [], delayMs = 0, onProgress } = payload;
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new Error('발송할 메시지가 없습니다.');
   }
   const transporter = createTransporter(connection || {});
   const results = [];
   try {
+    let processed = 0;
     for (const message of messages) {
       try {
         const info = await sendWithTransporter(transporter, message);
@@ -126,6 +127,10 @@ async function sendBulkMail(payload = {}) {
           recipientId: message.recipientId ?? null,
           error: err?.message || '발송 실패',
         });
+      }
+      processed += 1;
+      if (typeof onProgress === 'function') {
+        try { onProgress(processed); } catch {}
       }
       if (delayMs > 0) {
         await new Promise((resolve) => setTimeout(resolve, delayMs));

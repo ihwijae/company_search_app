@@ -206,6 +206,7 @@ function MailAutomationPageInner() {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [previewData, setPreviewData] = React.useState({ subject: '', html: '', text: '' });
   const [addressBookQuery, setAddressBookQuery] = React.useState('');
+  const [progressModal, setProgressModal] = React.useState({ open: false, total: 0, processed: 0, complete: false });
   const persistedSmtpProfiles = React.useMemo(() => {
     const stored = loadPersisted(SMTP_PROFILE_STORAGE_KEY, []);
     if (!Array.isArray(stored)) return [];
@@ -974,6 +975,7 @@ function MailAutomationPageInner() {
     }
 
     const readyIds = new Set(ready.map((item) => item.id));
+    setProgressModal({ open: true, total: ready.length, processed: 0, complete: false });
     setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '발송 중' } : item)));
     setSending(true);
     showStatusMessage(`총 ${ready.length}건 발송을 시작합니다...`);
@@ -1012,6 +1014,9 @@ function MailAutomationPageInner() {
         connection: smtpConfig.connection,
         messages,
         delayMs,
+        onProgress: (count) => {
+          setProgressModal((prev) => ({ ...prev, processed: Math.min(count, prev.total) }));
+        },
       });
       if (response?.success) {
         const results = response.results || [];
@@ -1022,6 +1027,7 @@ function MailAutomationPageInner() {
           if (!result) return { ...item, status: '완료' };
           return { ...item, status: result.success ? '완료' : '실패' };
         }));
+        setProgressModal((prev) => ({ ...prev, processed: ready.length, complete: true }));
         const successCount = results.filter((item) => item.success).length;
         const failures = results.filter((item) => !item.success);
         const failCount = failures.length;
@@ -1039,9 +1045,11 @@ function MailAutomationPageInner() {
     } catch (error) {
       console.error('[mail] send batch failed', error);
       setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '실패' } : item)));
+      setProgressModal((prev) => ({ ...prev, processed: 0, complete: true }));
       showStatusMessage(error?.message || '메일 발송 중 오류가 발생했습니다.', { type: 'error' });
     } finally {
       setSending(false);
+      setTimeout(() => setProgressModal({ open: false, total: 0, processed: 0, complete: false }), 800);
     }
   }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay, buildRecipientHeader, notify, showStatusMessage]);
 
@@ -1598,6 +1606,20 @@ function MailAutomationPageInner() {
               )) : (
                 <div className="mail-addressbook-modal__empty">주소록이 비어 있습니다. 주소를 추가하거나 가져오세요.</div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {progressModal.open && (
+        <div className="mail-progress-overlay" role="presentation">
+          <div className="mail-progress-modal" role="dialog" aria-modal="true">
+            <h3>메일 발송 중</h3>
+            <p>{progressModal.complete ? '발송 정리 중입니다...' : `총 ${progressModal.total}건 중 ${progressModal.processed}건 진행`}</p>
+            <div className="mail-progress-bar">
+              <div
+                className="mail-progress-bar__value"
+                style={{ width: progressModal.total ? `${Math.min(100, (progressModal.processed / progressModal.total) * 100)}%` : '5%' }}
+              />
             </div>
           </div>
         </div>
