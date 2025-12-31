@@ -840,6 +840,23 @@ export default function MailAutomationPage() {
     setStatusMessage(`SMTP 프로필 '${profile.name}'을 불러왔습니다.`);
   }, [selectedSmtpProfileId, smtpProfiles]);
 
+  const handleDeleteSmtpProfile = React.useCallback(() => {
+    if (!selectedSmtpProfileId) {
+      alert('삭제할 SMTP 프로필을 선택해 주세요.');
+      return;
+    }
+    const profile = smtpProfiles.find((item) => item.id === selectedSmtpProfileId);
+    if (!profile) {
+      alert('선택한 SMTP 프로필을 찾을 수 없습니다.');
+      return;
+    }
+    const confirmed = window.confirm(`SMTP 프로필 '${profile.name}'을 삭제할까요?`);
+    if (!confirmed) return;
+    setSmtpProfiles((prev) => prev.filter((item) => item.id !== profile.id));
+    setSelectedSmtpProfileId('');
+    setStatusMessage(`SMTP 프로필 '${profile.name}'을 삭제했습니다.`);
+  }, [selectedSmtpProfileId, smtpProfiles]);
+
   const handleResetDraft = React.useCallback(() => {
     const confirmed = window.confirm('현재 메일 작성 내용을 모두 비울까요?');
     if (!confirmed) return;
@@ -1209,6 +1226,7 @@ export default function MailAutomationPage() {
                   </label>
                   <div className="mail-smtp-profile-buttons">
                     <button type="button" className="btn-soft" onClick={handleLoadSmtpProfile} disabled={!smtpProfiles.length}>불러오기</button>
+                    <button type="button" className="btn-soft" onClick={handleDeleteSmtpProfile} disabled={!selectedSmtpProfileId}>삭제</button>
                   </div>
                 </div>
                 <div className="mail-smtp-options">
