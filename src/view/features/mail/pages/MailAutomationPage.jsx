@@ -1606,8 +1606,6 @@ function MailAutomationPageInner() {
     </div>
   );
 }
-;
-
 
 export default function MailAutomationPage() {
   return (
