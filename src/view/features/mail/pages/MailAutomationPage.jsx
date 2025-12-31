@@ -2,6 +2,7 @@ import React from 'react';
 import Sidebar from '../../../../components/Sidebar';
 import * as XLSX from 'xlsx';
 import 'xlsx/dist/cpexcel.js';
+import FeedbackProvider, { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import seedContacts from '../addressBook.seed.json';
 import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 
@@ -140,12 +141,13 @@ const EMPTY_MAIL_STATE = {
 
 const makeSmtpProfileId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-export default function MailAutomationPage() {
+function MailAutomationPageInner() {
   const draftRef = React.useRef(null);
   if (draftRef.current === null) {
     draftRef.current = loadPersisted(MAIL_DRAFT_STORAGE_KEY, null);
   }
   const initialDraft = draftRef.current || {};
+  const { notify, confirm } = useFeedback();
 
   const [activeMenu, setActiveMenu] = React.useState('mail');
   const [excelFile, setExcelFile] = React.useState(null);
@@ -684,7 +686,7 @@ export default function MailAutomationPage() {
 
   const handleExportContacts = () => {
     if (!contacts.length) {
-      alert('내보낼 주소록이 없습니다.');
+      notify({ type: 'warning', message: '내보낼 주소록이 없습니다.' });
       return;
     }
     const data = contacts.map(({ id, ...rest }) => rest);
@@ -697,6 +699,11 @@ export default function MailAutomationPage() {
     URL.revokeObjectURL(url);
     setStatusMessage(`주소록 ${contacts.length}건을 내보냈습니다.`);
   };
+
+  const handleManualSaveContacts = React.useCallback(() => {
+    savePersisted('mail:addressBook', contacts);
+    notify({ type: 'success', message: '주소록을 저장했습니다.' });
+  }, [contacts, notify]);
 
   const handleUseContact = (contact) => {
     if (!contact.email && !contact.vendorName) return;
@@ -780,7 +787,7 @@ export default function MailAutomationPage() {
   const handleSaveSmtpProfile = React.useCallback(() => {
     const trimmed = trimValue(smtpProfileName) || trimValue(senderEmail) || trimValue(senderName);
     if (!trimmed) {
-      alert('SMTP 프로필 이름을 입력해 주세요.');
+      notify({ type: 'warning', message: 'SMTP 프로필 이름을 입력해 주세요.' });
       return;
     }
     const profileData = {
@@ -817,16 +824,16 @@ export default function MailAutomationPage() {
     if (nextMessage) {
       setStatusMessage(nextMessage);
     }
-  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName]);
+  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, notify]);
 
   const handleLoadSmtpProfile = React.useCallback(() => {
     if (!selectedSmtpProfileId) {
-      alert('불러올 SMTP 프로필을 선택해 주세요.');
+      notify({ type: 'warning', message: '불러올 SMTP 프로필을 선택해 주세요.' });
       return;
     }
     const profile = smtpProfiles.find((item) => item.id === selectedSmtpProfileId);
     if (!profile) {
-      alert('선택한 SMTP 프로필을 찾을 수 없습니다.');
+      notify({ type: 'warning', message: '선택한 SMTP 프로필을 찾을 수 없습니다.' });
       return;
     }
     setSmtpProfile(profile.smtpProfile || 'naver');
@@ -838,27 +845,37 @@ export default function MailAutomationPage() {
     setCustomProfile({ ...DEFAULT_CUSTOM_PROFILE, ...profile.customProfile });
     setSmtpProfileName(profile.name || '');
     setStatusMessage(`SMTP 프로필 '${profile.name}'을 불러왔습니다.`);
-  }, [selectedSmtpProfileId, smtpProfiles]);
+  }, [selectedSmtpProfileId, smtpProfiles, notify]);
 
-  const handleDeleteSmtpProfile = React.useCallback(() => {
+  const handleDeleteSmtpProfile = React.useCallback(async () => {
     if (!selectedSmtpProfileId) {
-      alert('삭제할 SMTP 프로필을 선택해 주세요.');
+      notify({ type: 'warning', message: '삭제할 SMTP 프로필을 선택해 주세요.' });
       return;
     }
     const profile = smtpProfiles.find((item) => item.id === selectedSmtpProfileId);
     if (!profile) {
-      alert('선택한 SMTP 프로필을 찾을 수 없습니다.');
+      notify({ type: 'warning', message: '선택한 SMTP 프로필을 찾을 수 없습니다.' });
       return;
     }
-    const confirmed = window.confirm(`SMTP 프로필 '${profile.name}'을 삭제할까요?`);
+    const confirmed = await confirm({
+      title: 'SMTP 프로필 삭제',
+      message: `'${profile.name}' 프로필을 삭제할까요?`,
+      confirmText: '삭제',
+      cancelText: '취소',
+    });
     if (!confirmed) return;
     setSmtpProfiles((prev) => prev.filter((item) => item.id !== profile.id));
     setSelectedSmtpProfileId('');
     setStatusMessage(`SMTP 프로필 '${profile.name}'을 삭제했습니다.`);
-  }, [selectedSmtpProfileId, smtpProfiles]);
+  }, [selectedSmtpProfileId, smtpProfiles, confirm, notify]);
 
-  const handleResetDraft = React.useCallback(() => {
-    const confirmed = window.confirm('현재 메일 작성 내용을 모두 비울까요?');
+  const handleResetDraft = React.useCallback(async () => {
+    const confirmed = await confirm({
+      title: '메일 작성 초기화',
+      message: '현재 입력한 프로젝트 정보와 수신자, 첨부파일이 모두 삭제됩니다. 계속할까요?',
+      confirmText: '초기화',
+      cancelText: '취소',
+    });
     if (!confirmed) return;
     setExcelFile(null);
     setProjectInfo({ ...DEFAULT_PROJECT_INFO });
@@ -879,7 +896,7 @@ export default function MailAutomationPage() {
     setSelectedSmtpProfileId('');
     setStatusMessage('메일 작성 내용을 초기화했습니다.');
     setCurrentPageState(1);
-  }, []);
+  }, [confirm]);
 
   const handleApplyGlobalRecipient = React.useCallback(() => {
     setIncludeGlobalRecipients((prev) => {
@@ -932,7 +949,7 @@ export default function MailAutomationPage() {
     if (sending) return;
     const ready = recipients.filter((item) => trimValue(item.email) && Array.isArray(item.attachments) && item.attachments.length > 0);
     if (!ready.length) {
-      alert('발송 대상이 없습니다. 이메일과 첨부를 확인해 주세요.');
+      notify({ type: 'warning', message: '발송 대상이 없습니다. 이메일과 첨부를 확인해 주세요.' });
       return;
     }
 
@@ -1020,7 +1037,7 @@ export default function MailAutomationPage() {
     } finally {
       setSending(false);
     }
-  }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay, buildRecipientHeader]);
+  }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay, buildRecipientHeader, notify]);
 
   const handleTestMail = React.useCallback(async () => {
     const api = window.electronAPI?.mail?.sendTest;
@@ -1511,7 +1528,7 @@ export default function MailAutomationPage() {
                 <button
                   type="button"
                   className="btn-sm btn-primary"
-                  onClick={() => { savePersisted('mail:addressBook', contacts); alert('주소록을 저장했습니다.'); }}
+                  onClick={handleManualSaveContacts}
                 >
                   저장
                 </button>
@@ -1583,5 +1600,13 @@ export default function MailAutomationPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MailAutomationPage() {
+  return (
+    <FeedbackProvider>
+      <MailAutomationPageInner />
+    </FeedbackProvider>
   );
 }
