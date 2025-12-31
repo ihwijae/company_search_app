@@ -12,7 +12,7 @@ const DEFAULT_PROJECT_INFO = {
   owner: '발주기관',
   closingDate: '입찰마감일시를 불러오세요',
   baseAmount: '기초금액을 불러오세요',
-}
+};
 const SEED_RECIPIENTS = [];
 
 const SEED_CONTACTS = Array.isArray(seedContacts) ? seedContacts : [];
@@ -1053,7 +1053,6 @@ function MailAutomationPageInner() {
     }
   }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay, buildRecipientHeader, notify, showStatusMessage]);
 
-  const handleTestMail = React.useCallback(async () => {
   const handleTestMail = React.useCallback(async () => {
     const api = window.electronAPI?.mail?.sendTest;
     if (typeof api !== 'function') {
