@@ -148,6 +148,14 @@ function MailAutomationPageInner() {
   }
   const initialDraft = draftRef.current || {};
   const { notify, confirm } = useFeedback();
+  const showStatusMessage = React.useCallback((message, options = {}) => {
+    if (!message) return;
+    notify({
+      type: options.type || 'info',
+      title: options.title,
+      message,
+    });
+  }, [notify]);
 
   const [activeMenu, setActiveMenu] = React.useState('mail');
   const [excelFile, setExcelFile] = React.useState(null);
@@ -183,7 +191,6 @@ function MailAutomationPageInner() {
     const saved = Number(initialDraft.sendDelay);
     return Number.isFinite(saved) && saved >= 0 ? saved : 1;
   });
-  const [statusMessage, setStatusMessage] = React.useState('');
   const [currentPage, setCurrentPageState] = React.useState(1);
   const [addressBookOpen, setAddressBookOpen] = React.useState(false);
   const [addressBookTargetId, setAddressBookTargetId] = React.useState(null);
@@ -416,7 +423,7 @@ function MailAutomationPageInner() {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
     setExcelFile(file);
-    setStatusMessage('엑셀 데이터를 분석 중입니다...');
+    showStatusMessage('엑셀 데이터를 분석 중입니다...');
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -529,7 +536,7 @@ function MailAutomationPageInner() {
           setRecipients(vendorEntries);
           recipientIdRef.current = vendorEntries.length + 1;
           setCurrentPageState(1);
-          setStatusMessage(`엑셀에서 공고 정보를 불러왔습니다. (공고번호: ${extracted.announcementNumber}, 업체 ${vendorEntries.length}건)`);
+          showStatusMessage(`엑셀에서 공고 정보를 불러왔습니다. (공고번호: ${extracted.announcementNumber}, 업체 ${vendorEntries.length}건)`);
         } else {
           let matched = 0;
           const nextRecipients = recipients.map((item) => {
@@ -548,19 +555,19 @@ function MailAutomationPageInner() {
             return item;
           });
           setRecipients(nextRecipients);
-          setStatusMessage(`엑셀에서 공고 정보를 불러왔습니다. (공고번호: ${extracted.announcementNumber}, 업체 매칭 ${matched}건)`);
+          showStatusMessage(`엑셀에서 공고 정보를 불러왔습니다. (공고번호: ${extracted.announcementNumber}, 업체 매칭 ${matched}건)`);
         }
 
         setProjectInfo(extracted);
       } catch (error) {
         console.error('[mail] excel parsing failed', error);
         setProjectInfo(DEFAULT_PROJECT_INFO);
-        setStatusMessage('엑셀 구조를 분석하지 못했습니다. 셀 위치를 확인해 주세요.');
+        showStatusMessage('엑셀 구조를 분석하지 못했습니다. 셀 위치를 확인해 주세요.', { type: 'error' });
       }
     };
     reader.onerror = () => {
       setProjectInfo(DEFAULT_PROJECT_INFO);
-      setStatusMessage('엑셀 파일을 읽는 중 오류가 발생했습니다.');
+      showStatusMessage('엑셀 파일을 읽는 중 오류가 발생했습니다.', { type: 'error' });
     };
     reader.readAsArrayBuffer(file);
   };
@@ -641,7 +648,7 @@ function MailAutomationPageInner() {
       ...prev,
       { id: nextId, vendorName: '', contactName: '', email: '' },
     ]));
-    setStatusMessage('주소록에 빈 항목을 추가했습니다. 정보를 입력해 주세요.');
+    showStatusMessage('주소록에 빈 항목을 추가했습니다. 정보를 입력해 주세요.');
   };
 
   const handleContactFieldChange = (id, field, value) => {
@@ -650,7 +657,7 @@ function MailAutomationPageInner() {
 
   const handleRemoveContact = (id) => {
     setContacts((prev) => prev.filter((contact) => contact.id !== id));
-    setStatusMessage('주소록에서 항목을 삭제했습니다.');
+    showStatusMessage('주소록에서 항목을 삭제했습니다.');
   };
 
   const handleImportContacts = (event) => {
@@ -674,10 +681,10 @@ function MailAutomationPageInner() {
           };
         });
         setContacts(imported);
-        setStatusMessage(`주소록을 ${importedCount}건으로 덮어썼습니다.`);
+        showStatusMessage(`주소록을 ${importedCount}건으로 덮어썼습니다.`);
       } catch (error) {
         console.error('[mail] contacts import failed', error);
-        setStatusMessage('주소록 파일을 읽지 못했습니다. JSON 형식을 확인해 주세요.');
+        showStatusMessage('주소록 파일을 읽지 못했습니다. JSON 형식을 확인해 주세요.', { type: 'error' });
       }
     };
     reader.readAsText(file, 'utf-8');
@@ -697,7 +704,7 @@ function MailAutomationPageInner() {
     anchor.download = `mail-addressbook-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
-    setStatusMessage(`주소록 ${contacts.length}건을 내보냈습니다.`);
+    showStatusMessage(`주소록 ${contacts.length}건을 내보냈습니다.`);
   };
 
   const handleManualSaveContacts = React.useCallback(() => {
@@ -709,8 +716,8 @@ function MailAutomationPageInner() {
     if (!contact.email && !contact.vendorName) return;
     setRecipients((prev) => {
       if (prev.some((item) => item.email && contact.email && item.email === contact.email)) {
-        setStatusMessage('이미 동일한 이메일이 수신자 목록에 있습니다.');
-        return prev;
+      showStatusMessage('이미 동일한 이메일이 수신자 목록에 있습니다.', { type: 'warning' });
+      return prev;
       }
       const nextId = recipientIdRef.current;
       recipientIdRef.current += 1;
@@ -728,7 +735,7 @@ function MailAutomationPageInner() {
       const nextList = [...prev, nextRecipient];
       const lastPage = Math.max(1, Math.ceil(nextList.length / ITEMS_PER_PAGE));
       setCurrentPageState(lastPage);
-      setStatusMessage(`주소록에서 '${contact.vendorName || '업체'}'를 수신자 목록에 추가했습니다.`);
+      showStatusMessage(`주소록에서 '${contact.vendorName || '업체'}'를 수신자 목록에 추가했습니다.`);
       return nextList;
     });
   };
@@ -749,9 +756,9 @@ function MailAutomationPageInner() {
       }
       return updated;
     }));
-    setStatusMessage(`주소록 정보를 적용했습니다: ${contact.vendorName || contact.contactName || ''}`);
+    showStatusMessage(`주소록 정보를 적용했습니다: ${contact.vendorName || contact.contactName || ''}`);
     handleCloseAddressBook();
-  }, [vendorAmounts, handleCloseAddressBook]);
+  }, [vendorAmounts, handleCloseAddressBook, showStatusMessage]);
 
   const handleRemoveRecipient = (id) => {
     setRecipients((prev) => {
@@ -760,7 +767,7 @@ function MailAutomationPageInner() {
       setCurrentPageState((prevPage) => Math.min(prevPage, totalPages));
       return nextList;
     });
-    setStatusMessage('수신자 목록에서 항목을 삭제했습니다.');
+    showStatusMessage('수신자 목록에서 항목을 삭제했습니다.');
   };
 
   const handleAddRecipient = () => {
@@ -781,7 +788,7 @@ function MailAutomationPageInner() {
       setCurrentPageState(lastPage);
       return nextList;
     });
-    setStatusMessage('새 수신자를 추가했습니다. 업체명과 이메일을 입력해 주세요.');
+    showStatusMessage('새 수신자를 추가했습니다. 업체명과 이메일을 입력해 주세요.');
   };
 
   const handleSaveSmtpProfile = React.useCallback(() => {
@@ -822,9 +829,9 @@ function MailAutomationPageInner() {
     }
     setSmtpProfileName(trimmed);
     if (nextMessage) {
-      setStatusMessage(nextMessage);
+      showStatusMessage(nextMessage);
     }
-  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, notify]);
+  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, showStatusMessage, notify]);
 
   const handleLoadSmtpProfile = React.useCallback(() => {
     if (!selectedSmtpProfileId) {
@@ -844,8 +851,8 @@ function MailAutomationPageInner() {
     setNaverPassword(profile.naverPassword || '');
     setCustomProfile({ ...DEFAULT_CUSTOM_PROFILE, ...profile.customProfile });
     setSmtpProfileName(profile.name || '');
-    setStatusMessage(`SMTP 프로필 '${profile.name}'을 불러왔습니다.`);
-  }, [selectedSmtpProfileId, smtpProfiles, notify]);
+    showStatusMessage(`SMTP 프로필 '${profile.name}'을 불러왔습니다.`);
+  }, [selectedSmtpProfileId, smtpProfiles, showStatusMessage, notify]);
 
   const handleDeleteSmtpProfile = React.useCallback(async () => {
     if (!selectedSmtpProfileId) {
@@ -866,8 +873,8 @@ function MailAutomationPageInner() {
     if (!confirmed) return;
     setSmtpProfiles((prev) => prev.filter((item) => item.id !== profile.id));
     setSelectedSmtpProfileId('');
-    setStatusMessage(`SMTP 프로필 '${profile.name}'을 삭제했습니다.`);
-  }, [selectedSmtpProfileId, smtpProfiles, confirm, notify]);
+    showStatusMessage(`SMTP 프로필 '${profile.name}'을 삭제했습니다.`);
+  }, [selectedSmtpProfileId, smtpProfiles, confirm, notify, showStatusMessage]);
 
   const handleResetDraft = React.useCallback(async () => {
     const confirmed = await confirm({
@@ -894,17 +901,17 @@ function MailAutomationPageInner() {
     setNaverPassword('');
     setCustomProfile({ ...EMPTY_MAIL_STATE.customProfile });
     setSelectedSmtpProfileId('');
-    setStatusMessage('메일 작성 내용을 초기화했습니다.');
+    showStatusMessage('메일 작성 내용을 초기화했습니다.');
     setCurrentPageState(1);
-  }, [confirm]);
+  }, [confirm, showStatusMessage]);
 
   const handleApplyGlobalRecipient = React.useCallback(() => {
     setIncludeGlobalRecipients((prev) => {
       const next = !prev;
-      setStatusMessage(next ? '팀장님이 모든 메일 받는사람에 포함됩니다.' : '팀장님 자동 추가를 해제했습니다.');
+      showStatusMessage(next ? '팀장님이 모든 메일 받는사람에 포함됩니다.' : '팀장님 자동 추가를 해제했습니다.');
       return next;
     });
-  }, []);
+  }, [showStatusMessage]);
 
   const buildRecipientContext = React.useCallback((recipient) => ({
     announcementNumber: projectInfo.announcementNumber || '',
@@ -955,7 +962,7 @@ function MailAutomationPageInner() {
 
     const mailApi = window.electronAPI?.mail;
     if (typeof mailApi?.sendBatch !== 'function') {
-      setStatusMessage('이 빌드에서는 메일 발송 기능을 사용할 수 없습니다.');
+      showStatusMessage('이 빌드에서는 메일 발송 기능을 사용할 수 없습니다.', { type: 'warning' });
       return;
     }
 
@@ -963,14 +970,14 @@ function MailAutomationPageInner() {
     try {
       smtpConfig = resolveSmtpConfig();
     } catch (error) {
-      setStatusMessage(error?.message || 'SMTP 설정을 확인해 주세요.');
+      showStatusMessage(error?.message || 'SMTP 설정을 확인해 주세요.', { type: 'error' });
       return;
     }
 
     const readyIds = new Set(ready.map((item) => item.id));
     setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '발송 중' } : item)));
     setSending(true);
-    setStatusMessage(`총 ${ready.length}건 발송을 시작합니다...`);
+    showStatusMessage(`총 ${ready.length}건 발송을 시작합니다...`);
 
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
     const messages = ready.map((recipient) => {
@@ -1022,34 +1029,35 @@ function MailAutomationPageInner() {
         if (failCount > 0) {
           const reason = failures[0]?.error || '원인을 확인해 주세요.';
           console.error('[mail] 일부 발송 실패', failures);
-          setStatusMessage(`발송 완료: 성공 ${successCount}건 / 실패 ${failCount}건 (예: ${reason})`);
+          showStatusMessage(`발송 완료: 성공 ${successCount}건 / 실패 ${failCount}건 (예: ${reason})`, { type: 'warning' });
         } else {
-          setStatusMessage(`발송 완료: 성공 ${successCount}건`);
+          showStatusMessage(`발송 완료: 성공 ${successCount}건`, { type: 'success' });
         }
       } else {
         setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '실패' } : item)));
-        setStatusMessage(response?.message || '메일 발송에 실패했습니다.');
+        showStatusMessage(response?.message || '메일 발송에 실패했습니다.', { type: 'error' });
       }
     } catch (error) {
       console.error('[mail] send batch failed', error);
       setRecipients((prev) => prev.map((item) => (readyIds.has(item.id) ? { ...item, status: '실패' } : item)));
-      setStatusMessage(error?.message || '메일 발송 중 오류가 발생했습니다.');
+      showStatusMessage(error?.message || '메일 발송 중 오류가 발생했습니다.', { type: 'error' });
     } finally {
       setSending(false);
     }
-  }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay, buildRecipientHeader, notify]);
+  }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay, buildRecipientHeader, notify, showStatusMessage]);
 
+  const handleTestMail = React.useCallback(async () => {
   const handleTestMail = React.useCallback(async () => {
     const api = window.electronAPI?.mail?.sendTest;
     if (typeof api !== 'function') {
-      setStatusMessage('이 빌드에서는 테스트 메일 기능을 사용할 수 없습니다.');
+      showStatusMessage('이 빌드에서는 테스트 메일 기능을 사용할 수 없습니다.', { type: 'warning' });
       return;
     }
     let smtpConfig;
     try {
       smtpConfig = resolveSmtpConfig();
     } catch (error) {
-      setStatusMessage(error?.message || 'SMTP 설정을 확인해 주세요.');
+      showStatusMessage(error?.message || 'SMTP 설정을 확인해 주세요.', { type: 'error' });
       return;
     }
     const { connection, senderEmail: trimmedSenderEmail, senderName: normalizedSenderName, replyTo: normalizedReplyTo } = smtpConfig;
@@ -1096,7 +1104,7 @@ function MailAutomationPageInner() {
     const plainBodyFallback = resolvedBodyHtml ? stripHtmlTags(resolvedBodyHtml) : summaryLines.join('\n');
     const finalSubject = `[테스트] ${resolvedSubjectCore || (projectInfo.announcementName || 'SMTP 연결 확인')} (${timestamp})`;
 
-    setStatusMessage('테스트 메일을 보내는 중입니다...');
+    showStatusMessage('테스트 메일을 보내는 중입니다...');
     try {
       const response = await api({
         connection,
@@ -1114,20 +1122,17 @@ function MailAutomationPageInner() {
         const acceptedList = response?.data?.accepted || response?.accepted || [];
         const accepted = Array.isArray(acceptedList) && acceptedList.length ? acceptedList[0] : trimmedSenderEmail;
         const message = `테스트 메일 발송 완료: ${accepted}. 메일함을 확인해 주세요.`;
-        setStatusMessage(message);
-        notify({ type: 'success', title: '테스트 메일 완료', message });
+        showStatusMessage(message, { type: 'success', title: '테스트 메일 완료' });
       } else {
         const message = response?.message ? `테스트 메일 실패: ${response.message}` : '테스트 메일 발송에 실패했습니다.';
-        setStatusMessage(message);
-        notify({ type: 'error', title: '테스트 메일 실패', message });
+        showStatusMessage(message, { type: 'error', title: '테스트 메일 실패' });
       }
     } catch (error) {
       console.error('[mail] test send failed', error);
       const message = error?.message ? `테스트 메일 실패: ${error.message}` : '테스트 메일 발송 중 오류가 발생했습니다.';
-      setStatusMessage(message);
-      notify({ type: 'error', title: '테스트 메일 실패', message });
+      showStatusMessage(message, { type: 'error', title: '테스트 메일 실패' });
     }
-  }, [resolveSmtpConfig, projectInfo, recipients, subjectTemplate, bodyTemplate, notify]);
+  }, [resolveSmtpConfig, projectInfo, recipients, subjectTemplate, bodyTemplate, showStatusMessage]);
 
   const handleTemplatePreview = React.useCallback(() => {
     const sampleRecipient = recipients.find((item) => item.vendorName || item.tenderAmount || item.email) || {
@@ -1485,12 +1490,6 @@ function MailAutomationPageInner() {
                 </button>
               </div>
 
-              {statusMessage && (
-                <div className="mail-status mail-status--floating">
-                  <strong>알림</strong>
-                  <span>{statusMessage}</span>
-                </div>
-              )}
             </section>
           </div>
         </div>
