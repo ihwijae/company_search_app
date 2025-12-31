@@ -1463,7 +1463,7 @@ export default function MailAutomationPage() {
               </div>
 
               {statusMessage && (
-                <div className="mail-status">
+                <div className="mail-status mail-status--floating">
                   <strong>알림</strong>
                   <span>{statusMessage}</span>
                 </div>

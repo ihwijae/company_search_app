@@ -2651,6 +2651,21 @@ body {
   gap: 10px;
 }
 
+.mail-status--floating {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 2600;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  padding: 14px 18px;
+  min-width: 320px;
+  justify-content: center;
+  text-align: center;
+}
+
 .mail-addressbook-overlay {
   position: fixed;
   inset: 0;
