@@ -97,8 +97,8 @@ const stripHtmlTags = (html) => {
     .trim();
 };
 const DEFAULT_BODY_TEMPLATE = `
-<div style="font-family:'Malgun Gothic',Dotum,Arial,sans-serif;font-size:17px;color:#1f2933;line-height:1.65;">
-  <p style="margin:0 0 12px;color:#0455c0;font-size:20px;font-weight:bold;">
+<div style="font-family:'Malgun Gothic',Dotum,Arial,sans-serif;font-size:19px;color:#1f2933;line-height:1.7;">
+  <p style="margin:0 0 12px;color:#0455c0;font-size:22px;font-weight:bold;">
     {{owner}} "{{announcementNumber}} {{announcementName}}"의 입찰내역을 보내드립니다.
   </p>
   <p style="margin:0 0 12px;">
@@ -112,7 +112,7 @@ const DEFAULT_BODY_TEMPLATE = `
   <p style="margin:4px 0;">
     <strong><span style="color:#d22b2b;">{{vendorName}} 투찰금액 : {{tenderAmount}}</span></strong>
   </p>
-  <p style="margin:12px 0;color:#0455c0;font-weight:bold;font-size:22px;">ENC 파일만 첨부하세요!!!</p>
+  <p style="margin:12px 0;color:#0455c0;font-weight:bold;font-size:24px;">ENC 파일만 첨부하세요!!!</p>
   <p style="margin:4px 0;">투찰마감일 {{closingDate}}</p>
 </div>`;
 
@@ -1180,7 +1180,6 @@ export default function MailAutomationPage() {
                 <h2>업체 목록</h2>
                 <div className="mail-recipient-actions">
                   <button type="button" className="btn-soft" onClick={() => handleOpenAddressBook()}>주소록</button>
-                  <button type="button" className="btn-soft" onClick={handleResetDraft}>비우기</button>
                   <button
                     type="button"
                     className={`btn-soft ${includeGlobalRecipients ? 'btn-soft--active' : ''}`}
@@ -1192,6 +1191,10 @@ export default function MailAutomationPage() {
                   <button type="button" className="btn-primary" onClick={handleSendAll} disabled={sending}>{sending ? '발송 중...' : '전체 발송'}</button>
                 </div>
               </header>
+
+              <div className="mail-recipient-actions" style={{ justifyContent: 'flex-start', marginBottom: '8px' }}>
+                <button type="button" className="btn-soft" onClick={handleResetDraft}>비우기</button>
+              </div>
 
                 <div className="mail-recipients-table">
                   <div className="mail-recipients-header">
