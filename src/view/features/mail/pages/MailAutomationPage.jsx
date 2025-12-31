@@ -22,7 +22,11 @@ const GLOBAL_RECIPIENTS = Object.freeze([
 const MAIL_DRAFT_STORAGE_KEY = 'mail:draft';
 
 const ITEMS_PER_PAGE = 10;
-const normalizeVendorName = (name = '') => name.replace(/\s+/g, '').toLowerCase();
+const normalizeVendorName = (name = '') => name
+  .replace(/[\s]/g, '')
+  .replace(/^[㈜\(주\)\(합\)\(유\)\(재\)]+/gi, '')
+  .replace(/^주식회사|^유한회사|^합자회사|^재단법인|^사단법인/gi, '')
+  .toLowerCase();
 const trimValue = (value) => (typeof value === 'string' ? value.trim() : '');
 const formatEmailAddress = (name, email) => {
   const normalizedEmail = trimValue(email);
