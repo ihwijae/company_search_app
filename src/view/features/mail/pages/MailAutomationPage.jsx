@@ -813,31 +813,24 @@ function MailAutomationPageInner() {
       naverPassword,
       customProfile: { ...customProfile },
     };
-    let nextId = null;
-    let nextMessage = '';
-    setSmtpProfiles((prev) => {
-      const existingIndex = prev.findIndex((profile) => profile.name === trimmed);
-      if (existingIndex >= 0) {
-        const updated = [...prev];
-        const existingId = updated[existingIndex].id;
-        updated[existingIndex] = { ...profileData, id: existingId };
-        nextId = existingId;
-        nextMessage = `SMTP 프로필 '${trimmed}'을 업데이트했습니다.`;
-        return updated;
-      }
-      const newId = makeSmtpProfileId();
-      nextId = newId;
-      nextMessage = `SMTP 프로필 '${trimmed}'을 저장했습니다.`;
-      return [...prev, { ...profileData, id: newId }];
-    });
-    if (nextId) {
-      setSelectedSmtpProfileId(nextId);
+
+    const existingProfile = smtpProfiles.find((profile) => profile.name === trimmed);
+    if (existingProfile) {
+      setSmtpProfiles((prev) => prev.map((profile) => (
+        profile.id === existingProfile.id ? { ...profileData, id: existingProfile.id } : profile
+      )));
+      setSelectedSmtpProfileId(existingProfile.id);
+      setSmtpProfileName(trimmed);
+      showStatusMessage(`SMTP 프로필 '${trimmed}'을 업데이트했습니다.`, { type: 'success', title: 'SMTP 프로필 저장' });
+      return;
     }
+
+    const newId = makeSmtpProfileId();
+    setSmtpProfiles((prev) => ([...prev, { ...profileData, id: newId }]));
+    setSelectedSmtpProfileId(newId);
     setSmtpProfileName(trimmed);
-    if (nextMessage) {
-      showStatusMessage(nextMessage, { type: 'success', title: 'SMTP 프로필 저장' });
-    }
-  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, showStatusMessage, notify]);
+    showStatusMessage(`SMTP 프로필 '${trimmed}'을 저장했습니다.`, { type: 'success', title: 'SMTP 프로필 저장' });
+  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, smtpProfiles, showStatusMessage, notify]);
 
   const handleLoadSmtpProfile = React.useCallback(() => {
     if (!selectedSmtpProfileId) {
