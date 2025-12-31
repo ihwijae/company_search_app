@@ -1113,15 +1113,21 @@ function MailAutomationPageInner() {
       if (response?.success) {
         const acceptedList = response?.data?.accepted || response?.accepted || [];
         const accepted = Array.isArray(acceptedList) && acceptedList.length ? acceptedList[0] : trimmedSenderEmail;
-        setStatusMessage(`테스트 메일 발송 완료: ${accepted}. 메일함을 확인해 주세요.`);
+        const message = `테스트 메일 발송 완료: ${accepted}. 메일함을 확인해 주세요.`;
+        setStatusMessage(message);
+        notify({ type: 'success', title: '테스트 메일 완료', message });
       } else {
-        setStatusMessage(response?.message ? `테스트 메일 실패: ${response.message}` : '테스트 메일 발송에 실패했습니다.');
+        const message = response?.message ? `테스트 메일 실패: ${response.message}` : '테스트 메일 발송에 실패했습니다.';
+        setStatusMessage(message);
+        notify({ type: 'error', title: '테스트 메일 실패', message });
       }
     } catch (error) {
       console.error('[mail] test send failed', error);
-      setStatusMessage(error?.message ? `테스트 메일 실패: ${error.message}` : '테스트 메일 발송 중 오류가 발생했습니다.');
+      const message = error?.message ? `테스트 메일 실패: ${error.message}` : '테스트 메일 발송 중 오류가 발생했습니다.';
+      setStatusMessage(message);
+      notify({ type: 'error', title: '테스트 메일 실패', message });
     }
-  }, [resolveSmtpConfig, projectInfo, recipients, subjectTemplate, bodyTemplate]);
+  }, [resolveSmtpConfig, projectInfo, recipients, subjectTemplate, bodyTemplate, notify]);
 
   const handleTemplatePreview = React.useCallback(() => {
     const sampleRecipient = recipients.find((item) => item.vendorName || item.tenderAmount || item.email) || {
