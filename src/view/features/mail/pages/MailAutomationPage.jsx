@@ -1607,10 +1607,10 @@ function MailAutomationPageInner() {
   );
 }
 
-export default function MailAutomationPage() {
-  return (
-    <FeedbackProvider>
-      <MailAutomationPageInner />
-    </FeedbackProvider>
-  );
-}
+const MailAutomationPage = () => (
+  <FeedbackProvider>
+    <MailAutomationPageInner />
+  </FeedbackProvider>
+);
+
+export default MailAutomationPage;
