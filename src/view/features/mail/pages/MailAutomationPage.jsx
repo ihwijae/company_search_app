@@ -23,6 +23,12 @@ const GLOBAL_RECIPIENTS = Object.freeze([
 const ITEMS_PER_PAGE = 10;
 const normalizeVendorName = (name = '') => name.replace(/\s+/g, '').toLowerCase();
 const trimValue = (value) => (typeof value === 'string' ? value.trim() : '');
+const formatEmailAddress = (name, email) => {
+  const normalizedEmail = trimValue(email);
+  if (!normalizedEmail) return '';
+  const normalizedName = trimValue(name);
+  return normalizedName ? `${normalizedName} <${normalizedEmail}>` : normalizedEmail;
+};
 const replaceTemplateTokens = (template, context = {}) => {
   if (!template) return '';
   return String(template).replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_match, key) => {
@@ -87,6 +93,14 @@ export default function MailAutomationPage() {
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [previewData, setPreviewData] = React.useState({ subject: '', html: '', text: '' });
   const [addressBookQuery, setAddressBookQuery] = React.useState('');
+  const globalRecipientAddresses = React.useMemo(() => GLOBAL_RECIPIENTS
+    .map((recipient) => {
+      const email = trimValue(recipient.email);
+      const address = formatEmailAddress(recipient.name, recipient.email);
+      if (!email || !address) return null;
+      return { email: email.toLowerCase(), address };
+    })
+    .filter(Boolean), []);
 
   const excelInputRef = React.useRef(null);
   const attachmentInputs = React.useRef({});
@@ -584,7 +598,7 @@ export default function MailAutomationPage() {
   const handleApplyGlobalRecipient = React.useCallback(() => {
     setIncludeGlobalRecipients((prev) => {
       const next = !prev;
-      setStatusMessage(next ? '공통 수신자가 모든 메일에 추가됩니다.' : '공통 수신자 추가를 해제했습니다.');
+      setStatusMessage(next ? '팀장님이 모든 메일 받는사람에 포함됩니다.' : '팀장님 자동 추가를 해제했습니다.');
       return next;
     });
   }, []);
@@ -607,6 +621,26 @@ export default function MailAutomationPage() {
     `투찰금액 : ${context.tenderAmount || '-'}`,
     `투찰마감일 : ${context.closingDate || '-'}`,
   ].join('\n')), []);
+
+  const buildRecipientHeader = React.useCallback((recipient) => {
+    const primaryEmail = trimValue(recipient.email);
+    const primaryName = trimValue(recipient.contactName) || trimValue(recipient.vendorName);
+    const primaryAddress = formatEmailAddress(primaryName, primaryEmail);
+    const dedup = new Set();
+    const addresses = [];
+    if (primaryAddress && primaryEmail) {
+      addresses.push(primaryAddress);
+      dedup.add(primaryEmail.toLowerCase());
+    }
+    if (includeGlobalRecipients && globalRecipientAddresses.length) {
+      globalRecipientAddresses.forEach((entry) => {
+        if (dedup.has(entry.email)) return;
+        dedup.add(entry.email);
+        addresses.push(entry.address);
+      });
+    }
+    return addresses.join(', ');
+  }, [includeGlobalRecipients, globalRecipientAddresses]);
 
   const handleSendAll = React.useCallback(async () => {
     if (sending) return;
@@ -641,13 +675,7 @@ export default function MailAutomationPage() {
       const resolvedSubject = replaceTemplateTokens(subjectTemplate || '', context).trim() || `${context.announcementName || '입찰'} 안내`;
       const resolvedBodyHtml = replaceTemplateTokens(bodyTemplate || '', context).trim();
       const plainText = stripHtmlTags(resolvedBodyHtml) || buildFallbackText(context);
-      const recipientDisplayName = trimValue(recipient.contactName) || trimValue(recipient.vendorName);
-      const recipientAddress = (() => {
-        const email = trimValue(recipient.email);
-        if (!email) return '';
-        if (recipientDisplayName) return `${recipientDisplayName} <${email}>`;
-        return email;
-      })();
+      const recipientAddress = buildRecipientHeader(recipient);
       const attachments = (recipient.attachments || [])
         .map((file) => {
           const filePath = file?.path || file?.webkitRelativePath;
@@ -706,7 +734,7 @@ export default function MailAutomationPage() {
     } finally {
       setSending(false);
     }
-  }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay]);
+  }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay, buildRecipientHeader]);
 
   const handleTestMail = React.useCallback(async () => {
     const api = window.electronAPI?.mail?.sendTest;
@@ -1002,7 +1030,7 @@ export default function MailAutomationPage() {
                     className={`btn-soft ${includeGlobalRecipients ? 'btn-soft--active' : ''}`}
                     onClick={handleApplyGlobalRecipient}
                   >
-                    {includeGlobalRecipients ? '공통 수신자 포함 중' : '수신자 공통 전부 추가'}
+                    {includeGlobalRecipients ? '팀장님 포함 중' : '받는사람에 팀장님 추가'}
                   </button>
                   <button type="button" className="btn-soft" onClick={handleAddRecipient}>업체 추가</button>
                   <button type="button" className="btn-primary" onClick={handleSendAll} disabled={sending}>{sending ? '발송 중...' : '전체 발송'}</button>
