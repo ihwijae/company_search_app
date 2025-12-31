@@ -140,6 +140,14 @@ const EMPTY_MAIL_STATE = {
 
 const makeSmtpProfileId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+export default function MailAutomationPage() {
+  return (
+    <FeedbackProvider>
+      <MailAutomationPageInner />
+    </FeedbackProvider>
+  );
+}
+
 function MailAutomationPageInner() {
   const draftRef = React.useRef(null);
   if (draftRef.current === null) {
@@ -1606,13 +1614,3 @@ function MailAutomationPageInner() {
     </div>
   );
 }
-
-function MailAutomationPage() {
-  return (
-    <FeedbackProvider>
-      <MailAutomationPageInner />
-    </FeedbackProvider>
-  );
-}
-
-export default MailAutomationPage;
