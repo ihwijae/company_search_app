@@ -19,6 +19,7 @@ const SEED_CONTACTS = Array.isArray(seedContacts) ? seedContacts : [];
 const GLOBAL_RECIPIENTS = Object.freeze([
   { name: '조세희 상무님', email: 'superssay@naver.com' },
 ]);
+const MAIL_DRAFT_STORAGE_KEY = 'mail:draft';
 
 const ITEMS_PER_PAGE = 10;
 const normalizeVendorName = (name = '') => name.replace(/\s+/g, '').toLowerCase();
@@ -28,6 +29,55 @@ const formatEmailAddress = (name, email) => {
   if (!normalizedEmail) return '';
   const normalizedName = trimValue(name);
   return normalizedName ? `${normalizedName} <${normalizedEmail}>` : normalizedEmail;
+};
+const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+const buildAttachmentDescriptor = (raw) => {
+  if (!raw) return null;
+  if (typeof raw === 'string') {
+    const path = trimValue(raw);
+    if (!path) return null;
+    const name = path.split(/[/\\]/).pop() || path;
+    return { path, name };
+  }
+  const path = trimValue(raw.path || raw.webkitRelativePath || '');
+  if (!path) return null;
+  const name = raw.name || raw.filename || raw.label || path.split(/[/\\]/).pop();
+  return { path, name };
+};
+const normalizeAttachmentList = (list = []) => {
+  if (!Array.isArray(list) || !list.length) return [];
+  return list.map(buildAttachmentDescriptor).filter(Boolean);
+};
+const sanitizeRecipientDraftList = (list = []) => {
+  if (!Array.isArray(list) || !list.length) return [];
+  return list.map((item, index) => {
+    if (!item || typeof item !== 'object') return null;
+    const id = Number(item.id);
+    return {
+      id: Number.isFinite(id) && id > 0 ? id : index + 1,
+      vendorName: item.vendorName || '',
+      contactName: item.contactName || '',
+      email: item.email || '',
+      tenderAmount: item.tenderAmount || '',
+      attachments: normalizeAttachmentList(item.attachments),
+      status: item.status || '대기',
+    };
+  }).filter(Boolean);
+};
+const serializeRecipientsForPersist = (recipients = []) => {
+  if (!Array.isArray(recipients) || !recipients.length) return [];
+  return recipients.map((item, index) => {
+    const id = Number(item.id);
+    return {
+      id: Number.isFinite(id) && id > 0 ? id : index + 1,
+      vendorName: item.vendorName || '',
+      contactName: item.contactName || '',
+      email: item.email || '',
+      tenderAmount: item.tenderAmount || '',
+      attachments: normalizeAttachmentList(item.attachments),
+      status: item.status || '대기',
+    };
+  });
 };
 const replaceTemplateTokens = (template, context = {}) => {
   if (!template) return '';
@@ -67,29 +117,52 @@ const DEFAULT_BODY_TEMPLATE = `
 </div>`;
 
 export default function MailAutomationPage() {
+  const draftRef = React.useRef(null);
+  if (draftRef.current === null) {
+    draftRef.current = loadPersisted(MAIL_DRAFT_STORAGE_KEY, null);
+  }
+  const initialDraft = draftRef.current || {};
+
   const [activeMenu, setActiveMenu] = React.useState('mail');
   const [excelFile, setExcelFile] = React.useState(null);
-  const [projectInfo, setProjectInfo] = React.useState(DEFAULT_PROJECT_INFO);
-  const [recipients, setRecipients] = React.useState(SEED_RECIPIENTS);
+  const [projectInfo, setProjectInfo] = React.useState(() => (
+    isPlainObject(initialDraft.projectInfo)
+      ? { ...DEFAULT_PROJECT_INFO, ...initialDraft.projectInfo }
+      : { ...DEFAULT_PROJECT_INFO }
+  ));
+  const [recipients, setRecipients] = React.useState(() => (
+    sanitizeRecipientDraftList(initialDraft.recipients) || SEED_RECIPIENTS
+  ));
   const persistedContacts = React.useMemo(() => loadPersisted('mail:addressBook', SEED_CONTACTS), []);
   const [contacts, setContacts] = React.useState(persistedContacts);
-  const [vendorAmounts, setVendorAmounts] = React.useState({});
-  const [subjectTemplate, setSubjectTemplate] = React.useState('{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}');
-  const [bodyTemplate, setBodyTemplate] = React.useState(DEFAULT_BODY_TEMPLATE);
-  const [smtpProfile, setSmtpProfile] = React.useState('naver');
-  const [senderName, setSenderName] = React.useState('');
-  const [senderEmail, setSenderEmail] = React.useState('');
-  const [replyTo, setReplyTo] = React.useState('');
+  const [vendorAmounts, setVendorAmounts] = React.useState(() => (
+    isPlainObject(initialDraft.vendorAmounts) ? { ...initialDraft.vendorAmounts } : {}
+  ));
+  const [subjectTemplate, setSubjectTemplate] = React.useState(() => initialDraft.subjectTemplate || '{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}');
+  const [bodyTemplate, setBodyTemplate] = React.useState(() => initialDraft.bodyTemplate || DEFAULT_BODY_TEMPLATE);
+  const [smtpProfile, setSmtpProfile] = React.useState(() => initialDraft.smtpProfile || 'naver');
+  const [senderName, setSenderName] = React.useState(() => initialDraft.senderName || '');
+  const [senderEmail, setSenderEmail] = React.useState(() => initialDraft.senderEmail || '');
+  const [replyTo, setReplyTo] = React.useState(() => initialDraft.replyTo || '');
   const [gmailPassword, setGmailPassword] = React.useState('');
   const [naverPassword, setNaverPassword] = React.useState('');
-  const [customProfile, setCustomProfile] = React.useState({ host: '', port: '587', secure: true, username: '', password: '' });
-  const [sendDelay, setSendDelay] = React.useState(1);
+  const [customProfile, setCustomProfile] = React.useState(() => {
+    const base = { host: '', port: '587', secure: true, username: '', password: '' };
+    if (isPlainObject(initialDraft.customProfile)) {
+      return { ...base, ...initialDraft.customProfile, password: '' };
+    }
+    return base;
+  });
+  const [sendDelay, setSendDelay] = React.useState(() => {
+    const saved = Number(initialDraft.sendDelay);
+    return Number.isFinite(saved) && saved >= 0 ? saved : 1;
+  });
   const [statusMessage, setStatusMessage] = React.useState('');
   const [currentPage, setCurrentPageState] = React.useState(1);
   const [addressBookOpen, setAddressBookOpen] = React.useState(false);
   const [addressBookTargetId, setAddressBookTargetId] = React.useState(null);
   const [sending, setSending] = React.useState(false);
-  const [includeGlobalRecipients, setIncludeGlobalRecipients] = React.useState(false);
+  const [includeGlobalRecipients, setIncludeGlobalRecipients] = React.useState(() => Boolean(initialDraft.includeGlobalRecipients));
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [previewData, setPreviewData] = React.useState({ subject: '', html: '', text: '' });
   const [addressBookQuery, setAddressBookQuery] = React.useState('');
@@ -148,6 +221,50 @@ export default function MailAutomationPage() {
     contactIdRef.current = contacts.length + 1;
   }, [contacts]);
   const contactIndexRef = React.useRef(new Map());
+
+  React.useEffect(() => {
+    const nextId = recipients.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1;
+    recipientIdRef.current = Math.max(nextId, 1);
+  }, [recipients]);
+
+  React.useEffect(() => {
+    const payload = {
+      projectInfo,
+      recipients: serializeRecipientsForPersist(recipients),
+      subjectTemplate,
+      bodyTemplate,
+      sendDelay,
+      includeGlobalRecipients,
+      vendorAmounts,
+      smtpProfile,
+      senderName,
+      senderEmail,
+      replyTo,
+      customProfile: {
+        host: customProfile.host || '',
+        port: customProfile.port || '587',
+        secure: Boolean(customProfile.secure),
+        username: customProfile.username || '',
+      },
+    };
+    savePersisted(MAIL_DRAFT_STORAGE_KEY, payload);
+  }, [
+    projectInfo,
+    recipients,
+    subjectTemplate,
+    bodyTemplate,
+    sendDelay,
+    includeGlobalRecipients,
+    vendorAmounts,
+    smtpProfile,
+    senderName,
+    senderEmail,
+    replyTo,
+    customProfile.host,
+    customProfile.port,
+    customProfile.secure,
+    customProfile.username,
+  ]);
 
   const resolveSmtpConfig = React.useCallback(() => {
     const trimmedSenderEmail = trimValue(senderEmail);
@@ -417,10 +534,11 @@ export default function MailAutomationPage() {
 
   const handleAttachmentChange = (id, event) => {
     const files = Array.from(event.target.files || []);
-    if (!files.length) return;
+    const descriptors = normalizeAttachmentList(files);
+    if (!descriptors.length) return;
     setRecipients((prev) => prev.map((item) => {
       if (item.id !== id) return item;
-      const next = [...(item.attachments || []), ...files];
+      const next = [...(item.attachments || []), ...descriptors];
       return { ...item, attachments: next };
     }));
     if (event.target) event.target.value = '';
