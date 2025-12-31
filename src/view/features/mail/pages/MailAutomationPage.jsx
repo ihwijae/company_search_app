@@ -836,8 +836,15 @@ function MailAutomationPageInner() {
     setSmtpProfileName(trimmed);
     if (nextMessage) {
       notify({ type: 'success', title: 'SMTP 프로필 저장', message: nextMessage });
+      confirm({
+        title: 'SMTP 프로필 저장',
+        message: nextMessage,
+        confirmText: '확인',
+        cancelText: '닫기',
+        tone: 'success',
+      });
     }
-  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, notify]);
+  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, notify, confirm]);
 
   const handleLoadSmtpProfile = React.useCallback(() => {
     if (!selectedSmtpProfileId) {
