@@ -1,6 +1,8 @@
 export const BASE_ROUTES = {
   search: '#/search',
   agreements: '#/agreements',
+  agreementBoard: '#/agreement-board',
+  regionSearch: '#/region-search',
   settings: '#/settings',
 };
 

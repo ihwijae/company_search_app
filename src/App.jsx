@@ -12,6 +12,8 @@ import PPS50To100Page from './view/features/agreements/pages/PPS50To100Page.jsx'
 import MOISUnder30Page from './view/features/agreements/pages/MOISUnder30Page.jsx';
 import MOIS30To50Page from './view/features/agreements/pages/MOIS30To50Page.jsx';
 import MOIS50To100Page from './view/features/agreements/pages/MOIS50To100Page.jsx';
+import AgreementBoardStandalonePage from './view/features/agreements/pages/AgreementBoardStandalonePage.jsx';
+import RegionSearchStandalonePage from './view/features/agreements/pages/RegionSearchStandalonePage.jsx';
 import { AgreementBoardProvider } from './view/features/agreements/context/AgreementBoardContext.jsx';
 import ExcelHelperPage from './view/features/excel-helper/pages/ExcelHelperPage.jsx';
 import RegionSearchWindowHost from './view/features/agreements/components/RegionSearchWindowHost.jsx';
@@ -54,6 +56,12 @@ export default function App() {
       break;
     case '/mois/50to100':
       Screen = MOIS50To100Page;
+      break;
+    case '/agreement-board':
+      Screen = AgreementBoardStandalonePage;
+      break;
+    case '/region-search':
+      Screen = RegionSearchStandalonePage;
       break;
     case '/agreements':
       Screen = AgreementsPage;

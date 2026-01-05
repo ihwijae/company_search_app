@@ -34,15 +34,6 @@ const BOARD_COPY_BUTTON_STYLE_MAP = {
   performance: { backgroundColor: '#ffe4e6', color: '#be123c', borderColor: '#fecdd3' },
   sipyung: { backgroundColor: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' },
 };
-function Field({ label, children, style = {} }) {
-  return (
-    <div className="filter-item" style={style}>
-      <label>{label}</label>
-      {children}
-    </div>
-  );
-}
-
 const resolveOwnerPerformanceMax = (ownerId) => {
   const upper = String(ownerId || '').toUpperCase();
   return upper === 'MOIS' ? PERFORMANCE_MOIS_DEFAULT_MAX : PERFORMANCE_DEFAULT_MAX;
@@ -822,8 +813,6 @@ export default function AgreementBoardWindow({
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
   const [excelCopying, setExcelCopying] = React.useState(false);
   const [copyingKind, setCopyingKind] = React.useState(null);
-  const [regionSearchQuery, setRegionSearchQuery] = React.useState('');
-  const [performanceSearchQuery, setPerformanceSearchQuery] = React.useState('');
   const searchTargetRef = React.useRef(null);
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
@@ -883,6 +872,10 @@ export default function AgreementBoardWindow({
     if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_GROUP_SIZE;
     return Math.max(1, Math.floor(parsed));
   }, [groupSize]);
+
+  const slotLabels = React.useMemo(() => (
+    Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))
+  ), [safeGroupSize]);
 
   React.useEffect(() => {
     if (open) {
@@ -1066,8 +1059,6 @@ export default function AgreementBoardWindow({
   React.useEffect(() => {
     if (open) {
       ensureWindow();
-      setRegionSearchQuery('');
-      setPerformanceSearchQuery('');
     } else {
       closeWindow();
     }
@@ -1144,20 +1135,6 @@ export default function AgreementBoardWindow({
     });
     return { bizSet, nameSet };
   }, [regionCandidates]);
-
-  const entryMatchesQuery = React.useCallback((entry, normalizedQuery) => {
-    if (!normalizedQuery) return true;
-    if (!entry || !entry.candidate) return false;
-    const candidate = entry.candidate;
-    const fields = [
-      getCompanyName(candidate),
-      getRegionLabel(candidate),
-      normalizeBizNo(getBizNo(candidate)),
-    ];
-    const managerNames = extractManagerNames(candidate);
-    managerNames.forEach((name) => fields.push(name));
-    return fields.some((value) => value && String(value).toLowerCase().includes(normalizedQuery));
-  }, []);
 
   const alwaysIncludeItems = React.useMemo(() => (
     Array.isArray(alwaysInclude)
@@ -1419,42 +1396,6 @@ export default function AgreementBoardWindow({
     return set;
   }, [groupAssignments]);
 
-  const availablePerformanceEntries = React.useMemo(
-    () => representativeEntries.filter((entry) => !assignedIds.has(entry.uid)),
-    [representativeEntries, assignedIds],
-  );
-
-  const availableRegionEntries = React.useMemo(() => (
-    regionEntries.filter((entry) => !assignedIds.has(entry.uid))
-  ), [regionEntries, assignedIds]);
-
-  const filteredPerformanceEntries = React.useMemo(() => {
-    const normalized = performanceSearchQuery.trim().toLowerCase();
-    if (!normalized) return availablePerformanceEntries;
-    return availablePerformanceEntries.filter((entry) => entryMatchesQuery(entry, normalized));
-  }, [availablePerformanceEntries, performanceSearchQuery, entryMatchesQuery]);
-
-  const filteredRegionEntries = React.useMemo(() => {
-    const normalized = regionSearchQuery.trim().toLowerCase();
-    if (!normalized) return availableRegionEntries;
-    return availableRegionEntries.filter((entry) => entryMatchesQuery(entry, normalized));
-  }, [availableRegionEntries, regionSearchQuery, entryMatchesQuery]);
-
-  const regionSearchActive = regionSearchQuery.trim().length > 0;
-  const performanceSearchActive = performanceSearchQuery.trim().length > 0;
-  const regionCountLabel = regionSearchActive
-    ? `${filteredRegionEntries.length}/${availableRegionEntries.length}명`
-    : `총 ${availableRegionEntries.length}명`;
-  const performanceCountLabel = performanceSearchActive
-    ? `${filteredPerformanceEntries.length}/${availablePerformanceEntries.length}명`
-    : `총 ${availablePerformanceEntries.length}명`;
-  const regionEmptyMessage = regionSearchActive
-    ? '검색 결과가 없습니다.'
-    : '후보산출에서 지역사를 선택하면 여기에 표시됩니다.';
-  const performanceEmptyMessage = performanceSearchActive
-    ? '검색 결과가 없습니다.'
-    : '실적사 후보가 없습니다.';
-
   const summaryByGroup = React.useMemo(() => {
     const map = new Map();
     groupSummaries.forEach((entry) => {
@@ -1468,6 +1409,19 @@ export default function AgreementBoardWindow({
     regionTotal: regionEntries.length,
     groups: groupAssignments.length,
   }), [representativeEntries.length, regionEntries.length, groupAssignments.length]);
+
+  const dutySummaryText = React.useMemo(() => {
+    const rateNumber = parseNumeric(regionDutyRate);
+    return buildDutySummary(dutyRegions, rateNumber, safeGroupSize);
+  }, [regionDutyRate, dutyRegions, safeGroupSize]);
+
+  const rangeBadgeLabel = React.useMemo(() => {
+    if (!rangeId) return '기본 구간';
+    const cleaned = String(rangeId).replace(/[-_]+/g, ' ').trim();
+    return cleaned ? cleaned.toUpperCase() : '기본 구간';
+  }, [rangeId]);
+
+  const bidDeadlineLabel = React.useMemo(() => formatBidDeadline(bidDeadline), [bidDeadline]);
 
   const handleExportExcel = React.useCallback(async () => {
     if (exporting) return;
@@ -2586,310 +2540,253 @@ export default function AgreementBoardWindow({
     }
   }, [groups]);
 
-  const renderMemberCard = (entry, slotIndex, groupIndex) => {
-    const slotActive = dropTarget && dropTarget.groupIndex === groupIndex && dropTarget.slotIndex === slotIndex;
-    if (!entry) {
-      return (
-        <div
-          key={`placeholder-${groupIndex}-${slotIndex}`}
-          className={`agreement-board-member placeholder${slotActive ? ' drop-active' : ''}`}
-          onDragOver={handleDragOver(groupIndex, slotIndex)}
-          onDragEnter={handleDragOver(groupIndex, slotIndex)}
-          onDragLeave={handleDragLeave(groupIndex, slotIndex)}
-          onDrop={handleDropFromEvent(groupIndex, slotIndex)}
-          onDragOverCapture={handleDragOver(groupIndex, slotIndex)}
-          onDragEnterCapture={handleDragOver(groupIndex, slotIndex)}
-          onDropCapture={handleDropFromEvent(groupIndex, slotIndex)}
-        >
-          <div className="member-empty">
-            <span>대표사/지역사를 끌어다 놓으세요</span>
-            <button
-              type="button"
-              className="btn-sm btn-soft"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                openRepresentativeSearch({ groupIndex, slotIndex });
-              }}
-            >업체 검색</button>
-          </div>
-        </div>
-      );
-    }
+  const tableColumnCount = React.useMemo(() => (
+    (8 + (credibilityEnabled ? 1 : 0)) + (slotLabels.length * 4)
+  ), [credibilityEnabled, slotLabels.length]);
 
-    const { uid, candidate, type } = entry;
-    const matchesDutyRegion = isDutyRegionCompany(candidate);
-    const sharePercent = getSharePercent(groupIndex, slotIndex, candidate);
+  const buildSlotMeta = (group, groupIndex, slotIndex, label) => {
+    const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
+    const uid = memberIds[slotIndex];
+    if (!uid) {
+      return { empty: true, slotIndex, groupIndex, label };
+    }
+    const entry = participantMap.get(uid);
+    if (!entry || !entry.candidate) {
+      return { empty: true, slotIndex, groupIndex, label };
+    }
+    const candidate = entry.candidate;
+    const shareRaw = groupShareRawInputs[groupIndex]?.[slotIndex];
     const storedShare = groupShares[groupIndex]?.[slotIndex];
-    const shareValue = storedShare !== undefined ? storedShare : (sharePercent != null ? String(sharePercent) : '');
-    const storedCredibility = groupCredibility[groupIndex]?.[slotIndex];
-    const credibilityValue = storedCredibility !== undefined ? storedCredibility : '';
-
-    const managementScoreForMember = getCandidateManagementScore(candidate);
-
-    const sipyungRaw = candidate._sipyung ?? extractAmountValue(
-      candidate,
-      ['sipyung', '시평', '시평액', '시평액(원)', '시평금액', '기초금액', '기초금액(원)'],
-      [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']]
-    );
-    const fiveYearRaw = candidate._performance5y ?? extractAmountValue(
-      candidate,
-      ['performance5y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적'],
-      [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적']]
-    );
-    const ratingRaw = candidate._score ?? extractAmountValue(
-      candidate,
-      ['score', 'totalScore', '총점', '평균점수', '적격점수', '종합점수', '평가점수'],
-      [['총점', '평균점수', 'score', '점수', '적격점수', '종합점수', '평가점수']]
-    );
-
-    const sipyung = sipyungRaw ?? candidate.sipyung;
-    const fiveYear = fiveYearRaw ?? candidate.performance5y;
-    const fallbackScore = (ratingRaw != null && ratingRaw !== '') ? ratingRaw : (candidate.score ?? candidate.totalScore ?? null);
-    const rating = managementScoreForMember != null ? managementScoreForMember : fallbackScore;
-    const managementNumericForMember = clampScore(toNumber(managementScoreForMember != null ? managementScoreForMember : fallbackScore));
-    const memberScoreIsPerfect = managementNumericForMember != null
-      ? (managementNumericForMember >= (MANAGEMENT_SCORE_MAX - 0.01))
-      : false;
-    const memberScoreRowClasses = ['member-stat-row'];
-    if (managementNumericForMember != null && !memberScoreIsPerfect) memberScoreRowClasses.push('score-alert');
-
-    const sipyungAmount = parseAmountValue(sipyung);
-    const calculationBase = possibleShareBase;
-
+    const shareValue = shareRaw !== undefined ? shareRaw : (storedShare !== undefined ? storedShare : '');
+    const sipyungAmount = getCandidateSipyungAmount(candidate);
+    const performanceAmount = getCandidatePerformanceAmount(candidate);
     let possibleShare = null;
-    if (calculationBase !== null && calculationBase > 0 && sipyungAmount !== null && sipyungAmount > 0) {
-      possibleShare = (sipyungAmount / calculationBase) * 100;
+    if (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount && sipyungAmount > 0) {
+      possibleShare = (sipyungAmount / possibleShareBase) * 100;
     }
-
-    const classes = ['agreement-board-member', 'assigned'];
-    if (matchesDutyRegion || type === 'region') classes.push('region');
-    if (draggingId === uid) classes.push('dragging');
-
+    const possibleShareText = (possibleShare != null && possibleShare > 0)
+      ? `${possibleShare >= 100 ? possibleShare.toFixed(0) : possibleShare.toFixed(2)}%`
+      : '';
     const tags = [];
-    if (slotIndex === 0) {
-      tags.push({ key: 'leader', label: '대표사', className: 'leader' });
-    } else {
-      tags.push({ key: 'member', label: '구성사', className: 'member' });
+    tags.push(slotIndex === 0 ? { key: 'leader', label: '대표사' } : { key: 'member', label: '구성사' });
+    if (entry.type === 'region' || isDutyRegionCompany(candidate)) {
+      tags.push({ key: 'region', label: '지역사' });
     }
-    if (matchesDutyRegion || type === 'region') {
-      if (!tags.some((tag) => tag.key === 'region')) {
-        tags.push({ key: 'region', label: '지역사', className: 'region' });
-      }
-    }
-
     if (isWomenOwnedCompany(candidate)) {
-      tags.push({ key: 'female', label: '女', className: 'female' });
+      tags.push({ key: 'female', label: '女' });
     }
-
     const qualityBadge = getQualityBadgeText(candidate);
     if (qualityBadge) {
-      tags.push({ key: 'quality', label: `품질 ${qualityBadge}`, className: 'quality' });
+      tags.push({ key: 'quality', label: `품질 ${qualityBadge}` });
     }
     const managerName = getCandidateManagerName(candidate);
+    const storedCredibility = groupCredibility[groupIndex]?.[slotIndex];
+    const credibilityValue = storedCredibility !== undefined ? storedCredibility : '';
+    const managementScore = getCandidateManagementScore(candidate);
+    const managementNumeric = clampScore(toNumber(managementScore));
 
+    return {
+      empty: false,
+      slotIndex,
+      groupIndex,
+      label,
+      uid,
+      companyName: getCompanyName(candidate),
+      regionLabel: getRegionLabel(candidate),
+      managerName,
+      tags,
+      shareValue: shareValue != null ? String(shareValue) : '',
+      sharePlaceholder: possibleShareText || '0',
+      possibleShareText,
+      sipyungDisplay: formatAmount(sipyungAmount),
+      performanceDisplay: formatAmount(performanceAmount),
+      managementDisplay: formatScore(managementScore),
+      managementAlert: managementNumeric != null && managementNumeric < (MANAGEMENT_SCORE_MAX - 0.01),
+      credibilityValue,
+    };
+  };
+
+  const renderNameCell = (meta) => {
+    const isDropTarget = dropTarget && dropTarget.groupIndex === meta.groupIndex && dropTarget.slotIndex === meta.slotIndex;
+    const cellClasses = ['excel-cell', 'excel-name-cell'];
+    if (isDropTarget) cellClasses.push('drop-target');
     return (
-      <div
-        key={uid}
-        className={classes.join(' ')}
-        draggable
-        onDragStart={handleDragStart(uid)}
-        onDragEnd={handleDragEnd}
-        onDragEnter={handleDragOver(groupIndex, slotIndex)}
-        onDragOver={handleDragOver(groupIndex, slotIndex)}
-        onDragLeave={handleDragLeave(groupIndex, slotIndex)}
-        onDrop={handleDropFromEvent(groupIndex, slotIndex)}
-        onDragEnterCapture={handleDragOver(groupIndex, slotIndex)}
-        onDragOverCapture={handleDragOver(groupIndex, slotIndex)}
-        onDropCapture={handleDropFromEvent(groupIndex, slotIndex)}
+      <td
+        key={`name-${meta.groupIndex}-${meta.slotIndex}`}
+        className={cellClasses.join(' ')}
+        onDragOver={handleDragOver(meta.groupIndex, meta.slotIndex)}
+        onDragEnter={handleDragOver(meta.groupIndex, meta.slotIndex)}
+        onDragLeave={handleDragLeave(meta.groupIndex, meta.slotIndex)}
+        onDrop={handleDropFromEvent(meta.groupIndex, meta.slotIndex)}
       >
-        <div className="member-tags">
-          {tags.map((tag) => (
-            <span key={`${uid}-${tag.key}`} className={`member-tag ${tag.className}`}>{tag.label}</span>
-          ))}
-        </div>
-        <div className="member-name" title={getCompanyName(candidate)}>
-          {getCompanyName(candidate)}
-          {possibleShare !== null && (
-            <span style={{ color: '#059669', marginLeft: 8, fontSize: 13, fontWeight: 500 }}>
-              가능지분 {possibleShare.toFixed(2)}%
-            </span>
-          )}
-        </div>
-        <div className="member-meta">
-          <span>{getRegionLabel(candidate)}</span>
-          {managerName && (
-            <span className="badge-person" style={{ marginLeft: 8 }}>{managerName}</span>
-          )}
-        </div>
-        <div className="member-share">
-          <label>지분(%)</label>
-          <input
-            type="text"
-            value={shareValue}
-            onChange={(e) => handleShareInput(groupIndex, slotIndex, e.target.value)}
-            placeholder="지분을 입력하세요"
-            onDragOver={handleDragOver(groupIndex, slotIndex)}
-            onDragEnter={handleDragOver(groupIndex, slotIndex)}
-            onDragLeave={handleDragLeave(groupIndex, slotIndex)}
-            onDrop={handleDropFromEvent(groupIndex, slotIndex)}
-          />
-          {shareValue === '' && <span className="share-hint">지분을 입력하세요</span>}
-        </div>
-        {credibilityEnabled && (
-          <div className="member-credibility">
-            <label>신인도 가점</label>
-            <input
-              type="text"
-              value={credibilityValue}
-              onChange={(e) => handleCredibilityInput(groupIndex, slotIndex, e.target.value)}
-              placeholder={`0 ~ ${ownerCredibilityMax}`}
-            />
-            {credibilityValue === '' && <span className="credibility-hint">가점이 없으면 0으로 입력하세요</span>}
+        {meta.empty ? (
+          <button
+            type="button"
+            className="excel-add-button"
+            onClick={() => openRepresentativeSearch({ groupIndex: meta.groupIndex, slotIndex: meta.slotIndex })}
+          >업체 검색</button>
+        ) : (
+          <div
+            className={`excel-member-card${draggingId === meta.uid ? ' dragging' : ''}`}
+            draggable
+            onDragStart={handleDragStart(meta.uid)}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="excel-member-tags">
+              {meta.tags.map((tag) => (
+                <span key={`${meta.uid}-${tag.key}`} className={`excel-tag excel-tag-${tag.key}`}>{tag.label}</span>
+              ))}
+            </div>
+            <div className="excel-member-name" title={meta.companyName}>{meta.companyName}</div>
+            <div className="excel-member-sub">
+              <span>{meta.regionLabel}</span>
+              {meta.managerName && <span className="excel-badge">{meta.managerName}</span>}
+            </div>
+            {meta.possibleShareText && (
+              <div className="excel-member-hint">가능 {meta.possibleShareText}</div>
+            )}
           </div>
         )}
-        <div className="member-stats">
-          <div className="member-stat-row">
-            <span className="stat-label">시평</span>
-            <span className="stat-value">{formatAmount(sipyung)}</span>
-          </div>
-          <div className="member-stat-row">
-            <span className="stat-label">5년 실적</span>
-            <span className="stat-value">{formatAmount(fiveYear)}</span>
-          </div>
-          <div className={memberScoreRowClasses.join(' ')}>
-            <span className="stat-label">경영점수</span>
-            <span className="stat-value">{formatScore(rating)}</span>
-          </div>
-        </div>
-        <div className="member-actions">
-          <button type="button" className="btn-sm btn-muted" onClick={() => handleRemove(groupIndex, slotIndex)}>제거</button>
-        </div>
-      </div>
+      </td>
     );
   };
 
-  const renderEntryList = (list, emptyMessage, extraClass = '') => (
-    <div className="board-sidebar-list">
-      {list.length === 0 && <div className="board-sidebar-empty">{emptyMessage}</div>}
-      {list.map((entry) => {
-        const classes = ['board-sidebar-item'];
-        if (extraClass) classes.push(extraClass);
-        if (entry.pinned) classes.push('pinned');
-        if (draggingId === entry.uid) classes.push('dragging');
-        if (isDutyRegionCompany(entry.candidate) || entry.type === 'region') classes.push('region');
-        const perfValueRaw = entry.candidate?._performance5y ?? extractAmountValue(
-          entry.candidate,
-          ['_performance5y', 'performance5y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적'],
-          [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적']]
-        );
-        const perfDisplayRaw = perfValueRaw != null && perfValueRaw !== ''
-          ? formatAmount(perfValueRaw)
-          : null;
-        const perfDisplay = perfDisplayRaw && perfDisplayRaw !== '-' ? perfDisplayRaw : null;
-        const sipyungValueRaw = entry.candidate?._agreementSipyungAmount
-          ?? entry.candidate?._sipyung
-          ?? extractAmountValue(
-            entry.candidate,
-            ['_sipyung', 'sipyung', '시평', '시평액', '시평액(원)', '시평금액', '기초금액', '기초금액(원)'],
-            [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']]
-          );
-        if (entry.candidate && sipyungValueRaw != null && sipyungValueRaw !== undefined) {
-          entry.candidate._agreementSipyungAmount = sipyungValueRaw;
-        }
-        const sipyungDisplayRaw = sipyungValueRaw != null && sipyungValueRaw !== ''
-          ? formatAmount(sipyungValueRaw)
-          : null;
-        const sipyungDisplay = sipyungDisplayRaw && sipyungDisplayRaw !== '-' ? sipyungDisplayRaw : null;
-        const managementSidebarScore = getCandidateManagementScore(entry.candidate);
-        const baseScoreSource = entry.candidate?.rating
-          ?? entry.candidate?.score
-          ?? entry.candidate?.managementTotalScore
-          ?? entry.candidate?.totalScore
-          ?? entry.candidate?._score;
-        const scoreDisplaySource = (managementSidebarScore != null && managementSidebarScore !== '')
-          ? managementSidebarScore
-          : baseScoreSource;
-        const managementNumeric = clampScore(toNumber(scoreDisplaySource));
-        const managementIsPerfect = managementNumeric != null
-          ? (managementNumeric >= (MANAGEMENT_SCORE_MAX - 0.01))
-          : false;
-        const scoreClassNames = ['score'];
-        if (managementNumeric != null && !managementIsPerfect) scoreClassNames.push('score-alert');
-        const femaleOwned = isWomenOwnedCompany(entry.candidate);
-        const qualityBadge = getQualityBadgeText(entry.candidate);
-        const managerNames = extractManagerNames(entry.candidate).filter(Boolean);
-        return (
-          <div
-            key={entry.uid}
-            className={classes.join(' ')}
-            draggable
-            onDragStart={handleDragStart(entry.uid)}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="name" title={getCompanyName(entry.candidate)}>
-              <span>{getCompanyName(entry.candidate)}</span>
-              {femaleOwned && <span className="badge-female badge-inline">女</span>}
-              {qualityBadge && <span className="badge-quality badge-inline">품질 {qualityBadge}</span>}
-              {managerNames.slice(0, 2).map((manager) => (
-                <span key={manager} className="badge-manager badge-inline">{manager}</span>
-              ))}
-              {managerNames.length > 2 && (
-                <span className="badge-manager badge-inline">+{managerNames.length - 2}</span>
-              )}
-            </div>
-            <div className="meta">
-              <span>{getRegionLabel(entry.candidate)}</span>
-              <span className={scoreClassNames.join(' ')}>{formatScore(scoreDisplaySource)}</span>
-            </div>
-            {(sipyungDisplay || perfDisplay) && (
-              <div className="meta secondary">
-                {sipyungDisplay && (
-                  <div className="stat">
-                    <span>시평액</span>
-                    <span className="amount">{sipyungDisplay}</span>
-                  </div>
-                )}
-                {perfDisplay && (
-                  <div className="stat">
-                    <span>5년 실적</span>
-                    <span className="amount">{perfDisplay}</span>
-                  </div>
-                )}
-              </div>
-            )}
-            {entry.type === 'representative' && entry.candidate?.id && (
-              <div className="actions">
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onRemoveRepresentative(entry.candidate.id);
-                  }}
-                >
-                  삭제
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+  const renderShareCell = (meta) => (
+    <td key={`share-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-share-cell">
+      {meta.empty ? (
+        <span className="excel-placeholder">-</span>
+      ) : (
+        <>
+          <input
+            type="text"
+            value={meta.shareValue}
+            onChange={(event) => handleShareInput(meta.groupIndex, meta.slotIndex, event.target.value)}
+            placeholder={meta.sharePlaceholder}
+          />
+          {meta.possibleShareText && (
+            <div className="excel-hint">가능 {meta.possibleShareText}</div>
+          )}
+        </>
+      )}
+    </td>
   );
 
-  const renderSearchButton = React.useCallback(() => {
-    if (!onAddRepresentatives) return null;
-    const disabled = !fileType;
+  const renderStatusCell = (meta) => (
+    <td key={`status-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-status-cell">
+      {meta.empty ? (
+        <span className="excel-placeholder">-</span>
+      ) : (
+        <div className="excel-status">
+          <div className="status-line"><span>지역</span><span>{meta.regionLabel}</span></div>
+          <div className="status-line"><span>담당</span><span>{meta.managerName || '-'}</span></div>
+          <div className={`status-line score ${meta.managementAlert ? 'warn' : ''}`}>
+            <span>경영</span>
+            <span>{meta.managementDisplay}</span>
+          </div>
+          {credibilityEnabled && (
+            <div className="status-line">
+              <span>신인도</span>
+              <input
+                type="text"
+                value={meta.credibilityValue}
+                placeholder={`0 ~ ${ownerCredibilityMax}`}
+                onChange={(event) => handleCredibilityInput(meta.groupIndex, meta.slotIndex, event.target.value)}
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            className="excel-link"
+            onClick={() => handleRemove(meta.groupIndex, meta.slotIndex)}
+          >제거</button>
+        </div>
+      )}
+    </td>
+  );
+
+  const renderPerformanceCell = (meta) => (
+    <td key={`perf-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-perf-cell">
+      {meta.empty ? (
+        <span className="excel-placeholder">-</span>
+      ) : (
+        <div className="excel-performance">
+          <div><span>시평</span><strong>{meta.sipyungDisplay}</strong></div>
+          <div><span>5년</span><strong>{meta.performanceDisplay}</strong></div>
+        </div>
+      )}
+    </td>
+  );
+
+  const renderSheetRow = (group, groupIndex) => {
+    const summaryInfo = group.summary;
+    const slotMetas = slotLabels.map((label, slotIndex) => buildSlotMeta(group, groupIndex, slotIndex, label));
+    const hasMembers = slotMetas.some((meta) => !meta.empty);
+    let entryLabel = hasMembers ? '확인 필요' : '빈 행';
+    let entryClass = 'muted';
+    if (summaryInfo && summaryInfo.entryMode === 'none') {
+      entryLabel = '불필요';
+      entryClass = 'ok';
+    } else if (summaryInfo && summaryInfo.entryReady) {
+      if (summaryInfo.entrySatisfied) {
+        entryLabel = '충족';
+        entryClass = 'ok';
+      } else {
+        entryLabel = hasMembers ? '부족' : '빈 행';
+        entryClass = hasMembers ? 'warn' : 'muted';
+      }
+    } else if (hasMembers) {
+      entryLabel = '자료 확인';
+      entryClass = 'warn';
+    }
+
+    const managementSummary = summaryInfo?.managementScore != null
+      ? `${formatScore(summaryInfo.managementScore)} / ${formatScore(summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX)}`
+      : '-';
+    const performanceSummary = summaryInfo?.performanceScore != null
+      ? `${formatScore(summaryInfo.performanceScore)} / ${formatScore(summaryInfo.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper))}`
+      : '-';
+    const shareSumDisplay = summaryInfo?.shareSum != null ? formatPercent(summaryInfo.shareSum) : '-';
+    const shareSummaryClass = summaryInfo?.shareComplete ? 'ok' : 'warn';
+    const credibilitySummary = credibilityEnabled
+      ? (summaryInfo?.credibilityScore != null
+        ? `${formatScore(summaryInfo.credibilityScore)} / ${formatScore(summaryInfo.credibilityMax ?? ownerCredibilityMax)}`
+        : '-')
+      : null;
+    const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore) : '-';
+    const totalScoreDisplay = summaryInfo
+      ? formatScore(summaryInfo.totalScoreWithCred ?? summaryInfo.totalScoreBase)
+      : '-';
+
     return (
-      <button
-        type="button"
-        className="btn-sm btn-soft"
-        onClick={() => openRepresentativeSearch(null)}
-        disabled={disabled}
-      >업체 찾기</button>
+      <tr key={group.id} className="excel-board-row">
+        <td className="excel-cell order-cell">{group.id}</td>
+        <td className="excel-cell status-cell">
+          <span className={`excel-chip ${entryClass}`}>{entryLabel}</span>
+          {summaryInfo?.entryLimit != null && summaryInfo.entryMode !== 'none' && (
+            <small>기준 {formatAmount(summaryInfo.entryLimit)}</small>
+          )}
+        </td>
+        {slotMetas.map(renderNameCell)}
+        {slotMetas.map(renderShareCell)}
+        {slotMetas.map(renderStatusCell)}
+        <td className="excel-cell total-cell">{managementSummary}</td>
+        <td className="excel-cell total-cell">{performanceSummary}</td>
+        <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
+        {slotMetas.map(renderPerformanceCell)}
+        {credibilityEnabled && (
+          <td className="excel-cell total-cell">{credibilitySummary}</td>
+        )}
+        <td className="excel-cell total-cell">{bidScoreDisplay}</td>
+        <td className="excel-cell total-cell">{totalScoreDisplay}</td>
+        <td className="excel-cell actions-cell">
+          <button type="button" onClick={() => copyGroupMetric(groupIndex, 'management')}>경영</button>
+          <button type="button" onClick={() => copyGroupMetric(groupIndex, 'perf5y')}>실적</button>
+          <button type="button" onClick={() => copyGroupMetric(groupIndex, 'sipyung')}>시평</button>
+        </td>
+      </tr>
     );
-  }, [onAddRepresentatives, openRepresentativeSearch, fileType]);
+  };
+
 
   React.useEffect(() => {
     const rootEl = rootRef.current;
@@ -2898,26 +2795,14 @@ export default function AgreementBoardWindow({
 
     const handleWheel = (event) => {
       if (!mainEl) return;
-      if (mainEl.contains(event.target)) {
-        return;
-      }
+      if (mainEl.contains(event.target)) return;
       const deltaY = event.deltaY;
       if (Math.abs(deltaY) < 0.1) return;
       const atTop = mainEl.scrollTop <= 0;
       const atBottom = (mainEl.scrollHeight - mainEl.clientHeight - mainEl.scrollTop) <= 1;
-      if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) {
-        return;
-      }
-
-      const insideSidebarList = event.target && typeof event.target.closest === 'function'
-        ? event.target.closest('.board-sidebar-list')
-        : null;
-
+      if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) return;
       mainEl.scrollBy({ top: deltaY, behavior: 'auto' });
-
-      if (!insideSidebarList) {
-        event.preventDefault();
-      }
+      event.preventDefault();
     };
 
     rootEl.addEventListener('wheel', handleWheel, { passive: false });
@@ -2931,304 +2816,169 @@ export default function AgreementBoardWindow({
   return createPortal(
     <>
       <div className="agreement-board-root" ref={rootRef}>
-        <header className="agreement-board-header">
-          <div className="header-text">
-            <div className="header-title-line">
-              <h2>{title}</h2>
-              <div className="agreement-board-header-meta">
-              <span><strong>공고명</strong> {boardDetails.noticeTitle || '-'}</span>
-              <span><strong>공고번호</strong> {boardDetails.noticeNo || '-'}</span>
-              <span><strong>공종</strong> {boardDetails.industryLabel || '-'}</span>
-              {boardDetails.noticeDate && (
-                <span><strong>공고일</strong> {boardDetails.noticeDate}</span>
-              )}
-              <span><strong>기초금액</strong> {boardDetails.baseAmount || '-'}</span>
-              <span><strong>추정금액</strong> {boardDetails.estimatedAmount || '-'}</span>
-              <span className="entry-field">
-                <strong>참가자격</strong>
-                {entryModeResolved === 'none'
-                  ? <span className="entry-amount-placeholder">없음</span>
-                  : (
-                    <AmountInput
-                      value={editableEntryAmount}
-                      onChange={handleEntryAmountChange}
-                      placeholder="0"
-                    />
-                  )}
-              </span>
-              <span className="entry-mode-field">
-                <strong>산출방식</strong>
-                <div className="entry-mode-toggle">
-                  <button
-                    type="button"
-                    className={`btn-sm ${entryModeResolved === 'ratio' ? 'btn-primary' : 'btn-soft'}`}
-                    onClick={() => handleEntryModeChange('ratio')}
-                  >비율제</button>
-                  <button
-                    type="button"
-                    className={`btn-sm ${entryModeResolved === 'sum' ? 'btn-primary' : 'btn-soft'}`}
-                    onClick={() => handleEntryModeChange('sum')}
-                  >단순합산제</button>
-                  <button
-                    type="button"
-                    className={`btn-sm ${entryModeResolved === 'none' ? 'btn-primary' : 'btn-soft'}`}
-                    onClick={() => handleEntryModeChange('none')}
-                  >없음</button>
+        <div className="excel-board-shell">
+          <div className="excel-board-banner">
+            <div className="excel-banner-info">
+              <div className="excel-range-pill">
+                <span className="pill-title">{ownerId || '발주처'}</span>
+                <strong>{rangeBadgeLabel}</strong>
+              </div>
+              <div className="excel-info-grid">
+                <div className="excel-info-cell">
+                  <span className="info-label">기초금액</span>
+                  <strong>{boardDetails.baseAmount || '-'}</strong>
                 </div>
-              </span>
-              {isLH ? (
-                <span><strong>시공비율기준금액</strong> {formatAmount(ratioBaseAmount)}</span>
+                <div className="excel-info-cell accent">
+                  <span className="info-label">추정금액</span>
+                  <strong>{boardDetails.estimatedAmount || '-'}</strong>
+                </div>
+                <div className="excel-info-cell">
+                  <span className="info-label">투찰금액</span>
+                  <strong>{boardDetails.bidAmount || '-'}</strong>
+                </div>
+                <div className="excel-info-cell">
+                  <span className="info-label">사정율</span>
+                  <strong>{boardDetails.adjustmentRate || '-'}</strong>
+                </div>
+                <div className="excel-info-cell">
+                  <span className="info-label">투찰율</span>
+                  <strong>{boardDetails.bidRate || '-'}</strong>
+                </div>
+                {isLH && (
+                  <div className="excel-info-cell">
+                    <span className="info-label">시공비율기준금액</span>
+                    <strong>{formatAmount(ratioBaseAmount)}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+            <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
+          </div>
+
+          <div className="excel-notice-block">
+            <div className="excel-notice-headline">
+              <strong>{boardDetails.noticeTitle || title}</strong>
+            </div>
+            <div className="excel-notice-meta">
+              <span>공고번호 {boardDetails.noticeNo || '-'}</span>
+              <span>공고일 {boardDetails.noticeDate || '-'}</span>
+              <span>공종 {boardDetails.industryLabel || '-'}</span>
+              <span>개찰 {bidDeadlineLabel || '-'}</span>
+              <span>의무지역 {dutySummaryText || '없음'}</span>
+            </div>
+          </div>
+
+          <div className="excel-config-bar">
+            <div className="excel-field">
+              <label>투찰금액</label>
+              <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
+            </div>
+            <div className="excel-field">
+              <label>참가자격</label>
+              {entryModeResolved === 'none' ? (
+                <span className="excel-placeholder">없음</span>
               ) : (
-                <Field label="투찰금액">
-                  <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
-                </Field>
+                <AmountInput value={editableEntryAmount} onChange={handleEntryAmountChange} placeholder="0" />
               )}
-              {boardDetails.adjustmentRate && <span><strong>사정율</strong> {boardDetails.adjustmentRate}</span>}
-              {boardDetails.bidRate && <span><strong>투찰율</strong> {boardDetails.bidRate}</span>}
-              </div>
             </div>
-            <p>실적사 후보 {summary.performanceTotal}명 · 지역사 후보 {summary.regionTotal}명 · 협정 {summary.groups}개</p>
-          </div>
-          <div className="header-actions">
-            <button type="button" className="btn-soft" onClick={onClose}>닫기</button>
-          </div>
-        </header>
-        <div className="agreement-board-layout">
-          <aside className="agreement-board-sidebar">
-            <section className="sidebar-section">
-              <div className="board-sidebar-title">지역사</div>
-              <div className="board-sidebar-head">
-                <div className="board-sidebar-count">{regionCountLabel}</div>
-                {renderSearchButton()}
-              </div>
-              <input
-                type="text"
-                className="board-sidebar-search"
-                value={regionSearchQuery}
-                onChange={(event) => setRegionSearchQuery(event.target.value)}
-                placeholder="업체 검색"
-              />
-              {renderEntryList(filteredRegionEntries, regionEmptyMessage, 'region')}
-            </section>
-            <section className="sidebar-section">
-              <div className="board-sidebar-title">실적사</div>
-              <div className="board-sidebar-head">
-                <div className="board-sidebar-count">{performanceCountLabel}</div>
-                {renderSearchButton()}
-              </div>
-              <input
-                type="text"
-                className="board-sidebar-search"
-                value={performanceSearchQuery}
-                onChange={(event) => setPerformanceSearchQuery(event.target.value)}
-                placeholder="업체 검색"
-              />
-              {renderEntryList(filteredPerformanceEntries, performanceEmptyMessage, 'performance')}
-            </section>
-          </aside>
-          <main className="agreement-board-main" ref={boardMainRef}>
-            <div className="board-header">
-              <div>
-                <div className="board-title">협정 조합 미리보기</div>
-                <div className="board-subtitle">팀당 최대 {safeGroupSize}인 기준으로 대표사/지역사를 배치하세요.</div>
-              </div>
-              <div className="board-actions">
+            <div className="excel-field excel-field-mode">
+              <label>산출방식</label>
+              <div className="excel-toggle-group">
                 <button
                   type="button"
-                  className="btn-soft"
-                  style={BOARD_ACTION_BUTTON_STYLE}
-                  onClick={handleExportExcel}
-                  disabled={exporting}
+                  className={entryModeResolved === 'ratio' ? 'active' : ''}
+                  onClick={() => handleEntryModeChange('ratio')}
+                >비율제</button>
+                <button
+                  type="button"
+                  className={entryModeResolved === 'sum' ? 'active' : ''}
+                  onClick={() => handleEntryModeChange('sum')}
+                >단순합산제</button>
+                <button
+                  type="button"
+                  className={entryModeResolved === 'none' ? 'active' : ''}
+                  onClick={() => handleEntryModeChange('none')}
+                >없음</button>
+              </div>
+            </div>
+            <div className="excel-field excel-field-stats">
+              <label>후보 현황</label>
+              <span>실적사 {summary.performanceTotal}명 · 지역사 {summary.regionTotal}명 · 협정 {summary.groups}개</span>
+            </div>
+          </div>
+
+          <div className="excel-toolbar">
+            <div className="excel-toolbar-left">
+              <div className="excel-subtext">의무지역 {dutySummaryText || '없음'}</div>
+            </div>
+            <div className="excel-toolbar-actions">
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="excel-btn"
+                disabled={exporting}
+              >{exporting ? '엑셀 생성 중…' : '엑셀로 내보내기'}</button>
+              <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
+              {BOARD_COPY_ACTIONS.map((action) => (
+                <button
+                  key={action.kind}
+                  type="button"
+                  className="excel-btn"
+                  onClick={() => copyBoardDataset(action.kind)}
+                  disabled={excelCopying}
                 >
-                  {exporting ? '엑셀 내보내는 중...' : '엑셀로 내보내기'}
+                  {excelCopying && copyingKind === action.kind ? '복사 중…' : action.label}
                 </button>
-                <button
-                  type="button"
-                  className="btn-soft"
-                  style={BOARD_ACTION_BUTTON_STYLE}
-                  onClick={handleGenerateText}
-                >협정 문자 생성</button>
-                {BOARD_COPY_ACTIONS.map((action) => (
-                  <button
-                    key={action.kind}
-                    type="button"
-                    className="btn-soft"
-                    style={{
-                      ...BOARD_ACTION_BUTTON_STYLE,
-                      ...(BOARD_COPY_BUTTON_STYLE_MAP[action.kind] || {}),
-                    }}
-                    onClick={() => copyBoardDataset(action.kind)}
-                    disabled={excelCopying}
-                  >
-                    {excelCopying && copyingKind === action.kind ? '복사 중...' : action.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className="btn-soft"
-                  style={BOARD_ACTION_BUTTON_STYLE}
-                  onClick={handleAddGroup}
-                >빈 행 추가</button>
-                <button
-                  type="button"
-                  className="btn-soft"
-                  style={BOARD_ACTION_BUTTON_STYLE}
-                  onClick={handleResetGroups}
-                >초기화</button>
-              </div>
+              ))}
+              <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
+              <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
             </div>
-            <div className="board-groups">
-              {groups.map((group, groupIndex) => {
-                const summaryInfo = group.summary;
-                let scorePill = { text: '총점 미계산', className: 'tag-muted' };
-                const detailPills = [];
-                let shareText = '';
-                let shareBadgeClass = '';
+          </div>
 
-                if (!summaryInfo || summaryInfo.memberCount === 0) {
-                  scorePill = { text: '업체를 배치하세요', className: 'tag-muted' };
-                } else if (!summaryInfo.shareReady) {
-                  scorePill = { text: '지분을 입력하세요', className: 'tag-muted' };
-                  if (summaryInfo.shareSum != null) {
-                    shareBadgeClass = summaryInfo.shareComplete ? 'share-total-ok' : 'share-total-warn';
-                    shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
-                  }
-                } else if (summaryInfo.managementScore == null) {
-                  scorePill = { text: '경영점수 데이터 확인', className: 'tag-muted' };
-                  if (summaryInfo.shareSum != null) {
-                    shareBadgeClass = summaryInfo.shareComplete ? 'share-total-ok' : 'share-total-warn';
-                    shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
-                  }
-                } else if (summaryInfo.performanceScore == null) {
-                  scorePill = { text: summaryInfo.performanceBaseReady ? '실적 데이터 확인' : '실적 기준 금액 확인 필요', className: 'tag-muted' };
-                  if (summaryInfo.shareSum != null) {
-                    shareBadgeClass = summaryInfo.shareComplete ? 'share-total-ok' : 'share-total-warn';
-                    shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
-                  }
-                } else {
-                  const managementMax = summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX;
-                  const performanceMax = summaryInfo.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper);
-                  const totalMaxBase = summaryInfo.totalMaxBase ?? (managementMax + performanceMax + BID_SCORE);
-                  const totalScoreBase = summaryInfo.totalScoreBase ?? null;
-                  const totalScoreWithCred = summaryInfo.totalScoreWithCred ?? totalScoreBase;
-                  const displayScore = totalScoreWithCred != null ? totalScoreWithCred : (totalScoreBase != null ? totalScoreBase : 0);
-                  const isPerfect = totalMaxBase != null && totalScoreWithCred != null && totalScoreWithCred >= (totalMaxBase - 0.01);
-                  const totalLabel = totalMaxBase != null
-                    ? `총점 ${formatScore(displayScore)} / ${formatScore(totalMaxBase)}`
-                    : `총점 ${formatScore(displayScore)}`;
-                  scorePill = {
-                    text: totalLabel,
-                    className: `score-pill ${isPerfect ? 'score-pill-ok' : 'score-pill-alert'}`,
-                  };
-
-                  const pillConfigs = [
-                    {
-                      label: '경영',
-                      score: summaryInfo.managementScore,
-                      max: managementMax,
-                      pendingText: '경영 자료 확인',
-                    },
-                    {
-                      label: '실적',
-                      score: summaryInfo.performanceScore,
-                      max: performanceMax,
-                      pendingText: summaryInfo.performanceBaseReady ? '실적 자료 확인' : '실적 기준 금액 확인 필요',
-                    },
-                    {
-                      label: '입찰',
-                      score: summaryInfo.bidScore,
-                      max: BID_SCORE,
-                      pendingText: '입찰 점수 확인',
-                    },
-                  ];
-
-                  if (credibilityEnabled) {
-                    pillConfigs.push({
-                      label: '신인도',
-                      score: summaryInfo.credibilityScore,
-                      max: summaryInfo.credibilityMax ?? ownerCredibilityMax,
-                      pendingText: '신인도 입력',
-                    });
-                  }
-
-                  pillConfigs.forEach(({ label, score, max, pendingText }) => {
-                    const isDefined = score != null && max != null;
-                    const isPerfect = isDefined && score >= (max - 0.01);
-                    const className = `detail-pill ${isPerfect ? 'detail-pill-ok' : 'detail-pill-alert'}`;
-                    const text = isDefined
-                      ? `${label} ${formatScore(score)} / ${formatScore(max)}`
-                      : (pendingText || `${label} 자료 확인`);
-                    detailPills.push({ text, className });
-                  });
-
-                  if (summaryInfo.entryMode === 'none') {
-                    detailPills.push({
-                      text: '참가자격 없음',
-                      className: 'detail-pill detail-pill-neutral',
-                    });
-                  } else {
-                    const entryModeLabel = summaryInfo.entryMode === 'sum' ? '합산제' : '비율제';
-                    if (summaryInfo.entryLimit != null && summaryInfo.entryLimit > 0) {
-                      if (!summaryInfo.entryReady) {
-                        detailPills.push({
-                          text: `참가자격 자료 확인 (${entryModeLabel})`,
-                          className: 'detail-pill detail-pill-alert',
-                        });
-                      } else if (summaryInfo.entryValue != null) {
-                        const satisfied = Boolean(summaryInfo.entrySatisfied);
-                        const symbol = satisfied ? '≥' : '<';
-                        const labelText = satisfied ? '참가자격 충족' : '참가자격 부족';
-                        detailPills.push({
-                          text: `${labelText} ${formatAmount(summaryInfo.entryValue)} ${symbol} ${formatAmount(summaryInfo.entryLimit)} (${entryModeLabel})`,
-                          className: `detail-pill ${satisfied ? 'detail-pill-ok' : 'detail-pill-alert'}`,
-                        });
-                      }
-                    } else if (summaryInfo.entryValue != null && summaryInfo.entryReady) {
-                      detailPills.push({
-                        text: `시평 합산 ${formatAmount(summaryInfo.entryValue)} (${entryModeLabel})`,
-                        className: 'detail-pill detail-pill-neutral',
-                      });
-                    }
-                  }
-                  if (summaryInfo.shareSum != null) {
-                    shareBadgeClass = summaryInfo.shareComplete ? 'share-total-ok' : 'share-total-warn';
-                    shareText = `지분합계 ${formatPercent(summaryInfo.shareSum)}${summaryInfo.shareComplete ? '' : ' (100% 아님)'}`;
-                  }
-                }
-
-                return (
-                  <section key={group.id} className="board-group-card">
-                    <header className="group-header">
-                      <div>
-                        <div className="group-title">협정 {group.id}</div>
-                        <div className="group-subtitle">대표사와 지역사를 드래그해서 배치하세요.</div>
-                      </div>
-                      <div className="group-meta">
-                        {scorePill && <span className={scorePill.className}>{scorePill.text}</span>}
-                        {detailPills.map((pill, pillIdx) => (
-                          <span key={pillIdx} className={pill.className}>{pill.text}</span>
-                        ))}
-                        {shareText && (
-                          <span className={`share-total ${shareBadgeClass || 'share-total-muted'}`}>
-                            {shareText}
-                          </span>
-                        )}
-                        <div className="group-copy-actions">
-                          <button type="button" className="btn-sm btn-soft" onClick={() => copyGroupMetric(groupIndex, 'management')}>경영점수 복사</button>
-                          <button type="button" className="btn-sm btn-soft" onClick={() => copyGroupMetric(groupIndex, 'perf5y')}>5년 실적 복사</button>
-                          <button type="button" className="btn-sm btn-soft" onClick={() => copyGroupMetric(groupIndex, 'sipyung')}>시평액 복사</button>
-                        </div>
-                        <button type="button" className="btn-sm btn-muted" disabled>세부 설정</button>
-                      </div>
-                    </header>
-                    <div className="group-body">
-                      {group.memberIds.map((uid, slotIndex) => renderMemberCard(uid ? participantMap.get(uid) : null, slotIndex, groupIndex))}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-          </main>
+          <div className="excel-table-wrapper" ref={boardMainRef}>
+            <table className="excel-board-table">
+              <thead>
+                <tr>
+                  <th rowSpan="2">연번</th>
+                  <th rowSpan="2">승인</th>
+                  <th colSpan={slotLabels.length}>업체명</th>
+                  <th colSpan={slotLabels.length}>지분(%)</th>
+                  <th colSpan={slotLabels.length}>경영상태</th>
+                  <th rowSpan="2">경영(15점)</th>
+                  <th rowSpan="2">실적(15점)</th>
+                  <th rowSpan="2">지분합계</th>
+                  <th colSpan={slotLabels.length}>시공실적</th>
+                  {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
+                  <th rowSpan="2">입찰점수</th>
+                  <th rowSpan="2">예상점수</th>
+                  <th rowSpan="2">조치</th>
+                </tr>
+                <tr>
+                  {slotLabels.map((label, index) => (
+                    <th key={`name-head-${index}`}>{label}</th>
+                  ))}
+                  {slotLabels.map((label, index) => (
+                    <th key={`share-head-${index}`}>{label}</th>
+                  ))}
+                  {slotLabels.map((label, index) => (
+                    <th key={`status-head-${index}`}>{label}</th>
+                  ))}
+                  {slotLabels.map((label, index) => (
+                    <th key={`perf-head-${index}`}>{label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {groups.length === 0 ? (
+                  <tr className="excel-board-row empty">
+                    <td colSpan={tableColumnCount}>협정을 추가하거나 업체를 배치하세요.</td>
+                  </tr>
+                ) : (
+                  groups.map((group, groupIndex) => renderSheetRow(group, groupIndex))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
       {representativeSearchOpen && (

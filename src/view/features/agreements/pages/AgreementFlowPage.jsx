@@ -10,7 +10,7 @@ import {
   updateRegionSearchProps,
 } from '../components/regionSearchStore.js';
 import { useAgreementBoard } from '../context/AgreementBoardContext.jsx';
-import { BASE_ROUTES, findMenuByKey } from '../../../../shared/navigation.js';
+import { BASE_ROUTES, AGREEMENT_GROUPS, AGREEMENT_MENU_ITEMS, findMenuByKey } from '../../../../shared/navigation.js';
 import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 
 const createDefaultForm = () => {
@@ -49,28 +49,74 @@ function Field({ label, children, style = {} }) {
   );
 }
 
-export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeLabel }) {
+export default function AgreementFlowPage({
+  menuKey: menuKeyProp,
+  ownerId: ownerIdProp,
+  ownerLabel: ownerLabelProp,
+  rangeLabel: rangeLabelProp,
+  enableMenuSelector = false,
+  viewMode = 'board',
+}) {
   const fileStatuses = React.useMemo(() => ({ eung: false, tongsin: false, sobang: false }), []);
-  const storageKey = React.useMemo(() => {
-    const owner = ownerId || 'unknown';
-    const menu = menuKey || 'default';
-    return `agreementFlow:${owner}:${menu}`;
-  }, [ownerId, menuKey]);
-
-  const [form, setForm] = React.useState(() => {
-    const base = createDefaultForm();
-    const saved = loadPersisted(`${storageKey}:form`, null);
-    if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
-      return { ...base, ...saved };
-    }
-    return base;
+  const defaultMenu = React.useMemo(() => findMenuByKey(menuKeyProp) || AGREEMENT_MENU_ITEMS[0], [menuKeyProp]);
+  const selectorStorageKey = viewMode === 'region'
+    ? 'agreementFlow:lastRegionMenu'
+    : 'agreementFlow:lastBoardMenu';
+  const [selectedMenuKey, setSelectedMenuKey] = React.useState(() => {
+    if (!enableMenuSelector) return menuKeyProp || (defaultMenu?.key || '');
+    const persisted = loadPersisted(selectorStorageKey, null);
+    return persisted || menuKeyProp || (defaultMenu?.key || '');
   });
 
-  const normalizedOwner = String(ownerId || 'LH').toUpperCase();
+  React.useEffect(() => {
+    if (enableMenuSelector) {
+      savePersisted(selectorStorageKey, selectedMenuKey);
+    }
+  }, [enableMenuSelector, selectedMenuKey, selectorStorageKey]);
+
+  React.useEffect(() => {
+    if (!enableMenuSelector && menuKeyProp && menuKeyProp !== selectedMenuKey) {
+      setSelectedMenuKey(menuKeyProp);
+    }
+  }, [enableMenuSelector, menuKeyProp, selectedMenuKey]);
+
+  const activeMenuKey = enableMenuSelector ? selectedMenuKey : (menuKeyProp || selectedMenuKey);
+  const currentMenu = findMenuByKey(activeMenuKey) || defaultMenu || AGREEMENT_MENU_ITEMS[0];
+  const resolvedOwnerId = (ownerIdProp || currentMenu?.ownerId || 'LH').toUpperCase();
+  const resolvedOwnerLabel = ownerLabelProp || currentMenu?.groupLabel || resolvedOwnerId;
+  const resolvedRangeLabel = rangeLabelProp || currentMenu?.rangeLabel || currentMenu?.label || '';
+  const selectedGroupForSelector = React.useMemo(() => {
+    const keyForLookup = enableMenuSelector ? selectedMenuKey : activeMenuKey;
+    return AGREEMENT_GROUPS.find((group) => group.items.some((item) => item.key === keyForLookup))
+      || AGREEMENT_GROUPS[0];
+  }, [enableMenuSelector, selectedMenuKey, activeMenuKey]);
+
+  const handleOwnerSelectionChange = React.useCallback((event) => {
+    const nextGroup = AGREEMENT_GROUPS.find((group) => group.id === event.target.value);
+    if (!nextGroup) return;
+    const nextKey = nextGroup.items[0]?.key;
+    if (nextKey) setSelectedMenuKey(nextKey);
+  }, []);
+
+  const handleRangeSelectionChange = React.useCallback((event) => {
+    const nextKey = event.target.value;
+    if (!nextKey) return;
+    setSelectedMenuKey(nextKey);
+  }, []);
+
+  const storageKey = React.useMemo(() => {
+    const owner = resolvedOwnerId || 'unknown';
+    const menu = activeMenuKey || 'default';
+    return `agreementFlow:${owner}:${menu}`;
+  }, [resolvedOwnerId, activeMenuKey]);
+
+  const [form, setForm] = React.useState(() => createDefaultForm());
+
+  const normalizedOwner = String(resolvedOwnerId || 'LH').toUpperCase();
   const isPPS = normalizedOwner === 'PPS';
   const isLH = normalizedOwner === 'LH';
   const isMOIS = normalizedOwner === 'MOIS';
-  const isMoisShareRange = isMOIS && menuKey === 'mois-30to50';
+  const isMoisShareRange = isMOIS && activeMenuKey === 'mois-30to50';
   const entryMode = form.entryQualificationMode === 'sum'
     ? 'sum'
     : (form.entryQualificationMode === 'none' ? 'none' : 'ratio');
@@ -80,11 +126,23 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   const baseAutoRef = React.useRef('');
   const bidAutoRef = React.useRef('');
 
+  React.useEffect(() => {
+    const base = createDefaultForm();
+    const saved = loadPersisted(`${storageKey}:form`, null);
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+      setForm({ ...base, ...saved });
+    } else {
+      setForm(base);
+    }
+  }, [storageKey]);
+
   const [regionList, setRegionList] = React.useState([]);
-  const [dutyRegions, setDutyRegions] = React.useState(() => {
+  const [dutyRegions, setDutyRegions] = React.useState([]);
+
+  React.useEffect(() => {
     const saved = loadPersisted(`${storageKey}:dutyRegions`, []);
-    return Array.isArray(saved) ? saved.filter((name) => typeof name === 'string') : [];
-  });
+    setDutyRegions(Array.isArray(saved) ? saved.filter((name) => typeof name === 'string') : []);
+  }, [storageKey]);
   const regionSearchSessionRef = React.useRef(null);
 
   const toFileType = (industry) => {
@@ -102,7 +160,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     setBidTouched(false);
     baseAutoRef.current = '';
     bidAutoRef.current = '';
-  }, [ownerId]);
+  }, [resolvedOwnerId]);
 
   React.useEffect(() => {
     if (!form || typeof form !== 'object' || Array.isArray(form)) return;
@@ -150,15 +208,15 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   }, [boardState, dutyRegions, form.teamSizeMax, updateBoard]);
 
   React.useEffect(() => {
-    const normalizedOwner = String(ownerId || 'LH').toUpperCase();
-    if (boardState?.ownerId === normalizedOwner && boardState?.fileType === currentFileType) return;
-    updateBoard({ ownerId: normalizedOwner, fileType: currentFileType });
-  }, [boardState?.ownerId, boardState?.fileType, ownerId, currentFileType, updateBoard]);
+    const normalizedOwnerValue = String(resolvedOwnerId || 'LH').toUpperCase();
+    if (boardState?.ownerId === normalizedOwnerValue && boardState?.fileType === currentFileType) return;
+    updateBoard({ ownerId: normalizedOwnerValue, fileType: currentFileType });
+  }, [boardState?.ownerId, boardState?.fileType, resolvedOwnerId, currentFileType, updateBoard]);
 
   React.useEffect(() => {
-    if (boardState?.rangeId === menuKey) return;
-    updateBoard({ rangeId: menuKey });
-  }, [boardState?.rangeId, menuKey, updateBoard]);
+    if (boardState?.rangeId === activeMenuKey) return;
+    updateBoard({ rangeId: activeMenuKey });
+  }, [boardState?.rangeId, activeMenuKey, updateBoard]);
 
   const onChange = (key) => (event) => setForm((prev) => ({ ...prev, [key]: event.target.value }));
 
@@ -224,17 +282,17 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   };
 
   const { perfectPerformanceAmount, perfectPerformanceBasis } = React.useMemo(() => {
-    const key = menuKey || '';
+    const key = activeMenuKey || '';
     const estimated = parseAmount(form.estimatedPrice);
     const base = parseAmount(form.baseAmount);
 
-    if (ownerId === 'PPS') {
+    if (resolvedOwnerId === 'PPS') {
       return base > 0
         ? { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' }
         : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
     }
 
-    if (ownerId === 'MOIS') {
+    if (resolvedOwnerId === 'MOIS') {
       if (key === 'mois-under30' || key === 'mois-30to50') {
         return estimated > 0
           ? { perfectPerformanceAmount: Math.round(estimated * 0.8), perfectPerformanceBasis: '추정가격 × 80%' }
@@ -247,7 +305,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       }
     }
 
-    if (ownerId === 'LH') {
+    if (resolvedOwnerId === 'LH') {
       if (key === 'lh-under50') {
         return base > 0
           ? { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' }
@@ -261,7 +319,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     }
 
     return { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
-  }, [menuKey, ownerId, form.estimatedPrice, form.baseAmount]);
+  }, [activeMenuKey, resolvedOwnerId, form.estimatedPrice, form.baseAmount]);
 
   const formattedPerfectPerformanceAmount = perfectPerformanceAmount > 0
     ? perfectPerformanceAmount.toLocaleString()
@@ -466,9 +524,11 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   const handleSidebarSelect = (key) => {
     if (!key) return;
     if (key === 'search') { window.location.hash = BASE_ROUTES.search; return; }
-    if (key === 'agreements') { window.location.hash = BASE_ROUTES.agreements; return; }
+    if (key === 'agreements') { window.location.hash = BASE_ROUTES.agreementBoard; return; }
+    if (key === 'region-search') { window.location.hash = BASE_ROUTES.regionSearch; return; }
+    if (key === 'agreements-sms') { window.location.hash = BASE_ROUTES.agreements; return; }
     if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
-    if (key === 'upload') { window.location.hash = BASE_ROUTES.agreements; return; }
+    if (key === 'upload') { window.location.hash = BASE_ROUTES.agreementBoard; return; }
     if (key === 'excel-helper') {
       window.electronAPI?.excelHelper?.openWindow?.();
       return;
@@ -478,9 +538,9 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
   };
 
   const buildRegionSearchPayload = useCallback(() => ({
-    ownerId,
-    menuKey,
-    rangeId: menuKey,
+    ownerId: resolvedOwnerId,
+    menuKey: activeMenuKey,
+    rangeId: activeMenuKey,
     fileType: currentFileType,
     noticeNo: form.noticeNo,
     noticeTitle: form.title,
@@ -498,7 +558,7 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
     ratioBaseAmount: isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount || ''),
     defaultExcludeSingle: true,
     readOnly: true,
-  }), [ownerId, menuKey, currentFileType, form.noticeNo, form.title, form.noticeDate, form.industry, form.entryQualificationAmount, entryMode, form.baseAmount, form.estimatedPrice, form.bidAmount, form.bidRate, form.adjustmentRate, perfectPerformanceAmount, dutyRegions, isPPS, form.ratioBaseAmount]);
+  }), [resolvedOwnerId, activeMenuKey, currentFileType, form.noticeNo, form.title, form.noticeDate, form.industry, form.entryQualificationAmount, entryMode, form.baseAmount, form.estimatedPrice, form.bidAmount, form.bidRate, form.adjustmentRate, perfectPerformanceAmount, dutyRegions, isPPS, form.ratioBaseAmount]);
 
   const handleOpenRegionSearch = useCallback(() => {
     const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -531,9 +591,9 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       excluded: [],
       dutyRegions,
       groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
-      ownerId: (ownerId || 'LH').toUpperCase(),
+      ownerId: (resolvedOwnerId || 'LH').toUpperCase(),
       fileType: currentFileType,
-      rangeId: menuKey,
+      rangeId: activeMenuKey,
       noticeNo: form.noticeNo || '',
       noticeTitle: form.title || '',
       industryLabel: form.industry || '',
@@ -548,23 +608,53 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
       entryAmount: form.entryQualificationAmount || '',
       entryMode,
     });
-  }, [openBoard, dutyRegions, form.teamSizeMax, ownerId, currentFileType, menuKey, form.noticeNo, form.title, form.industry, form.baseAmount, form.estimatedPrice, form.bidAmount, isPPS, form.ratioBaseAmount, form.bidRate, form.adjustmentRate, form.bidDeadline, form.regionDutyRate, form.entryQualificationAmount, entryMode]);
+  }, [openBoard, dutyRegions, form.teamSizeMax, resolvedOwnerId, currentFileType, activeMenuKey, form.noticeNo, form.title, form.industry, form.baseAmount, form.estimatedPrice, form.bidAmount, isPPS, form.ratioBaseAmount, form.bidRate, form.adjustmentRate, form.bidDeadline, form.regionDutyRate, form.entryQualificationAmount, entryMode]);
 
   return (
     <div className="app-shell">
       <Sidebar
-        active={menuKey}
+        active={viewMode === 'region' ? 'region-search' : 'agreements'}
         onSelect={handleSidebarSelect}
         fileStatuses={fileStatuses}
-        collapsed={true}
+        collapsed={false}
       />
       <div className="main">
         <div className="title-drag" />
         <div className="topbar" />
         <div className="stage">
           <div className="content">
+            {enableMenuSelector && (
+              <div className="panel" style={{ gridColumn: '1 / -1' }}>
+                <h2 className="section-title" style={{ marginTop: 0 }}>발주처 / 금액 구간 선택</h2>
+                <div className="section-divider" />
+                <div className="grid-2">
+                  <Field label="발주처">
+                    <select
+                      className="filter-input"
+                      value={selectedGroupForSelector?.id || ''}
+                      onChange={handleOwnerSelectionChange}
+                    >
+                      {AGREEMENT_GROUPS.map((group) => (
+                        <option key={group.id} value={group.id}>{group.label}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="금액 구간">
+                    <select
+                      className="filter-input"
+                      value={selectedMenuKey}
+                      onChange={handleRangeSelectionChange}
+                    >
+                      {(selectedGroupForSelector?.items || []).map((item) => (
+                        <option key={item.key} value={item.key}>{item.label}</option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+              </div>
+            )}
             <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h1 className="main-title" style={{ marginTop: 0 }}>{`${ownerLabel} ${rangeLabel} - 설정`}</h1>
+              <h1 className="main-title" style={{ marginTop: 0 }}>{`${resolvedOwnerLabel} ${resolvedRangeLabel} - 설정`}</h1>
 
               <div className="section">
                 <h3 className="section-title">공고 정보</h3>
@@ -745,24 +835,28 @@ export default function AgreementFlowPage({ menuKey, ownerId, ownerLabel, rangeL
               </div>
             </div>
 
-            <div className="panel" style={{ gridColumn: '1 / -1' }}>
-              <h3 style={{ marginTop: 0 }}>지역사 찾기 안내</h3>
-              <div className="candidate-summary__empty">
-                지역사 찾기는 업체 검색과 정보 확인용 도구입니다. 필요한 업체를 확인한 뒤 협정보드 슬롯의 “업체 검색” 버튼으로 직접 배치하세요.
+            {viewMode !== 'board' && (
+              <div className="panel" style={{ gridColumn: '1 / -1' }}>
+                <h3 style={{ marginTop: 0 }}>지역사 찾기 안내</h3>
+                <div className="candidate-summary__empty">
+                  지역사 찾기는 업체 검색과 정보 확인용 도구입니다. 필요한 업체를 확인한 뒤 협정보드 슬롯의 “업체 검색” 버튼으로 직접 배치하세요.
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <button className="btn-soft" onClick={handleOpenRegionSearch}>지역사 찾기</button>
+                </div>
               </div>
-              <div style={{ marginTop: 12 }}>
-                <button className="btn-soft" onClick={handleOpenRegionSearch}>지역사 찾기</button>
-              </div>
-            </div>
+            )}
 
-            <div className="action-footer" style={{ gridColumn: '1 / -1' }}>
-              <div className="action-footer__info">
-                지역사 찾기에서 확인한 업체를 협정보드에서 다시 검색해 직접 구성하세요.
+            {viewMode !== 'region' && (
+              <div className="action-footer" style={{ gridColumn: '1 / -1' }}>
+                <div className="action-footer__info">
+                  지역사 찾기에서 확인한 업체를 협정보드에서 다시 검색해 직접 구성하세요.
+                </div>
+                <div className="action-footer__buttons">
+                  <button className="primary" onClick={handleOpenBoard}>협정보드 열기</button>
+                </div>
               </div>
-              <div className="action-footer__buttons">
-                <button className="primary" onClick={handleOpenBoard}>협정보드 열기</button>
-              </div>
-            </div>
+            )}
 
           </div>
         </div>

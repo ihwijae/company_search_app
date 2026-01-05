@@ -1,76 +1,69 @@
 import React from 'react';
-import { AGREEMENT_GROUPS, findMenuByHash, findMenuByKey } from '../shared/navigation.js';
 import excelIcon from '../assets/excel.png';
 import mmsIcon from '../assets/mms.png';
 import emailIcon from '../assets/email.png';
 
-export default function Sidebar({ active, onSelect, fileStatuses, collapsed = true }) {
+export default function Sidebar({ active, onSelect, fileStatuses, collapsed = false }) {
   const anyLoaded = !!(fileStatuses?.eung || fileStatuses?.tongsin || fileStatuses?.sobang);
-  const [openGroupId, setOpenGroupId] = React.useState(null);
-  const [forceExpand, setForceExpand] = React.useState(false);
-
-  const setAppShellWide = React.useCallback((on) => {
-    try {
-      const shell = document.querySelector('.app-shell');
-      if (!shell) return;
-      if (on) shell.classList.add('sidebar-wide');
-      else shell.classList.remove('sidebar-wide');
-    } catch {}
-  }, []);
-
-  const closeGroup = React.useCallback(() => {
-    setOpenGroupId(null);
-    setForceExpand(false);
-    setAppShellWide(false);
-  }, [setAppShellWide]);
-
-  React.useEffect(() => {
-    const sync = () => {
-      const hash = window.location.hash || '';
-      const menu = findMenuByHash(hash);
-      if (menu) {
-        setOpenGroupId(menu.groupId);
-        setForceExpand(true);
-        setAppShellWide(true);
-      } else {
-        closeGroup();
-      }
-    };
-    sync();
-    window.addEventListener('hashchange', sync);
-    return () => window.removeEventListener('hashchange', sync);
-  }, [closeGroup, setAppShellWide]);
-
-  React.useEffect(() => {
-    if (!openGroupId) return;
-    const onDocClick = (e) => {
-      const aside = document.querySelector('aside.sidebar');
-      if (!aside) return;
-      if (!aside.contains(e.target)) {
-        closeGroup();
-      }
-    };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, [openGroupId, closeGroup]);
-
-  const handleGroupToggle = (groupId) => {
-    setOpenGroupId((prev) => {
-      const next = prev === groupId ? null : groupId;
-      setForceExpand(!!next);
-      setAppShellWide(!!next);
-      return next;
-    });
+  const isCollapsed = collapsed;
+  const handleSelect = (key) => {
+    if (onSelect) onSelect(key);
   };
+
+  const navItems = [
+    { key: 'search', label: '검색', icon: '🔍' },
+    { key: 'records', label: '실적', icon: '📊' },
+    {
+      key: 'mail',
+      label: '메일',
+      icon: (
+        <img
+          src={emailIcon}
+          alt="메일"
+          style={{ width: 22, height: 22, objectFit: 'contain' }}
+        />
+      ),
+    },
+    {
+      key: 'excel-helper',
+      label: '엑셀도우미',
+      icon: (
+        <img
+          src={excelIcon}
+          alt="엑셀"
+          style={{ width: 22, height: 22, objectFit: 'contain' }}
+        />
+      ),
+    },
+    {
+      key: 'agreements-sms',
+      label: '협정 문자',
+      icon: (
+        <img
+          src={mmsIcon}
+          alt="협정 문자"
+          style={{ width: 22, height: 22, objectFit: 'contain' }}
+        />
+      ),
+    },
+    {
+      key: 'agreements',
+      label: '협정보드',
+      icon: '📋',
+    },
+    { key: 'region-search', label: '지역사 찾기', icon: '📍' },
+    { key: 'upload', label: '업로드', icon: '📂' },
+    { key: 'settings', label: '설정', icon: '⚙️' },
+  ];
 
   const item = (key, label, icon) => (
     <div
       key={key}
       className={`nav-item ${active === key ? 'active' : ''}`}
-      onClick={() => onSelect && onSelect(key)}
+      onClick={() => handleSelect(key)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect && onSelect(key); }}
+      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && onSelect) onSelect(key); }}
     >
       <span style={{ width: 28, fontSize: 22 }}>{icon}</span>
       {!isCollapsed && <span>{label}</span>}
@@ -80,107 +73,12 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
     </div>
   );
 
-  const isCollapsed = collapsed && !forceExpand;
-  const activeMenu = findMenuByKey(active || '') || findMenuByHash(window.location?.hash || '');
-
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="title-drag" />
       <div className="brand">{isCollapsed ? '' : 'Company Search'}</div>
       <nav className="nav">
-        {item('search', '검색', '🔍')}
-        {item('records', '실적', '📊')}
-        {item('mail', '메일', (
-          <img
-            src={emailIcon}
-            alt="메일"
-            style={{ width: 22, height: 22, objectFit: 'contain' }}
-          />
-        ))}
-        {item('excel-helper', '엑셀도우미', (
-          <img
-            src={excelIcon}
-            alt="엑셀"
-            style={{ width: 22, height: 22, objectFit: 'contain' }}
-          />
-        ))}
-        {item('agreements', '협정', (
-          <img
-            src={mmsIcon}
-            alt="협정"
-            style={{ width: 22, height: 22, objectFit: 'contain' }}
-          />
-        ))}
-
-        {AGREEMENT_GROUPS.map((group) => {
-          const isOpen = openGroupId === group.id;
-          const hasActiveChild = activeMenu && activeMenu.groupId === group.id;
-          const isActive = hasActiveChild || active === group.id;
-          return (
-            <React.Fragment key={group.id}>
-              <div
-                className={`nav-item ${isActive ? 'active' : ''}`}
-                onClick={() => {
-                  handleGroupToggle(group.id);
-                  onSelect && onSelect(group.id);
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    handleGroupToggle(group.id);
-                    onSelect && onSelect(group.id);
-                  }
-                }}
-              >
-                <span
-                  style={{
-                    minWidth: 28,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    fontSize: 16,
-                    fontWeight: 800,
-                    letterSpacing: 0.5,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {group.label}
-                </span>
-                {!isCollapsed && <span>{group.label}</span>}
-              </div>
-              {isOpen && (
-                <div className="subnav">
-                  {group.items.map((itemInfo) => (
-                    <div
-                      key={itemInfo.key}
-                      className={`nav-sub-item ${active === itemInfo.key ? 'active' : ''}`}
-                      onClick={() => {
-                        window.location.hash = itemInfo.hash;
-                        onSelect && onSelect(itemInfo.key);
-                        closeGroup();
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          window.location.hash = itemInfo.hash;
-                          onSelect && onSelect(itemInfo.key);
-                          closeGroup();
-                        }
-                      }}
-                    >
-                      <span className="sub-bullet">*</span>
-                      {!isCollapsed && <span className="sub-label" title={itemInfo.label}>{itemInfo.label}</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </React.Fragment>
-          );
-        })}
-
-        {item('upload', '업로드', '📂')}
-        {item('settings', '설정', '⚙️')}
+        {navItems.map(({ key, label, icon }) => item(key, label, icon))}
       </nav>
       {!isCollapsed && <div className="sidebar-footer">v1.0.0</div>}
     </aside>

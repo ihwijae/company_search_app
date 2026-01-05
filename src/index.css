@@ -714,711 +714,474 @@ body {
   overflow: hidden;
 }
 
-.agreement-board-header {
+
+.excel-board-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.excel-board-banner {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  background: #ffffff;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-
-.agreement-board-header .header-text {
-  flex: 1;
-  user-select: none;
-}
-
-.agreement-board-header .header-title-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.agreement-board-header .agreement-board-header-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  font-size: 13px;
-  color: #64748b;
-}
-
-.agreement-board-header .entry-field,
-.agreement-board-header .entry-mode-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.agreement-board-header .entry-field .filter-input {
-  width: 140px;
-}
-
-.agreement-board-header .entry-field .entry-amount-placeholder {
-  width: 140px;
-  justify-content: center;
-}
-
-.entry-mode-toggle {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.entry-mode-toggle .btn-sm {
-  min-width: 86px;
-}
-
-.agreement-board-header .agreement-board-header-meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.agreement-board-header .agreement-board-header-meta span strong {
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.agreement-board-header .agreement-board-header-meta span strong::after {
-  content: ':';
-  margin-left: 2px;
-}
-
-.agreement-board-header .header-text h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.agreement-board-header .header-text p {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: #64748b;
-}
-
-.agreement-board-header .header-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.agreement-board-layout {
-  flex: 1;
-  display: flex;
-  gap: 16px;
-  padding: 18px;
-  background: #f8fafc;
-  min-height: 0;
-  overflow: hidden;
   align-items: flex-start;
-}
-
-.agreement-board-sidebar {
-  width: 290px;
-  flex: 0 0 290px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  position: sticky;
-  top: 18px;
-  align-self: flex-start;
-}
-
-.agreement-board-sidebar .sidebar-section {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-}
-
-.agreement-board-sidebar .board-sidebar-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.agreement-board-sidebar .board-sidebar-count {
-  font-size: 13px;
-  color: #6b7280;
-}
-.board-sidebar-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.board-sidebar-head .btn-sm {
-  height: 30px;
-  padding: 0 12px;
-}
-
-.board-sidebar-search {
-  width: 100%;
-  padding: 6px 10px;
-  border: 1px solid #dbeafe;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #1f2937;
-  background: #ffffff;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-  margin-bottom: 8px;
-}
-.board-sidebar-search:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
-}
-
-.agreement-board-sidebar .board-sidebar-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 220px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.agreement-board-sidebar .board-sidebar-item {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 10px 12px;
-  background: #f8fafc;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.agreement-board-sidebar .board-sidebar-item[draggable="true"] {
-  cursor: grab;
-}
-
-.agreement-board-sidebar .board-sidebar-item.region {
-  border-color: #bbf7d0;
-  background: #ecfdf5;
-}
-
-.agreement-board-sidebar .board-sidebar-item.region .meta .score {
-  color: #047857;
-}
-
-.agreement-board-sidebar .board-sidebar-item.dragging {
-  opacity: 0.6;
-}
-
-.agreement-board-sidebar .board-sidebar-item.pinned {
-  border-color: #d8b4fe;
-  background: #f3e8ff;
-}
-
-.agreement-board-sidebar .board-sidebar-item.pinned.region {
-  border-color: #bbf7d0;
-  background: #ecfdf5;
-}
-.agreement-board-sidebar .board-sidebar-item.pinned.region .meta .score {
-  color: #047857;
-}
-
-.agreement-board-sidebar .board-sidebar-item.region .meta .score.score-alert,
-.agreement-board-sidebar .board-sidebar-item.pinned.region .meta .score.score-alert {
-  color: #dc2626;
-}
-
-.agreement-board-sidebar .board-sidebar-item .name {
-  font-weight: 600;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.agreement-board-sidebar .board-sidebar-item .meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.agreement-board-sidebar .board-sidebar-item .meta .score {
-  font-weight: 600;
-  color: #4c1d95;
-}
-
-.agreement-board-sidebar .board-sidebar-item .meta .score.score-alert {
-  color: #dc2626;
-}
-
-.agreement-board-sidebar .board-sidebar-item .meta.secondary {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #475569;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 4px 8px;
-}
-
-.agreement-board-sidebar .board-sidebar-item .meta.secondary .stat {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.agreement-board-sidebar .board-sidebar-item .meta.secondary .stat .amount {
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.agreement-board-sidebar .board-sidebar-item .actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 6px;
-}
-
-.agreement-board-sidebar .board-sidebar-item .actions button {
-  background: none;
-  border: none;
-  color: #b91c1c;
-  font-size: 12px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.agreement-board-sidebar .board-sidebar-item .actions button:hover {
-  text-decoration: underline;
-}
-
-.agreement-board-sidebar .board-sidebar-empty {
-  font-size: 13px;
-  color: #94a3b8;
-  padding: 12px 8px;
-  border: 1px dashed #cbd5f5;
-  border-radius: 10px;
-  text-align: center;
-}
-
-.agreement-board-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   gap: 16px;
-  min-width: 0;
-  height: 100%;
-  overflow-y: auto;
-  padding-right: 6px;
-}
-
-.candidate-summary {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.candidate-summary span {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-weight: 600;
-  color: #334155;
-}
-
-.candidate-summary__empty {
-  margin-top: 8px;
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.action-footer {
-  margin-top: 12px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 18px 20px;
+  border-radius: 18px;
+  padding: 18px 22px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.excel-banner-info {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 18px;
 }
 
-.action-footer__info {
-  font-size: 14px;
-  color: #475569;
-  flex: 1 1 240px;
-}
-
-.action-footer__buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.board-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+.excel-range-pill {
+  min-width: 170px;
   padding: 14px 18px;
-  position: sticky;
-  top: 0;
-  z-index: 15;
-}
-
-.board-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.board-subtitle {
-  font-size: 13px;
-  color: #6b7280;
-}
-
-.board-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.board-actions .btn-soft:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.board-groups {
-  flex: 1;
+  border-radius: 16px;
+  color: #f8fafc;
+  background: linear-gradient(135deg, #312e81, #6366f1);
+  box-shadow: 0 18px 38px rgba(79, 70, 229, 0.35);
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-height: 0;
-}
-
-.board-group-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
-}
-
-.group-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.group-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.group-subtitle {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 4px;
-}
-
-
-.group-meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.group-meta .tag-muted {
-  font-size: 12px;
-  color: #6b7280;
-  background: #f1f5f9;
-  border-radius: 999px;
-  padding: 4px 10px;
-  border: 1px solid #e2e8f0;
-}
-
-.group-meta .score-pill {
-  font-size: 15px;
-  font-weight: 700;
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-}
-
-.group-meta .score-pill-ok {
-  color: #0f172a;
-  background: #e0f2fe;
-  border-color: #bae6fd;
-}
-
-.group-meta .score-pill-alert {
-  color: #991b1b;
-  background: #fee2e2;
-  border-color: #fecaca;
-}
-
-.group-meta .detail-pill {
-  font-size: 13px;
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-weight: 600;
-  border: 1px solid transparent;
-}
-
-.group-meta .detail-pill-ok {
-  color: #14532d;
-  background: #dcfce7;
-  border-color: #bbf7d0;
-}
-
-.group-meta .detail-pill-alert {
-  color: #991b1b;
-  background: #fee2e2;
-  border-color: #fecaca;
-}
-
-.group-meta .detail-pill-neutral {
-  color: #1f2937;
-  background: #e2e8f0;
-  border-color: #cbd5e1;
-}
-
-.group-meta .group-copy-actions {
-  display: inline-flex;
   gap: 6px;
-  flex-wrap: wrap;
 }
 
-.group-body {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.excel-range-pill .pill-title {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+  text-transform: uppercase;
+}
+
+.excel-range-pill strong {
+  font-size: 22px;
+  letter-spacing: 0.08em;
+}
+
+.excel-info-grid {
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.agreement-board-member {
+.excel-info-cell {
   background: #f8fafc;
-  border: 1px solid #dbeafe;
-  border-radius: 12px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 140px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 16px;
+  min-width: 150px;
 }
 
-.agreement-board-member.assigned {
-  cursor: grab;
-}
-
-.agreement-board-member.assigned.dragging {
-  opacity: 0.6;
-}
-
-.agreement-board-member.pinned {
-  border-color: #c4b5fd;
-  background: #eef2ff;
-}
-
-.agreement-board-member.placeholder {
-  border: 1px dashed #CBD5E1;
-  background: rgba(241, 245, 249, 0.6);
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.agreement-board-member.placeholder.drop-active {
-  border-color: #93c5fd;
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.agreement-board-member .member-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: #1f2937;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.agreement-board-member .member-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.excel-info-cell .info-label {
   font-size: 12px;
   color: #64748b;
-}
-
-.agreement-board-member .member-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: #475569;
-}
-
-.agreement-board-member .member-stat-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.agreement-board-member .member-stat-row .stat-label {
-  font-weight: 600;
-  color: #64748b;
-}
-
-.agreement-board-member .member-stat-row .stat-value {
-  font-weight: 600;
-  color: #111827;
-}
-
-.agreement-board-member .member-stat-row.score-alert .stat-value {
-  color: #dc2626;
-}
-
-.agreement-board-member .member-tags {
-  display: flex;
-  gap: 4px;
+  display: block;
   margin-bottom: 4px;
 }
 
-.agreement-board-member .member-tag {
-  font-size: 11px;
-  font-weight: 700;
+.excel-info-cell strong {
+  font-size: 16px;
+  color: #111827;
+}
+
+.excel-info-cell.accent {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.excel-close-btn {
+  border: 1px solid #cfd9ff;
+  background: #f8f9ff;
+  color: #312e81;
   border-radius: 999px;
-  padding: 2px 8px;
-  background: #e0e7ff;
-  color: #3730a3;
+  padding: 8px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.excel-close-btn:hover {
+  background: #edf1ff;
+}
+
+.excel-notice-block {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 18px 22px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.excel-notice-headline {
+  font-size: 19px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.excel-notice-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.excel-config-bar {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  border: 1px solid #e5e7eb;
+}
+
+.excel-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.excel-field label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.08em;
+}
+
+.excel-placeholder {
+  background: #f8fafc;
+  border: 1px dashed #cbd5f5;
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.excel-toggle-group {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.excel-toggle-group button {
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  background: #f8fafc;
+  padding: 6px 14px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.excel-toggle-group button.active {
+  background: linear-gradient(130deg, #4338ca, #6366f1);
+  border-color: transparent;
+  color: #f8fafc;
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);
+}
+
+.excel-field-stats span {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.excel-toolbar {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.excel-toolbar-left {
+  min-width: 220px;
+}
+
+.excel-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.excel-btn {
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  padding: 7px 16px;
+  background: #f4f7ff;
+  color: #1d4ed8;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.excel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.excel-subtext {
+  font-size: 13px;
+  color: #475569;
+}
+
+.excel-table-wrapper {
+  flex: 1;
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid #dbeafe;
+  overflow: auto;
+}
+
+.excel-board-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 1000px;
+}
+
+.excel-board-table th {
+  background: #eef2ff;
+  color: #312e81;
+  font-weight: 600;
+  text-align: center;
+  padding: 10px 8px;
   border: 1px solid #c7d2fe;
 }
 
-.agreement-board-member .member-tag.member {
-  background: #f1f5f9;
-  color: #334155;
-  border-color: #cbd5f5;
+.excel-board-table td {
+  border: 1px solid #e2e8f0;
+  padding: 10px;
+  vertical-align: top;
+  background: #fff;
 }
 
-.agreement-board-member .member-tag.leader {
-  background: #ede9fe;
-  color: #5b21b6;
-  border-color: #ddd6fe;
+.excel-cell {
+  min-width: 150px;
 }
 
-.agreement-board-member.region .member-tag.region {
-  background: #ecfccb;
-  color: #3f6212;
-  border-color: #bef264;
+.excel-cell.drop-target {
+  background: #eef2ff;
+  box-shadow: inset 0 0 0 2px #c7d2fe;
 }
 
-.agreement-board-member .member-tag.female {
-  background: #fee2e2;
-  color: #b91c1c;
-  border-color: #fecaca;
+.excel-name-cell {
+  min-width: 190px;
+  background: #fbfbfe;
 }
 
-.agreement-board-member .member-tag.quality {
-  background: #e0f2fe;
-  color: #0369a1;
-  border-color: #bae6fd;
+.excel-share-cell,
+.excel-status-cell,
+.excel-perf-cell {
+  min-width: 150px;
 }
 
-.agreement-board-member .member-share {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.agreement-board-member .member-share label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #64748b;
-}
-
-.agreement-board-member .member-share input {
-  width: 82px;
-  height: 30px;
-  border: 1px solid #d0d5dd;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 13px;
-  text-align: right;
-  color: #111827;
-}
-
-.agreement-board-member .member-share .share-hint {
-  font-size: 11px;
-  color: #94a3b8;
-}
-
-.agreement-board-member .member-credibility {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.agreement-board-member .member-credibility label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #64748b;
-}
-
-.agreement-board-member .member-credibility input {
-  width: 82px;
-  height: 30px;
-  border: 1px solid #d0d5dd;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 13px;
-  text-align: right;
-  color: #111827;
-}
-
-.agreement-board-member .member-credibility .credibility-hint {
-  font-size: 11px;
-  color: #94a3b8;
-}
-
-.agreement-board-member.region {
-  border-color: #86efac;
-  background: #ecfdf5;
-}
-
-.agreement-board-member .member-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.agreement-board-member .member-empty {
+.order-cell,
+.status-cell {
+  min-width: 90px;
   text-align: center;
-  color: #94a3b8;
+  font-weight: 600;
+}
+
+.actions-cell {
+  min-width: 160px;
+}
+
+.actions-cell button {
+  border: 1px solid #cbd5f5;
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  margin-right: 4px;
+  cursor: pointer;
+}
+
+.excel-add-button {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px dashed #cbd5f5;
+  padding: 12px;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.excel-member-card {
+  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid #dbeafe;
+  background: #fff;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  gap: 6px;
+  cursor: grab;
 }
 
+.excel-member-card.dragging {
+  opacity: 0.6;
+}
+
+.excel-member-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.excel-tag {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.excel-tag-member {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.excel-tag-leader {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.excel-tag-region {
+  background: #ecfccb;
+  color: #3f6212;
+}
+
+.excel-tag-female {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.excel-tag-quality {
+  background: #cffafe;
+  color: #0f766e;
+}
+
+.excel-member-name {
+  font-weight: 700;
+  color: #111827;
+}
+
+.excel-member-sub {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.excel-badge {
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 11px;
+}
+
+.excel-member-hint,
+.excel-hint {
+  font-size: 11px;
+  color: #047857;
+}
+
+.excel-share-cell input,
+.excel-status-cell input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+  text-align: right;
+  font-size: 13px;
+}
+
+.excel-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.excel-status .status-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #475569;
+}
+
+.excel-status .status-line.score.warn span:last-child {
+  color: #b91c1c;
+}
+
+.excel-link {
+  border: none;
+  background: none;
+  color: #2563eb;
+  font-size: 12px;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.excel-performance div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #475569;
+}
+
+.excel-cell.total-cell {
+  min-width: 140px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.excel-cell.total-cell.ok {
+  color: #15803d;
+}
+
+.excel-cell.total-cell.warn {
+  color: #b91c1c;
+}
+
+.excel-chip {
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  background: #f1f5f9;
+  color: #475569;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.excel-chip.ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.excel-chip.warn {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.excel-board-row.empty td {
+  text-align: center;
+  padding: 28px 12px;
+  color: #94a3b8;
+}
 .pill-soft {
   display: inline-flex;
   align-items: center;

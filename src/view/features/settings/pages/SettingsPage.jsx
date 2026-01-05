@@ -641,11 +641,9 @@ export default function SettingsPage() {
         active={active}
         onSelect={(k) => {
           setActive(k);
-          if (k === 'agreements') window.location.hash = '#/agreements';
-          if (k === 'lh-under50') window.location.hash = '#/lh/under50';
-          if (k === 'lh-50to100') window.location.hash = '#/lh/50to100';
-          if (k === 'pps-under50') window.location.hash = '#/pps/under50';
-          if (k === 'pps-50to100') window.location.hash = '#/pps/50to100';
+          if (k === 'agreements') window.location.hash = '#/agreement-board';
+          if (k === 'region-search') window.location.hash = '#/region-search';
+          if (k === 'agreements-sms') window.location.hash = '#/agreements';
           if (k === 'records') window.location.hash = '#/records';
           if (k === 'mail') window.location.hash = '#/mail';
           if (k === 'excel-helper') {
@@ -656,7 +654,7 @@ export default function SettingsPage() {
           if (k === 'settings') window.location.hash = '#/settings';
         }}
         fileStatuses={{}}
-        collapsed={true}
+        collapsed={false}
       />
       <div className="main">
         <div className="title-drag" />

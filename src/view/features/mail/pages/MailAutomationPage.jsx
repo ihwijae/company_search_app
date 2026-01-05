@@ -416,6 +416,10 @@ function MailAutomationPageInner() {
     } else if (key === 'records') {
       window.location.hash = '#/records';
     } else if (key === 'agreements') {
+      window.location.hash = '#/agreement-board';
+    } else if (key === 'region-search') {
+      window.location.hash = '#/region-search';
+    } else if (key === 'agreements-sms') {
       window.location.hash = '#/agreements';
     } else if (key === 'excel-helper') {
       window.electronAPI?.excelHelper?.openWindow?.();
@@ -1189,7 +1193,7 @@ function MailAutomationPageInner() {
 
   return (
     <div className="app-shell">
-      <Sidebar active={activeMenu} onSelect={handleMenuSelect} collapsed={true} />
+      <Sidebar active={activeMenu} onSelect={handleMenuSelect} collapsed={false} />
       <div className="main">
         <div className="title-drag" />
         <div className="topbar" />
