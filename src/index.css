@@ -705,6 +705,7 @@ body {
 /* 협정보드 독립 창 */
 .agreement-board-root {
   width: 100%;
+  min-width: 1600px;
   height: 100vh;
   background: #f3f4f6;
   display: flex;

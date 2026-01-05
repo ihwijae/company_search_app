@@ -2992,21 +2992,23 @@ export default function AgreementBoardWindow({
                   <span className="owner-chip-title">{ownerDisplayLabel}</span>
                   <span className="owner-chip-sub">{rangeDisplayLabel}</span>
                 </div>
-                <div className="owner-select-group">
-                  <label>발주처</label>
-                  <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
-                    {AGREEMENT_GROUPS.map((group) => (
-                      <option key={group.id} value={group.id}>{group.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="owner-select-group">
-                  <label>금액 구간</label>
-                  <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
-                    {rangeOptions.map((item) => (
-                      <option key={item.key} value={item.key}>{item.label}</option>
-                    ))}
-                  </select>
+                <div className="owner-select-row">
+                  <label>
+                    발주처
+                    <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
+                      {AGREEMENT_GROUPS.map((group) => (
+                        <option key={group.id} value={group.id}>{group.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    금액 구간
+                    <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
+                      {rangeOptions.map((item) => (
+                        <option key={item.key} value={item.key}>{item.label}</option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               </div>
               <div className="excel-amount-cards">
@@ -3161,7 +3163,7 @@ export default function AgreementBoardWindow({
           </div>
 
           <div className="excel-table-wrapper" ref={boardMainRef}>
-            <table className="excel-board-table">
+            <table className="excel-board-table" style={{ minWidth: '2000px' }}>
               <thead>
                 <tr>
                   <th rowSpan="2">연번</th>
