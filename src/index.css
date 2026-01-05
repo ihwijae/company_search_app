@@ -704,14 +704,14 @@ body {
 
 /* 협정보드 독립 창 */
 .agreement-board-root {
-  width: 100%;
-  height: 100vh;
-  min-height: 0;
+  width: max(1400px, 100%);
+  min-height: 100%;
   background: #f3f4f6;
   display: flex;
   flex-direction: column;
+  align-self: flex-start;
   font-family: inherit;
-  overflow: hidden;
+  gap: 16px;
 }
 
 
@@ -721,7 +721,7 @@ body {
   flex-direction: column;
   gap: 14px;
   padding: 14px 18px;
-  overflow: visible;
+  width: 100%;
 }
 
 .excel-board-banner {

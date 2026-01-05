@@ -47,7 +47,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
 .main { display: flex; flex-direction: column; height: 100vh; background: var(--bg); }
 .topbar { display: none; height: 0; }
 .stage { position: relative; background: var(--panel); height: calc(100vh - 32px); border-top-left-radius: 22px; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08), 0 4px 18px rgba(15, 23, 42, 0.05); overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(15, 23, 42, 0.04); }
-.stage.agreement-board-stage { overflow: visible; padding-bottom: 24px; }
+.stage.agreement-board-stage { overflow: auto; padding-bottom: 24px; }
 .stage::before,
 .stage::after { content: none; }
 .content { display: grid; grid-template-columns: 320px 1.2fr 1.5fr; gap: 12px; padding: 12px; height: 100%; }
@@ -246,6 +246,9 @@ button.primary:hover { background: var(--accent-2); }
   gap: 14px;
   padding: 14px 18px;
   overflow: visible;
+  align-self: flex-start;
+  min-width: 1400px;
+  width: max-content;
 }
 .excel-board-banner {
   display: flex;
@@ -391,7 +394,6 @@ button.primary:hover { background: var(--accent-2); }
   padding: 6px 8px;
   font-size: 13px;
 }
-.agreement-board-stage { overflow: visible; padding-bottom: 24px; }
 .excel-range-pill { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; align-items: end; }
 .excel-range-pill label { font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; }
 .excel-range-pill select { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 10px; font-size: 14px; background: #fff; }
@@ -450,5 +452,3 @@ button.primary:hover { background: var(--accent-2); }
   white-space: normal;
   word-break: break-word;
 }
-
-.agreement-board-stage { overflow: visible; padding-bottom: 24px; }
