@@ -957,8 +957,6 @@ export default function AgreementBoardWindow({
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
   const boardMainRef = React.useRef(null);
-  const boardTableRef = React.useRef(null);
-  const [boardScale, setBoardScale] = React.useState(1);
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -2452,33 +2450,6 @@ export default function AgreementBoardWindow({
     }))
   ), [groupAssignments, participantMap, summaryByGroup, candidateMetricsVersion]);
 
-  const recalcBoardScale = React.useCallback(() => {
-    const wrapper = boardMainRef.current;
-    const table = boardTableRef.current;
-    if (!wrapper || !table) {
-      setBoardScale(1);
-      return;
-    }
-    const containerWidth = wrapper.clientWidth;
-    const tableWidth = table.scrollWidth;
-    if (!containerWidth || !tableWidth || tableWidth <= containerWidth) {
-      setBoardScale(1);
-      return;
-    }
-    const nextScale = Number((containerWidth / tableWidth).toFixed(3));
-    setBoardScale(Math.max(0.65, nextScale));
-  }, []);
-
-  React.useEffect(() => {
-    recalcBoardScale();
-  }, [recalcBoardScale, groups, slotLabels.length, inlineMode, open]);
-
-  React.useEffect(() => {
-    const handleResize = () => recalcBoardScale();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [recalcBoardScale]);
-
   const formatShareDecimal = (value) => {
     if (value === null || value === undefined) return '';
     const numeric = Number(value);
@@ -3169,14 +3140,7 @@ export default function AgreementBoardWindow({
           </div>
 
           <div className="excel-table-wrapper" ref={boardMainRef}>
-            <div
-              className="excel-table-scale"
-              style={{
-                transform: `scale(${boardScale})`,
-                width: boardScale < 1 ? `${(1 / boardScale) * 100}%` : '100%',
-              }}
-            >
-            <table className="excel-board-table" ref={boardTableRef}>
+            <table className="excel-board-table">
               <thead>
                 <tr>
                   <th rowSpan="2">연번</th>
@@ -3218,7 +3182,6 @@ export default function AgreementBoardWindow({
                 )}
               </tbody>
             </table>
-            </div>
           </div>
         </div>
       </div>
