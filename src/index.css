@@ -973,7 +973,7 @@ body {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  min-width: 860px;
+  min-width: 1500px;
 }
 
 .excel-board-table th {

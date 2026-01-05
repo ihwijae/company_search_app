@@ -253,26 +253,26 @@ button.primary:hover { background: var(--accent-2); }
 .excel-board-banner {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: #f8f9ff;
-  border-radius: 16px;
-  padding: 12px 14px;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  gap: 10px;
+  background: #fdfdff;
+  border-radius: 18px;
+  padding: 14px 18px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
 }
-.excel-banner-top { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
-.excel-owner-card { flex: 0 0 200px; background: linear-gradient(140deg, #4c1d95, #6d28d9); border-radius: 14px; padding: 10px; color: #fff; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 16px rgba(76, 29, 149, 0.25); min-height: 120px; }
-.owner-chip { background: rgba(255, 255, 255, 0.18); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
-.owner-chip-title { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
-.owner-chip-sub { font-size: 11px; opacity: 0.85; }
-.owner-select-group { display: flex; flex-direction: column; gap: 2px; }
-.owner-select-group label { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.85); }
-.owner-select-group select { border: 1px solid rgba(255,255,255,0.4); border-radius: 8px; padding: 4px 8px; font-size: 12px; color: #111827; background: rgba(255,255,255,0.95); min-height: 32px; }
-.excel-amount-cards { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
-.excel-amount-card { background: #fff; border-radius: 10px; border: 1px solid #e3e6f0; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 4px 8px rgba(15, 23, 42, 0.08); min-width: 0; }
+.excel-banner-top { display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch; }
+.excel-owner-card { flex: 0 0 230px; background: linear-gradient(140deg, #4f1fd8, #6c3ef2); border-radius: 18px; padding: 16px; color: #fff; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 15px 28px rgba(79, 31, 216, 0.35); }
+.owner-chip { background: rgba(255, 255, 255, 0.18); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.owner-chip-title { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.owner-chip-sub { font-size: 11px; opacity: 0.9; }
+.owner-select-group { display: flex; flex-direction: column; gap: 4px; }
+.owner-select-group label { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.9); }
+.owner-select-group select { border: none; border-radius: 10px; padding: 6px 10px; font-size: 12px; color: #121826; background: rgba(255,255,255,0.95); min-height: 34px; }
+.excel-amount-cards { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.excel-amount-card { background: #fff; border-radius: 14px; border: 1px solid #e3e6f0; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08); min-width: 0; }
 .excel-amount-card.accent { border-color: #cdd6ff; box-shadow: 0 10px 18px rgba(79, 70, 229, 0.16); }
 .excel-amount-card .input,
 .excel-amount-card input,
-.excel-amount-card .amount-input input { background: #fff; border-radius: 10px; border: 1px solid #d1d5db; padding: 6px 8px; font-weight: 600; }
+.excel-amount-card .amount-input input { background: #fff; border-radius: 8px; border: 1px solid #d1d5db; padding: 4px 6px; font-weight: 600; font-size: 13px; }
 .excel-info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -330,9 +330,9 @@ button.primary:hover { background: var(--accent-2); }
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.notice-combined-field { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; }
+.notice-combined-field { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; max-width: 520px; }
 .notice-combined-label { font-size: 11px; letter-spacing: 0.08em; color: #475569; text-transform: uppercase; }
-.notice-combined-box { display: flex; gap: 6px; background: #f8fafc; border: 1px solid #dbeafe; border-radius: 12px; padding: 8px 10px; }
+.notice-combined-box { display: flex; gap: 4px; background: #fff; border: 1px solid #d3daf2; border-radius: 12px; padding: 6px 8px; }
 .notice-combined-box .dual { flex: 1; border: none; background: transparent; font-size: 13px; color: #111827; }
 .notice-combined-box .dual::placeholder { color: #94a3b8; }
 .notice-combined-box .dual:focus { outline: none; }
