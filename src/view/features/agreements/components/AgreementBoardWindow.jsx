@@ -915,6 +915,46 @@ export default function AgreementBoardWindow({
     setRegionFilter(event.target.value);
   }, []);
 
+  React.useEffect(() => {
+    if (!noticeDate && typeof onUpdateBoard === 'function') {
+      const today = new Date();
+      const pad = (value) => String(value).padStart(2, '0');
+      const iso = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      onUpdateBoard({ noticeDate: iso });
+    }
+  }, [noticeDate, onUpdateBoard]);
+
+  const recalcBoardScale = React.useCallback(() => {
+    const wrapper = boardMainRef.current;
+    const table = boardTableRef.current;
+    if (!wrapper || !table) {
+      setBoardScale(1);
+      return;
+    }
+    const containerWidth = wrapper.clientWidth;
+    const tableWidth = table.scrollWidth;
+    if (!containerWidth || !tableWidth) {
+      setBoardScale(1);
+      return;
+    }
+    if (tableWidth <= containerWidth) {
+      setBoardScale(1);
+      return;
+    }
+    const nextScale = Number((containerWidth / tableWidth).toFixed(3));
+    setBoardScale(Math.max(0.65, nextScale));
+  }, []);
+
+  React.useEffect(() => {
+    recalcBoardScale();
+  }, [recalcBoardScale, groups, slotLabels.length, inlineMode, open]);
+
+  React.useEffect(() => {
+    const handleResize = () => recalcBoardScale();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [recalcBoardScale]);
+
   const credibilityConfig = React.useMemo(() => {
     if (ownerKeyUpper === 'LH') return { enabled: true, max: 1.5 };
     if (ownerKeyUpper === 'PPS') return { enabled: true, max: 3 };
@@ -947,6 +987,8 @@ export default function AgreementBoardWindow({
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
   const boardMainRef = React.useRef(null);
+  const boardTableRef = React.useRef(null);
+  const [boardScale, setBoardScale] = React.useState(1);
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -2988,13 +3030,19 @@ export default function AgreementBoardWindow({
 
           <div className="excel-notice-block">
           <div className="excel-notice-meta">
-            <label className="notice-mixed-field">
-              <span>공고번호 / 공고명</span>
+            <div className="notice-mixed-field">
+              <div className="notice-mixed-label">공고번호 / 공고명</div>
               <div className="notice-mixed-inputs">
-                <input className="input" value={noticeNo || ''} onChange={handleNoticeNoChange} placeholder="예: R26BK..." />
-                <input className="input" value={noticeTitle || ''} onChange={handleNoticeTitleChange} placeholder="공고명을 입력하세요" />
+                <label>
+                  <span>공고번호</span>
+                  <input className="input" value={noticeNo || ''} onChange={handleNoticeNoChange} placeholder="예: R26BK..." />
+                </label>
+                <label>
+                  <span>공고명</span>
+                  <input className="input" value={noticeTitle || ''} onChange={handleNoticeTitleChange} placeholder="공고명을 입력하세요" />
+                </label>
               </div>
-            </label>
+            </div>
             <label>
               공고일
               <input className="input" type="date" value={noticeDate || ''} onChange={handleNoticeDateChange} />
@@ -3124,7 +3172,14 @@ export default function AgreementBoardWindow({
           </div>
 
           <div className="excel-table-wrapper" ref={boardMainRef}>
-            <table className="excel-board-table">
+            <div
+              className="excel-table-scale"
+              style={{
+                transform: `scale(${boardScale})`,
+                width: boardScale < 1 ? `${(1 / boardScale) * 100}%` : '100%',
+              }}
+            >
+            <table className="excel-board-table" ref={boardTableRef}>
               <thead>
                 <tr>
                   <th rowSpan="2">연번</th>
@@ -3166,6 +3221,7 @@ export default function AgreementBoardWindow({
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       </div>
