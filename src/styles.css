@@ -344,6 +344,10 @@ button.primary:hover { background: var(--accent-2); }
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+.notice-mixed-field { gap: 8px; }
+.notice-mixed-field span { font-size: 11px; letter-spacing: 0.08em; color: #475569; }
+.notice-mixed-inputs { display: flex; gap: 8px; }
+.notice-mixed-inputs .input { flex: 1; }
 .excel-notice-meta .input,
 .excel-notice-meta input {
   border: 1px solid #d1d5db;
@@ -351,6 +355,27 @@ button.primary:hover { background: var(--accent-2); }
   padding: 6px 8px;
   font-size: 13px;
 }
+.excel-region-picker {
+  grid-column: 1 / -1;
+  background: #f8fafc;
+  border: 1px dashed #dbeafe;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.region-picker-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
+.picker-title { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; color: #475569; text-transform: uppercase; }
+.picker-helper { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+.picker-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.excel-region-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-empty { font-size: 12px; color: #94a3b8; }
+.excel-region-panel { border: 1px solid #dbeafe; border-radius: 12px; padding: 10px; background: #fff; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08); }
+.excel-region-panel .input { width: 100%; }
+.excel-region-panel-list { max-height: 220px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.excel-region-panel-list label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #475569; }
+.region-panel-empty { font-size: 12px; color: #94a3b8; }
 .excel-notice-summary {
   grid-column: 1 / -1;
   font-size: 13px;

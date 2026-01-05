@@ -856,6 +856,65 @@ export default function AgreementBoardWindow({
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ regionDutyRate: event.target.value });
   }, [onUpdateBoard]);
 
+  const safeDutyRegions = React.useMemo(
+    () => (Array.isArray(dutyRegions) ? dutyRegions.filter((name) => typeof name === 'string' && name.trim()) : []),
+    [dutyRegions],
+  );
+  const [regionOptions, setRegionOptions] = React.useState([]);
+  const [regionPickerOpen, setRegionPickerOpen] = React.useState(false);
+  const [regionFilter, setRegionFilter] = React.useState('');
+
+  React.useEffect(() => {
+    let canceled = false;
+    const fetchRegions = async () => {
+      if (!window?.electronAPI?.getRegions) return;
+      try {
+        const response = await window.electronAPI.getRegions(fileType || 'all');
+        if (!response?.success || !Array.isArray(response.data)) return;
+        const list = response.data
+          .filter((name) => name && name !== '전체')
+          .map((name) => String(name).trim())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b, 'ko-KR'));
+        if (!canceled) setRegionOptions(list);
+      } catch {
+        /* ignore */
+      }
+    };
+    fetchRegions();
+    return () => {
+      canceled = true;
+    };
+  }, [fileType]);
+
+  const filteredRegionOptions = React.useMemo(() => {
+    const keyword = regionFilter.trim();
+    if (!keyword) return regionOptions;
+    const lowered = keyword.toLowerCase();
+    return regionOptions.filter((name) => name.toLowerCase().includes(lowered));
+  }, [regionOptions, regionFilter]);
+
+  const handleDutyRegionToggle = React.useCallback((region) => {
+    if (!region || typeof onUpdateBoard !== 'function') return;
+    const exists = safeDutyRegions.includes(region);
+    const updated = exists
+      ? safeDutyRegions.filter((name) => name !== region)
+      : [...safeDutyRegions, region];
+    onUpdateBoard({ dutyRegions: updated });
+  }, [onUpdateBoard, safeDutyRegions]);
+
+  const handleDutyRegionsClear = React.useCallback(() => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ dutyRegions: [] });
+  }, [onUpdateBoard]);
+
+  const toggleRegionPicker = React.useCallback(() => {
+    setRegionPickerOpen((prev) => !prev);
+  }, []);
+
+  const handleRegionFilterChange = React.useCallback((event) => {
+    setRegionFilter(event.target.value);
+  }, []);
+
   const credibilityConfig = React.useMemo(() => {
     if (ownerKeyUpper === 'LH') return { enabled: true, max: 1.5 };
     if (ownerKeyUpper === 'PPS') return { enabled: true, max: 3 };
@@ -2928,38 +2987,78 @@ export default function AgreementBoardWindow({
           )}
 
           <div className="excel-notice-block">
-            <div className="excel-notice-headline">
-              <input
-                className="input"
-                value={noticeTitle || ''}
-                onChange={handleNoticeTitleChange}
-                placeholder="공고명을 입력하세요"
-              />
-            </div>
-            <div className="excel-notice-meta">
-              <label>
-                공고번호
+          <div className="excel-notice-meta">
+            <label className="notice-mixed-field">
+              <span>공고번호 / 공고명</span>
+              <div className="notice-mixed-inputs">
                 <input className="input" value={noticeNo || ''} onChange={handleNoticeNoChange} placeholder="예: R26BK..." />
-              </label>
-              <label>
-                공고일
-                <input className="input" type="date" value={noticeDate || ''} onChange={handleNoticeDateChange} />
-              </label>
-              <label>
-                공종
-                <input className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange} placeholder="예: 전기" />
-              </label>
-              <label>
-                개찰
-                <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
-              </label>
-              <label>
-                의무지역
-                <input className="input" value={regionDutyRate || ''} onChange={handleRegionDutyRateChange} placeholder="예: 49" />
-              </label>
-              <div className="excel-notice-summary">{dutySummaryText || '의무지역 없음'}</div>
+                <input className="input" value={noticeTitle || ''} onChange={handleNoticeTitleChange} placeholder="공고명을 입력하세요" />
+              </div>
+            </label>
+            <label>
+              공고일
+              <input className="input" type="date" value={noticeDate || ''} onChange={handleNoticeDateChange} />
+            </label>
+            <label>
+              공종
+              <input className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange} placeholder="예: 전기" />
+            </label>
+            <label>
+              개찰
+              <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
+            </label>
+            <label>
+              의무지분(%)
+              <input className="input" value={regionDutyRate || ''} onChange={handleRegionDutyRateChange} placeholder="예: 49" />
+            </label>
+            <div className="excel-region-picker">
+              <div className="region-picker-heading">
+                <div>
+                  <div className="picker-title">의무지역</div>
+                  <div className="picker-helper">선택된 지역 {safeDutyRegions.length}개</div>
+                </div>
+                <div className="picker-actions">
+                  {safeDutyRegions.length > 0 && (
+                    <button type="button" className="excel-btn" onClick={handleDutyRegionsClear}>초기화</button>
+                  )}
+                  <button type="button" className="excel-btn" onClick={toggleRegionPicker}>{regionPickerOpen ? '닫기' : '지역 선택'}</button>
+                </div>
+              </div>
+              <div className="excel-region-chips">
+                {safeDutyRegions.length === 0 && <span className="chip-empty">선택된 지역 없음</span>}
+                {safeDutyRegions.map((region) => (
+                  <span key={region} className="chip">{region}</span>
+                ))}
+              </div>
+              {regionPickerOpen && (
+                <div className="excel-region-panel">
+                  <input
+                    className="input"
+                    value={regionFilter}
+                    onChange={handleRegionFilterChange}
+                    placeholder="지역명 검색"
+                  />
+                  <div className="excel-region-panel-list">
+                    {filteredRegionOptions.length === 0 && (
+                      <div className="region-panel-empty">검색 결과가 없습니다.</div>
+                    )}
+                    {filteredRegionOptions.map((region) => (
+                      <label key={region}>
+                        <input
+                          type="checkbox"
+                          checked={safeDutyRegions.includes(region)}
+                          onChange={() => handleDutyRegionToggle(region)}
+                        />
+                        <span>{region}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+            <div className="excel-notice-summary">{dutySummaryText || '의무지역 없음'}</div>
           </div>
+        </div>
 
           <div className="excel-config-bar">
             <div className="excel-field">
