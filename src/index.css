@@ -961,14 +961,16 @@ body {
   background: #ffffff;
   border-radius: 18px;
   border: 1px solid #dbeafe;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
+  padding-bottom: 8px;
 }
 
 .excel-board-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  min-width: 1000px;
+  min-width: 860px;
 }
 
 .excel-board-table th {
@@ -987,9 +989,7 @@ body {
   background: #fff;
 }
 
-.excel-cell {
-  min-width: 150px;
-}
+.excel-cell { min-width: 120px; }
 
 .excel-cell.drop-target {
   background: #eef2ff;
@@ -997,25 +997,25 @@ body {
 }
 
 .excel-name-cell {
-  min-width: 190px;
+  min-width: 150px;
   background: #fbfbfe;
 }
 
 .excel-share-cell,
 .excel-status-cell,
 .excel-perf-cell {
-  min-width: 150px;
+  min-width: 120px;
 }
 
 .order-cell,
 .status-cell {
-  min-width: 90px;
+  min-width: 70px;
   text-align: center;
   font-weight: 600;
 }
 
 .actions-cell {
-  min-width: 160px;
+  min-width: 120px;
 }
 
 .actions-cell button {

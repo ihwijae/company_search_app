@@ -169,7 +169,7 @@ function AgreementsPage() {
     return OWNERS[0];
   })();
 
-  const [active, setActive] = useState('agreements');
+  const [active, setActive] = useState('agreements-sms');
   const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false });
   const [owner, setOwner] = useState(initialOwner);
   const [noticeInfo, setNoticeInfo] = useState('');
@@ -230,7 +230,7 @@ function AgreementsPage() {
       } else if (h.includes('/mois/')) {
         setActive('mois');
       } else {
-        setActive('agreements');
+        setActive('agreements-sms');
       }
     };
     window.addEventListener('hashchange', onHashChange);

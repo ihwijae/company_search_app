@@ -2876,14 +2876,16 @@ export default function AgreementBoardWindow({
       <div className="agreement-board-root" ref={rootRef}>
         <div className="excel-board-shell">
           <div className="excel-board-banner">
-            <div className="excel-banner-info">
-              <div className="excel-range-pill">
+            <div className="excel-owner-row">
+              <div className="excel-owner-field">
                 <label>발주처</label>
                 <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
                   {AGREEMENT_GROUPS.map((group) => (
                     <option key={group.id} value={group.id}>{group.label}</option>
                   ))}
                 </select>
+              </div>
+              <div className="excel-owner-field">
                 <label>금액 구간</label>
                 <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
                   {rangeOptions.map((item) => (
@@ -2891,39 +2893,39 @@ export default function AgreementBoardWindow({
                   ))}
                 </select>
               </div>
-              <div className="excel-info-grid">
-                <div className="excel-info-cell">
-                  <span className="info-label">기초금액</span>
-                  <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />
-                </div>
-                <div className="excel-info-cell accent">
-                  <span className="info-label">추정금액</span>
-                  <AmountInput value={estimatedAmount || ''} onChange={handleEstimatedAmountChange} placeholder="원" />
-                </div>
-                <div className="excel-info-cell">
-                  <span className="info-label">투찰금액</span>
-                  <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
-                </div>
-                <div className="excel-info-cell">
-                  <span className="info-label">사정율</span>
-                  <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 101.5" />
-                </div>
-                <div className="excel-info-cell">
-                  <span className="info-label">투찰율</span>
-                  <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
-                </div>
-                {isLH && (
-                  <div className="excel-info-cell">
-                    <span className="info-label">시공비율기준금액</span>
-                    <AmountInput value={ratioBaseAmount || ''} onChange={handleRatioBaseAmountChange} placeholder="원" />
-                  </div>
-                )}
-              </div>
             </div>
-            {!inlineMode && (
-              <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
-            )}
+            <div className="excel-info-grid">
+              <div className="excel-info-cell">
+                <span className="info-label">기초금액</span>
+                <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />
+              </div>
+              <div className="excel-info-cell accent">
+                <span className="info-label">추정금액</span>
+                <AmountInput value={estimatedAmount || ''} onChange={handleEstimatedAmountChange} placeholder="원" />
+              </div>
+              <div className="excel-info-cell">
+                <span className="info-label">투찰금액</span>
+                <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
+              </div>
+              <div className="excel-info-cell">
+                <span className="info-label">사정율</span>
+                <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 101.5" />
+              </div>
+              <div className="excel-info-cell">
+                <span className="info-label">투찰율</span>
+                <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
+              </div>
+              {isLH && (
+                <div className="excel-info-cell">
+                  <span className="info-label">시공비율기준금액</span>
+                  <AmountInput value={ratioBaseAmount || ''} onChange={handleRatioBaseAmountChange} placeholder="원" />
+                </div>
+              )}
+            </div>
           </div>
+          {!inlineMode && (
+            <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
+          )}
 
           <div className="excel-notice-block">
             <div className="excel-notice-headline">

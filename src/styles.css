@@ -47,6 +47,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
 .main { display: flex; flex-direction: column; height: 100vh; background: var(--bg); }
 .topbar { display: none; height: 0; }
 .stage { position: relative; background: var(--panel); height: calc(100vh - 32px); border-top-left-radius: 22px; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08), 0 4px 18px rgba(15, 23, 42, 0.05); overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(15, 23, 42, 0.04); }
+.stage.agreement-board-stage { overflow: visible; padding-bottom: 24px; }
 .stage::before,
 .stage::after { content: none; }
 .content { display: grid; grid-template-columns: 320px 1.2fr 1.5fr; gap: 12px; padding: 12px; height: 100%; }
@@ -238,6 +239,159 @@ button.primary:hover { background: var(--accent-2); }
 .excel-helper-modal__option-meta { font-size: 13px; color: #6b7280; }
 .excel-helper-modal__option-managers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .excel-helper-modal__footer { padding: 16px 24px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 12px; }
+.excel-board-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 18px;
+  overflow: visible;
+}
+.excel-board-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+.excel-owner-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.excel-owner-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+  flex: 0 0 220px;
+  max-width: 260px;
+}
+.excel-owner-field label {
+  font-size: 11px;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.excel-owner-field select {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: #111827;
+  background: #fff;
+}
+.excel-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+.excel-info-cell {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.excel-info-cell .info-label {
+  font-size: 12px;
+  color: #64748b;
+  display: block;
+  margin-bottom: 4px;
+}
+.excel-info-cell strong,
+.excel-info-cell .input,
+.excel-info-cell input,
+.excel-info-cell .amount-input input {
+  font-size: 13px;
+}
+.excel-notice-block {
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+.excel-notice-headline input {
+  width: 100%;
+  border: none;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+  background: none;
+  padding: 0;
+}
+.excel-notice-headline input:focus { outline: none; }
+.excel-notice-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  font-size: 13px;
+  color: #475569;
+}
+.excel-notice-meta label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.excel-notice-meta .input,
+.excel-notice-meta input {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.excel-notice-summary {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: #475569;
+}
+.excel-config-bar {
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+}
+.excel-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+  flex: 1;
+}
+.excel-field label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.08em;
+}
+.excel-placeholder {
+  background: #f8fafc;
+  border: 1px dashed #cbd5f5;
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+.excel-field .input,
+.excel-field input,
+.excel-field .amount-input input {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.agreement-board-stage { overflow: visible; padding-bottom: 24px; }
 .excel-range-pill { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; align-items: end; }
 .excel-range-pill label { font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; }
 .excel-range-pill select { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 10px; font-size: 14px; background: #fff; }
@@ -296,3 +450,5 @@ button.primary:hover { background: var(--accent-2); }
   white-space: normal;
   word-break: break-word;
 }
+
+.agreement-board-stage { overflow: visible; padding-bottom: 24px; }
