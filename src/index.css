@@ -718,13 +718,13 @@ body {
 
 
 .excel-board-shell {
-  flex: none;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 14px;
   padding: 0;
-  min-width: 1400px;
-  width: max(1400px, 100%);
+  min-width: 0;
+  width: 100%;
 }
 
 .excel-board-banner {
@@ -973,7 +973,7 @@ body {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  min-width: 1500px;
+  min-width: 2000px;
 }
 
 .excel-board-table th {
