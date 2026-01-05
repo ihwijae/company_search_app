@@ -253,40 +253,26 @@ button.primary:hover { background: var(--accent-2); }
 .excel-board-banner {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background: #fff;
-  border-radius: 16px;
+  gap: 10px;
+  background: #f8f9ff;
+  border-radius: 18px;
   padding: 14px 16px;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
-.excel-owner-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-end;
-}
-.excel-owner-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 140px;
-  flex: 0 0 220px;
-  max-width: 260px;
-}
-.excel-owner-field label {
-  font-size: 11px;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.excel-owner-field select {
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 13px;
-  color: #111827;
-  background: #fff;
-}
+.excel-banner-top { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.excel-owner-card { flex: 0 0 220px; background: linear-gradient(140deg, #4c1d95, #6d28d9); border-radius: 18px; padding: 14px; color: #fff; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 12px 20px rgba(76, 29, 149, 0.25); min-height: 100%; }
+.owner-chip { background: rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 3px; }
+.owner-chip-title { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.owner-chip-sub { font-size: 12px; opacity: 0.85; }
+.owner-select-group { display: flex; flex-direction: column; gap: 3px; }
+.owner-select-group label { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.8); }
+.owner-select-group select { border: 1px solid rgba(255,255,255,0.4); border-radius: 10px; padding: 6px 10px; font-size: 12px; color: #111827; background: rgba(255,255,255,0.95); min-height: 36px; }
+.excel-amount-cards { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.excel-amount-card { background: #fff; border-radius: 12px; border: 1px solid #e3e6f0; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 6px 12px rgba(15, 23, 42, 0.08); min-width: 0; }
+.excel-amount-card.accent { border-color: #cdd6ff; box-shadow: 0 10px 18px rgba(79, 70, 229, 0.16); }
+.excel-amount-card .input,
+.excel-amount-card input,
+.excel-amount-card .amount-input input { background: #fff; border-radius: 10px; border: 1px solid #d1d5db; padding: 6px 8px; font-weight: 600; }
 .excel-info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

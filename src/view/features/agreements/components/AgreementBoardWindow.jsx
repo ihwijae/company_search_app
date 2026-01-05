@@ -797,6 +797,8 @@ export default function AgreementBoardWindow({
     rangeOptions.find((item) => item.key === rangeId) || rangeOptions[0] || null
   ), [rangeId, rangeOptions]);
   const selectedRangeKey = selectedRangeOption?.key || '';
+  const ownerDisplayLabel = selectedGroup?.label || '발주처 미지정';
+  const rangeDisplayLabel = selectedRangeOption?.label || '금액대 선택';
 
   const handleOwnerSelectChange = React.useCallback((event) => {
     const groupId = event.target.value;
@@ -2450,6 +2452,45 @@ export default function AgreementBoardWindow({
     }))
   ), [groupAssignments, participantMap, summaryByGroup, candidateMetricsVersion]);
 
+  const amountCardConfigs = React.useMemo(() => {
+    const cards = [
+      {
+        key: 'baseAmount',
+        label: '기초금액',
+        body: <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />,
+      },
+      {
+        key: 'estimatedAmount',
+        label: '추정금액',
+        highlight: true,
+        body: <AmountInput value={estimatedAmount || ''} onChange={handleEstimatedAmountChange} placeholder="원" />,
+      },
+      {
+        key: 'bidAmount',
+        label: '투찰금액',
+        body: <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />,
+      },
+      {
+        key: 'adjustmentRate',
+        label: '사정율',
+        body: <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 101.5" />, 
+      },
+      {
+        key: 'bidRate',
+        label: '투찰율',
+        body: <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />, 
+      },
+    ];
+    if (isLH) {
+      cards.push({
+        key: 'ratioBase',
+        label: '시공비율기준금액',
+        body: <AmountInput value={ratioBaseAmount || ''} onChange={handleRatioBaseAmountChange} placeholder="원" />, 
+      });
+    }
+    return cards;
+  }, [baseAmount, estimatedAmount, editableBidAmount, adjustmentRate, bidRate, ratioBaseAmount, handleBaseAmountChange, handleEstimatedAmountChange, handleBidAmountChange, handleAdjustmentRateChange, handleBidRateChange, handleRatioBaseAmountChange, isLH]);
+
   const formatShareDecimal = (value) => {
     if (value === null || value === undefined) return '';
     const numeric = Number(value);
@@ -2945,51 +2986,37 @@ export default function AgreementBoardWindow({
       <div className="agreement-board-root" ref={rootRef}>
         <div className="excel-board-shell">
           <div className="excel-board-banner">
-            <div className="excel-owner-row">
-              <div className="excel-owner-field">
-                <label>발주처</label>
-                <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
-                  {AGREEMENT_GROUPS.map((group) => (
-                    <option key={group.id} value={group.id}>{group.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="excel-owner-field">
-                <label>금액 구간</label>
-                <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
-                  {rangeOptions.map((item) => (
-                    <option key={item.key} value={item.key}>{item.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="excel-info-grid">
-              <div className="excel-info-cell">
-                <span className="info-label">기초금액</span>
-                <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />
-              </div>
-              <div className="excel-info-cell accent">
-                <span className="info-label">추정금액</span>
-                <AmountInput value={estimatedAmount || ''} onChange={handleEstimatedAmountChange} placeholder="원" />
-              </div>
-              <div className="excel-info-cell">
-                <span className="info-label">투찰금액</span>
-                <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
-              </div>
-              <div className="excel-info-cell">
-                <span className="info-label">사정율</span>
-                <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 101.5" />
-              </div>
-              <div className="excel-info-cell">
-                <span className="info-label">투찰율</span>
-                <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
-              </div>
-              {isLH && (
-                <div className="excel-info-cell">
-                  <span className="info-label">시공비율기준금액</span>
-                  <AmountInput value={ratioBaseAmount || ''} onChange={handleRatioBaseAmountChange} placeholder="원" />
+            <div className="excel-banner-top">
+              <div className="excel-owner-card">
+                <div className="owner-chip">
+                  <span className="owner-chip-title">{ownerDisplayLabel}</span>
+                  <span className="owner-chip-sub">{rangeDisplayLabel}</span>
                 </div>
-              )}
+                <div className="owner-select-group">
+                  <label>발주처</label>
+                  <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
+                    {AGREEMENT_GROUPS.map((group) => (
+                      <option key={group.id} value={group.id}>{group.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="owner-select-group">
+                  <label>금액 구간</label>
+                  <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
+                    {rangeOptions.map((item) => (
+                      <option key={item.key} value={item.key}>{item.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="excel-amount-cards">
+                {amountCardConfigs.map((card) => (
+                  <div key={card.key} className={`excel-amount-card ${card.highlight ? 'accent' : ''}`}>
+                    <span className="info-label">{card.label}</span>
+                    {card.body}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           {!inlineMode && (
