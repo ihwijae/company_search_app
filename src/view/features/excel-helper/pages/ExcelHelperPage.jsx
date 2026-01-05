@@ -1744,7 +1744,7 @@ export default function ExcelHelperPage() {
         <div className="topbar" />
         <div className="stage excel-helper-stage">
           <div className="excel-helper-shell">
-            <div className="excel-helper-header">엑셀 협정 도우미</div>
+            <h1 className="excel-helper-title">엑셀 협정 도우미</h1>
             <div className="excel-helper-body" style={{ display: 'flex', flexDirection: 'row', gap: '16px' }}>
         {/* Sidebar */}
         <div style={{ width: '450px', borderRight: '1px solid #e5e7eb', paddingRight: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
