@@ -200,8 +200,8 @@ button.primary:hover { background: var(--accent-2); }
 
 .helper-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .content.excel-helper-layout { grid-template-columns: 1fr; }
-.excel-helper-shell { height: 100%; min-height: 0; display: flex; flex-direction: column; background: #f5f6fa; }
-.excel-helper-title { margin: 0 0 16px; font-size: 20px; font-weight: 700; color: #1f2937; }
+.excel-helper-shell { height: 100%; min-height: 0; display: flex; flex-direction: column; background: #f5f6fa; padding: 0 18px; }
+.excel-helper-title { margin: 0 0 16px; font-size: 20px; font-weight: 700; color: #1f2937; padding-top: 4px; }
 .excel-helper-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
 .excel-helper-stage .excel-helper-shell { height: 100%; }
 .excel-helper-section { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
