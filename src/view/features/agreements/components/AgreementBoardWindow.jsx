@@ -5,6 +5,7 @@ import AmountInput from '../../../../components/AmountInput.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
 import { isWomenOwnedCompany, getQualityBadgeText, extractManagerNames } from '../../../../utils/companyIndicators.js';
 import { generateMany } from '../../../../shared/agreements/generator.js';
+import { AGREEMENT_GROUPS } from '../../../../shared/navigation.js';
 
 const DEFAULT_GROUP_SIZE = 3;
 const MIN_GROUPS = 4;
@@ -773,6 +774,7 @@ export default function AgreementBoardWindow({
   adjustmentRate = '',
   bidDeadline = '',
   regionDutyRate = '',
+  inlineMode = false,
 }) {
   const rangeId = _rangeId;
   const boardWindowRef = React.useRef(null);
@@ -785,6 +787,75 @@ export default function AgreementBoardWindow({
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState([]);
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
+  const selectedGroup = React.useMemo(
+    () => AGREEMENT_GROUPS.find((group) => String(group.ownerId || '').toUpperCase() === ownerKeyUpper) || AGREEMENT_GROUPS[0],
+    [ownerKeyUpper],
+  );
+  const ownerSelectValue = selectedGroup?.id || AGREEMENT_GROUPS[0]?.id || '';
+  const rangeOptions = React.useMemo(() => selectedGroup?.items || [], [selectedGroup]);
+  const selectedRangeOption = React.useMemo(() => (
+    rangeOptions.find((item) => item.key === rangeId) || rangeOptions[0] || null
+  ), [rangeId, rangeOptions]);
+  const selectedRangeKey = selectedRangeOption?.key || '';
+
+  const handleOwnerSelectChange = React.useCallback((event) => {
+    const groupId = event.target.value;
+    const group = AGREEMENT_GROUPS.find((item) => item.id === groupId);
+    if (!group) return;
+    const nextRange = group.items && group.items.length > 0 ? group.items[0].key : null;
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ ownerId: group.ownerId, rangeId: nextRange });
+  }, [onUpdateBoard]);
+
+  const handleRangeSelectChange = React.useCallback((event) => {
+    const nextKey = event.target.value || null;
+    if (nextKey === rangeId) return;
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ rangeId: nextKey });
+  }, [onUpdateBoard, rangeId]);
+
+  const handleNoticeNoChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ noticeNo: event.target.value });
+  }, [onUpdateBoard]);
+
+  const handleNoticeTitleChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ noticeTitle: event.target.value });
+  }, [onUpdateBoard]);
+
+  const handleIndustryLabelChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ industryLabel: event.target.value });
+  }, [onUpdateBoard]);
+
+  const handleNoticeDateChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ noticeDate: event.target.value });
+  }, [onUpdateBoard]);
+
+  const handleBidDeadlineChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: event.target.value });
+  }, [onUpdateBoard]);
+
+  const handleBaseAmountChange = React.useCallback((value) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ baseAmount: value });
+  }, [onUpdateBoard]);
+
+  const handleEstimatedAmountChange = React.useCallback((value) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ estimatedAmount: value });
+  }, [onUpdateBoard]);
+
+  const handleRatioBaseAmountChange = React.useCallback((value) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ ratioBaseAmount: value });
+  }, [onUpdateBoard]);
+
+  const handleAdjustmentRateChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ adjustmentRate: event.target.value });
+  }, [onUpdateBoard]);
+
+  const handleBidRateChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidRate: event.target.value });
+  }, [onUpdateBoard]);
+
+  const handleRegionDutyRateChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ regionDutyRate: event.target.value });
+  }, [onUpdateBoard]);
+
   const credibilityConfig = React.useMemo(() => {
     if (ownerKeyUpper === 'LH') return { enabled: true, max: 1.5 };
     if (ownerKeyUpper === 'PPS') return { enabled: true, max: 3 };
@@ -887,7 +958,7 @@ export default function AgreementBoardWindow({
   const handleBidAmountChange = (value) => {
     setEditableBidAmount(value);
     if (onUpdateBoard) {
-      onUpdateBoard({ bidAmount: value });
+      onUpdateBoard && onUpdateBoard({ bidAmount: value });
     }
   };
 
@@ -895,7 +966,7 @@ export default function AgreementBoardWindow({
     if (entryMode === 'none') return;
     setEditableEntryAmount(value);
     if (onUpdateBoard) {
-      onUpdateBoard({ entryAmount: value });
+      onUpdateBoard && onUpdateBoard({ entryAmount: value });
     }
   };
 
@@ -997,6 +1068,7 @@ export default function AgreementBoardWindow({
   }, [onAddRepresentatives, closeRepresentativeSearch, derivePendingPlacementHint]);
 
   const closeWindow = React.useCallback(() => {
+    if (inlineMode) return;
     const win = boardWindowRef.current;
     if (win && !win.closed) {
       if (win.__agreementBoardCleanup) {
@@ -1007,9 +1079,10 @@ export default function AgreementBoardWindow({
     }
     boardWindowRef.current = null;
     setPortalContainer(null);
-  }, []);
+  }, [inlineMode]);
 
   const ensureWindow = React.useCallback(() => {
+    if (inlineMode) return;
     if (typeof window === 'undefined') return;
     if (boardWindowRef.current && boardWindowRef.current.closed) {
       boardWindowRef.current = null;
@@ -1054,41 +1127,32 @@ export default function AgreementBoardWindow({
       }
       try { win.focus(); } catch {}
     }
-  }, [onClose, portalContainer, title]);
+  }, [inlineMode, onClose, portalContainer, title]);
 
   React.useEffect(() => {
+    if (inlineMode) return undefined;
     if (open) {
       ensureWindow();
     } else {
       closeWindow();
     }
-  }, [open, ensureWindow, closeWindow]);
+    return undefined;
+  }, [inlineMode, open, ensureWindow, closeWindow]);
 
   React.useEffect(() => () => { closeWindow(); }, [closeWindow]);
 
   React.useEffect(() => {
+    if (inlineMode) return;
     if (!open) return;
     const win = boardWindowRef.current;
     if (!win || win.closed || !win.document) return;
     win.document.title = title || '협정보드';
-  }, [title, open]);
+  }, [inlineMode, title, open]);
 
   const dutyRegionSet = React.useMemo(() => {
     const entries = Array.isArray(dutyRegions) ? dutyRegions : [];
     return new Set(entries.map((entry) => normalizeRegion(entry)).filter(Boolean));
   }, [dutyRegions]);
-
-  const boardDetails = React.useMemo(() => ({
-    noticeNo,
-    noticeTitle,
-    industryLabel,
-    noticeDate: noticeDate ? formatNoticeDate(noticeDate) : '',
-    baseAmount: baseAmount ? formatAmount(baseAmount) : '',
-    estimatedAmount: estimatedAmount ? formatAmount(estimatedAmount) : '',
-    bidAmount: bidAmount ? formatAmount(bidAmount) : '',
-    bidRate: formatPercentInput(bidRate),
-    adjustmentRate: formatPercentInput(adjustmentRate),
-  }), [noticeNo, noticeTitle, industryLabel, noticeDate, baseAmount, estimatedAmount, bidAmount, bidRate, adjustmentRate]);
 
   const pinnedSet = React.useMemo(() => new Set(pinned || []), [pinned]);
   const excludedSet = React.useMemo(() => new Set(excluded || []), [excluded]);
@@ -1415,11 +1479,7 @@ export default function AgreementBoardWindow({
     return buildDutySummary(dutyRegions, rateNumber, safeGroupSize);
   }, [regionDutyRate, dutyRegions, safeGroupSize]);
 
-  const rangeBadgeLabel = React.useMemo(() => {
-    if (!rangeId) return '기본 구간';
-    const cleaned = String(rangeId).replace(/[-_]+/g, ' ').trim();
-    return cleaned ? cleaned.toUpperCase() : '기본 구간';
-  }, [rangeId]);
+  const rangeBadgeLabel = selectedRangeOption?.label || '기본 구간';
 
   const bidDeadlineLabel = React.useMemo(() => formatBidDeadline(bidDeadline), [bidDeadline]);
 
@@ -2809,70 +2869,97 @@ export default function AgreementBoardWindow({
     return () => {
       rootEl.removeEventListener('wheel', handleWheel, { passive: false });
     };
-  }, [portalContainer, open]);
+  }, [portalContainer, open, inlineMode]);
 
-  if (!open || !portalContainer) return null;
-
-  return createPortal(
+  const boardMarkup = (
     <>
       <div className="agreement-board-root" ref={rootRef}>
         <div className="excel-board-shell">
           <div className="excel-board-banner">
             <div className="excel-banner-info">
               <div className="excel-range-pill">
-                <span className="pill-title">{ownerId || '발주처'}</span>
-                <strong>{rangeBadgeLabel}</strong>
+                <label>발주처</label>
+                <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
+                  {AGREEMENT_GROUPS.map((group) => (
+                    <option key={group.id} value={group.id}>{group.label}</option>
+                  ))}
+                </select>
+                <label>금액 구간</label>
+                <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
+                  {rangeOptions.map((item) => (
+                    <option key={item.key} value={item.key}>{item.label}</option>
+                  ))}
+                </select>
               </div>
               <div className="excel-info-grid">
                 <div className="excel-info-cell">
                   <span className="info-label">기초금액</span>
-                  <strong>{boardDetails.baseAmount || '-'}</strong>
+                  <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />
                 </div>
                 <div className="excel-info-cell accent">
                   <span className="info-label">추정금액</span>
-                  <strong>{boardDetails.estimatedAmount || '-'}</strong>
+                  <AmountInput value={estimatedAmount || ''} onChange={handleEstimatedAmountChange} placeholder="원" />
                 </div>
                 <div className="excel-info-cell">
                   <span className="info-label">투찰금액</span>
-                  <strong>{boardDetails.bidAmount || '-'}</strong>
+                  <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
                 </div>
                 <div className="excel-info-cell">
                   <span className="info-label">사정율</span>
-                  <strong>{boardDetails.adjustmentRate || '-'}</strong>
+                  <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 101.5" />
                 </div>
                 <div className="excel-info-cell">
                   <span className="info-label">투찰율</span>
-                  <strong>{boardDetails.bidRate || '-'}</strong>
+                  <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
                 </div>
                 {isLH && (
                   <div className="excel-info-cell">
                     <span className="info-label">시공비율기준금액</span>
-                    <strong>{formatAmount(ratioBaseAmount)}</strong>
+                    <AmountInput value={ratioBaseAmount || ''} onChange={handleRatioBaseAmountChange} placeholder="원" />
                   </div>
                 )}
               </div>
             </div>
-            <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
+            {!inlineMode && (
+              <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
+            )}
           </div>
 
           <div className="excel-notice-block">
             <div className="excel-notice-headline">
-              <strong>{boardDetails.noticeTitle || title}</strong>
+              <input
+                className="input"
+                value={noticeTitle || ''}
+                onChange={handleNoticeTitleChange}
+                placeholder="공고명을 입력하세요"
+              />
             </div>
             <div className="excel-notice-meta">
-              <span>공고번호 {boardDetails.noticeNo || '-'}</span>
-              <span>공고일 {boardDetails.noticeDate || '-'}</span>
-              <span>공종 {boardDetails.industryLabel || '-'}</span>
-              <span>개찰 {bidDeadlineLabel || '-'}</span>
-              <span>의무지역 {dutySummaryText || '없음'}</span>
+              <label>
+                공고번호
+                <input className="input" value={noticeNo || ''} onChange={handleNoticeNoChange} placeholder="예: R26BK..." />
+              </label>
+              <label>
+                공고일
+                <input className="input" type="date" value={noticeDate || ''} onChange={handleNoticeDateChange} />
+              </label>
+              <label>
+                공종
+                <input className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange} placeholder="예: 전기" />
+              </label>
+              <label>
+                개찰
+                <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
+              </label>
+              <label>
+                의무지역
+                <input className="input" value={regionDutyRate || ''} onChange={handleRegionDutyRateChange} placeholder="예: 49" />
+              </label>
+              <div className="excel-notice-summary">{dutySummaryText || '의무지역 없음'}</div>
             </div>
           </div>
 
           <div className="excel-config-bar">
-            <div className="excel-field">
-              <label>투찰금액</label>
-              <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
-            </div>
             <div className="excel-field">
               <label>참가자격</label>
               {entryModeResolved === 'none' ? (
@@ -2989,7 +3076,14 @@ export default function AgreementBoardWindow({
           fileType={fileType || 'all'}
         />
       )}
-    </>,
-    portalContainer,
+    </>
   );
+
+  if (inlineMode) {
+    if (!open) return null;
+    return boardMarkup;
+  }
+
+  if (!open || !portalContainer) return null;
+  return createPortal(boardMarkup, portalContainer);
 }

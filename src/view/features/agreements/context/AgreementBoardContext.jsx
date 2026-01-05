@@ -9,6 +9,7 @@ const AgreementBoardContext = React.createContext(null);
 
 const initialState = {
   open: false,
+  inlineMode: false,
   candidates: [],
   pinned: [],
   excluded: [],
@@ -269,6 +270,7 @@ export function AgreementBoardProvider({ children }) {
       rangeId: range,
       alwaysInclude: [],
       open: true,
+      inlineMode: Boolean(payload.inlineMode),
     }));
   }, [boardState.ownerId, boardState.fileType, boardState.rangeId]);
 
@@ -339,7 +341,7 @@ export function AgreementBoardProvider({ children }) {
   }, []);
 
   const closeBoard = React.useCallback(() => {
-    setBoardState((prev) => ({ ...prev, open: false }));
+    setBoardState((prev) => ({ ...prev, open: false, inlineMode: false }));
   }, []);
 
   React.useEffect(() => {
@@ -385,37 +387,39 @@ export function AgreementBoardProvider({ children }) {
   return (
     <AgreementBoardContext.Provider value={value}>
       {children}
-      <AgreementBoardWindow
-        open={boardState.open}
-        onClose={closeBoard}
-        candidates={boardState.candidates || []}
-        pinned={boardState.pinned || []}
-        excluded={boardState.excluded || []}
-        dutyRegions={boardState.dutyRegions || []}
-        groupSize={boardState.groupSize || DEFAULT_GROUP_SIZE}
-        title={boardState.title || '협정보드'}
-        alwaysInclude={boardState.alwaysInclude || []}
-        fileType={boardState.fileType || DEFAULT_FILE_TYPE}
-        ownerId={boardState.ownerId || DEFAULT_OWNER_ID}
-        rangeId={boardState.rangeId || null}
-        onAddRepresentatives={appendCandidatesFromSearch}
-        onRemoveRepresentative={removeCandidate}
-        onUpdateBoard={updateBoard}
-        noticeNo={boardState.noticeNo || ''}
-        noticeTitle={boardState.noticeTitle || ''}
-        noticeDate={boardState.noticeDate || ''}
-        industryLabel={boardState.industryLabel || ''}
-        entryAmount={boardState.entryAmount || ''}
-        entryMode={boardState.entryMode || 'ratio'}
-        baseAmount={boardState.baseAmount || ''}
-        estimatedAmount={boardState.estimatedAmount || ''}
-        bidAmount={boardState.bidAmount || ''}
-        ratioBaseAmount={boardState.ratioBaseAmount || ''}
-        bidRate={boardState.bidRate || ''}
-        adjustmentRate={boardState.adjustmentRate || ''}
-        bidDeadline={boardState.bidDeadline || ''}
-        regionDutyRate={boardState.regionDutyRate || ''}
-      />
+      {!boardState.inlineMode && (
+        <AgreementBoardWindow
+          open={boardState.open}
+          onClose={closeBoard}
+          candidates={boardState.candidates || []}
+          pinned={boardState.pinned || []}
+          excluded={boardState.excluded || []}
+          dutyRegions={boardState.dutyRegions || []}
+          groupSize={boardState.groupSize || DEFAULT_GROUP_SIZE}
+          title={boardState.title || '협정보드'}
+          alwaysInclude={boardState.alwaysInclude || []}
+          fileType={boardState.fileType || DEFAULT_FILE_TYPE}
+          ownerId={boardState.ownerId || DEFAULT_OWNER_ID}
+          rangeId={boardState.rangeId || null}
+          onAddRepresentatives={appendCandidatesFromSearch}
+          onRemoveRepresentative={removeCandidate}
+          onUpdateBoard={updateBoard}
+          noticeNo={boardState.noticeNo || ''}
+          noticeTitle={boardState.noticeTitle || ''}
+          noticeDate={boardState.noticeDate || ''}
+          industryLabel={boardState.industryLabel || ''}
+          entryAmount={boardState.entryAmount || ''}
+          entryMode={boardState.entryMode || 'ratio'}
+          baseAmount={boardState.baseAmount || ''}
+          estimatedAmount={boardState.estimatedAmount || ''}
+          bidAmount={boardState.bidAmount || ''}
+          ratioBaseAmount={boardState.ratioBaseAmount || ''}
+          bidRate={boardState.bidRate || ''}
+          adjustmentRate={boardState.adjustmentRate || ''}
+          bidDeadline={boardState.bidDeadline || ''}
+          regionDutyRate={boardState.regionDutyRate || ''}
+        />
+      )}
     </AgreementBoardContext.Provider>
   );
 }

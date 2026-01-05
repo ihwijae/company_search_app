@@ -604,7 +604,9 @@ export default function AgreementFlowPage({
       regionDutyRate: form.regionDutyRate || '',
       entryAmount: form.entryQualificationAmount || '',
       entryMode,
+      inlineMode: true,
     });
+    window.location.hash = '#/agreement-board';
   }, [openBoard, dutyRegions, form.teamSizeMax, resolvedOwnerId, currentFileType, activeMenuKey, form.noticeNo, form.title, form.industry, form.baseAmount, form.estimatedPrice, form.bidAmount, isPPS, form.ratioBaseAmount, form.bidRate, form.adjustmentRate, form.bidDeadline, form.regionDutyRate, form.entryQualificationAmount, entryMode]);
 
   return (

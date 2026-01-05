@@ -169,7 +169,7 @@ function AgreementsPage() {
     return OWNERS[0];
   })();
 
-  const [active, setActive] = useState('agreements-sms');
+  const [active, setActive] = useState('agreements');
   const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false });
   const [owner, setOwner] = useState(initialOwner);
   const [noticeInfo, setNoticeInfo] = useState('');

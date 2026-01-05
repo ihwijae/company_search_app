@@ -2,6 +2,8 @@
 import React from 'react';
 import SearchPage from './view/features/search/pages/SearchPage.jsx';
 import AgreementsPage from './view/features/agreements/pages/AgreementsPage.jsx';
+import AgreementBoardPage from './view/features/agreements/pages/AgreementBoardPage.jsx';
+import RegionSearchPage from './view/features/agreements/pages/RegionSearchPage.jsx';
 import SettingsPage from './view/features/settings/pages/SettingsPage.jsx';
 import RecordsPage from './view/features/records/pages/RecordsPage.jsx';
 import MailAutomationPage from './view/features/mail/pages/MailAutomationPage.jsx';
@@ -12,8 +14,6 @@ import PPS50To100Page from './view/features/agreements/pages/PPS50To100Page.jsx'
 import MOISUnder30Page from './view/features/agreements/pages/MOISUnder30Page.jsx';
 import MOIS30To50Page from './view/features/agreements/pages/MOIS30To50Page.jsx';
 import MOIS50To100Page from './view/features/agreements/pages/MOIS50To100Page.jsx';
-import AgreementBoardStandalonePage from './view/features/agreements/pages/AgreementBoardStandalonePage.jsx';
-import RegionSearchStandalonePage from './view/features/agreements/pages/RegionSearchStandalonePage.jsx';
 import { AgreementBoardProvider } from './view/features/agreements/context/AgreementBoardContext.jsx';
 import ExcelHelperPage from './view/features/excel-helper/pages/ExcelHelperPage.jsx';
 import RegionSearchWindowHost from './view/features/agreements/components/RegionSearchWindowHost.jsx';
@@ -58,10 +58,10 @@ export default function App() {
       Screen = MOIS50To100Page;
       break;
     case '/agreement-board':
-      Screen = AgreementBoardStandalonePage;
+      Screen = AgreementBoardPage;
       break;
     case '/region-search':
-      Screen = RegionSearchStandalonePage;
+      Screen = RegionSearchPage;
       break;
     case '/agreements':
       Screen = AgreementsPage;
