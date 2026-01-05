@@ -1188,15 +1188,12 @@ function App() {
           if (k === 'agreements-sms') window.location.hash = '#/agreements';
           if (k === 'records') window.location.hash = '#/records';
           if (k === 'mail') window.location.hash = '#/mail';
-          if (k === 'excel-helper') {
-            window.electronAPI?.excelHelper?.openWindow?.();
-            return;
-          }
+          if (k === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }
           if (k === 'search') window.location.hash = '#/search';
           if (k === 'settings') window.location.hash = '#/settings';
         }}
         fileStatuses={fileStatuses}
-        collapsed={false}
+        collapsed={true}
       />
       <div className="main">
         <div className="title-drag" />

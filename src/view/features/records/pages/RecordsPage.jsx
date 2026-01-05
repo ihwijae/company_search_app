@@ -245,7 +245,7 @@ export default function RecordsPage() {
     } else if (key === 'agreements-sms') {
       window.location.hash = '#/agreements';
     } else if (key === 'excel-helper') {
-      window.electronAPI?.excelHelper?.openWindow?.();
+      window.location.hash = '#/excel-helper';
     } else if (key === 'settings') {
       window.location.hash = '#/settings';
     }
@@ -511,7 +511,7 @@ export default function RecordsPage() {
         active={activeMenu}
         onSelect={handleMenuSelect}
         fileStatuses={{}}
-        collapsed={false}
+        collapsed={true}
       />
       <div className="main">
         <div className="title-drag" />

@@ -529,10 +529,7 @@ export default function AgreementFlowPage({
     if (key === 'agreements-sms') { window.location.hash = BASE_ROUTES.agreements; return; }
     if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
     if (key === 'upload') { window.location.hash = BASE_ROUTES.agreementBoard; return; }
-    if (key === 'excel-helper') {
-      window.electronAPI?.excelHelper?.openWindow?.();
-      return;
-    }
+    if (key === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }
     const menu = findMenuByKey(key);
     if (menu) window.location.hash = menu.hash;
   };
@@ -616,7 +613,7 @@ export default function AgreementFlowPage({
         active={viewMode === 'region' ? 'region-search' : 'agreements'}
         onSelect={handleSidebarSelect}
         fileStatuses={fileStatuses}
-        collapsed={false}
+        collapsed={true}
       />
       <div className="main">
         <div className="title-drag" />

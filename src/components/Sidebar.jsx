@@ -3,7 +3,7 @@ import excelIcon from '../assets/excel.png';
 import mmsIcon from '../assets/mms.png';
 import emailIcon from '../assets/email.png';
 
-export default function Sidebar({ active, onSelect, fileStatuses, collapsed = false }) {
+export default function Sidebar({ active, onSelect, fileStatuses, collapsed = true }) {
   const anyLoaded = !!(fileStatuses?.eung || fileStatuses?.tongsin || fileStatuses?.sobang);
   const isCollapsed = collapsed;
   const handleSelect = (key) => {

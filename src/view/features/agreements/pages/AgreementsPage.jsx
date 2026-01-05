@@ -163,19 +163,13 @@ function EditAgreementModal({ open, value, onChange, onClose, onSave, onSearchLe
 
 function AgreementsPage() {
   const initialHash = window.location.hash || '';
-  const initialActive = (() => {
-    if (initialHash.includes('/lh/')) return 'lh';
-    if (initialHash.includes('/pps/')) return 'pps';
-    if (initialHash.includes('/mois/')) return 'mois';
-    return 'agreements';
-  })();
   const initialOwner = (() => {
     if (initialHash.includes('/lh/')) return '한국토지주택공사';
     if (initialHash.includes('/pps/')) return '조달청';
     return OWNERS[0];
   })();
 
-  const [active, setActive] = useState(initialActive);
+  const [active, setActive] = useState('agreements-sms');
   const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false });
   const [owner, setOwner] = useState(initialOwner);
   const [noticeInfo, setNoticeInfo] = useState('');
@@ -431,15 +425,12 @@ function AgreementsPage() {
           if (k === 'agreements-sms') window.location.hash = '#/agreements';
           if (k === 'records') window.location.hash = '#/records';
           if (k === 'mail') window.location.hash = '#/mail';
-          if (k === 'excel-helper') {
-            window.electronAPI?.excelHelper?.openWindow?.();
-            return;
-          }
+          if (k === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }
           if (k === 'search') window.location.hash = '#/search';
           if (k === 'settings') window.location.hash = '#/settings';
         }}
         fileStatuses={fileStatuses}
-        collapsed={false}
+        collapsed={true}
       />
       <div className="main">
         <div className="title-drag" />

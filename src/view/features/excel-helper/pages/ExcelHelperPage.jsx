@@ -1,6 +1,9 @@
 import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
+import Sidebar from '../../../../components/Sidebar';
+import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
+import { BASE_ROUTES } from '../../../../shared/navigation.js';
 import { generateMany, validateAgreement } from '../../../../shared/agreements/generator.js';
 import { extractManagerNames, getQualityBadgeText, isWomenOwnedCompany } from '../../../../utils/companyIndicators.js';
 import { INDUSTRY_AVERAGES } from '../../../../ratios.js';
@@ -166,6 +169,13 @@ const DEFAULT_OFFSETS = [
 ];
 
 const MAX_SLOTS = 5;
+const DEFAULT_SELECTION_MESSAGE = '엑셀에서 업체명이 있는 셀을 선택한 뒤 동기화하세요.';
+const EXCEL_HELPER_STORAGE_KEY = 'excel-helper:state';
+
+const buildDefaultNoticeDate = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+};
 
 const pickFirstValue = (company, keys) => {
   if (!company || !Array.isArray(keys)) return '';
@@ -797,6 +807,16 @@ export default function ExcelHelperPage() {
     };
   }, []);
 
+  const persistedState = React.useMemo(() => loadPersisted(EXCEL_HELPER_STORAGE_KEY, null) || {}, []);
+  const getPersisted = (key, fallback) => (
+    Object.prototype.hasOwnProperty.call(persistedState, key)
+      ? persistedState[key]
+      : fallback
+  );
+  const initialNoticeDate = React.useMemo(() => (
+    getPersisted('noticeDateInput', buildDefaultNoticeDate())
+  ), [persistedState]);
+
   const strongLabelStyle = React.useMemo(() => ({
     display: 'block',
     marginBottom: '6px',
@@ -812,31 +832,41 @@ export default function ExcelHelperPage() {
     boxShadow: '0 1px 2px rgba(37, 99, 235, 0.15)',
   }), []);
 
-  const [ownerId, setOwnerId] = React.useState('');
-  const [rangeId, setRangeId] = React.useState('');
-  const [fileType, setFileType] = React.useState('');
-  const [selection, setSelection] = React.useState(null);
-  const [selectionMessage, setSelectionMessage] = React.useState('엑셀에서 업체명이 있는 셀을 선택한 뒤 동기화하세요.');
-  const [companyQuery, setCompanyQuery] = React.useState('');
+  const handleSidebarSelect = React.useCallback((key) => {
+    if (!key) return;
+    if (key === 'search') { window.location.hash = BASE_ROUTES.search; return; }
+    if (key === 'agreements') { window.location.hash = BASE_ROUTES.agreementBoard; return; }
+    if (key === 'region-search') { window.location.hash = BASE_ROUTES.regionSearch; return; }
+    if (key === 'agreements-sms') { window.location.hash = BASE_ROUTES.agreements; return; }
+    if (key === 'records') { window.location.hash = '#/records'; return; }
+    if (key === 'mail') { window.location.hash = '#/mail'; return; }
+    if (key === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }
+    if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
+    if (key === 'upload') { window.location.hash = BASE_ROUTES.agreementBoard; }
+  }, []);
+
+  const [ownerId, setOwnerId] = React.useState(() => getPersisted('ownerId', ''));
+  const [rangeId, setRangeId] = React.useState(() => getPersisted('rangeId', ''));
+  const [fileType, setFileType] = React.useState(() => getPersisted('fileType', ''));
+  const [selection, setSelection] = React.useState(() => getPersisted('selection', null));
+  const [selectionMessage, setSelectionMessage] = React.useState(() => getPersisted('selectionMessage', DEFAULT_SELECTION_MESSAGE));
+  const [companyQuery, setCompanyQuery] = React.useState(() => getPersisted('companyQuery', ''));
   const [searchResults, setSearchResults] = React.useState([]);
   const [searchLoading, setSearchLoading] = React.useState(false);
   const [searchError, setSearchError] = React.useState('');
   const [selectedCompany, setSelectedCompany] = React.useState(null);
-  const [shareInput, setShareInput] = React.useState('');
-  const [noticeInfo, setNoticeInfo] = React.useState(''); // 새 상태 추가
-  const [noticeDateInput, setNoticeDateInput] = React.useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
-  const [baseAmountInput, setBaseAmountInput] = React.useState(''); // 새 상태 추가 (기준금액)
-  const [excelStatus, setExcelStatus] = React.useState('');
-  const [messageStatus, setMessageStatus] = React.useState('');
-  const [messagePreview, setMessagePreview] = React.useState('');
+  const [shareInput, setShareInput] = React.useState(() => getPersisted('shareInput', ''));
+  const [noticeInfo, setNoticeInfo] = React.useState(() => getPersisted('noticeInfo', ''));
+  const [noticeDateInput, setNoticeDateInput] = React.useState(initialNoticeDate);
+  const [baseAmountInput, setBaseAmountInput] = React.useState(() => getPersisted('baseAmountInput', ''));
+  const [excelStatus, setExcelStatus] = React.useState(() => getPersisted('excelStatus', ''));
+  const [messageStatus, setMessageStatus] = React.useState(() => getPersisted('messageStatus', ''));
+  const [messagePreview, setMessagePreview] = React.useState(() => getPersisted('messagePreview', ''));
   const [evaluatedManagementScore, setEvaluatedManagementScore] = React.useState(null);
   const [managementScoreMeta, setManagementScoreMeta] = React.useState({ maxScore: null, isPerfect: false });
   const [isGeneratingAgreement, setIsGeneratingAgreement] = React.useState(false); // 새 상태 추가
-  const [technicianEntries, setTechnicianEntries] = React.useState([]);
-  const [selectedRegions, setSelectedRegions] = React.useState([]);
+  const [technicianEntries, setTechnicianEntries] = React.useState(() => getPersisted('technicianEntries', []));
+  const [selectedRegions, setSelectedRegions] = React.useState(() => getPersisted('selectedRegions', []));
   const [regionMenuOpen, setRegionMenuOpen] = React.useState(false);
   const regionMenuContainerRef = React.useRef(null);
 
@@ -846,8 +876,46 @@ export default function ExcelHelperPage() {
   const [sheetNames, setSheetNames] = React.useState([]);
   const [selectedSheet, setSelectedSheet] = React.useState('');
   const [pendingAgreementContext, setPendingAgreementContext] = React.useState(null);
-  const [companyConflictSelections, setCompanyConflictSelections] = React.useState({});
+  const [companyConflictSelections, setCompanyConflictSelections] = React.useState(() => getPersisted('companyConflictSelections', {}));
   const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
+
+  React.useEffect(() => {
+    savePersisted(EXCEL_HELPER_STORAGE_KEY, {
+      ownerId,
+      rangeId,
+      fileType,
+      selection,
+      selectionMessage,
+      companyQuery,
+      shareInput,
+      noticeInfo,
+      noticeDateInput,
+      baseAmountInput,
+      excelStatus,
+      messageStatus,
+      messagePreview,
+      selectedRegions,
+      technicianEntries,
+      companyConflictSelections,
+    });
+  }, [
+    ownerId,
+    rangeId,
+    fileType,
+    selection,
+    selectionMessage,
+    companyQuery,
+    shareInput,
+    noticeInfo,
+    noticeDateInput,
+    baseAmountInput,
+    excelStatus,
+    messageStatus,
+    messagePreview,
+    selectedRegions,
+    technicianEntries,
+    companyConflictSelections,
+  ]);
 
   const resetAgreementContext = React.useCallback(() => {
     setNoticeInfo('');
@@ -1669,9 +1737,15 @@ export default function ExcelHelperPage() {
   };
 
   return (
-    <div className="excel-helper-shell">
-      <div className="excel-helper-header title-drag">엑셀 협정 도우미</div>
-      <div className="excel-helper-body" style={{ display: 'flex', flexDirection: 'row', gap: '16px' }}>
+    <div className="app-shell">
+      <Sidebar active="excel-helper" onSelect={handleSidebarSelect} fileStatuses={{}} collapsed={true} />
+      <div className="main">
+        <div className="title-drag" />
+        <div className="topbar" />
+        <div className="stage excel-helper-stage">
+          <div className="excel-helper-shell">
+            <div className="excel-helper-header">엑셀 협정 도우미</div>
+            <div className="excel-helper-body" style={{ display: 'flex', flexDirection: 'row', gap: '16px' }}>
         {/* Sidebar */}
         <div style={{ width: '450px', borderRight: '1px solid #e5e7eb', paddingRight: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <section className="excel-helper-section">
@@ -2080,6 +2154,9 @@ export default function ExcelHelperPage() {
               {excelStatus && <span>{excelStatus}</span>}
             </div>
           </section>
+        </div>
+      </div>
+          </div>
         </div>
       </div>
       {companyConflictModal.open && (

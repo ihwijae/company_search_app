@@ -422,7 +422,7 @@ function MailAutomationPageInner() {
     } else if (key === 'agreements-sms') {
       window.location.hash = '#/agreements';
     } else if (key === 'excel-helper') {
-      window.electronAPI?.excelHelper?.openWindow?.();
+      window.location.hash = '#/excel-helper';
     } else if (key === 'settings') {
       window.location.hash = '#/settings';
     } else if (key === 'mail') {
@@ -1193,7 +1193,7 @@ function MailAutomationPageInner() {
 
   return (
     <div className="app-shell">
-      <Sidebar active={activeMenu} onSelect={handleMenuSelect} collapsed={false} />
+      <Sidebar active={activeMenu} onSelect={handleMenuSelect} collapsed={true} />
       <div className="main">
         <div className="title-drag" />
         <div className="topbar" />
