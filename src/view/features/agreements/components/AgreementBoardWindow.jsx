@@ -3024,18 +3024,12 @@ export default function AgreementBoardWindow({
           )}
 
           <div className="excel-notice-block">
-          <div className="excel-notice-meta">
-            <div className="notice-mixed-field">
-              <div className="notice-mixed-label">공고번호 / 공고명</div>
-              <div className="notice-mixed-inputs">
-                <label>
-                  <span>공고번호</span>
-                  <input className="input" value={noticeNo || ''} onChange={handleNoticeNoChange} placeholder="예: R26BK..." />
-                </label>
-                <label>
-                  <span>공고명</span>
-                  <input className="input" value={noticeTitle || ''} onChange={handleNoticeTitleChange} placeholder="공고명을 입력하세요" />
-                </label>
+            <div className="excel-notice-meta">
+            <div className="notice-combined-field">
+              <div className="notice-combined-label">공고번호 / 공고명</div>
+              <div className="notice-combined-box">
+                <input className="dual" value={noticeNo || ''} onChange={handleNoticeNoChange} placeholder="예: R26BK..." />
+                <input className="dual" value={noticeTitle || ''} onChange={handleNoticeTitleChange} placeholder="공고명을 입력하세요" />
               </div>
             </div>
             <label>
