@@ -924,36 +924,6 @@ export default function AgreementBoardWindow({
     }
   }, [noticeDate, onUpdateBoard]);
 
-  const recalcBoardScale = React.useCallback(() => {
-    const wrapper = boardMainRef.current;
-    const table = boardTableRef.current;
-    if (!wrapper || !table) {
-      setBoardScale(1);
-      return;
-    }
-    const containerWidth = wrapper.clientWidth;
-    const tableWidth = table.scrollWidth;
-    if (!containerWidth || !tableWidth) {
-      setBoardScale(1);
-      return;
-    }
-    if (tableWidth <= containerWidth) {
-      setBoardScale(1);
-      return;
-    }
-    const nextScale = Number((containerWidth / tableWidth).toFixed(3));
-    setBoardScale(Math.max(0.65, nextScale));
-  }, []);
-
-  React.useEffect(() => {
-    recalcBoardScale();
-  }, [recalcBoardScale, groups, slotLabels.length, inlineMode, open]);
-
-  React.useEffect(() => {
-    const handleResize = () => recalcBoardScale();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [recalcBoardScale]);
 
   const credibilityConfig = React.useMemo(() => {
     if (ownerKeyUpper === 'LH') return { enabled: true, max: 1.5 };
@@ -2481,6 +2451,33 @@ export default function AgreementBoardWindow({
       summary: summaryByGroup.get(index) || null,
     }))
   ), [groupAssignments, participantMap, summaryByGroup, candidateMetricsVersion]);
+
+  const recalcBoardScale = React.useCallback(() => {
+    const wrapper = boardMainRef.current;
+    const table = boardTableRef.current;
+    if (!wrapper || !table) {
+      setBoardScale(1);
+      return;
+    }
+    const containerWidth = wrapper.clientWidth;
+    const tableWidth = table.scrollWidth;
+    if (!containerWidth || !tableWidth || tableWidth <= containerWidth) {
+      setBoardScale(1);
+      return;
+    }
+    const nextScale = Number((containerWidth / tableWidth).toFixed(3));
+    setBoardScale(Math.max(0.65, nextScale));
+  }, []);
+
+  React.useEffect(() => {
+    recalcBoardScale();
+  }, [recalcBoardScale, groups, slotLabels.length, inlineMode, open]);
+
+  React.useEffect(() => {
+    const handleResize = () => recalcBoardScale();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [recalcBoardScale]);
 
   const formatShareDecimal = (value) => {
     if (value === null || value === undefined) return '';
