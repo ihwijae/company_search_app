@@ -216,6 +216,8 @@ export default function AutoAgreementPage() {
   const bidDisabled = form.owner === 'LH' || (form.owner === '행안부' && form.range === '30억 미만');
   const bidRateDisabled = form.owner === '행안부' && form.range === '30억 미만';
 
+  const normalizeName = React.useCallback((value) => String(value || '').trim(), []);
+
   const parseAmountValue = React.useCallback((value) => {
     if (!value) return 0;
     const digits = String(value).replace(/[^0-9]/g, '');
@@ -526,7 +528,6 @@ export default function AutoAgreementPage() {
     }
   }, [amounts.base, amounts.estimated, enrichCandidatesWithScores, entry.amount, entry.mode, form.dutyRegions, parseAmountValue, perfectPerformance.amount, resolveMenuInfo]);
 
-  const normalizeName = React.useCallback((value) => String(value || '').trim(), []);
   const normalizeKey = React.useCallback((value) => {
     return normalizeName(value)
       .replace(/주식회사/gi, '')
