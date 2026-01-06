@@ -26,6 +26,35 @@ const RANGE_OPTIONS = {
   조달청: ['50억 미만', '50억~100억', '100억 이상'],
 };
 const ALL_REGIONS = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
+const MENU_MAPPING = {
+  LH: {
+    ownerId: 'LH',
+    fileType: 'eung',
+    ranges: {
+      '50억 미만': 'lh-under50',
+      '50억~100억': 'lh-50to100',
+    },
+  },
+  행안부: {
+    ownerId: 'MOIS',
+    fileType: 'eung',
+    ranges: {
+      '30억 미만': 'mois-under30',
+      '30억~50억': 'mois-30to50',
+      '50억~100억': 'mois-50to100',
+      '100억 이상': 'mois-50to100',
+    },
+  },
+  조달청: {
+    ownerId: 'PPS',
+    fileType: 'eung',
+    ranges: {
+      '50억 미만': 'pps-under50',
+      '50억~100억': 'pps-50to100',
+      '100억 이상': 'pps-50to100',
+    },
+  },
+};
 
 export default function AutoAgreementPage() {
   const handleMenuSelect = React.useCallback((key) => {
@@ -67,6 +96,7 @@ export default function AutoAgreementPage() {
   const [autoSummary, setAutoSummary] = React.useState(null);
   const configFileInputRef = React.useRef(null);
   const [templatePanelOpen, setTemplatePanelOpen] = React.useState(false);
+  const [candidateState, setCandidateState] = React.useState({ loading: false, error: '', items: [] });
 
   const updateForm = (key) => (event) => {
     const value = event?.target ? event.target.value : event;
@@ -74,6 +104,16 @@ export default function AutoAgreementPage() {
   };
 
   const availableRanges = React.useMemo(() => RANGE_OPTIONS[form.owner] || RANGE_OPTIONS.LH, [form.owner]);
+
+  const resolveMenuInfo = React.useCallback(() => {
+    const ownerKey = form.owner;
+    if (!ownerKey) return null;
+    const config = MENU_MAPPING[ownerKey];
+    if (!config) return null;
+    const menuKey = config.ranges?.[form.range];
+    if (!menuKey) return null;
+    return { ownerId: config.ownerId, menuKey, fileType: config.fileType || 'eung' };
+  }, [form.owner, form.range]);
 
   const handleOwnerChange = (event) => {
     const nextOwner = event.target.value;
@@ -318,6 +358,60 @@ export default function AutoAgreementPage() {
     };
   }, [amounts.base, amounts.estimated, entry.amount, entry.mode, form.dutyRegions, form.owner, form.range, parseAmountValue]);
 
+  const handleFetchCandidates = React.useCallback(async () => {
+    const menuInfo = resolveMenuInfo();
+    if (!menuInfo) {
+      window.alert('지원하지 않는 발주처/금액 구간입니다.');
+      return;
+    }
+    if (!window?.electronAPI?.fetchCandidates) {
+      window.alert('후보 조회 API를 사용할 수 없습니다.');
+      return;
+    }
+    const entryAmountValue = entry.mode === 'none' ? 0 : parseAmountValue(entry.amount);
+    const baseAmountValue = parseAmountValue(amounts.base);
+    const estimatedAmount = parseAmountValue(amounts.estimated) || baseAmountValue;
+    const perfectAmount = perfectPerformance.amount;
+    const filterByRegion = form.dutyRegions.length > 0;
+    setCandidateState((prev) => ({ ...prev, loading: true, error: '' }));
+    try {
+      const response = await window.electronAPI.fetchCandidates({
+        ownerId: menuInfo.ownerId,
+        menuKey: menuInfo.menuKey,
+        rangeId: menuInfo.menuKey,
+        fileType: menuInfo.fileType,
+        entryAmount: entryAmountValue,
+        baseAmount: baseAmountValue,
+        estimatedAmount,
+        perfectPerformanceAmount: perfectAmount,
+        dutyRegions: filterByRegion ? form.dutyRegions : [],
+        filterByRegion,
+        excludeSingleBidEligible: false,
+      });
+      if (!response?.success) throw new Error(response?.message || '후보 조회 실패');
+      const items = Array.isArray(response.data) ? response.data : [];
+      setCandidateState({ loading: false, error: '', items });
+    } catch (error) {
+      setCandidateState({ loading: false, error: error?.message || '후보 조회 실패', items: [] });
+      window.alert(`업체 조회 실패: ${error?.message || error}`);
+    }
+  }, [amounts.base, amounts.estimated, entry.amount, entry.mode, form.dutyRegions, parseAmountValue, perfectPerformance.amount, resolveMenuInfo]);
+
+  const aggregatedSingleBidFacts = React.useMemo(() => {
+    if (candidateState.items.length) {
+      const bySingle = candidateState.items.find((item) => item.singleBidEligible && item.singleBidFacts);
+      if (bySingle?.singleBidFacts) return bySingle.singleBidFacts;
+      const withFacts = candidateState.items.find((item) => item.singleBidFacts);
+      if (withFacts?.singleBidFacts) return withFacts.singleBidFacts;
+    }
+    return singleBidPreview.result?.facts || null;
+  }, [candidateState.items, singleBidPreview]);
+
+  const previewFacts = aggregatedSingleBidFacts || {};
+  const anySingleBidEligible = candidateState.items.length
+    ? candidateState.items.some((item) => item.singleBidEligible)
+    : Boolean(singleBidPreview.result?.ok);
+
   const handleAutoArrange = React.useCallback(() => {
     const regionCandidates = form.dutyRegions.length ? form.dutyRegions : Object.keys(companyConfig.regions || {});
     const fallbackRegion = Object.keys(companyConfig.regions || {})[0];
@@ -336,7 +430,7 @@ export default function AutoAgreementPage() {
     const estimatedAmount = singleBidPreview.estimatedAmount;
     const dutyRate = Number(form.dutyRate) || 0;
     const shareBudget = estimatedAmount * (dutyRate / 100);
-    const singleBidEligible = Boolean(singleBidPreview.result?.ok);
+    const singleBidEligible = anySingleBidEligible;
     const context = {
       owner: form.owner,
       estimatedAmount,
@@ -353,9 +447,7 @@ export default function AutoAgreementPage() {
     const groups = buildGroupsFromEntries(filtered, maxMembers);
     setTeams(groups);
     setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
-  }, [buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, singleBidPreview]);
-
-  const previewFacts = singleBidPreview.result?.facts || {};
+  }, [anySingleBidEligible, buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, singleBidPreview]);
 
   return (
     <>
@@ -568,10 +660,27 @@ export default function AutoAgreementPage() {
 
             <div className="panel auto-panel">
               <section className="auto-section-card">
-                <div className="section-header">
+                <div className="section-header" style={{ gap: '8px' }}>
                   <h2 className="section-title">협정 구성</h2>
-                  <button type="button" className="btn-primary" style={{ padding: '6px 16px' }} onClick={handleAutoArrange}>자동 구성</button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn-soft"
+                      style={{ padding: '6px 16px' }}
+                      onClick={handleFetchCandidates}
+                      disabled={candidateState.loading}
+                    >
+                      {candidateState.loading ? '업체 조회 중...' : '업체 조회'}
+                    </button>
+                    <button type="button" className="btn-primary" style={{ padding: '6px 16px' }} onClick={handleAutoArrange}>자동 구성</button>
+                  </div>
                 </div>
+                {candidateState.error && (
+                  <p className="section-help" style={{ color: '#dc2626' }}>{candidateState.error}</p>
+                )}
+                {!candidateState.error && candidateState.items.length > 0 && (
+                  <p className="section-help">후보 {candidateState.items.length}개를 불러왔습니다.</p>
+                )}
                 <div className="auto-inline-cards" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
                   <div className="auto-inline-card">
                     <strong>시평액</strong>
