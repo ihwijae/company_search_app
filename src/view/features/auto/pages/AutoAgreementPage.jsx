@@ -222,11 +222,16 @@ export default function AutoAgreementPage() {
     return digits ? Number(digits) : 0;
   }, []);
 
-  const formatAmountShort = React.useCallback((value) => {
-    if (!value) return '0';
-    if (value >= 100000000) return `${Math.round(value / 100000000)}억`;
-    if (value >= 10000) return `${Math.round(value / 10000)}만`;
-    return value.toLocaleString();
+  const parseNumericValue = React.useCallback((value) => {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (typeof value === 'string') {
+      const cleaned = value.replace(/[^0-9.+-]/g, '').trim();
+      if (!cleaned) return null;
+      const num = Number(cleaned);
+      return Number.isFinite(num) ? num : null;
+    }
+    return null;
   }, []);
 
   const resolveCandidateMetrics = React.useCallback((candidate) => {
@@ -261,6 +266,7 @@ export default function AutoAgreementPage() {
     };
     const resolveScore = () => {
       const candidates = [
+        candidate._autoManagementScore,
         candidate.managementScore,
         candidate.managementTotalScore,
         candidate._agreementManagementScore,
@@ -276,6 +282,51 @@ export default function AutoAgreementPage() {
     };
     return { sipyung, perf5y, management: resolveScore() };
   }, [parseAmountValue]);
+
+  const enrichCandidatesWithScores = React.useCallback(async (items, { ownerId, evaluationAmount, baseAmount }) => {
+    if (!Array.isArray(items) || !items.length) return items;
+    const evalApi = typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null;
+    if (!evalApi || !ownerId) return items;
+    const agencyId = ownerId.toLowerCase();
+    const evalAmount = evaluationAmount && evaluationAmount > 0 ? evaluationAmount : (baseAmount > 0 ? baseAmount : 0);
+    const enriched = [];
+    for (const candidate of items) {
+      const metrics = resolveCandidateMetrics(candidate);
+      const debtRatio = parseNumericValue(candidate.debtRatio ?? candidate['부채비율']);
+      const currentRatio = parseNumericValue(candidate.currentRatio ?? candidate['유동비율']);
+      const bizYears = parseNumericValue(candidate.bizYears ?? candidate['영업기간']);
+      const qualityEval = parseNumericValue(candidate.qualityEval ?? candidate['품질평가']);
+      const creditSource = [candidate.creditGrade, candidate['신용평가'], candidate['신용등급'], candidate.creditNote]
+        .find((value) => value && String(value).trim());
+      const payload = {
+        agencyId,
+        amount: evalAmount,
+        inputs: {
+          perf5y: metrics.perf5y,
+          baseAmount,
+          debtRatio,
+          currentRatio,
+          bizYears,
+          qualityEval,
+          creditGrade: creditSource ? String(creditSource).trim() : undefined,
+        },
+      };
+      try {
+        const response = await evalApi(payload);
+        if (response?.success && response.data?.management) {
+          const managementData = response.data.management;
+          const scoreNumeric = parseNumericValue(managementData.score ?? managementData.rawScore);
+          if (scoreNumeric != null) candidate._autoManagementScore = scoreNumeric;
+          const maxNumeric = parseNumericValue(managementData.meta?.maxScore ?? managementData.maxScore);
+          if (maxNumeric != null) candidate._autoManagementMax = maxNumeric;
+        }
+      } catch (error) {
+        console.warn('[AutoAgreement] formulasEvaluate failed:', error?.message || error);
+      }
+      enriched.push(candidate);
+    }
+    return enriched;
+  }, [parseNumericValue, resolveCandidateMetrics]);
 
   const perfectPerformance = React.useMemo(() => {
     const estimated = parseAmountValue(amounts.estimated);
@@ -338,13 +389,23 @@ export default function AutoAgreementPage() {
     return true;
   }, []);
 
-  const buildGroupsFromEntries = React.useCallback((entries, maxMembers, candidateResolver) => {
+  const buildGroupsFromEntries = React.useCallback((entries, maxMembers, candidateResolver, keyResolver) => {
     const leaders = entries.filter((item) => item.requiredRole === 'leader');
     const flex = entries.filter((item) => item.requiredRole !== 'leader');
     const queue = [...leaders, ...flex];
     const restPool = [...flex];
+    const used = new Set();
     const result = [];
 
+    const getKey = (entry) => {
+      if (!entry) return '';
+      if (typeof keyResolver === 'function') return keyResolver(entry.name);
+      return normalizeName(entry.name);
+    };
+    const markUsed = (entry) => {
+      const key = getKey(entry);
+      if (key) used.add(key);
+    };
     const removeFromPool = (target) => {
       const index = restPool.indexOf(target);
       if (index >= 0) {
@@ -352,16 +413,28 @@ export default function AutoAgreementPage() {
       }
     };
 
+    const fetchNextLeader = () => {
+      while (queue.length) {
+        const candidate = queue.shift();
+        if (!candidate) continue;
+        const key = getKey(candidate);
+        if (key && used.has(key)) continue;
+        removeFromPool(candidate);
+        return candidate;
+      }
+      return null;
+    };
+
     while (queue.length) {
-      const leaderEntry = queue.shift();
+      const leaderEntry = fetchNextLeader();
       if (!leaderEntry) break;
-      removeFromPool(leaderEntry);
       const members = [];
       while (members.length < Math.max(0, maxMembers - 1) && restPool.length) {
         const candidate = restPool.shift();
-        if (candidate) {
-          members.push(candidate);
-        }
+        if (!candidate) continue;
+        const key = getKey(candidate);
+        if (key && used.has(key)) continue;
+        members.push(candidate);
       }
       const leaderDisplay = describeEntry(leaderEntry, candidateResolver);
       const memberDisplays = members.map((member) => describeEntry(member, candidateResolver));
@@ -371,12 +444,14 @@ export default function AutoAgreementPage() {
         members: memberDisplays,
         shares: buildShareSummary(leaderDisplay, memberDisplays, maxMembers),
       });
+      markUsed(leaderEntry);
+      members.forEach(markUsed);
       if (!leaderEntry.requiredRole && !queue.length && restPool.length) {
         queue.push(...restPool.splice(0));
       }
     }
     return result;
-  }, [buildShareSummary, describeEntry]);
+  }, [buildShareSummary, describeEntry, normalizeName]);
 
   const singleBidPreview = React.useMemo(() => {
     const baseAmountValue = parseAmountValue(amounts.base);
@@ -439,12 +514,17 @@ export default function AutoAgreementPage() {
       });
       if (!response?.success) throw new Error(response?.message || '후보 조회 실패');
       const items = Array.isArray(response.data) ? response.data : [];
-      setCandidateState({ loading: false, error: '', items });
+      const enrichedItems = await enrichCandidatesWithScores(items, {
+        ownerId: menuInfo.ownerId,
+        evaluationAmount: estimatedAmount,
+        baseAmount: baseAmountValue,
+      });
+      setCandidateState({ loading: false, error: '', items: enrichedItems });
     } catch (error) {
       setCandidateState({ loading: false, error: error?.message || '후보 조회 실패', items: [] });
       window.alert(`업체 조회 실패: ${error?.message || error}`);
     }
-  }, [amounts.base, amounts.estimated, entry.amount, entry.mode, form.dutyRegions, parseAmountValue, perfectPerformance.amount, resolveMenuInfo]);
+  }, [amounts.base, amounts.estimated, enrichCandidatesWithScores, entry.amount, entry.mode, form.dutyRegions, parseAmountValue, perfectPerformance.amount, resolveMenuInfo]);
 
   const normalizeName = React.useCallback((value) => String(value || '').trim(), []);
   const normalizeKey = React.useCallback((value) => {
@@ -474,17 +554,6 @@ export default function AutoAgreementPage() {
     return candidateMap.get(normalizeKey(entry.name));
   }, [candidateMap, normalizeKey]);
 
-  const aggregatedSingleBidFacts = React.useMemo(() => {
-    if (candidateState.items.length) {
-      const bySingle = candidateState.items.find((item) => item.singleBidEligible && item.singleBidFacts);
-      if (bySingle?.singleBidFacts) return bySingle.singleBidFacts;
-      const withFacts = candidateState.items.find((item) => item.singleBidFacts);
-      if (withFacts?.singleBidFacts) return withFacts.singleBidFacts;
-    }
-    return singleBidPreview.result?.facts || null;
-  }, [candidateState.items, singleBidPreview]);
-
-  const previewFacts = aggregatedSingleBidFacts || {};
   const anySingleBidEligible = candidateState.items.length
     ? candidateState.items.some((item) => item.singleBidEligible)
     : Boolean(singleBidPreview.result?.ok);
@@ -507,7 +576,7 @@ export default function AutoAgreementPage() {
         </div>
       </div>
     );
-  }, [formatAmountShort, resolveCandidateMetrics]);
+  }, [resolveCandidateMetrics]);
 
   const handleAutoArrange = React.useCallback(() => {
     const regionCandidates = form.dutyRegions.length ? form.dutyRegions : Object.keys(companyConfig.regions || {});
@@ -547,10 +616,10 @@ export default function AutoAgreementPage() {
       return;
     }
     const maxMembers = Math.max(1, Number(form.maxMembers) || 3);
-    const groups = buildGroupsFromEntries(filtered, maxMembers, resolveCandidate);
+    const groups = buildGroupsFromEntries(filtered, maxMembers, resolveCandidate, normalizeKey);
     setTeams(groups);
     setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
-  }, [anySingleBidEligible, buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, resolveCandidate, singleBidPreview]);
+  }, [anySingleBidEligible, buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, normalizeKey, resolveCandidate, singleBidPreview]);
 
   return (
     <>
@@ -784,20 +853,6 @@ export default function AutoAgreementPage() {
                 {!candidateState.error && candidateState.items.length > 0 && (
                   <p className="section-help">후보 {candidateState.items.length}개를 불러왔습니다.</p>
                 )}
-                <div className="auto-inline-cards" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-                  <div className="auto-inline-card">
-                    <strong>시평액</strong>
-                    <p>{previewFacts.sipyung > 0 ? formatAmountShort(previewFacts.sipyung) : '데이터 없음'}</p>
-                  </div>
-                  <div className="auto-inline-card">
-                    <strong>5년 실적액</strong>
-                    <p>{previewFacts.perf5y > 0 ? formatAmountShort(previewFacts.perf5y) : '데이터 없음'}</p>
-                  </div>
-                  <div className="auto-inline-card">
-                    <strong>경영점수</strong>
-                    <p>연동 예정</p>
-                  </div>
-                </div>
                 <div className="auto-table-card">
                   <table>
                     <thead>
