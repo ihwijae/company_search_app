@@ -4,6 +4,7 @@ import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import { BASE_ROUTES } from '../../../../shared/navigation.js';
 import AUTO_COMPANY_PRESETS from '../../../../shared/autoCompanyPresets.js';
+import { evaluateSingleBidByConfig } from '../../../../shared/agreements/singleBidEvaluator.js';
 
 const ROUTE_HASHES = {
   search: BASE_ROUTES.search,
@@ -215,6 +216,7 @@ export default function AutoAgreementPage() {
     if (entry.maxEstimatedAmount && context.estimatedAmount > entry.maxEstimatedAmount) return false;
     if (entry.requireDutyShare && !context.usesDutyShare) return false;
     if (entry.minShareAmount && context.shareBudget < entry.minShareAmount) return false;
+    if (entry.allowSolo === false && context.singleBidEligible) return false;
     return true;
   }, []);
 
@@ -270,14 +272,30 @@ export default function AutoAgreementPage() {
       window.alert('해당 지역/공종에 등록된 고정업체가 없습니다.');
       return;
     }
-    const estimatedAmount = parseAmountValue(amounts.estimated) || parseAmountValue(amounts.base);
+    const baseAmountValue = parseAmountValue(amounts.base);
+    const estimatedAmount = parseAmountValue(amounts.estimated) || baseAmountValue;
     const dutyRate = Number(form.dutyRate) || 0;
     const shareBudget = estimatedAmount * (dutyRate / 100);
+    const entryAmountValue = entry.mode === 'none' ? 0 : parseAmountValue(entry.amount);
+    const singleBidEligible = Boolean(evaluateSingleBidByConfig({
+      owner: form.owner,
+      rangeLabel: form.range,
+      estimatedAmount,
+      baseAmount: baseAmountValue,
+      entryAmount: entryAmountValue,
+      dutyRegions: form.dutyRegions,
+      company: {
+        sipyung: estimatedAmount || baseAmountValue,
+        perf5y: estimatedAmount || baseAmountValue,
+        region: form.dutyRegions[0] || '',
+      },
+    })?.ok);
     const context = {
       owner: form.owner,
       estimatedAmount,
       shareBudget,
       usesDutyShare: dutyRate > 0,
+      singleBidEligible,
     };
     const filtered = entries.filter((entry) => isEntryAllowed(entry, context));
     if (!filtered.length) {
@@ -288,7 +306,7 @@ export default function AutoAgreementPage() {
     const groups = buildGroupsFromEntries(filtered, maxMembers);
     setTeams(groups);
     setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
-  }, [amounts.base, amounts.estimated, buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, isEntryAllowed, parseAmountValue]);
+  }, [amounts.base, amounts.estimated, buildGroupsFromEntries, companyConfig.regions, entry.amount, entry.mode, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, parseAmountValue]);
 
   return (
     <>
