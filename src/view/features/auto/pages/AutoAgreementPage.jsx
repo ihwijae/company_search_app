@@ -97,40 +97,6 @@ export default function AutoAgreementPage() {
     });
   };
 
-  const handleAutoArrange = React.useCallback(() => {
-    const regionCandidates = form.dutyRegions.length ? form.dutyRegions : Object.keys(companyConfig.regions || {});
-    const fallbackRegion = Object.keys(companyConfig.regions || {})[0];
-    const regionKey = regionCandidates.find((key) => companyConfig.regions?.[key]) || fallbackRegion;
-    if (!regionKey) {
-      window.alert('고정업체 구성이 존재하지 않습니다. Config를 확인해 주세요.');
-      return;
-    }
-    const regionBlock = companyConfig.regions?.[regionKey];
-    const entries = regionBlock?.[form.industry] || [];
-    if (!entries.length) {
-      window.alert('해당 지역/공종에 등록된 고정업체가 없습니다.');
-      return;
-    }
-    const estimatedAmount = parseAmountValue(amounts.estimated) || parseAmountValue(amounts.base);
-    const dutyRate = Number(form.dutyRate) || 0;
-    const shareBudget = estimatedAmount * (dutyRate / 100);
-    const context = {
-      owner: form.owner,
-      estimatedAmount,
-      shareBudget,
-      usesDutyShare: dutyRate > 0,
-    };
-    const filtered = entries.filter((entry) => isEntryAllowed(entry, context));
-    if (!filtered.length) {
-      window.alert('조건에 맞는 고정업체를 찾지 못했습니다. 금액/발주처 조건을 확인하세요.');
-      return;
-    }
-    const maxMembers = Math.max(1, Number(form.maxMembers) || 3);
-    const groups = buildGroupsFromEntries(filtered, maxMembers);
-    setTeams(groups);
-    setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
-  }, [amounts.base, amounts.estimated, companyConfig, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, isEntryAllowed, parseAmountValue]);
-
   const handleConfigImportRequest = React.useCallback(() => {
     configFileInputRef.current?.click();
   }, []);
@@ -289,6 +255,40 @@ export default function AutoAgreementPage() {
     }
     return result;
   }, [buildShareSummary, describeEntry]);
+
+  const handleAutoArrange = React.useCallback(() => {
+    const regionCandidates = form.dutyRegions.length ? form.dutyRegions : Object.keys(companyConfig.regions || {});
+    const fallbackRegion = Object.keys(companyConfig.regions || {})[0];
+    const regionKey = regionCandidates.find((key) => companyConfig.regions?.[key]) || fallbackRegion;
+    if (!regionKey) {
+      window.alert('고정업체 구성이 존재하지 않습니다. Config를 확인해 주세요.');
+      return;
+    }
+    const regionBlock = companyConfig.regions?.[regionKey];
+    const entries = regionBlock?.[form.industry] || [];
+    if (!entries.length) {
+      window.alert('해당 지역/공종에 등록된 고정업체가 없습니다.');
+      return;
+    }
+    const estimatedAmount = parseAmountValue(amounts.estimated) || parseAmountValue(amounts.base);
+    const dutyRate = Number(form.dutyRate) || 0;
+    const shareBudget = estimatedAmount * (dutyRate / 100);
+    const context = {
+      owner: form.owner,
+      estimatedAmount,
+      shareBudget,
+      usesDutyShare: dutyRate > 0,
+    };
+    const filtered = entries.filter((entry) => isEntryAllowed(entry, context));
+    if (!filtered.length) {
+      window.alert('조건에 맞는 고정업체를 찾지 못했습니다. 금액/발주처 조건을 확인하세요.');
+      return;
+    }
+    const maxMembers = Math.max(1, Number(form.maxMembers) || 3);
+    const groups = buildGroupsFromEntries(filtered, maxMembers);
+    setTeams(groups);
+    setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
+  }, [amounts.base, amounts.estimated, buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, isEntryAllowed, parseAmountValue]);
 
   return (
     <>
