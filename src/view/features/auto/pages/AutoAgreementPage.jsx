@@ -584,6 +584,9 @@ export default function AutoAgreementPage() {
   const renderCompanyInfo = React.useCallback((display) => {
     if (!display) return <div className="auto-company-block">-</div>;
     const metrics = resolveCandidateMetrics(display.candidate);
+    if (metrics.management == null) {
+      console.log('[AutoAgreement] 경영점수 없음 →', display.name, display.candidate);
+    }
     const fmt = (value) => {
       const num = Number(value);
       return Number.isFinite(num) && num > 0 ? num.toLocaleString() : '-';
