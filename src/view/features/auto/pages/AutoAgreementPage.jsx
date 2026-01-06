@@ -129,7 +129,7 @@ export default function AutoAgreementPage() {
     const groups = buildGroupsFromEntries(filtered, maxMembers);
     setTeams(groups);
     setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
-  }, [amounts.base, amounts.estimated, buildGroupsFromEntries, companyConfig, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, isEntryAllowed, parseAmountValue]);
+  }, [amounts.base, amounts.estimated, companyConfig, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, isEntryAllowed, parseAmountValue]);
 
   const handleConfigImportRequest = React.useCallback(() => {
     configFileInputRef.current?.click();
