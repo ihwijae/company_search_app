@@ -453,7 +453,7 @@ export default function AutoAgreementPage() {
       const candidate = candidateMap.get(normalizeName(entry.name));
       const singleFlag = typeof candidate?.singleBidEligible === 'boolean'
         ? candidate.singleBidEligible
-        : anySingleBidEligible;
+        : false;
       return isEntryAllowed(entry, { ...context, singleBidEligible: singleFlag, candidate });
     });
     if (!filtered.length) {
