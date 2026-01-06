@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import { validateAgreement, generateMany } from '../../../../shared/agreements/generator.js';
+import FeedbackProvider, { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 
 const OWNERS = [
   '조달청',
@@ -161,7 +162,7 @@ function EditAgreementModal({ open, value, onChange, onClose, onSave, onSearchLe
   );
 }
 
-function AgreementsPage() {
+function AgreementsPageInner() {
   const initialHash = window.location.hash || '';
   const initialOwner = (() => {
     if (initialHash.includes('/lh/')) return '한국토지주택공사';
@@ -195,6 +196,8 @@ function AgreementsPage() {
   const [editSearchTarget, setEditSearchTarget] = useState(null); // 'leader' or index
   const [editSearchInit, setEditSearchInit] = useState('');
   const [editError, setEditError] = useState('');
+
+  const { notify, confirm } = useFeedback();
 
   // Inline share edit state
   const [inlineIdx, setInlineIdx] = useState(null); // number | null
@@ -266,7 +269,7 @@ function AgreementsPage() {
 
   const saveCurrentAsItem = () => {
     if (!typeKey) {
-      window.alert('공종을 선택해 주세요.');
+      notify({ type: 'warning', message: '공종을 선택해 주세요.' });
       return;
     }
     const noticeFields = deriveNoticeFields(noticeInfo);
@@ -316,6 +319,21 @@ function AgreementsPage() {
     setList(next);
     window.electronAPI.saveAgreements(next).catch(()=>{});
   };
+
+  const handleClearAll = useCallback(async () => {
+    if (list.length === 0) return;
+    const ok = await confirm({
+      title: '전체 삭제',
+      message: '리스트를 전체 삭제하시겠습니까?',
+      confirmText: '삭제',
+      cancelText: '취소',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    const next = [];
+    setList(next);
+    window.electronAPI.saveAgreements(next).catch(()=>{});
+  }, [list, confirm]);
 
   // Open Edit Modal
   const openEdit = (idx) => {
@@ -411,7 +429,7 @@ function AgreementsPage() {
   const copyText = async () => {
     const text = generateMany(list);
     await navigator.clipboard.writeText(text);
-    alert('문자 내용이 클립보드에 복사되었습니다.');
+    notify({ type: 'success', message: '문자 내용이 클립보드에 복사되었습니다.' });
   };
 
   return (
@@ -608,7 +626,7 @@ function AgreementsPage() {
               </ul>
             )}
               <div style={{ marginTop: 12, textAlign: 'left' }}>
-                <button className="no-drag" disabled={list.length===0} onClick={() => { if (list.length===0) return; if (window.confirm('리스트를 전체 삭제하시겠습니까?')) { const next = []; setList(next); window.electronAPI.saveAgreements(next).catch(()=>{}); } }}>전체 삭제</button>
+                <button className="no-drag" disabled={list.length===0} onClick={handleClearAll}>전체 삭제</button>
               </div>
               <div style={{ marginTop: 12, textAlign: 'right' }}>
                 <button className="primary" disabled={list.length===0} onClick={copyText}>문자 생성(복사)</button>
@@ -625,8 +643,8 @@ function AgreementsPage() {
         onChange={setEditData}
         onClose={()=>{ setEditOpen(false); setEditIdx(null); setEditData(null); }}
         onSave={saveEdit}
-        onSearchLeader={(init)=>{ const t = editData?.type || typeKey; if(!t){ window.alert('공고타입을 먼저 선택해 주세요.'); return; } openEditSearch('leader', init); }}
-        onSearchMember={(idx, init)=>{ const t = editData?.type || typeKey; if(!t){ window.alert('공고타입을 먼저 선택해 주세요.'); return; } openEditSearch(idx, init); }}
+        onSearchLeader={(init)=>{ const t = editData?.type || typeKey; if(!t){ notify({ type: 'warning', message: '공고타입을 먼저 선택해 주세요.' }); return; } openEditSearch('leader', init); }}
+        onSearchMember={(idx, init)=>{ const t = editData?.type || typeKey; if(!t){ notify({ type: 'warning', message: '공고타입을 먼저 선택해 주세요.' }); return; } openEditSearch(idx, init); }}
         error={editError}
       />
       <CompanySearchModal open={editSearchOpen} fileType={editData?.type || typeKey} initialQuery={editSearchInit}
@@ -635,4 +653,10 @@ function AgreementsPage() {
   );
 }
 
-export default AgreementsPage;
+export default function AgreementsPage() {
+  return (
+    <FeedbackProvider>
+      <AgreementsPageInner />
+    </FeedbackProvider>
+  );
+}
