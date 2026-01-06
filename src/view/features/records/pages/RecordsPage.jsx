@@ -244,6 +244,8 @@ export default function RecordsPage() {
       window.location.hash = '#/region-search';
     } else if (key === 'agreements-sms') {
       window.location.hash = '#/agreements';
+    } else if (key === 'auto-agreement') {
+      window.location.hash = '#/auto-agreement';
     } else if (key === 'excel-helper') {
       window.location.hash = '#/excel-helper';
     } else if (key === 'settings') {

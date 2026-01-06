@@ -1186,6 +1186,7 @@ function App() {
           if (k === 'agreements') window.location.hash = '#/agreement-board';
           if (k === 'region-search') window.location.hash = '#/region-search';
           if (k === 'agreements-sms') window.location.hash = '#/agreements';
+          if (k === 'auto-agreement') { window.location.hash = '#/auto-agreement'; return; }
           if (k === 'records') window.location.hash = '#/records';
           if (k === 'mail') window.location.hash = '#/mail';
           if (k === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }

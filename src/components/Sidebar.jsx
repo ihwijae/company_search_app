@@ -2,6 +2,7 @@ import React from 'react';
 import excelIcon from '../assets/excel.png';
 import mmsIcon from '../assets/mms.png';
 import emailIcon from '../assets/email.png';
+import autoIcon from '../assets/auto.png';
 
 export default function Sidebar({ active, onSelect, fileStatuses, collapsed = true }) {
   const anyLoaded = !!(fileStatuses?.eung || fileStatuses?.tongsin || fileStatuses?.sobang);
@@ -50,6 +51,17 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
       key: 'agreements',
       label: '협정보드',
       icon: '📋',
+    },
+    {
+      key: 'auto-agreement',
+      label: '협정 자동화',
+      icon: (
+        <img
+          src={autoIcon}
+          alt="협정 자동화"
+          style={{ width: 22, height: 22, objectFit: 'contain' }}
+        />
+      ),
     },
     { key: 'region-search', label: '지역사 찾기', icon: '📍' },
     { key: 'upload', label: '업로드', icon: '📂' },

@@ -7,6 +7,7 @@ import RegionSearchPage from './view/features/agreements/pages/RegionSearchPage.
 import SettingsPage from './view/features/settings/pages/SettingsPage.jsx';
 import RecordsPage from './view/features/records/pages/RecordsPage.jsx';
 import MailAutomationPage from './view/features/mail/pages/MailAutomationPage.jsx';
+import AutoAgreementPage from './view/features/auto/pages/AutoAgreementPage.jsx';
 import LHUnder50Page from './view/features/agreements/pages/LHUnder50Page.jsx';
 import LH50To100Page from './view/features/agreements/pages/LH50To100Page.jsx';
 import PPSUnder50Page from './view/features/agreements/pages/PPSUnder50Page.jsx';
@@ -77,6 +78,9 @@ export default function App() {
       break;
     case '/excel-helper':
       Screen = ExcelHelperPage;
+      break;
+    case '/auto-agreement':
+      Screen = AutoAgreementPage;
       break;
     case '/search':
     default:

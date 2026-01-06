@@ -4,6 +4,7 @@ export const BASE_ROUTES = {
   agreementBoard: '#/agreement-board',
   regionSearch: '#/region-search',
   settings: '#/settings',
+  autoAgreement: '#/auto-agreement',
 };
 
 export const AGREEMENT_GROUPS = [

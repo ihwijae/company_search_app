@@ -527,6 +527,7 @@ export default function AgreementFlowPage({
     if (key === 'agreements') { window.location.hash = BASE_ROUTES.agreementBoard; return; }
     if (key === 'region-search') { window.location.hash = BASE_ROUTES.regionSearch; return; }
     if (key === 'agreements-sms') { window.location.hash = BASE_ROUTES.agreements; return; }
+    if (key === 'auto-agreement') { window.location.hash = BASE_ROUTES.autoAgreement; return; }
     if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
     if (key === 'upload') { window.location.hash = BASE_ROUTES.agreementBoard; return; }
     if (key === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }

@@ -838,6 +838,7 @@ export default function ExcelHelperPage() {
     if (key === 'agreements') { window.location.hash = BASE_ROUTES.agreementBoard; return; }
     if (key === 'region-search') { window.location.hash = BASE_ROUTES.regionSearch; return; }
     if (key === 'agreements-sms') { window.location.hash = BASE_ROUTES.agreements; return; }
+    if (key === 'auto-agreement') { window.location.hash = BASE_ROUTES.autoAgreement; return; }
     if (key === 'records') { window.location.hash = '#/records'; return; }
     if (key === 'mail') { window.location.hash = '#/mail'; return; }
     if (key === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }
