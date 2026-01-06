@@ -230,28 +230,37 @@ export default function AutoAgreementPage() {
   }, []);
 
   const resolveCandidateMetrics = React.useCallback((candidate) => {
-    const pickAmount = (keys = [], fallbackKey = null) => {
-      if (!candidate) return 0;
-      for (const key of keys) {
+    if (!candidate) return { sipyung: 0, perf5y: 0, management: null };
+    const pickAmount = (primaryKeys = [], fallbackKeys = []) => {
+      for (const key of primaryKeys) {
         if (candidate[key] == null) continue;
         const amount = parseAmountValue(candidate[key]);
         if (amount > 0) return amount;
       }
-      if (fallbackKey && candidate.singleBidFacts && candidate.singleBidFacts[fallbackKey] != null) {
-        const amount = parseAmountValue(candidate.singleBidFacts[fallbackKey]);
-        if (amount > 0) return amount;
+      if (candidate.singleBidFacts) {
+        for (const key of fallbackKeys) {
+          if (candidate.singleBidFacts[key] == null) continue;
+          const amount = parseAmountValue(candidate.singleBidFacts[key]);
+          if (amount > 0) return amount;
+        }
       }
       return 0;
     };
-    const sipyung = pickAmount(['_sipyung', 'sipyung', 'rating'], 'sipyung');
-    const perf5y = pickAmount(['_performance5y', 'performance5y', 'perf5y'], 'perf5y');
+    const sipyung = pickAmount(
+      ['_sipyung', 'sipyung', 'rating', '시평', '시평액', '시평액(원)', '기초금액'],
+      ['sipyung']
+    );
+    const perf5y = pickAmount(
+      ['_performance5y', 'performance5y', 'perf5y', '5년 실적', '5년실적', '최근5년실적'],
+      ['perf5y', 'base']
+    );
     const resolveScore = () => {
-      if (!candidate) return null;
       const candidates = [
         candidate.managementScore,
         candidate.managementTotalScore,
         candidate._agreementManagementScore,
         candidate._score,
+        candidate.score,
       ];
       for (const value of candidates) {
         if (value == null || value === '') continue;
