@@ -53,6 +53,8 @@ export default function AutoAgreementPage() {
     bid: '',
     ratioBase: '',
     schedule: '',
+    bidRate: '',
+    adjustmentRate: '',
   });
   const [entry, setEntry] = React.useState({ amount: '', mode: 'ratio' });
 
@@ -172,6 +174,7 @@ export default function AutoAgreementPage() {
 
   const ratioBaseDisabled = form.owner !== 'LH';
   const bidDisabled = form.owner === 'LH' || (form.owner === '행안부' && form.range === '30억 미만');
+  const bidRateDisabled = form.owner === '행안부' && form.range === '30억 미만';
 
   const parseAmountValue = React.useCallback((value) => {
     if (!value) return 0;
@@ -185,6 +188,34 @@ export default function AutoAgreementPage() {
     if (value >= 10000) return `${Math.round(value / 10000)}만`;
     return value.toLocaleString();
   }, []);
+
+  const perfectPerformance = React.useMemo(() => {
+    const estimated = parseAmountValue(amounts.estimated);
+    const base = parseAmountValue(amounts.base);
+    if (form.owner === '행안부') {
+      if (form.range === '30억 미만' || form.range === '30억~50억') {
+        const amount = estimated > 0 ? Math.round(estimated * 0.8) : 0;
+        return { amount, basis: '추정가격 × 80%' };
+      }
+      if (form.range === '50억~100억' || form.range === '100억 이상') {
+        const amount = estimated > 0 ? Math.round(estimated * 1.7) : 0;
+        return { amount, basis: '추정가격 × 1.7배' };
+      }
+    }
+    if (form.owner === '조달청') {
+      return base > 0 ? { amount: base, basis: '기초금액 × 1배' } : { amount: 0, basis: '' };
+    }
+    if (form.owner === 'LH') {
+      return base > 0 ? { amount: base, basis: '기초금액 × 1배' } : { amount: 0, basis: '' };
+    }
+    return { amount: 0, basis: '' };
+  }, [amounts.base, amounts.estimated, form.owner, form.range, parseAmountValue]);
+
+  const perfectPerformanceDisplay = React.useMemo(() => {
+    if (!perfectPerformance.amount || perfectPerformance.amount <= 0) return '';
+    const base = perfectPerformance.amount.toLocaleString();
+    return perfectPerformance.basis ? `${base} (${perfectPerformance.basis})` : base;
+  }, [perfectPerformance]);
 
   const describeEntry = React.useCallback((entry) => {
     if (!entry) return '';
@@ -258,6 +289,35 @@ export default function AutoAgreementPage() {
     return result;
   }, [buildShareSummary, describeEntry]);
 
+  const singleBidPreview = React.useMemo(() => {
+    const baseAmountValue = parseAmountValue(amounts.base);
+    const estimatedAmount = parseAmountValue(amounts.estimated) || baseAmountValue;
+    const entryAmountValue = entry.mode === 'none' ? 0 : parseAmountValue(entry.amount);
+    if (!form.owner) {
+      return {
+        estimatedAmount,
+        baseAmountValue,
+        entryAmountValue,
+        result: null,
+      };
+    }
+    const evaluation = evaluateSingleBidByConfig({
+      owner: form.owner,
+      rangeLabel: form.range,
+      estimatedAmount,
+      baseAmount: baseAmountValue,
+      entryAmount: entryAmountValue,
+      dutyRegions: form.dutyRegions,
+      company: { region: form.dutyRegions[0] || '' },
+    });
+    return {
+      estimatedAmount,
+      baseAmountValue,
+      entryAmountValue,
+      result: evaluation,
+    };
+  }, [amounts.base, amounts.estimated, entry.amount, entry.mode, form.dutyRegions, form.owner, form.range, parseAmountValue]);
+
   const handleAutoArrange = React.useCallback(() => {
     const regionCandidates = form.dutyRegions.length ? form.dutyRegions : Object.keys(companyConfig.regions || {});
     const fallbackRegion = Object.keys(companyConfig.regions || {})[0];
@@ -272,24 +332,11 @@ export default function AutoAgreementPage() {
       window.alert('해당 지역/공종에 등록된 고정업체가 없습니다.');
       return;
     }
-    const baseAmountValue = parseAmountValue(amounts.base);
-    const estimatedAmount = parseAmountValue(amounts.estimated) || baseAmountValue;
+    const baseAmountValue = singleBidPreview.baseAmountValue;
+    const estimatedAmount = singleBidPreview.estimatedAmount;
     const dutyRate = Number(form.dutyRate) || 0;
     const shareBudget = estimatedAmount * (dutyRate / 100);
-    const entryAmountValue = entry.mode === 'none' ? 0 : parseAmountValue(entry.amount);
-    const singleBidEligible = Boolean(evaluateSingleBidByConfig({
-      owner: form.owner,
-      rangeLabel: form.range,
-      estimatedAmount,
-      baseAmount: baseAmountValue,
-      entryAmount: entryAmountValue,
-      dutyRegions: form.dutyRegions,
-      company: {
-        sipyung: estimatedAmount || baseAmountValue,
-        perf5y: estimatedAmount || baseAmountValue,
-        region: form.dutyRegions[0] || '',
-      },
-    })?.ok);
+    const singleBidEligible = Boolean(singleBidPreview.result?.ok);
     const context = {
       owner: form.owner,
       estimatedAmount,
@@ -306,7 +353,9 @@ export default function AutoAgreementPage() {
     const groups = buildGroupsFromEntries(filtered, maxMembers);
     setTeams(groups);
     setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
-  }, [amounts.base, amounts.estimated, buildGroupsFromEntries, companyConfig.regions, entry.amount, entry.mode, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, parseAmountValue]);
+  }, [buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, singleBidPreview]);
+
+  const previewFacts = singleBidPreview.result?.facts || {};
 
   return (
     <>
@@ -432,6 +481,34 @@ export default function AutoAgreementPage() {
                     <span>개찰/일정</span>
                     <input type="datetime-local" value={amounts.schedule} onChange={updateAmount('schedule')} />
                   </label>
+                  {!bidRateDisabled && (
+                    <label className="auto-field">
+                      <span>투찰율(%)</span>
+                      <input
+                        type="number"
+                        step="0.001"
+                        value={amounts.adjustmentRate}
+                        onChange={updateAmount('adjustmentRate')}
+                        placeholder="예: 86.745"
+                      />
+                    </label>
+                  )}
+                  {!bidRateDisabled && (
+                    <label className="auto-field">
+                      <span>사정율(%)</span>
+                      <input
+                        type="number"
+                        step="0.001"
+                        value={amounts.bidRate}
+                        onChange={updateAmount('bidRate')}
+                        placeholder="예: 101.4"
+                      />
+                    </label>
+                  )}
+                  <label className="auto-field" style={{ gridColumn: '1 / -1' }}>
+                    <span>실적만점금액</span>
+                    <input value={perfectPerformanceDisplay} readOnly placeholder="금액 입력 시 자동 계산" />
+                  </label>
                 </div>
               </section>
               <section className="auto-section-card">
@@ -494,6 +571,20 @@ export default function AutoAgreementPage() {
                 <div className="section-header">
                   <h2 className="section-title">협정 구성</h2>
                   <button type="button" className="btn-primary" style={{ padding: '6px 16px' }} onClick={handleAutoArrange}>자동 구성</button>
+                </div>
+                <div className="auto-inline-cards" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                  <div className="auto-inline-card">
+                    <strong>시평액</strong>
+                    <p>{previewFacts.sipyung > 0 ? formatAmountShort(previewFacts.sipyung) : '데이터 없음'}</p>
+                  </div>
+                  <div className="auto-inline-card">
+                    <strong>5년 실적액</strong>
+                    <p>{previewFacts.perf5y > 0 ? formatAmountShort(previewFacts.perf5y) : '데이터 없음'}</p>
+                  </div>
+                  <div className="auto-inline-card">
+                    <strong>경영점수</strong>
+                    <p>연동 예정</p>
+                  </div>
                 </div>
                 <div className="auto-table-card">
                   <table>
