@@ -399,15 +399,27 @@ export default function AutoAgreementPage() {
   }, [amounts.base, amounts.estimated, entry.amount, entry.mode, form.dutyRegions, parseAmountValue, perfectPerformance.amount, resolveMenuInfo]);
 
   const normalizeName = React.useCallback((value) => String(value || '').trim(), []);
+  const normalizeKey = React.useCallback((value) => {
+    return normalizeName(value)
+      .replace(/\s+/g, '')
+      .replace(/주식회사/gi, '')
+      .replace(/합자회사/gi, '')
+      .replace(/\(주\)/gi, '')
+      .replace(/\(합\)/gi, '')
+      .replace(/㈜/g, '')
+      .replace(/㈔/g, '')
+      .replace(/\(유\)/gi, '')
+      .replace(/\(사\)/gi, '');
+  }, [normalizeName]);
 
   const candidateMap = React.useMemo(() => {
     const map = new Map();
     candidateState.items.forEach((item) => {
-      const key = normalizeName(item.name || item.id);
+      const key = normalizeKey(item.name || item.id);
       if (key && !map.has(key)) map.set(key, item);
     });
     return map;
-  }, [candidateState.items, normalizeName]);
+  }, [candidateState.items, normalizeKey]);
 
   const aggregatedSingleBidFacts = React.useMemo(() => {
     if (candidateState.items.length) {
@@ -451,7 +463,7 @@ export default function AutoAgreementPage() {
       singleBidEligible,
     };
     const filtered = entries.filter((entry) => {
-      const candidate = candidateMap.get(normalizeName(entry.name));
+      const candidate = candidateMap.get(normalizeKey(entry.name));
       const singleFlag = typeof candidate?.singleBidEligible === 'boolean'
         ? candidate.singleBidEligible
         : false;
@@ -465,7 +477,7 @@ export default function AutoAgreementPage() {
     const groups = buildGroupsFromEntries(filtered, maxMembers);
     setTeams(groups);
     setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
-  }, [anySingleBidEligible, buildGroupsFromEntries, candidateMap, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, normalizeName, singleBidPreview]);
+  }, [anySingleBidEligible, buildGroupsFromEntries, candidateMap, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, normalizeKey, singleBidPreview]);
 
   return (
     <>
