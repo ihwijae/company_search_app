@@ -6,6 +6,7 @@ const AUTO_COMPANY_PRESETS = {
         { name: '이엘케이', allowSolo: false },
         { name: '엠라이테크', allowSolo: false },
         { name: '신우이엔아이', allowSolo: false },
+        { name: '동해전기공사', allowSolo: false },
         {
           name: '대한종합산전',
           allowSolo: false,
