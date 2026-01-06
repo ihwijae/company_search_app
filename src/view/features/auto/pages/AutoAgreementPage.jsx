@@ -53,11 +53,6 @@ export default function AutoAgreementPage() {
     schedule: '',
   });
 
-  const [templatePaths, setTemplatePaths] = React.useState({
-    templateDir: 'C:/templates/협정',
-    mappingFile: 'C:/templates/mapping.json',
-  });
-
   const [sheetName, setSheetName] = React.useState('[포천2공공하수처리시설]');
   const [regionPickerOpen, setRegionPickerOpen] = React.useState(false);
   const [regionFilter, setRegionFilter] = React.useState('');
@@ -260,7 +255,34 @@ export default function AutoAgreementPage() {
                   </label>
                 </div>
               </section>
+              <section className="auto-section-card">
+                <h2 className="section-title">시트 정보</h2>
+                <label className="auto-field">
+                  <span>시트 이름</span>
+                  <input value={sheetName} onChange={(event) => setSheetName(event.target.value)} />
+                </label>
+                <div className="auto-summary">
+                  <div>
+                    <strong>공고 요약</strong>
+                    <p>{form.noticeTitle || '공고명을 입력하세요'}</p>
+                  </div>
+                  <div>
+                    <strong>공종/의무지분</strong>
+                    <p>{form.industry} · {form.dutyRate}%</p>
+                  </div>
+                  <div>
+                    <strong>의무지역</strong>
+                    <p>{form.dutyRegions.length ? form.dutyRegions.join(', ') : '미선택'}</p>
+                  </div>
+                </div>
+                <div className="auto-action-group">
+                  <button type="button" className="btn-primary" onClick={handleCreateSheet}>시트 생성 & 값 입력</button>
+                  <button type="button" className="btn-soft" onClick={() => handleConfigAction('검증')}>실행 전 검증</button>
+                </div>
+              </section>
+            </div>
 
+            <div className="panel auto-panel">
               <section className="auto-section-card">
                 <div className="section-header">
                   <h2 className="section-title">협정 구성</h2>
@@ -289,54 +311,23 @@ export default function AutoAgreementPage() {
                   </table>
                 </div>
               </section>
-            </div>
 
-            <div className="panel auto-panel">
               <section className="auto-section-card">
                 <h2 className="section-title">템플릿 / 매핑</h2>
-                <div className="auto-field">
-                  <span>템플릿 폴더</span>
-                  <div className="auto-path-row">
-                    <input value={templatePaths.templateDir} onChange={(event) => setTemplatePaths((prev) => ({ ...prev, templateDir: event.target.value }))} />
-                    <button type="button" className="btn-soft" onClick={() => handleConfigAction('경로 선택')}>찾기</button>
+                <p className="section-help">템플릿은 고정 폴더를 사용합니다. 설정 변경이 필요하면 개발측에 요청하세요.</p>
+                <div className="auto-inline-cards" style={{ gridTemplateColumns: '1fr' }}>
+                  <div className="auto-inline-card">
+                    <strong>템플릿 폴더</strong>
+                    <p>C:/templates/협정</p>
+                  </div>
+                  <div className="auto-inline-card">
+                    <strong>셀 매핑 파일</strong>
+                    <p>C:/templates/mapping.json</p>
                   </div>
                 </div>
-                <div className="auto-field">
-                  <span>셀 매핑 파일</span>
-                  <div className="auto-path-row">
-                    <input value={templatePaths.mappingFile} onChange={(event) => setTemplatePaths((prev) => ({ ...prev, mappingFile: event.target.value }))} />
-                    <button type="button" className="btn-soft" onClick={() => handleConfigAction('매핑 선택')}>찾기</button>
-                  </div>
-                </div>
-                <div className="auto-config-actions">
+                <div className="auto-config-actions" style={{ marginTop: '8px' }}>
                   <button type="button" className="btn-chip" onClick={() => handleConfigAction('Config Import')}>Config 가져오기</button>
                   <button type="button" className="btn-chip" onClick={() => handleConfigAction('Config Export')}>Config 내보내기</button>
-                </div>
-              </section>
-
-              <section className="auto-section-card">
-                <h2 className="section-title">시트 정보</h2>
-                <label className="auto-field">
-                  <span>시트 이름</span>
-                  <input value={sheetName} onChange={(event) => setSheetName(event.target.value)} />
-                </label>
-                <div className="auto-summary">
-                  <div>
-                    <strong>공고 요약</strong>
-                    <p>{form.noticeTitle || '공고명을 입력하세요'}</p>
-                  </div>
-                  <div>
-                    <strong>공종/의무지분</strong>
-                    <p>{form.industry} · {form.dutyRate}%</p>
-                  </div>
-                  <div>
-                    <strong>의무지역</strong>
-                    <p>{form.dutyRegions.length ? form.dutyRegions.join(', ') : '미선택'}</p>
-                  </div>
-                </div>
-                <div className="auto-action-group">
-                  <button type="button" className="btn-primary" onClick={handleCreateSheet}>시트 생성 & 값 입력</button>
-                  <button type="button" className="btn-soft" onClick={() => handleConfigAction('검증')}>실행 전 검증</button>
                 </div>
               </section>
             </div>
