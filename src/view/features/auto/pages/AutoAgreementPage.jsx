@@ -288,6 +288,7 @@ export default function AutoAgreementPage() {
     if (entry.requireDutyShare && !context.usesDutyShare) return false;
     if (entry.minShareAmount && context.shareBudget < entry.minShareAmount) return false;
     if (entry.allowSolo === false && context.singleBidEligible) return false;
+    if (context.candidate?.singleBidEligible && entry.allowSingleBid !== true) return false;
     return true;
   }, []);
 
