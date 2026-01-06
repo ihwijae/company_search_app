@@ -73,7 +73,7 @@ export default function AutoAgreementPage() {
     industry: industries[0],
     dutyRate: '49',
     dutyRegions: ['경기'],
-    maxMembers: '3',
+    maxMembers: '2',
   });
 
   const [amounts, setAmounts] = React.useState({
@@ -229,6 +229,40 @@ export default function AutoAgreementPage() {
     return value.toLocaleString();
   }, []);
 
+  const resolveCandidateMetrics = React.useCallback((candidate) => {
+    const pickAmount = (keys = [], fallbackKey = null) => {
+      if (!candidate) return 0;
+      for (const key of keys) {
+        if (candidate[key] == null) continue;
+        const amount = parseAmountValue(candidate[key]);
+        if (amount > 0) return amount;
+      }
+      if (fallbackKey && candidate.singleBidFacts && candidate.singleBidFacts[fallbackKey] != null) {
+        const amount = parseAmountValue(candidate.singleBidFacts[fallbackKey]);
+        if (amount > 0) return amount;
+      }
+      return 0;
+    };
+    const sipyung = pickAmount(['_sipyung', 'sipyung', 'rating'], 'sipyung');
+    const perf5y = pickAmount(['_performance5y', 'performance5y', 'perf5y'], 'perf5y');
+    const resolveScore = () => {
+      if (!candidate) return null;
+      const candidates = [
+        candidate.managementScore,
+        candidate.managementTotalScore,
+        candidate._agreementManagementScore,
+        candidate._score,
+      ];
+      for (const value of candidates) {
+        if (value == null || value === '') continue;
+        const num = Number(value);
+        if (Number.isFinite(num)) return num;
+      }
+      return null;
+    };
+    return { sipyung, perf5y, management: resolveScore() };
+  }, [parseAmountValue]);
+
   const perfectPerformance = React.useMemo(() => {
     const estimated = parseAmountValue(amounts.estimated);
     const base = parseAmountValue(amounts.base);
@@ -257,21 +291,19 @@ export default function AutoAgreementPage() {
     return perfectPerformance.basis ? `${base} (${perfectPerformance.basis})` : base;
   }, [perfectPerformance]);
 
-  const describeEntry = React.useCallback((entry) => {
-    if (!entry) return '';
-    const tags = [];
-    if (entry.requiredRole === 'leader') tags.push('대표사 지정');
-    if (entry.requiredRole === 'member') tags.push('구성사');
-    if (entry.allowSolo === false) tags.push('단독제외');
-    if (entry.disallowedOwners?.length) tags.push(`${entry.disallowedOwners.join(', ')} 제외`);
-    if (entry.minEstimatedAmount) tags.push(`추정 ≥ ${formatAmountShort(entry.minEstimatedAmount)}`);
-    if (entry.minShareAmount) tags.push(`지분 ≥ ${formatAmountShort(entry.minShareAmount)}`);
-    if (entry.notes) tags.push(entry.notes);
-    return tags.length ? `${entry.name} (${tags.join(', ')})` : entry.name;
-  }, [formatAmountShort]);
+  const describeEntry = React.useCallback((entry, candidateResolver) => {
+    if (!entry) return null;
+    const candidate = candidateResolver ? candidateResolver(entry) : null;
+    const name = (candidate?.name && String(candidate.name).trim()) || entry.name;
+    return {
+      name,
+      candidate,
+      entry,
+    };
+  }, []);
 
   const buildShareSummary = React.useCallback((leaderEntry, memberEntries, maxMembers) => {
-    const baseLeaderShare = leaderEntry?.defaultShare ?? (maxMembers > 1 ? 51 : 100);
+    const baseLeaderShare = leaderEntry?.entry?.defaultShare ?? leaderEntry?.defaultShare ?? (maxMembers > 1 ? 51 : 100);
     const leaderShare = Math.min(100, Math.max(0, baseLeaderShare));
     const remaining = Math.max(0, 100 - leaderShare);
     if (!memberEntries.length) return `${leaderShare}%`;
@@ -292,7 +324,7 @@ export default function AutoAgreementPage() {
     return true;
   }, []);
 
-  const buildGroupsFromEntries = React.useCallback((entries, maxMembers) => {
+  const buildGroupsFromEntries = React.useCallback((entries, maxMembers, candidateResolver) => {
     const leaders = entries.filter((item) => item.requiredRole === 'leader');
     const flex = entries.filter((item) => item.requiredRole !== 'leader');
     const queue = [...leaders, ...flex];
@@ -317,11 +349,13 @@ export default function AutoAgreementPage() {
           members.push(candidate);
         }
       }
+      const leaderDisplay = describeEntry(leaderEntry, candidateResolver);
+      const memberDisplays = members.map((member) => describeEntry(member, candidateResolver));
       result.push({
         id: result.length + 1,
-        leader: describeEntry(leaderEntry),
-        members: members.map(describeEntry),
-        shares: buildShareSummary(leaderEntry, members, maxMembers),
+        leader: leaderDisplay,
+        members: memberDisplays,
+        shares: buildShareSummary(leaderDisplay, memberDisplays, maxMembers),
       });
       if (!leaderEntry.requiredRole && !queue.length && restPool.length) {
         queue.push(...restPool.splice(0));
@@ -421,6 +455,11 @@ export default function AutoAgreementPage() {
     return map;
   }, [candidateState.items, normalizeKey]);
 
+  const resolveCandidate = React.useCallback((entry) => {
+    if (!entry) return null;
+    return candidateMap.get(normalizeKey(entry.name));
+  }, [candidateMap, normalizeKey]);
+
   const aggregatedSingleBidFacts = React.useMemo(() => {
     if (candidateState.items.length) {
       const bySingle = candidateState.items.find((item) => item.singleBidEligible && item.singleBidFacts);
@@ -435,6 +474,23 @@ export default function AutoAgreementPage() {
   const anySingleBidEligible = candidateState.items.length
     ? candidateState.items.some((item) => item.singleBidEligible)
     : Boolean(singleBidPreview.result?.ok);
+
+  const renderCompanyInfo = React.useCallback((display) => {
+    if (!display) return <div className="auto-company-block">-</div>;
+    const metrics = resolveCandidateMetrics(display.candidate);
+    const fmt = (value) => (value && value > 0 ? formatAmountShort(value) : '-');
+    const mgmt = metrics.management != null ? `${metrics.management.toFixed(2)}점` : '-';
+    return (
+      <div className="auto-company-block">
+        <div className="auto-company-name">{display.name || '-'}</div>
+        <div className="auto-company-metrics">
+          <span>시평 {fmt(metrics.sipyung)}</span>
+          <span>5년실적 {fmt(metrics.perf5y)}</span>
+          <span>경영 {mgmt}</span>
+        </div>
+      </div>
+    );
+  }, [formatAmountShort, resolveCandidateMetrics]);
 
   const handleAutoArrange = React.useCallback(() => {
     const regionCandidates = form.dutyRegions.length ? form.dutyRegions : Object.keys(companyConfig.regions || {});
@@ -463,7 +519,7 @@ export default function AutoAgreementPage() {
       singleBidEligible,
     };
     const filtered = entries.filter((entry) => {
-      const candidate = candidateMap.get(normalizeKey(entry.name));
+      const candidate = resolveCandidate(entry);
       const singleFlag = typeof candidate?.singleBidEligible === 'boolean'
         ? candidate.singleBidEligible
         : false;
@@ -474,10 +530,10 @@ export default function AutoAgreementPage() {
       return;
     }
     const maxMembers = Math.max(1, Number(form.maxMembers) || 3);
-    const groups = buildGroupsFromEntries(filtered, maxMembers);
+    const groups = buildGroupsFromEntries(filtered, maxMembers, resolveCandidate);
     setTeams(groups);
     setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
-  }, [anySingleBidEligible, buildGroupsFromEntries, candidateMap, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, normalizeKey, singleBidPreview]);
+  }, [anySingleBidEligible, buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, resolveCandidate, singleBidPreview]);
 
   return (
     <>
@@ -744,11 +800,11 @@ export default function AutoAgreementPage() {
                         teams.map((team) => (
                           <tr key={team.id}>
                             <td>#{team.id}</td>
-                            <td>{team.leader}</td>
+                            <td>{renderCompanyInfo(team.leader)}</td>
                             <td>
                               {team.members.length
                                 ? team.members.map((member, idx) => (
-                                    <div key={`${team.id}-${idx}`}>{member}</div>
+                                    <div key={`${team.id}-${idx}`}>{renderCompanyInfo(member)}</div>
                                   ))
                                 : '-'}
                             </td>

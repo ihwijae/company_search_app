@@ -958,6 +958,22 @@ button.primary:hover { background: var(--accent-2); }
   font-size: 13px;
   color: #475569;
 }
+.auto-company-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.auto-company-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+.auto-company-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: #475569;
+}
 .auto-toggle-group {
   display: flex;
   gap: 6px;
