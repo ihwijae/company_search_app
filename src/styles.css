@@ -889,6 +889,12 @@ button.primary:hover { background: var(--accent-2); }
   padding: 8px 10px;
   font-size: 14px;
 }
+.auto-field input:disabled,
+.auto-field select:disabled {
+  background: #f3f4f6;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
 .auto-chips {
   display: flex;
   flex-wrap: wrap;
