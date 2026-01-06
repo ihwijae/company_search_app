@@ -397,6 +397,17 @@ export default function AutoAgreementPage() {
     }
   }, [amounts.base, amounts.estimated, entry.amount, entry.mode, form.dutyRegions, parseAmountValue, perfectPerformance.amount, resolveMenuInfo]);
 
+  const normalizeName = React.useCallback((value) => String(value || '').trim(), []);
+
+  const candidateMap = React.useMemo(() => {
+    const map = new Map();
+    candidateState.items.forEach((item) => {
+      const key = normalizeName(item.name || item.id);
+      if (key && !map.has(key)) map.set(key, item);
+    });
+    return map;
+  }, [candidateState.items, normalizeName]);
+
   const aggregatedSingleBidFacts = React.useMemo(() => {
     if (candidateState.items.length) {
       const bySingle = candidateState.items.find((item) => item.singleBidEligible && item.singleBidFacts);
@@ -438,7 +449,13 @@ export default function AutoAgreementPage() {
       usesDutyShare: dutyRate > 0,
       singleBidEligible,
     };
-    const filtered = entries.filter((entry) => isEntryAllowed(entry, context));
+    const filtered = entries.filter((entry) => {
+      const candidate = candidateMap.get(normalizeName(entry.name));
+      const singleFlag = typeof candidate?.singleBidEligible === 'boolean'
+        ? candidate.singleBidEligible
+        : anySingleBidEligible;
+      return isEntryAllowed(entry, { ...context, singleBidEligible: singleFlag, candidate });
+    });
     if (!filtered.length) {
       window.alert('조건에 맞는 고정업체를 찾지 못했습니다. 금액/발주처 조건을 확인하세요.');
       return;
@@ -447,7 +464,7 @@ export default function AutoAgreementPage() {
     const groups = buildGroupsFromEntries(filtered, maxMembers);
     setTeams(groups);
     setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
-  }, [anySingleBidEligible, buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, singleBidPreview]);
+  }, [anySingleBidEligible, buildGroupsFromEntries, candidateMap, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, normalizeName, singleBidPreview]);
 
   return (
     <>
