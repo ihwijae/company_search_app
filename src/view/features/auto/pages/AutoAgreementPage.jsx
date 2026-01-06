@@ -322,6 +322,17 @@ export default function AutoAgreementPage() {
           const maxNumeric = parseNumericValue(managementData.meta?.maxScore ?? managementData.maxScore);
           if (maxNumeric != null) candidate._autoManagementMax = maxNumeric;
         }
+        if (!candidate._autoManagementScore) {
+          console.log('[AutoAgreement] management score missing for:', candidate.name, {
+            debtRatio,
+            currentRatio,
+            bizYears,
+            qualityEval,
+            creditSource,
+            perf5y: metrics.perf5y,
+            payload,
+          });
+        }
       } catch (error) {
         console.warn('[AutoAgreement] formulasEvaluate failed:', error?.message || error);
       }
