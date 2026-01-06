@@ -18,8 +18,12 @@ const ROUTE_HASHES = {
 
 const owners = ['LH', '행안부', '조달청'];
 const industries = ['전기', '통신', '소방'];
-const ranges = ['50억 미만', '50억~100억', '100억 이상'];
-const regionOptions = ['경기', '서울', '인천', '강원'];
+const RANGE_OPTIONS = {
+  LH: ['50억 미만', '50억~100억'],
+  행안부: ['30억 미만', '30억~50억', '50억~100억', '100억 이상'],
+  조달청: ['50억 미만', '50억~100억', '100억 이상'],
+};
+const ALL_REGIONS = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 
 export default function AutoAgreementPage() {
   const handleMenuSelect = React.useCallback((key) => {
@@ -32,7 +36,7 @@ export default function AutoAgreementPage() {
 
   const [form, setForm] = React.useState({
     owner: owners[0],
-    range: ranges[0],
+    range: RANGE_OPTIONS[owners[0]][0],
     noticeTitle: '',
     noticeNo: '',
     industry: industries[0],
@@ -55,6 +59,8 @@ export default function AutoAgreementPage() {
   });
 
   const [sheetName, setSheetName] = React.useState('[포천2공공하수처리시설]');
+  const [regionPickerOpen, setRegionPickerOpen] = React.useState(false);
+  const [regionFilter, setRegionFilter] = React.useState('');
 
   const [teams, setTeams] = React.useState([
     { id: 1, leader: '대표사 A', members: ['구성1', '구성2'], shares: ['51', '29', '20'] },
@@ -64,6 +70,18 @@ export default function AutoAgreementPage() {
   const updateForm = (key) => (event) => {
     const value = event?.target ? event.target.value : event;
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const availableRanges = React.useMemo(() => RANGE_OPTIONS[form.owner] || RANGE_OPTIONS.LH, [form.owner]);
+
+  const handleOwnerChange = (event) => {
+    const nextOwner = event.target.value;
+    const options = RANGE_OPTIONS[nextOwner] || RANGE_OPTIONS.LH;
+    setForm((prev) => ({
+      ...prev,
+      owner: nextOwner,
+      range: options.includes(prev.range) ? prev.range : options[0],
+    }));
   };
 
   const updateAmount = (key) => (event) => {
@@ -93,6 +111,37 @@ export default function AutoAgreementPage() {
     alert('시트 생성 & 값 입력은 추후 연동됩니다.');
   };
 
+  const combinedNoticeValue = React.useMemo(() => {
+    return [form.noticeNo, form.noticeTitle].filter(Boolean).join(' ').trim();
+  }, [form.noticeNo, form.noticeTitle]);
+
+  const handleCombinedNoticeChange = (event) => {
+    const raw = event.target.value || '';
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      setForm((prev) => ({ ...prev, noticeNo: '', noticeTitle: '' }));
+      return;
+    }
+    const firstSpace = trimmed.indexOf(' ');
+    if (firstSpace <= 0) {
+      setForm((prev) => ({ ...prev, noticeNo: trimmed, noticeTitle: '' }));
+    } else {
+      const noPart = trimmed.slice(0, firstSpace).trim();
+      const titlePart = trimmed.slice(firstSpace + 1).trim();
+      setForm((prev) => ({ ...prev, noticeNo: noPart, noticeTitle: titlePart }));
+    }
+  };
+
+  const filteredRegions = React.useMemo(() => {
+    const keyword = regionFilter.trim().toLowerCase();
+    if (!keyword) return ALL_REGIONS;
+    return ALL_REGIONS.filter((region) => region.toLowerCase().includes(keyword));
+  }, [regionFilter]);
+
+  const toggleRegionPanel = () => {
+    setRegionPickerOpen((prev) => !prev);
+  };
+
   return (
     <div className="app-shell">
       <Sidebar active="auto-agreement" onSelect={handleMenuSelect} collapsed={true} />
@@ -114,23 +163,19 @@ export default function AutoAgreementPage() {
                 <div className="auto-field-grid">
                   <label className="auto-field">
                     <span>발주처</span>
-                    <select value={form.owner} onChange={updateForm('owner')}>
+                    <select value={form.owner} onChange={handleOwnerChange}>
                       {owners.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
                     </select>
                   </label>
                   <label className="auto-field">
                     <span>금액 구간</span>
                     <select value={form.range} onChange={updateForm('range')}>
-                      {ranges.map((range) => <option key={range} value={range}>{range}</option>)}
+                      {availableRanges.map((range) => <option key={range} value={range}>{range}</option>)}
                     </select>
                   </label>
-                  <label className="auto-field">
-                    <span>공고번호</span>
-                    <input value={form.noticeNo} onChange={updateForm('noticeNo')} placeholder="예: R25BK..." />
-                  </label>
-                  <label className="auto-field">
-                    <span>공고명</span>
-                    <input value={form.noticeTitle} onChange={updateForm('noticeTitle')} placeholder="예: 포천2 공공하수..." />
+                  <label className="auto-field" style={{ gridColumn: 'span 2' }}>
+                    <span>공고번호 + 공고명</span>
+                    <input value={combinedNoticeValue} onChange={handleCombinedNoticeChange} placeholder="예: R25BK... 포천2 공공하수..." />
                   </label>
                   <label className="auto-field">
                     <span>공종</span>
@@ -148,20 +193,41 @@ export default function AutoAgreementPage() {
                     <span>의무지분(%)</span>
                     <input value={form.dutyRate} onChange={updateForm('dutyRate')} />
                   </label>
-                  <div className="auto-field">
+                  <div className="auto-field" style={{ gridColumn: 'span 2' }}>
                     <span>의무지역</span>
-                    <div className="auto-chips">
-                      {regionOptions.map((region) => (
-                        <button
-                          key={region}
-                          type="button"
-                          className={`btn-chip small ${form.dutyRegions.includes(region) ? 'active' : ''}`}
-                          onClick={() => toggleDutyRegion(region)}
-                        >
-                          {region}
-                        </button>
+                    <div className="auto-region-display">
+                      {form.dutyRegions.length === 0 && <span className="auto-region-placeholder">선택된 지역 없음</span>}
+                      {form.dutyRegions.map((region) => (
+                        <span key={region} className="auto-region-chip">{region}</span>
                       ))}
+                      <div className="auto-region-actions">
+                        {form.dutyRegions.length > 0 && (
+                          <button type="button" className="btn-soft" onClick={() => setForm((prev) => ({ ...prev, dutyRegions: [] }))}>초기화</button>
+                        )}
+                        <button type="button" className="btn-soft" onClick={toggleRegionPanel}>{regionPickerOpen ? '닫기' : '지역 선택'}</button>
+                      </div>
                     </div>
+                    {regionPickerOpen && (
+                      <div className="auto-region-panel">
+                        <input
+                          value={regionFilter}
+                          onChange={(event) => setRegionFilter(event.target.value)}
+                          placeholder="지역명 검색"
+                        />
+                        <div className="auto-region-panel-list">
+                          {filteredRegions.map((region) => (
+                            <label key={region}>
+                              <input
+                                type="checkbox"
+                                checked={form.dutyRegions.includes(region)}
+                                onChange={() => toggleDutyRegion(region)}
+                              />
+                              <span>{region}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </section>
