@@ -3,6 +3,7 @@ import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import { BASE_ROUTES } from '../../../../shared/navigation.js';
+import AUTO_COMPANY_PRESETS from '../../../../shared/autoCompanyPresets.js';
 
 const ROUTE_HASHES = {
   search: BASE_ROUTES.search,
@@ -58,10 +59,10 @@ export default function AutoAgreementPage() {
   const [regionPickerOpen, setRegionPickerOpen] = React.useState(false);
   const [regionFilter, setRegionFilter] = React.useState('');
 
-  const [teams, setTeams] = React.useState([
-    { id: 1, leader: '대표사 A', members: ['구성1', '구성2'], shares: ['51', '29', '20'] },
-    { id: 2, leader: '대표사 B', members: ['구성1', '구성2'], shares: ['60', '20', '20'] },
-  ]);
+  const [companyConfig, setCompanyConfig] = React.useState(AUTO_COMPANY_PRESETS);
+  const [teams, setTeams] = React.useState([]);
+  const [autoSummary, setAutoSummary] = React.useState(null);
+  const configFileInputRef = React.useRef(null);
   const [templatePanelOpen, setTemplatePanelOpen] = React.useState(false);
 
   const updateForm = (key) => (event) => {
@@ -96,9 +97,72 @@ export default function AutoAgreementPage() {
     });
   };
 
-  const handleAutoArrange = () => {
-    alert('자동 구성 로직은 추후 연결됩니다.');
-  };
+  const handleAutoArrange = React.useCallback(() => {
+    const regionCandidates = form.dutyRegions.length ? form.dutyRegions : Object.keys(companyConfig.regions || {});
+    const fallbackRegion = Object.keys(companyConfig.regions || {})[0];
+    const regionKey = regionCandidates.find((key) => companyConfig.regions?.[key]) || fallbackRegion;
+    if (!regionKey) {
+      window.alert('고정업체 구성이 존재하지 않습니다. Config를 확인해 주세요.');
+      return;
+    }
+    const regionBlock = companyConfig.regions?.[regionKey];
+    const entries = regionBlock?.[form.industry] || [];
+    if (!entries.length) {
+      window.alert('해당 지역/공종에 등록된 고정업체가 없습니다.');
+      return;
+    }
+    const estimatedAmount = parseAmountValue(amounts.estimated) || parseAmountValue(amounts.base);
+    const dutyRate = Number(form.dutyRate) || 0;
+    const shareBudget = estimatedAmount * (dutyRate / 100);
+    const context = {
+      owner: form.owner,
+      estimatedAmount,
+      shareBudget,
+      usesDutyShare: dutyRate > 0,
+    };
+    const filtered = entries.filter((entry) => isEntryAllowed(entry, context));
+    if (!filtered.length) {
+      window.alert('조건에 맞는 고정업체를 찾지 못했습니다. 금액/발주처 조건을 확인하세요.');
+      return;
+    }
+    const maxMembers = Math.max(1, Number(form.maxMembers) || 3);
+    const groups = buildGroupsFromEntries(filtered, maxMembers);
+    setTeams(groups);
+    setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
+  }, [amounts.base, amounts.estimated, buildGroupsFromEntries, companyConfig, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, isEntryAllowed, parseAmountValue]);
+
+  const handleConfigImportRequest = React.useCallback(() => {
+    configFileInputRef.current?.click();
+  }, []);
+
+  const handleConfigFileChange = React.useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!parsed || typeof parsed !== 'object' || !parsed.regions) {
+        throw new Error('regions 필드가 없습니다.');
+      }
+      setCompanyConfig(parsed);
+      window.alert('Config를 불러왔습니다.');
+    } catch (error) {
+      window.alert(`Config 가져오기 실패: ${error.message}`);
+    } finally {
+      event.target.value = '';
+    }
+  }, []);
+
+  const handleConfigExport = React.useCallback(() => {
+    const data = JSON.stringify(companyConfig, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `auto-company-config-${companyConfig.version || 'custom'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [companyConfig]);
 
   const handleConfigAction = (type) => {
     alert(`${type} 기능은 추후 연결됩니다.`);
@@ -142,14 +206,106 @@ export default function AutoAgreementPage() {
   const ratioBaseDisabled = form.owner !== 'LH';
   const bidDisabled = form.owner === 'LH' || (form.owner === '행안부' && form.range === '30억 미만');
 
+  const parseAmountValue = React.useCallback((value) => {
+    if (!value) return 0;
+    const digits = String(value).replace(/[^0-9]/g, '');
+    return digits ? Number(digits) : 0;
+  }, []);
+
+  const formatAmountShort = React.useCallback((value) => {
+    if (!value) return '0';
+    if (value >= 100000000) return `${Math.round(value / 100000000)}억`;
+    if (value >= 10000) return `${Math.round(value / 10000)}만`;
+    return value.toLocaleString();
+  }, []);
+
+  const describeEntry = React.useCallback((entry) => {
+    if (!entry) return '';
+    const tags = [];
+    if (entry.requiredRole === 'leader') tags.push('대표사 지정');
+    if (entry.requiredRole === 'member') tags.push('구성사');
+    if (entry.allowSolo === false) tags.push('단독제외');
+    if (entry.disallowedOwners?.length) tags.push(`${entry.disallowedOwners.join(', ')} 제외`);
+    if (entry.minEstimatedAmount) tags.push(`추정 ≥ ${formatAmountShort(entry.minEstimatedAmount)}`);
+    if (entry.minShareAmount) tags.push(`지분 ≥ ${formatAmountShort(entry.minShareAmount)}`);
+    if (entry.notes) tags.push(entry.notes);
+    return tags.length ? `${entry.name} (${tags.join(', ')})` : entry.name;
+  }, [formatAmountShort]);
+
+  const buildShareSummary = React.useCallback((leaderEntry, memberEntries, maxMembers) => {
+    const baseLeaderShare = leaderEntry?.defaultShare ?? (maxMembers > 1 ? 51 : 100);
+    const leaderShare = Math.min(100, Math.max(0, baseLeaderShare));
+    const remaining = Math.max(0, 100 - leaderShare);
+    if (!memberEntries.length) return `${leaderShare}%`;
+    const perMember = memberEntries.map(() => Math.floor(remaining / memberEntries.length));
+    return [leaderShare, ...perMember].join(' / ');
+  }, []);
+
+  const isEntryAllowed = React.useCallback((entry, context) => {
+    if (!entry) return false;
+    if (entry.allowedOwners && !entry.allowedOwners.includes(context.owner)) return false;
+    if (entry.disallowedOwners && entry.disallowedOwners.includes(context.owner)) return false;
+    if (entry.minEstimatedAmount && context.estimatedAmount < entry.minEstimatedAmount) return false;
+    if (entry.maxEstimatedAmount && context.estimatedAmount > entry.maxEstimatedAmount) return false;
+    if (entry.requireDutyShare && !context.usesDutyShare) return false;
+    if (entry.minShareAmount && context.shareBudget < entry.minShareAmount) return false;
+    return true;
+  }, []);
+
+  const buildGroupsFromEntries = React.useCallback((entries, maxMembers) => {
+    const leaders = entries.filter((item) => item.requiredRole === 'leader');
+    const flex = entries.filter((item) => item.requiredRole !== 'leader');
+    const queue = [...leaders, ...flex];
+    const restPool = [...flex];
+    const result = [];
+
+    const removeFromPool = (target) => {
+      const index = restPool.indexOf(target);
+      if (index >= 0) {
+        restPool.splice(index, 1);
+      }
+    };
+
+    while (queue.length) {
+      const leaderEntry = queue.shift();
+      if (!leaderEntry) break;
+      removeFromPool(leaderEntry);
+      const members = [];
+      while (members.length < Math.max(0, maxMembers - 1) && restPool.length) {
+        const candidate = restPool.shift();
+        if (candidate) {
+          members.push(candidate);
+        }
+      }
+      result.push({
+        id: result.length + 1,
+        leader: describeEntry(leaderEntry),
+        members: members.map(describeEntry),
+        shares: buildShareSummary(leaderEntry, members, maxMembers),
+      });
+      if (!leaderEntry.requiredRole && !queue.length && restPool.length) {
+        queue.push(...restPool.splice(0));
+      }
+    }
+    return result;
+  }, [buildShareSummary, describeEntry]);
+
   return (
-    <div className="app-shell">
-      <Sidebar active="auto-agreement" onSelect={handleMenuSelect} collapsed={true} />
-      <div className="main">
-        <div className="title-drag" />
-        <div className="topbar" />
-        <div className="stage">
-          <div className="content auto-agreement-layout">
+    <>
+      <input
+        type="file"
+        accept="application/json"
+        ref={configFileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleConfigFileChange}
+      />
+      <div className="app-shell">
+        <Sidebar active="auto-agreement" onSelect={handleMenuSelect} collapsed={true} />
+        <div className="main">
+          <div className="title-drag" />
+          <div className="topbar" />
+          <div className="stage">
+            <div className="content auto-agreement-layout">
             <div className="panel auto-panel">
               <div className="panel-heading">
                 <h1 className="main-title" style={{ marginTop: 0 }}>협정 자동화</h1>
@@ -332,17 +488,32 @@ export default function AutoAgreementPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {teams.map((team) => (
-                        <tr key={team.id}>
-                          <td>#{team.id}</td>
-                          <td>{team.leader}</td>
-                          <td>{team.members.join(', ')}</td>
-                          <td>{team.shares.join(' / ')}</td>
+                      {teams.length === 0 ? (
+                        <tr className="excel-board-row empty">
+                          <td colSpan={4}>자동 구성 결과가 없습니다. 조건을 확인하고 다시 실행하세요.</td>
                         </tr>
-                      ))}
+                      ) : (
+                        teams.map((team) => (
+                          <tr key={team.id}>
+                            <td>#{team.id}</td>
+                            <td>{team.leader}</td>
+                            <td>
+                              {team.members.length
+                                ? team.members.map((member, idx) => (
+                                    <div key={`${team.id}-${idx}`}>{member}</div>
+                                  ))
+                                : '-'}
+                            </td>
+                            <td>{team.shares || '-'}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
+                {autoSummary && (
+                  <p className="section-help">{autoSummary.region} · {autoSummary.industry} 기준 {autoSummary.total}개 업체를 반영했습니다.</p>
+                )}
               </section>
 
               <section className="auto-section-card">
@@ -363,9 +534,19 @@ export default function AutoAgreementPage() {
                         <p>C:/templates/mapping.json</p>
                       </div>
                     </div>
+                    <div className="auto-inline-cards" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                      <div className="auto-inline-card">
+                        <strong>Config 버전</strong>
+                        <p>{companyConfig.version || 'custom'}</p>
+                      </div>
+                      <div className="auto-inline-card">
+                        <strong>관리 지역</strong>
+                        <p>{Object.keys(companyConfig.regions || {}).length}곳</p>
+                      </div>
+                    </div>
                     <div className="auto-config-actions" style={{ marginTop: '8px' }}>
-                      <button type="button" className="btn-chip" onClick={() => handleConfigAction('Config Import')}>Config 가져오기</button>
-                      <button type="button" className="btn-chip" onClick={() => handleConfigAction('Config Export')}>Config 내보내기</button>
+                      <button type="button" className="btn-chip" onClick={handleConfigImportRequest}>Config 가져오기</button>
+                      <button type="button" className="btn-chip" onClick={handleConfigExport}>Config 내보내기</button>
                     </div>
                   </>
                 )}
@@ -390,7 +571,7 @@ export default function AutoAgreementPage() {
                 </div>
                 <div className="auto-inline-card">
                   <strong>Config 버전</strong>
-                  <p>v1.0 (2025-01)</p>
+                  <p>{companyConfig.version || 'custom'}</p>
                 </div>
                 <div className="auto-inline-card">
                   <strong>마지막 저장</strong>
@@ -402,5 +583,6 @@ export default function AutoAgreementPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
