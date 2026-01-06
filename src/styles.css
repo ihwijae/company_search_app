@@ -847,7 +847,7 @@ button.primary:hover { background: var(--accent-2); }
 
 /* --- Auto Agreement workspace --- */
 .auto-agreement-layout {
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 .auto-panel {
