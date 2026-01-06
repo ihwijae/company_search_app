@@ -139,6 +139,9 @@ export default function AutoAgreementPage() {
     setRegionPickerOpen((prev) => !prev);
   };
 
+  const ratioBaseDisabled = form.owner !== 'LH';
+  const bidDisabled = form.owner === 'LH' || (form.owner === '행안부' && form.range === '30억 미만');
+
   return (
     <div className="app-shell">
       <Sidebar active="auto-agreement" onSelect={handleMenuSelect} collapsed={true} />
@@ -401,5 +404,3 @@ export default function AutoAgreementPage() {
     </div>
   );
 }
-  const ratioBaseDisabled = form.owner !== 'LH';
-  const bidDisabled = form.owner === 'LH' || (form.owner === '행안부' && form.range === '30억 미만');
