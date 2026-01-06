@@ -391,7 +391,7 @@ export default function AutoAgreementPage() {
     return true;
   }, []);
 
-  const buildGroupsFromEntries = React.useCallback((entries, maxMembers, candidateResolver, keyResolver) => {
+  const buildGroupsFromEntries = React.useCallback((entries, maxMembers, candidateResolver, entryKeyResolver) => {
     const leaders = entries.filter((item) => item.requiredRole === 'leader');
     const flex = entries.filter((item) => item.requiredRole !== 'leader');
     const queue = [...leaders, ...flex];
@@ -401,7 +401,7 @@ export default function AutoAgreementPage() {
 
     const getKey = (entry) => {
       if (!entry) return '';
-      if (typeof keyResolver === 'function') return keyResolver(entry.name);
+      if (typeof entryKeyResolver === 'function') return entryKeyResolver(entry);
       return normalizeName(entry.name);
     };
     const markUsed = (entry) => {
@@ -530,30 +530,41 @@ export default function AutoAgreementPage() {
 
   const normalizeKey = React.useCallback((value) => {
     return normalizeName(value)
-      .replace(/주식회사/gi, '')
-      .replace(/합자회사/gi, '')
-      .replace(/\(주\)/gi, '')
-      .replace(/\(합\)/gi, '')
-      .replace(/\(유\)/gi, '')
-      .replace(/\(사\)/gi, '')
-      .replace(/㈜/g, '')
-      .replace(/㈔/g, '')
-      .replace(/[\s·.,\-\/]/g, '');
+      .replace(/주식회사|유한회사|합자회사|재단법인|사단법인/gi, '')
+      .replace(/\(주\)|\(유\)|\(합\)|\(재\)|\(사\)|㈜|㈔/gi, '')
+      .replace(/[\s·.,\-\/]/g, '')
+      .toLowerCase();
   }, [normalizeName]);
 
-  const candidateMap = React.useMemo(() => {
-    const map = new Map();
+  const normalizeBizNo = React.useCallback((value) => String(value || '').replace(/[^0-9]/g, ''), []);
+
+  const candidateLookup = React.useMemo(() => {
+    const byName = new Map();
+    const byBiz = new Map();
     candidateState.items.forEach((item) => {
-      const key = normalizeKey(item.name || item.id);
-      if (key && !map.has(key)) map.set(key, item);
+      const nameKey = normalizeKey(item.name || item.id);
+      if (nameKey && !byName.has(nameKey)) byName.set(nameKey, item);
+      const bizKey = normalizeBizNo(item.bizNo || item['사업자번호']);
+      if (bizKey && !byBiz.has(bizKey)) byBiz.set(bizKey, item);
     });
-    return map;
-  }, [candidateState.items, normalizeKey]);
+    return { byName, byBiz };
+  }, [candidateState.items, normalizeBizNo, normalizeKey]);
 
   const resolveCandidate = React.useCallback((entry) => {
     if (!entry) return null;
-    return candidateMap.get(normalizeKey(entry.name));
-  }, [candidateMap, normalizeKey]);
+    const bizKey = normalizeBizNo(entry.bizNo);
+    if (bizKey && candidateLookup.byBiz.has(bizKey)) return candidateLookup.byBiz.get(bizKey);
+    const nameKey = normalizeKey(entry.name);
+    if (nameKey && candidateLookup.byName.has(nameKey)) return candidateLookup.byName.get(nameKey);
+    return null;
+  }, [candidateLookup, normalizeBizNo, normalizeKey]);
+
+  const getEntryKey = React.useCallback((entry) => {
+    if (!entry) return '';
+    const bizKey = normalizeBizNo(entry.bizNo);
+    if (bizKey) return bizKey;
+    return normalizeKey(entry.name);
+  }, [normalizeBizNo, normalizeKey]);
 
   const anySingleBidEligible = candidateState.items.length
     ? candidateState.items.some((item) => item.singleBidEligible)
@@ -617,10 +628,10 @@ export default function AutoAgreementPage() {
       return;
     }
     const maxMembers = Math.max(1, Number(form.maxMembers) || 3);
-    const groups = buildGroupsFromEntries(filtered, maxMembers, resolveCandidate, normalizeKey);
+    const groups = buildGroupsFromEntries(filtered, maxMembers, resolveCandidate, getEntryKey);
     setTeams(groups);
     setAutoSummary({ region: regionKey, industry: form.industry, total: filtered.length });
-  }, [anySingleBidEligible, buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, isEntryAllowed, normalizeKey, resolveCandidate, singleBidPreview]);
+  }, [anySingleBidEligible, buildGroupsFromEntries, companyConfig.regions, form.dutyRate, form.dutyRegions, form.industry, form.maxMembers, form.owner, form.range, getEntryKey, isEntryAllowed, resolveCandidate, singleBidPreview]);
 
   return (
     <>
