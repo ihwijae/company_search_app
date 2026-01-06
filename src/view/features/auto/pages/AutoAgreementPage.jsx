@@ -52,6 +52,7 @@ export default function AutoAgreementPage() {
     ratioBase: '',
     schedule: '',
   });
+  const [entry, setEntry] = React.useState({ amount: '', mode: 'ratio' });
 
   const [sheetName, setSheetName] = React.useState('[포천2공공하수처리시설]');
   const [regionPickerOpen, setRegionPickerOpen] = React.useState(false);
@@ -244,17 +245,45 @@ export default function AutoAgreementPage() {
                   </label>
                   <label className="auto-field">
                     <span>투찰금액</span>
-                    <input value={amounts.bid} onChange={updateAmount('bid')} placeholder="원" />
+                    <input value={amounts.bid} onChange={updateAmount('bid')} placeholder="원" disabled={bidDisabled} />
                   </label>
                   <label className="auto-field">
                     <span>시공비율 기준</span>
-                    <input value={amounts.ratioBase} onChange={updateAmount('ratioBase')} placeholder="원" />
+                    <input value={amounts.ratioBase} onChange={updateAmount('ratioBase')} placeholder="원" disabled={ratioBaseDisabled} />
                   </label>
                   <label className="auto-field">
                     <span>개찰/일정</span>
                     <input type="datetime-local" value={amounts.schedule} onChange={updateAmount('schedule')} />
                   </label>
                 </div>
+              </section>
+              <section className="auto-section-card">
+                <div className="section-header">
+                  <h2 className="section-title">참가자격</h2>
+                  <div className="auto-toggle-group">
+                    {['ratio', 'sum', 'none'].map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={`btn-chip small ${entry.mode === mode ? 'active' : ''}`}
+                        onClick={() => setEntry((prev) => ({ ...prev, mode }))}
+                      >
+                        {mode === 'ratio' ? '비율제' : mode === 'sum' ? '단순합산제' : '없음'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {entry.mode === 'none' ? (
+                  <div className="auto-field">
+                    <span>참가자격 금액</span>
+                    <div className="auto-placeholder">참가자격 없음</div>
+                  </div>
+                ) : (
+                  <label className="auto-field">
+                    <span>참가자격 금액</span>
+                    <input value={entry.amount} onChange={(event) => setEntry({ ...entry, amount: event.target.value })} placeholder="원" />
+                  </label>
+                )}
               </section>
               <section className="auto-section-card">
                 <h2 className="section-title">시트 정보</h2>
@@ -372,3 +401,5 @@ export default function AutoAgreementPage() {
     </div>
   );
 }
+  const ratioBaseDisabled = form.owner !== 'LH';
+  const bidDisabled = form.owner === 'LH' || (form.owner === '행안부' && form.range === '30억 미만');
