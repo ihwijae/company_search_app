@@ -61,6 +61,7 @@ export default function AutoAgreementPage() {
     { id: 1, leader: '대표사 A', members: ['구성1', '구성2'], shares: ['51', '29', '20'] },
     { id: 2, leader: '대표사 B', members: ['구성1', '구성2'], shares: ['60', '20', '20'] },
   ]);
+  const [templatePanelOpen, setTemplatePanelOpen] = React.useState(false);
 
   const updateForm = (key) => (event) => {
     const value = event?.target ? event.target.value : event;
@@ -313,22 +314,29 @@ export default function AutoAgreementPage() {
               </section>
 
               <section className="auto-section-card">
-                <h2 className="section-title">템플릿 / 매핑</h2>
-                <p className="section-help">템플릿은 고정 폴더를 사용합니다. 설정 변경이 필요하면 개발측에 요청하세요.</p>
-                <div className="auto-inline-cards" style={{ gridTemplateColumns: '1fr' }}>
-                  <div className="auto-inline-card">
-                    <strong>템플릿 폴더</strong>
-                    <p>C:/templates/협정</p>
-                  </div>
-                  <div className="auto-inline-card">
-                    <strong>셀 매핑 파일</strong>
-                    <p>C:/templates/mapping.json</p>
-                  </div>
+                <div className="section-header">
+                  <h2 className="section-title">템플릿 / 매핑</h2>
+                  <button type="button" className="btn-soft" onClick={() => setTemplatePanelOpen((prev) => !prev)}>{templatePanelOpen ? '접기' : '열기'}</button>
                 </div>
-                <div className="auto-config-actions" style={{ marginTop: '8px' }}>
-                  <button type="button" className="btn-chip" onClick={() => handleConfigAction('Config Import')}>Config 가져오기</button>
-                  <button type="button" className="btn-chip" onClick={() => handleConfigAction('Config Export')}>Config 내보내기</button>
-                </div>
+                {templatePanelOpen && (
+                  <>
+                    <p className="section-help">템플릿은 고정 폴더를 사용합니다. 설정 변경이 필요하면 개발측에 요청하세요.</p>
+                    <div className="auto-inline-cards" style={{ gridTemplateColumns: '1fr' }}>
+                      <div className="auto-inline-card">
+                        <strong>템플릿 폴더</strong>
+                        <p>C:/templates/협정</p>
+                      </div>
+                      <div className="auto-inline-card">
+                        <strong>셀 매핑 파일</strong>
+                        <p>C:/templates/mapping.json</p>
+                      </div>
+                    </div>
+                    <div className="auto-config-actions" style={{ marginTop: '8px' }}>
+                      <button type="button" className="btn-chip" onClick={() => handleConfigAction('Config Import')}>Config 가져오기</button>
+                      <button type="button" className="btn-chip" onClick={() => handleConfigAction('Config Export')}>Config 내보내기</button>
+                    </div>
+                  </>
+                )}
               </section>
             </div>
 
