@@ -26,6 +26,7 @@ const normalizeVendorName = (name = '') => name
   .replace(/[\s]/g, '')
   .replace(/^[㈜\(주\)\(합\)\(유\)\(재\)]+/gi, '')
   .replace(/^주식회사|^유한회사|^합자회사|^재단법인|^사단법인/gi, '')
+  .replace(/(㈜|\(주\)|주식회사|\(합\)|합자회사|\(유\)|유한회사|\(재\)|재단법인|\(사\)|사단법인)$/gi, '')
   .toLowerCase();
 const trimValue = (value) => (typeof value === 'string' ? value.trim() : '');
 const formatEmailAddress = (name, email) => {
