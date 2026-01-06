@@ -1,28 +1,30 @@
-const formulasDoc = require('../formulas.defaults.json');
+import formulasDoc from '../formulas.defaults.json';
 
-const OWNER_ID_MAP = {
-  lh: 'lh',
-  'lh공사': 'lh',
-  '한국토지주택공사': 'lh',
-  '한국토지주택공사(LH)': 'lh',
-  'land&housing': 'lh',
-  'l.h.': 'lh',
-  '행안부': 'mois',
-  '행정안전부': 'mois',
-  mois: 'mois',
-  pps: 'pps',
-  '조달청': 'pps',
-  'public procurement service': 'pps',
-};
+const OWNER_ID_MAP = new Map([
+  ['lh', 'lh'],
+  ['lh공사', 'lh'],
+  ['한국토지주택공사', 'lh'],
+  ['한국토지주택공사(lh)', 'lh'],
+  ['land&housing', 'lh'],
+  ['l.h.', 'lh'],
+  ['행안부', 'mois'],
+  ['행정안전부', 'mois'],
+  ['mois', 'mois'],
+  ['pps', 'pps'],
+  ['조달청', 'pps'],
+  ['public procurement service', 'pps'],
+]);
 
 const PERFORMANCE_OVERRIDES = {
   mois: {
-    '30억 미만': { ratio: 0.8, basis: 'estimatedAmount', note: '행안부 30억 미만 = 추정 x80%' },
-    '30억~50억': { ratio: 0.8, basis: 'estimatedAmount', note: '행안부 30~50억 = 추정 x80%' },
-    '50억~100억': { ratio: 1.7, basis: 'estimatedAmount', note: '행안부 50~100억 = 추정 x1.7' },
-    '100억 이상': { ratio: 1.7, basis: 'estimatedAmount', note: '행안부 100억 이상 = 추정 x1.7 (기본 추정)' },
+    '30억 미만': { ratio: 0.8, basis: 'estimatedAmount' },
+    '30억~50억': { ratio: 0.8, basis: 'estimatedAmount' },
+    '50억~100억': { ratio: 1.7, basis: 'estimatedAmount' },
+    '100억 이상': { ratio: 1.7, basis: 'estimatedAmount' },
   },
 };
+
+const KOREAN_UNIT = 100000000;
 
 function toNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
@@ -35,21 +37,18 @@ function toNumber(value) {
   }
   if (typeof value === 'boolean') return value ? 1 : 0;
   if (value == null) return 0;
-  if (typeof value === 'object') {
-    if (value.value != null) return toNumber(value.value);
-  }
+  if (typeof value === 'object' && 'value' in value) return toNumber(value.value);
   return 0;
 }
 
 function normalizeOwnerId(owner) {
   const raw = String(owner || '').trim().toLowerCase();
-  if (!raw) return null;
-  return OWNER_ID_MAP[raw] || null;
+  return OWNER_ID_MAP.get(raw) || null;
 }
 
 function getAgency(ownerId) {
   if (!ownerId) return null;
-  const agencies = Array.isArray(formulasDoc && formulasDoc.agencies) ? formulasDoc.agencies : [];
+  const agencies = Array.isArray(formulasDoc?.agencies) ? formulasDoc.agencies : [];
   return agencies.find((agency) => String(agency.id || '').toLowerCase() === ownerId) || null;
 }
 
@@ -60,7 +59,7 @@ function parseKoreanAmount(text) {
   if (!match) return 0;
   const base = Number(match[1]);
   if (!Number.isFinite(base)) return 0;
-  return base * 100000000;
+  return base * KOREAN_UNIT;
 }
 
 function parseRangeAmountHint(ownerId, rangeLabel) {
@@ -87,21 +86,21 @@ function parseRangeAmountHint(ownerId, rangeLabel) {
 }
 
 function selectTierForAmount(agency, amount) {
-  const tiersRaw = Array.isArray(agency && agency.tiers) ? agency.tiers.slice() : [];
+  const tiersRaw = Array.isArray(agency?.tiers) ? agency.tiers.slice() : [];
   if (!tiersRaw.length) return { tier: null, effectiveAmount: toNumber(amount) };
-  const sorted = tiersRaw.sort((a, b) => toNumber(a && a.minAmount) - toNumber(b && b.minAmount));
+  const sorted = tiersRaw.sort((a, b) => toNumber(a?.minAmount) - toNumber(b?.minAmount));
   let effectiveAmount = toNumber(amount);
   if (!(effectiveAmount > 0)) {
-    const firstMin = toNumber(sorted[0] && sorted[0].minAmount);
+    const firstMin = toNumber(sorted[0]?.minAmount);
     effectiveAmount = firstMin > 0 ? firstMin : 0;
   }
 
   const findTier = (value) => {
     if (!(value > 0)) return null;
     return sorted.find((tier) => {
-      const min = toNumber(tier && tier.minAmount);
-      const maxRaw = tier && tier.maxAmount;
-      const maxVal = maxRaw === null || maxRaw === undefined || maxRaw === '' ? Infinity : toNumber(maxRaw);
+      const min = toNumber(tier?.minAmount);
+      const rawMax = tier?.maxAmount;
+      const maxVal = rawMax === null || rawMax === undefined || rawMax === '' ? Infinity : toNumber(rawMax);
       const lower = Number.isFinite(min) ? min : 0;
       const upper = Number.isFinite(maxVal) && maxVal > 0 ? maxVal : Infinity;
       return value >= lower && value < upper;
@@ -119,7 +118,7 @@ function derivePerformanceRatio(perfConfig) {
   const thresholds = Array.isArray(perfConfig.thresholds) ? perfConfig.thresholds : [];
   if (perfConfig.mode !== 'ratio-bands' || !thresholds.length) return null;
   const parsed = thresholds
-    .map((row) => ({ ratio: toNumber(row && row.minRatio), score: toNumber(row && row.score) }))
+    .map((row) => ({ ratio: toNumber(row?.minRatio), score: toNumber(row?.score) }))
     .filter((row) => Number.isFinite(row.ratio) && Number.isFinite(row.score))
     .sort((a, b) => a.ratio - b.ratio);
   if (!parsed.length) return null;
@@ -147,10 +146,8 @@ function resolvePerformanceTarget({ ownerId, rangeLabel, perfConfig, baseAmount,
   const ratioFromConfig = derivePerformanceRatio(perfConfig);
   const base = toNumber(baseAmount);
   const estimated = toNumber(estimatedAmount);
-  const resolvedRatio = override && override.ratio != null
-    ? override.ratio
-    : (Number.isFinite(ratioFromConfig) ? ratioFromConfig : 1);
-  let preferredBasis = override && override.basis ? override.basis : (base > 0 ? 'baseAmount' : 'estimatedAmount');
+  const resolvedRatio = override?.ratio ?? (Number.isFinite(ratioFromConfig) ? ratioFromConfig : 1);
+  let preferredBasis = override?.basis || (base > 0 ? 'baseAmount' : 'estimatedAmount');
   let basisValue = preferredBasis === 'estimatedAmount' ? estimated : base;
   if (!(basisValue > 0)) {
     basisValue = preferredBasis === 'estimatedAmount' ? base : estimated;
@@ -185,7 +182,7 @@ function extractCompanyRegion(company) {
   return String(value || '').trim();
 }
 
-function evaluateSingleBidByConfig({
+export function evaluateSingleBidByConfig({
   owner,
   rangeLabel,
   estimatedAmount,
@@ -207,7 +204,7 @@ function evaluateSingleBidByConfig({
   const performanceInfo = resolvePerformanceTarget({
     ownerId,
     rangeLabel,
-    perfConfig: tier && tier.rules ? tier.rules.performance : null,
+    perfConfig: tier?.rules ? tier.rules.performance : null,
     baseAmount: base,
     estimatedAmount: estimated,
   });
@@ -215,13 +212,9 @@ function evaluateSingleBidByConfig({
   const perfValue = extractCompanyMetric(company, ['5년 실적', '최근5년실적', 'perf5y', 'performance5y']);
   const region = extractCompanyRegion(company);
 
-  const entryOk = entry > 0
-    ? (sipValue > 0 ? sipValue >= entry : null)
-    : null;
+  const entryOk = entry > 0 ? (sipValue > 0 ? sipValue >= entry : null) : null;
   const perfTarget = performanceInfo.amount;
-  const perfOk = perfTarget > 0
-    ? (perfValue > 0 ? perfValue >= perfTarget : null)
-    : null;
+  const perfOk = perfTarget > 0 ? (perfValue > 0 ? perfValue >= perfTarget : null) : null;
   const regionOk = Array.isArray(dutyRegions) && dutyRegions.length > 0
     ? (region ? dutyRegions.includes(region) : null)
     : null;
@@ -254,8 +247,6 @@ function evaluateSingleBidByConfig({
   };
 }
 
-module.exports = {
-  evaluateSingleBidByConfig,
-  resolvePerformanceTarget,
-  normalizeOwnerId,
-};
+export function normalizeOwner(owner) {
+  return normalizeOwnerId(owner);
+}
