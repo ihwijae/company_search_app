@@ -251,9 +251,14 @@ export default function AutoAgreementPage() {
       ['sipyung']
     );
     const perf5y = pickAmount(
-      ['_performance5y', 'performance5y', 'perf5y', '5년 실적', '5년실적', '최근5년실적'],
-      ['perf5y', 'base']
+      ['_performance5y', 'performance5y', 'perf5y', '5년 실적', '5년실적', '최근5년실적', '최근5년실적합계'],
+      ['perf5y']
     );
+    const parseScoreValue = (value) => {
+      if (value === null || value === undefined || value === '') return null;
+      const num = Number(String(value).replace(/[^0-9.+-]/g, ''));
+      return Number.isFinite(num) ? num : null;
+    };
     const resolveScore = () => {
       const candidates = [
         candidate.managementScore,
@@ -261,11 +266,11 @@ export default function AutoAgreementPage() {
         candidate._agreementManagementScore,
         candidate._score,
         candidate.score,
+        candidate.managementResult,
       ];
       for (const value of candidates) {
-        if (value == null || value === '') continue;
-        const num = Number(value);
-        if (Number.isFinite(num)) return num;
+        const parsed = parseScoreValue(value);
+        if (parsed != null) return parsed;
       }
       return null;
     };
@@ -444,15 +449,15 @@ export default function AutoAgreementPage() {
   const normalizeName = React.useCallback((value) => String(value || '').trim(), []);
   const normalizeKey = React.useCallback((value) => {
     return normalizeName(value)
-      .replace(/\s+/g, '')
       .replace(/주식회사/gi, '')
       .replace(/합자회사/gi, '')
       .replace(/\(주\)/gi, '')
       .replace(/\(합\)/gi, '')
+      .replace(/\(유\)/gi, '')
+      .replace(/\(사\)/gi, '')
       .replace(/㈜/g, '')
       .replace(/㈔/g, '')
-      .replace(/\(유\)/gi, '')
-      .replace(/\(사\)/gi, '');
+      .replace(/[\s·.,\-\/]/g, '');
   }, [normalizeName]);
 
   const candidateMap = React.useMemo(() => {
@@ -487,7 +492,10 @@ export default function AutoAgreementPage() {
   const renderCompanyInfo = React.useCallback((display) => {
     if (!display) return <div className="auto-company-block">-</div>;
     const metrics = resolveCandidateMetrics(display.candidate);
-    const fmt = (value) => (value && value > 0 ? formatAmountShort(value) : '-');
+    const fmt = (value) => {
+      const num = Number(value);
+      return Number.isFinite(num) && num > 0 ? num.toLocaleString() : '-';
+    };
     const mgmt = metrics.management != null ? `${metrics.management.toFixed(2)}점` : '-';
     return (
       <div className="auto-company-block">
