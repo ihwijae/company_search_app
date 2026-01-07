@@ -607,6 +607,7 @@ button.primary:hover { background: var(--accent-2); }
 .excel-name-cell {
   min-width: 120px;
   background: #fbfbfe;
+  overflow: hidden;
 }
 
 .excel-share-cell,
@@ -668,14 +669,16 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-member-card {
-  border-radius: 12px;
-  padding: 10px;
-  border: 1px solid #dbeafe;
-  background: #fff;
+  border-radius: 8px;
+  padding: 2px 0;
+  border: none;
+  background: transparent;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   cursor: grab;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .excel-member-card.dragging {
@@ -725,6 +728,9 @@ button.primary:hover { background: var(--accent-2); }
 .excel-member-name {
   font-weight: 700;
   color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .excel-member-sub {
@@ -732,6 +738,9 @@ button.primary:hover { background: var(--accent-2); }
   gap: 8px;
   font-size: 12px;
   color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .excel-badge {
