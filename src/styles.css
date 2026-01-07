@@ -46,7 +46,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
 
 .main { display: flex; flex-direction: column; height: 100vh; background: var(--bg); }
 .topbar { display: none; height: 0; }
-.stage { position: relative; background: var(--panel); height: calc(100vh - 32px); border-top-left-radius: 22px; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08), 0 4px 18px rgba(15, 23, 42, 0.05); overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(15, 23, 42, 0.04); }
+.stage { position: relative; background: var(--panel); flex: 1 1 auto; min-height: 0; border-top-left-radius: 22px; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08), 0 4px 18px rgba(15, 23, 42, 0.05); overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(15, 23, 42, 0.04); }
 .stage.agreement-board-stage { overflow: auto; padding-bottom: 24px; min-width: 0; }
 .stage::before,
 .stage::after { content: none; }
@@ -182,9 +182,11 @@ button.primary:hover { background: var(--accent-2); }
 /* 타이틀바 드래그 영역 (overlay 모드) */
 .title-drag {
   height: 32px;
+  flex: 0 0 32px;
   -webkit-app-region: drag;
-  background: linear-gradient(180deg, #f0f7ff 0%, #e0ecff 100%);
-  border-bottom: 1px solid rgba(125, 143, 176, 0.35);
+  background: #e0ecff;
+  border-bottom: 1px solid rgba(92, 117, 171, 0.2);
+  box-shadow: inset 0 -1px rgba(255, 255, 255, 0.35);
 }
 .no-drag { -webkit-app-region: no-drag; }
 
@@ -293,20 +295,20 @@ button.primary:hover { background: var(--accent-2); }
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
   min-width: 0;
 }
-.excel-banner-top { display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch; }
+.excel-banner-top { display: flex; flex-direction: column; gap: 12px; }
 .excel-banner-bottom { margin-top: 10px; }
 .excel-quick-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
 .excel-quick-meta-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; }
 .excel-quick-meta-grid .input,
 .excel-quick-meta-grid input { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
-.excel-owner-card { flex: 0 0 220px; max-width: 240px; background: linear-gradient(135deg, #4d2de6, #7c3aed); border-radius: 18px; padding: 14px 16px; color: #fff; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 16px 30px rgba(77, 45, 230, 0.35); }
+.excel-owner-card { flex: 1 1 auto; width: 100%; background: linear-gradient(135deg, #4d2de6, #7c3aed); border-radius: 18px; padding: 14px 16px; color: #fff; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 16px 30px rgba(77, 45, 230, 0.35); }
 .owner-chip { background: rgba(255, 255, 255, 0.18); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
 .owner-chip-title { font-size: 22px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .owner-chip-sub { font-size: 13px; opacity: 0.9; letter-spacing: 0.04em; }
 .owner-select-row { display: flex; flex-direction: column; gap: 10px; }
 .owner-select-row label { display: flex; flex-direction: column; gap: 6px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.9); }
 .owner-select-row select { border: none; border-radius: 12px; padding: 8px 12px; font-size: 13px; color: #111827; background: rgba(255,255,255,0.95); min-height: 38px; }
-.excel-amount-cards { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.excel-amount-cards { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr; gap: 8px; }
 .excel-amount-card { background: #fff; border-radius: 12px; border: 1px solid #e7eaf7; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06); min-width: 0; }
 .excel-amount-card.accent { border-color: #cdd6ff; box-shadow: 0 10px 18px rgba(79, 70, 229, 0.16); }
 .excel-amount-card .input,
@@ -391,6 +393,8 @@ button.primary:hover { background: var(--accent-2); }
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
+  overflow: visible;
 }
 .region-picker-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
 .picker-title { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; color: #475569; text-transform: uppercase; }
@@ -398,7 +402,7 @@ button.primary:hover { background: var(--accent-2); }
 .picker-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .excel-region-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip-empty { font-size: 12px; color: #94a3b8; }
-.excel-region-panel { border: 1px solid #dbeafe; border-radius: 12px; padding: 10px; background: #fff; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08); }
+.excel-region-panel { border: 1px solid #dbeafe; border-radius: 12px; padding: 10px; background: #fff; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12); position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 40; }
 .excel-region-panel .input { width: 100%; }
 .excel-region-panel-list { max-height: 220px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
 .excel-region-panel-list label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #475569; }
