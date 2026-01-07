@@ -572,7 +572,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-board-table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
   font-size: 12px;
   table-layout: fixed;
