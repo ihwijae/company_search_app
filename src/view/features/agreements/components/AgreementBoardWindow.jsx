@@ -3143,7 +3143,10 @@ export default function AgreementBoardWindow({
           </div>
 
           <div className="excel-table-wrapper" ref={boardMainRef}>
-            <table className="excel-board-table" style={{ minWidth: `${tableMinWidth}px` }}>
+            <table
+              className="excel-board-table"
+              style={{ minWidth: `${tableMinWidth}px`, width: `${tableMinWidth}px` }}
+            >
               <thead>
                 <tr>
                   <th rowSpan="2">연번</th>
