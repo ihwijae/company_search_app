@@ -38,7 +38,7 @@ const industryToFileType = (label) => {
 const COLUMN_WIDTHS = {
   order: 40,
   approval: 70,
-  name: 185,
+  name: 140,
   share: 60,
   status: 60,
   management: 100,
