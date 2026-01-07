@@ -14,6 +14,7 @@
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
+html, body { overflow: hidden; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Pretendard','Noto Sans KR','Segoe UI Variable','Segoe UI', ui-sans-serif, system-ui, -apple-system, Roboto, Arial, Apple Color Emoji, Segoe UI Emoji; }
 
 .app-shell { display: grid; grid-template-columns: 88px 1fr; height: 100vh; transition: grid-template-columns .24s ease-in-out; background: var(--bg); }
@@ -259,31 +260,32 @@ button.primary:hover { background: var(--accent-2); }
   gap: 8px;
 }
 .excel-header-top {
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-  align-items: stretch;
-}
-.excel-header-left {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.excel-header-right {
-  flex: 0 1 360px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 320px;
-}
-.excel-header-main {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 8px;
+  grid-template-columns: 260px 200px minmax(0, 1fr);
+  gap: 12px;
   align-items: stretch;
 }
-.excel-header-main .excel-notice-block,
-.excel-header-main .excel-config-bar {
-  height: 100%;
+@media (max-width: 1500px) {
+  .excel-header-top { grid-template-columns: 240px 180px minmax(0, 1fr); }
+}
+@media (max-width: 1280px) {
+  .excel-header-top { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+}
+.excel-owner-stack { display: flex; flex-direction: column; gap: 12px; }
+.excel-amount-stack { display: flex; flex-direction: column; gap: 10px; }
+.excel-info-stack { display: flex; flex-direction: column; gap: 10px; }
+.excel-info-panel {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: minmax(380px, 1.7fr) minmax(220px, 1fr);
+  gap: 14px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+@media (max-width: 1280px) {
+  .excel-info-panel { grid-template-columns: 1fr; }
 }
 .excel-board-banner {
   display: flex;
@@ -296,11 +298,28 @@ button.primary:hover { background: var(--accent-2); }
   min-width: 0;
 }
 .excel-banner-top { display: flex; flex-direction: column; gap: 12px; }
-.excel-banner-bottom { margin-top: 10px; }
-.excel-quick-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
-.excel-quick-meta-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; }
-.excel-quick-meta-grid .input,
-.excel-quick-meta-grid input { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+.excel-info-fields { display: flex; flex-direction: column; gap: 12px; }
+.excel-info-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.excel-info-row label,
+.excel-entry-field label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: #475569; }
+.excel-info-row .input,
+.excel-info-row input,
+.excel-entry-field .input,
+.excel-entry-field input { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+.excel-entry-field { display: flex; flex-direction: column; gap: 4px; }
+.excel-region-card {
+  border: 1px dashed #dbeafe;
+  border-radius: 14px;
+  padding: 12px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  min-height: 100%;
+}
+.excel-region-card .excel-region-chips { min-height: 32px; }
+.excel-region-card .excel-btn { align-self: flex-start; }
 .excel-owner-card { flex: 1 1 auto; width: 100%; background: linear-gradient(135deg, #4d2de6, #7c3aed); border-radius: 18px; padding: 14px 16px; color: #fff; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 16px 30px rgba(77, 45, 230, 0.35); }
 .owner-chip { background: rgba(255, 255, 255, 0.18); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
 .owner-chip-title { font-size: 22px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -386,10 +405,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 .excel-region-picker {
   grid-column: 1 / -1;
-  background: #f8fafc;
-  border: 1px dashed #dbeafe;
-  border-radius: 14px;
-  padding: 10px 12px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -421,6 +437,8 @@ button.primary:hover { background: var(--accent-2); }
   gap: 8px;
   border: 1px solid #e5e7eb;
 }
+.excel-header-bottom { margin-top: 8px; }
+.excel-config-spacer { flex: 1 1 auto; min-width: 40px; }
 .excel-field {
   display: flex;
   flex-direction: column;

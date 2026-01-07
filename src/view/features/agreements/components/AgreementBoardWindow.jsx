@@ -2996,7 +2996,7 @@ export default function AgreementBoardWindow({
         <div className="excel-board-shell">
           <div className="excel-board-header">
             <div className="excel-header-top">
-              <div className="excel-header-left">
+              <div className="excel-owner-stack">
                 <div className="excel-board-banner">
                   <div className="excel-banner-top">
                     <div className="excel-owner-card">
@@ -3023,40 +3023,20 @@ export default function AgreementBoardWindow({
                         </label>
                       </div>
                     </div>
-                    <div className="excel-amount-cards">
-                      {amountCardConfigs.map((card) => (
-                        <div key={card.key} className={`excel-amount-card ${card.highlight ? 'accent' : ''}`}>
-                          <span className="info-label">{card.label}</span>
-                          {card.body}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="excel-banner-bottom">
-                    <div className="excel-quick-meta-grid">
-                      <label>
-                        공고일
-                        <input className="input" type="date" value={noticeDate || ''} onChange={handleNoticeDateChange} />
-                      </label>
-                      <label>
-                        공종
-                        <input className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange} placeholder="예: 전기" />
-                      </label>
-                      <label>
-                        개찰
-                        <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
-                      </label>
-                      <label>
-                        의무지분(%)
-                        <input className="input" value={regionDutyRate || ''} onChange={handleRegionDutyRateChange} placeholder="예: 49" />
-                      </label>
-                    </div>
                   </div>
                 </div>
               </div>
-              <div className="excel-header-right">
-                <div className="excel-notice-block">
-                  <div className="excel-notice-meta">
+              <div className="excel-amount-stack">
+                {amountCardConfigs.map((card) => (
+                  <div key={card.key} className={`excel-amount-card ${card.highlight ? 'accent' : ''}`}>
+                    <span className="info-label">{card.label}</span>
+                    {card.body}
+                  </div>
+                ))}
+              </div>
+              <div className="excel-info-stack">
+                <div className="excel-info-panel">
+                  <div className="excel-info-fields">
                     <div className="notice-combined-field">
                       <div className="notice-combined-label">공고번호 / 공고명</div>
                       <div className="notice-combined-box">
@@ -3064,6 +3044,34 @@ export default function AgreementBoardWindow({
                         <input className="dual" value={noticeTitle || ''} onChange={handleNoticeTitleChange} placeholder="공고명을 입력하세요" />
                       </div>
                     </div>
+                    <div className="excel-info-row">
+                      <label>
+                        공고일
+                        <input className="input" type="date" value={noticeDate || ''} onChange={handleNoticeDateChange} />
+                      </label>
+                      <label>
+                        개찰일
+                        <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
+                      </label>
+                      <label>
+                        공종
+                        <input className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange} placeholder="예: 전기" />
+                      </label>
+                      <label>
+                        의무지분(%)
+                        <input className="input" value={regionDutyRate || ''} onChange={handleRegionDutyRateChange} placeholder="예: 49" />
+                      </label>
+                      <div className="excel-entry-field">
+                        <label>참가자격금액</label>
+                        {entryModeResolved === 'none' ? (
+                          <span className="excel-placeholder">없음</span>
+                        ) : (
+                          <AmountInput value={editableEntryAmount} onChange={handleEntryAmountChange} placeholder="0" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="excel-region-card">
                     <div className="excel-region-picker">
                       <div className="region-picker-heading">
                         <div>
@@ -3110,40 +3118,36 @@ export default function AgreementBoardWindow({
                     </div>
                   </div>
                 </div>
-                <div className="excel-config-bar">
-                  <div className="excel-field">
-                    <label>참가자격</label>
-                    {entryModeResolved === 'none' ? (
-                      <span className="excel-placeholder">없음</span>
-                    ) : (
-                      <AmountInput value={editableEntryAmount} onChange={handleEntryAmountChange} placeholder="0" />
-                    )}
-                  </div>
-                  <div className="excel-field excel-field-mode">
-                    <label>산출방식</label>
-                    <div className="excel-toggle-group">
-                      <button
-                        type="button"
-                        className={entryModeResolved === 'ratio' ? 'active' : ''}
-                        onClick={() => handleEntryModeChange('ratio')}
-                      >비율제</button>
-                      <button
-                        type="button"
-                        className={entryModeResolved === 'sum' ? 'active' : ''}
-                        onClick={() => handleEntryModeChange('sum')}
-                      >단순합산제</button>
-                      <button
-                        type="button"
-                        className={entryModeResolved === 'none' ? 'active' : ''}
-                        onClick={() => handleEntryModeChange('none')}
-                      >없음</button>
-                    </div>
-                  </div>
-                  <div className="excel-field excel-field-stats">
-                    <label>후보 현황</label>
-                    <span>실적사 {summary.performanceTotal}명 · 지역사 {summary.regionTotal}명 · 협정 {summary.groups}개</span>
+              </div>
+            </div>
+
+            <div className="excel-header-bottom">
+              <div className="excel-config-bar">
+                <div className="excel-field excel-field-mode">
+                  <label>산출방식</label>
+                  <div className="excel-toggle-group">
+                    <button
+                      type="button"
+                      className={entryModeResolved === 'ratio' ? 'active' : ''}
+                      onClick={() => handleEntryModeChange('ratio')}
+                    >비율제</button>
+                    <button
+                      type="button"
+                      className={entryModeResolved === 'sum' ? 'active' : ''}
+                      onClick={() => handleEntryModeChange('sum')}
+                    >단순합산제</button>
+                    <button
+                      type="button"
+                      className={entryModeResolved === 'none' ? 'active' : ''}
+                      onClick={() => handleEntryModeChange('none')}
+                    >없음</button>
                   </div>
                 </div>
+                <div className="excel-field excel-field-stats">
+                  <label>후보 현황</label>
+                  <span>실적사 {summary.performanceTotal}명 · 지역사 {summary.regionTotal}명 · 협정 {summary.groups}개</span>
+                </div>
+                <div className="excel-config-spacer" />
                 {!inlineMode && (
                   <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
                 )}
