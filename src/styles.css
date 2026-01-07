@@ -713,6 +713,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-approval { width: 70px; }
 .col-name { width: 100px; }
 .col-share { width: 50px; }
+.col-credibility-slot { width: 65px; }
 .col-status { width: 60px; }
 .col-management { width: 100px; }
 .col-share-total { width: 60px; }
@@ -740,6 +741,18 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-share-cell {
   min-width: 50px;
+}
+
+.excel-credibility-cell {
+  min-width: 65px;
+}
+.excel-credibility-cell input {
+  width: 100%;
+  text-align: center;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 4px 6px;
+  font-size: 12px;
 }
 
 .excel-perf-cell {

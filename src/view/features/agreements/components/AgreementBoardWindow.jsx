@@ -45,6 +45,7 @@ const COLUMN_WIDTHS = {
   shareTotal: 60,
   performanceCell: 90,
   performanceSummary: 70,
+  credibilityCell: 65,
   credibility: 75,
   bid: 75,
   total: 85,
@@ -1083,6 +1084,9 @@ export default function AgreementBoardWindow({
   const tableMinWidth = React.useMemo(() => {
     const nameWidth = slotLabels.length * COLUMN_WIDTHS.name;
     const shareWidth = slotLabels.length * COLUMN_WIDTHS.share;
+    const credibilityWidth = credibilityEnabled
+      ? slotLabels.length * COLUMN_WIDTHS.credibilityCell
+      : 0;
     const statusWidth = slotLabels.length * COLUMN_WIDTHS.status;
     const perfCellsWidth = slotLabels.length * COLUMN_WIDTHS.performanceCell;
     const base = COLUMN_WIDTHS.order
@@ -1093,7 +1097,7 @@ export default function AgreementBoardWindow({
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.bid
       + COLUMN_WIDTHS.total;
-    const total = base + nameWidth + shareWidth + statusWidth + perfCellsWidth;
+    const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth + perfCellsWidth;
     return Math.max(1200, total);
   }, [slotLabels.length, credibilityEnabled]);
 
@@ -1922,6 +1926,20 @@ export default function AgreementBoardWindow({
         group.map((id) => (id ? (rawMap.get(id) ?? '') : ''))
       ));
     });
+    setGroupCredibility((prevCred) => {
+      const credMap = new Map();
+      prevAssignments.forEach((group, gIdx) => {
+        group.forEach((id, idx) => {
+          if (id) {
+            const value = prevCred[gIdx]?.[idx] ?? '';
+            credMap.set(id, value);
+          }
+        });
+      });
+      return groupAssignments.map((group) => (
+        group.map((id) => (id ? (credMap.get(id) ?? '') : ''))
+      ));
+    });
     prevAssignmentsRef.current = groupAssignments;
   }, [groupAssignments]);
 
@@ -2530,6 +2548,19 @@ export default function AgreementBoardWindow({
     });
   };
 
+  const handleCredibilityInput = (groupIndex, slotIndex, rawValue) => {
+    const original = rawValue ?? '';
+    const sanitized = original.replace(/[^0-9.]/g, '');
+    if ((sanitized.match(/\./g) || []).length > 1) return;
+    setGroupCredibility((prev) => {
+      const next = prev.map((row) => row.slice());
+      while (next.length <= groupIndex) next.push([]);
+      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
+      next[groupIndex][slotIndex] = sanitized;
+      return next;
+    });
+  };
+
   const handleApprovalChange = React.useCallback((groupIndex, value) => {
     setGroupApprovals((prev) => {
       const next = prev.slice();
@@ -2767,9 +2798,11 @@ export default function AgreementBoardWindow({
     }
   }, [groups]);
 
-  const tableColumnCount = React.useMemo(() => (
-    (8 + (credibilityEnabled ? 1 : 0)) + (slotLabels.length * 4)
-  ), [credibilityEnabled, slotLabels.length]);
+  const tableColumnCount = React.useMemo(() => {
+    const perSlotCols = credibilityEnabled ? 5 : 4;
+    const baseColumns = 8 + (credibilityEnabled ? 1 : 0);
+    return baseColumns + (slotLabels.length * perSlotCols);
+  }, [credibilityEnabled, slotLabels.length]);
 
   const buildSlotMeta = (group, groupIndex, slotIndex, label) => {
     const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
@@ -2785,6 +2818,9 @@ export default function AgreementBoardWindow({
     const shareRaw = groupShareRawInputs[groupIndex]?.[slotIndex];
     const storedShare = groupShares[groupIndex]?.[slotIndex];
     const shareValue = shareRaw !== undefined ? shareRaw : (storedShare !== undefined ? storedShare : '');
+    const shareNumeric = parseNumeric(shareValue);
+    const shareFallback = getSharePercent(groupIndex, slotIndex, candidate);
+    const shareForCalc = shareNumeric != null ? shareNumeric : shareFallback;
     const sipyungAmount = getCandidateSipyungAmount(candidate);
     const performanceAmount = getCandidatePerformanceAmount(candidate);
     let possibleShare = null;
@@ -2809,6 +2845,12 @@ export default function AgreementBoardWindow({
     const managerName = getCandidateManagerName(candidate);
     const managementScore = getCandidateManagementScore(candidate);
     const managementNumeric = clampScore(toNumber(managementScore));
+    const credibilityStored = groupCredibility[groupIndex]?.[slotIndex];
+    const credibilityValue = credibilityStored != null ? String(credibilityStored) : '';
+    const credibilityNumeric = parseNumeric(credibilityValue);
+    const credibilityProduct = (credibilityNumeric != null && shareForCalc != null)
+      ? credibilityNumeric * (shareForCalc / 100)
+      : null;
 
     return {
       empty: false,
@@ -2826,6 +2868,8 @@ export default function AgreementBoardWindow({
       performanceDisplay: formatAmount(performanceAmount),
       managementDisplay: formatScore(managementScore, 2),
       managementAlert: managementNumeric != null && managementNumeric < (MANAGEMENT_SCORE_MAX - 0.01),
+      credibilityValue,
+      credibilityProduct: credibilityProduct != null ? `${credibilityProduct.toFixed(2)}점` : '',
     };
   };
 
@@ -2903,6 +2947,24 @@ export default function AgreementBoardWindow({
     </td>
   );
 
+  const renderCredibilityCell = (meta) => (
+    <td key={`cred-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-credibility-cell">
+      {meta.empty ? null : (
+        <>
+          <input
+            type="text"
+            value={meta.credibilityValue || ''}
+            onChange={(event) => handleCredibilityInput(meta.groupIndex, meta.slotIndex, event.target.value)}
+            placeholder="0"
+          />
+          {meta.credibilityProduct && (
+            <div className="excel-hint">반영 {meta.credibilityProduct}</div>
+          )}
+        </>
+      )}
+    </td>
+  );
+
   const renderStatusCell = (meta) => (
     <td key={`status-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-status-cell">
       {meta.empty ? null : (
@@ -2962,6 +3024,7 @@ export default function AgreementBoardWindow({
         </td>
         {slotMetas.map(renderNameCell)}
         {slotMetas.map(renderShareCell)}
+        {credibilityEnabled && slotMetas.map(renderCredibilityCell)}
         {slotMetas.map(renderStatusCell)}
         <td className="excel-cell total-cell">{managementSummary}</td>
         <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
@@ -3192,6 +3255,9 @@ export default function AgreementBoardWindow({
                 {slotLabels.map((_, index) => (
                   <col key={`col-share-${index}`} className="col-share" />
                 ))}
+                {credibilityEnabled && slotLabels.map((_, index) => (
+                  <col key={`col-credibility-slot-${index}`} className="col-credibility-slot" />
+                ))}
                 {slotLabels.map((_, index) => (
                   <col key={`col-status-${index}`} className="col-status" />
                 ))}
@@ -3211,6 +3277,7 @@ export default function AgreementBoardWindow({
                   <th rowSpan="2">승인</th>
                   <th colSpan={slotLabels.length}>업체명</th>
                   <th colSpan={slotLabels.length}>지분(%)</th>
+                  {credibilityEnabled && <th colSpan={slotLabels.length}>신인도</th>}
                   <th colSpan={slotLabels.length}>경영상태</th>
                   <th rowSpan="2">경영(15점)</th>
                   <th rowSpan="2">지분합계</th>
@@ -3226,6 +3293,9 @@ export default function AgreementBoardWindow({
                   ))}
                   {slotLabels.map((label, index) => (
                     <th key={`share-head-${index}`}>{label}</th>
+                  ))}
+                  {credibilityEnabled && slotLabels.map((label, index) => (
+                    <th key={`credibility-head-${index}`}>{label}</th>
                   ))}
                   {slotLabels.map((label, index) => (
                     <th key={`status-head-${index}`}>{label}</th>
