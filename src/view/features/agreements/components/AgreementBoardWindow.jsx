@@ -45,7 +45,7 @@ const COLUMN_WIDTHS = {
   shareTotal: 60,
   performanceCell: 90,
   performanceSummary: 70,
-  credibilityCell: 65,
+  credibilityCell: 45,
   credibility: 75,
   bid: 75,
   total: 85,
@@ -1093,8 +1093,8 @@ export default function AgreementBoardWindow({
       + COLUMN_WIDTHS.approval
       + COLUMN_WIDTHS.management
       + COLUMN_WIDTHS.shareTotal
-      + COLUMN_WIDTHS.performanceSummary
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
+      + COLUMN_WIDTHS.performanceSummary
       + COLUMN_WIDTHS.bid
       + COLUMN_WIDTHS.total;
     const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth + perfCellsWidth;
@@ -3024,10 +3024,10 @@ export default function AgreementBoardWindow({
         </td>
         {slotMetas.map(renderNameCell)}
         {slotMetas.map(renderShareCell)}
+        <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
         {credibilityEnabled && slotMetas.map(renderCredibilityCell)}
         {slotMetas.map(renderStatusCell)}
         <td className="excel-cell total-cell">{managementSummary}</td>
-        <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
         {slotMetas.map(renderPerformanceCell)}
         <td className="excel-cell total-cell">{performanceSummary}</td>
         {credibilityEnabled && (
@@ -3277,13 +3277,13 @@ export default function AgreementBoardWindow({
                   <th rowSpan="2">승인</th>
                   <th colSpan={slotLabels.length}>업체명</th>
                   <th colSpan={slotLabels.length}>지분(%)</th>
+                  <th rowSpan="2">지분합계</th>
                   {credibilityEnabled && <th colSpan={slotLabels.length}>신인도</th>}
+                  {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
                   <th colSpan={slotLabels.length}>경영상태</th>
                   <th rowSpan="2">경영(15점)</th>
-                  <th rowSpan="2">지분합계</th>
                   <th colSpan={slotLabels.length}>시공실적</th>
                   <th rowSpan="2">실적(15점)</th>
-                  {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
                   <th rowSpan="2">입찰점수</th>
                   <th rowSpan="2">예상점수</th>
                 </tr>
@@ -3294,9 +3294,11 @@ export default function AgreementBoardWindow({
                   {slotLabels.map((label, index) => (
                     <th key={`share-head-${index}`}>{label}</th>
                   ))}
+                  <th key="share-total-head" />
                   {credibilityEnabled && slotLabels.map((label, index) => (
                     <th key={`credibility-head-${index}`}>{label}</th>
                   ))}
+                  {credibilityEnabled && <th key="credibility-total-head" />}
                   {slotLabels.map((label, index) => (
                     <th key={`status-head-${index}`}>{label}</th>
                   ))}
