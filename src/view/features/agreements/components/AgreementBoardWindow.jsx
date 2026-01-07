@@ -2848,9 +2848,7 @@ export default function AgreementBoardWindow({
 
   const renderShareCell = (meta) => (
     <td key={`share-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-share-cell">
-      {meta.empty ? (
-        <span className="excel-placeholder">-</span>
-      ) : (
+      {meta.empty ? null : (
         <>
           <input
             type="text"
@@ -2868,9 +2866,7 @@ export default function AgreementBoardWindow({
 
   const renderStatusCell = (meta) => (
     <td key={`status-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-status-cell">
-      {meta.empty ? (
-        <span className="excel-placeholder">-</span>
-      ) : (
+      {meta.empty ? null : (
         <div className={`excel-status score-only ${meta.managementAlert ? 'warn' : ''}`}>
           <span className="status-score" title="경영점수">{meta.managementDisplay}</span>
         </div>
@@ -2880,9 +2876,7 @@ export default function AgreementBoardWindow({
 
   const renderPerformanceCell = (meta) => (
     <td key={`perf-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-perf-cell">
-      {meta.empty ? (
-        <span className="excel-placeholder">-</span>
-      ) : (
+      {meta.empty ? null : (
         <div className="excel-performance">
           <span className="perf-label">5년 실적</span>
           <strong className="perf-value">{meta.performanceDisplay}</strong>
