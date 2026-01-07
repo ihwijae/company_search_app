@@ -2925,19 +2925,14 @@ export default function AgreementBoardWindow({
         {slotMetas.map(renderShareCell)}
         {slotMetas.map(renderStatusCell)}
         <td className="excel-cell total-cell">{managementSummary}</td>
-        <td className="excel-cell total-cell">{performanceSummary}</td>
         <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
         {slotMetas.map(renderPerformanceCell)}
+        <td className="excel-cell total-cell">{performanceSummary}</td>
         {credibilityEnabled && (
           <td className="excel-cell total-cell">{credibilitySummary}</td>
         )}
         <td className="excel-cell total-cell">{bidScoreDisplay}</td>
         <td className="excel-cell total-cell">{totalScoreDisplay}</td>
-        <td className="excel-cell actions-cell">
-          <button type="button" onClick={() => copyGroupMetric(groupIndex, 'management')}>경영</button>
-          <button type="button" onClick={() => copyGroupMetric(groupIndex, 'perf5y')}>실적</button>
-          <button type="button" onClick={() => copyGroupMetric(groupIndex, 'sipyung')}>시평</button>
-        </td>
       </tr>
     );
   };
@@ -3157,13 +3152,12 @@ export default function AgreementBoardWindow({
                   <th colSpan={slotLabels.length}>지분(%)</th>
                   <th colSpan={slotLabels.length}>경영상태</th>
                   <th rowSpan="2">경영(15점)</th>
-                  <th rowSpan="2">실적(15점)</th>
                   <th rowSpan="2">지분합계</th>
                   <th colSpan={slotLabels.length}>시공실적</th>
+                  <th rowSpan="2">실적(15점)</th>
                   {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
                   <th rowSpan="2">입찰점수</th>
                   <th rowSpan="2">예상점수</th>
-                  <th rowSpan="2">조치</th>
                 </tr>
                 <tr>
                   {slotLabels.map((label, index) => (

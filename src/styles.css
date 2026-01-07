@@ -435,8 +435,8 @@ button.primary:hover { background: var(--accent-2); }
 /* Agreement board extended styles moved from index.css */
 .agreement-board-root {
   width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -445,9 +445,9 @@ button.primary:hover { background: var(--accent-2); }
   flex-direction: column;
   align-items: stretch;
   font-family: inherit;
-  padding: 16px 20px 28px;
+  padding: 0;
   box-sizing: border-box;
-  border-radius: 24px;
+  border-radius: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
