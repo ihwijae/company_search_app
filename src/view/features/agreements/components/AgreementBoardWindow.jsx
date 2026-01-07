@@ -1021,7 +1021,22 @@ export default function AgreementBoardWindow({
     Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))
   ), [safeGroupSize]);
 
-  const tableMinWidth = React.useMemo(() => Math.max(1500, slotLabels.length * 220), [slotLabels.length]);
+  const tableMinWidth = React.useMemo(() => {
+    const orderAndApproval = 60 + 90;
+    const nameWidth = slotLabels.length * 220;
+    const shareWidth = slotLabels.length * 100;
+    const statusWidth = slotLabels.length * 80;
+    const managementWidth = 120;
+    const shareTotalWidth = 120;
+    const perfCellsWidth = slotLabels.length * 140;
+    const perfSummaryWidth = 120;
+    const credibilityWidth = credibilityEnabled ? 120 : 0;
+    const bidWidth = 120;
+    const totalWidth = 120;
+    const total = orderAndApproval + nameWidth + shareWidth + statusWidth + managementWidth + shareTotalWidth
+      + perfCellsWidth + perfSummaryWidth + credibilityWidth + bidWidth + totalWidth;
+    return Math.max(1500, total);
+  }, [slotLabels.length, credibilityEnabled]);
 
   React.useEffect(() => {
     if (open) {
@@ -3148,10 +3163,26 @@ export default function AgreementBoardWindow({
               style={{ minWidth: `${tableMinWidth}px`, width: `${tableMinWidth}px` }}
             >
               <colgroup>
-                <col span={slotLabels.length} style={{ width: '220px' }} />
-                <col span={slotLabels.length} />
-                <col span={slotLabels.length} />
-                <col span={slotLabels.length} />
+                <col className="col-order" />
+                <col className="col-approval" />
+                {slotLabels.map((_, index) => (
+                  <col key={`col-name-${index}`} className="col-name" />
+                ))}
+                {slotLabels.map((_, index) => (
+                  <col key={`col-share-${index}`} className="col-share" />
+                ))}
+                {slotLabels.map((_, index) => (
+                  <col key={`col-status-${index}`} className="col-status" />
+                ))}
+                <col className="col-summary" />
+                <col className="col-summary" />
+                {slotLabels.map((_, index) => (
+                  <col key={`col-performance-${index}`} className="col-performance" />
+                ))}
+                <col className="col-summary" />
+                {credibilityEnabled && <col className="col-summary" />}
+                <col className="col-summary" />
+                <col className="col-summary" />
               </colgroup>
               <thead>
                 <tr>
