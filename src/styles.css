@@ -616,10 +616,26 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .order-cell,
-.status-cell {
+.approval-cell {
   min-width: 56px;
   text-align: center;
   font-weight: 600;
+}
+
+.approval-cell input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 4px 6px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.approval-cell small {
+  display: block;
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 11px;
 }
 
 .actions-cell {
@@ -640,11 +656,15 @@ button.primary:hover { background: var(--accent-2); }
   width: 100%;
   border-radius: 10px;
   border: 1px dashed #cbd5f5;
-  padding: 12px;
+  padding: 10px;
   background: #f8fafc;
   color: #475569;
   font-weight: 600;
+  font-size: 24px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .excel-member-card {
@@ -809,28 +829,6 @@ button.primary:hover { background: var(--accent-2); }
   text-align: center;
   padding: 28px 12px;
   color: #94a3b8;
-}
-
-.excel-board-table th.sticky-col,
-.excel-board-table td.sticky-col {
-  position: sticky;
-  right: 0;
-  z-index: 3;
-  background: #fff;
-  box-shadow: -6px 0 10px rgba(15, 23, 42, 0.08);
-}
-
-.excel-board-table th.sticky-col {
-  z-index: 5;
-  background: #eef2ff;
-}
-
-.excel-board-table td.sticky-col {
-  background: #fff;
-}
-
-.excel-board-table .sticky-actions {
-  box-shadow: -6px 0 10px rgba(15, 23, 42, 0.12);
 }
 
 .excel-share-cell input,

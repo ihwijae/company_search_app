@@ -16,12 +16,6 @@ const PERFORMANCE_MOIS_DEFAULT_MAX = 15;
 const PERFORMANCE_CAP_VERSION = 2;
 const MANAGEMENT_SCORE_VERSION = 3;
 const BOARD_COPY_SLOT_COUNT = 5;
-const STICKY_COLUMN_WIDTHS = {
-  actions: 140,
-  total: 120,
-  bid: 110,
-  credibility: 110,
-};
 const BOARD_COPY_ACTIONS = [
   { kind: 'names', label: '업체명 복사', successMessage: '업체명 데이터가 복사되었습니다.' },
   { kind: 'shares', label: '지분 복사', successMessage: '지분 값이 복사되었습니다.' },
@@ -790,6 +784,7 @@ export default function AgreementBoardWindow({
   const [dropTarget, setDropTarget] = React.useState(null);
   const [groupShares, setGroupShares] = React.useState([]);
   const [groupShareRawInputs, setGroupShareRawInputs] = React.useState([]);
+  const [groupApprovals, setGroupApprovals] = React.useState([]);
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState([]);
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
@@ -1552,6 +1547,12 @@ export default function AgreementBoardWindow({
     regionTotal: regionEntries.length,
     groups: groupAssignments.length,
   }), [representativeEntries.length, regionEntries.length, groupAssignments.length]);
+
+  React.useEffect(() => {
+    setGroupApprovals((prev) => (
+      groupAssignments.map((_, index) => (prev[index] ?? ''))
+    ));
+  }, [groupAssignments]);
 
   const dutySummaryText = React.useMemo(() => {
     const rateNumber = parseNumeric(regionDutyRate);
@@ -2417,6 +2418,7 @@ export default function AgreementBoardWindow({
     setGroupShares([]);
     setGroupShareRawInputs([]);
     setGroupCredibility([]);
+    setGroupApprovals([]);
   };
 
   const handleShareInput = (groupIndex, slotIndex, rawValue) => {
@@ -2450,6 +2452,15 @@ export default function AgreementBoardWindow({
       return next;
     });
   };
+
+  const handleApprovalChange = React.useCallback((groupIndex, value) => {
+    setGroupApprovals((prev) => {
+      const next = prev.slice();
+      while (next.length <= groupIndex) next.push('');
+      next[groupIndex] = value;
+      return next;
+    });
+  }, []);
 
   const groups = React.useMemo(() => (
     groupAssignments.map((group, index) => ({
@@ -2722,27 +2733,6 @@ export default function AgreementBoardWindow({
     (8 + (credibilityEnabled ? 1 : 0)) + (slotLabels.length * 4)
   ), [credibilityEnabled, slotLabels.length]);
 
-  const stickyOffsets = React.useMemo(() => {
-    let offset = 0;
-    const offsets = {};
-    const register = (key) => {
-      offsets[key] = offset;
-      offset += STICKY_COLUMN_WIDTHS[key];
-    };
-    register('actions');
-    register('total');
-    register('bid');
-    if (credibilityEnabled) {
-      register('credibility');
-    }
-    return offsets;
-  }, [credibilityEnabled]);
-
-  const getStickyStyle = React.useCallback((key) => ({
-    right: `${stickyOffsets[key] || 0}px`,
-    minWidth: `${STICKY_COLUMN_WIDTHS[key]}px`,
-  }), [stickyOffsets]);
-
   const buildSlotMeta = (group, groupIndex, slotIndex, label) => {
     const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
     const uid = memberIds[slotIndex];
@@ -2822,8 +2812,11 @@ export default function AgreementBoardWindow({
           <button
             type="button"
             className="excel-add-button"
+            aria-label="업체 검색"
             onClick={() => openRepresentativeSearch({ groupIndex: meta.groupIndex, slotIndex: meta.slotIndex })}
-          >업체 검색</button>
+          >
+            <span aria-hidden="true">＋</span>
+          </button>
         ) : (
           <div
             className={`excel-member-card${draggingId === meta.uid ? ' dragging' : ''}`}
@@ -2919,25 +2912,6 @@ export default function AgreementBoardWindow({
   const renderSheetRow = (group, groupIndex) => {
     const summaryInfo = group.summary;
     const slotMetas = slotLabels.map((label, slotIndex) => buildSlotMeta(group, groupIndex, slotIndex, label));
-    const hasMembers = slotMetas.some((meta) => !meta.empty);
-    let entryLabel = hasMembers ? '확인 필요' : '빈 행';
-    let entryClass = 'muted';
-    if (summaryInfo && summaryInfo.entryMode === 'none') {
-      entryLabel = '불필요';
-      entryClass = 'ok';
-    } else if (summaryInfo && summaryInfo.entryReady) {
-      if (summaryInfo.entrySatisfied) {
-        entryLabel = '충족';
-        entryClass = 'ok';
-      } else {
-        entryLabel = hasMembers ? '부족' : '빈 행';
-        entryClass = hasMembers ? 'warn' : 'muted';
-      }
-    } else if (hasMembers) {
-      entryLabel = '자료 확인';
-      entryClass = 'warn';
-    }
-
     const managementSummary = summaryInfo?.managementScore != null
       ? `${formatScore(summaryInfo.managementScore)} / ${formatScore(summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX)}`
       : '-';
@@ -2955,12 +2929,18 @@ export default function AgreementBoardWindow({
     const totalScoreDisplay = summaryInfo
       ? formatScore(summaryInfo.totalScoreWithCred ?? summaryInfo.totalScoreBase)
       : '-';
+    const approvalValue = groupApprovals[groupIndex] || '';
 
     return (
       <tr key={group.id} className="excel-board-row">
         <td className="excel-cell order-cell">{group.id}</td>
-        <td className="excel-cell status-cell">
-          <span className={`excel-chip ${entryClass}`}>{entryLabel}</span>
+        <td className="excel-cell approval-cell">
+          <input
+            type="text"
+            value={approvalValue}
+            placeholder=""
+            onChange={(event) => handleApprovalChange(groupIndex, event.target.value)}
+          />
           {summaryInfo?.entryLimit != null && summaryInfo.entryMode !== 'none' && (
             <small>기준 {formatAmount(summaryInfo.entryLimit)}</small>
           )}
@@ -2973,29 +2953,11 @@ export default function AgreementBoardWindow({
         <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
         {slotMetas.map(renderPerformanceCell)}
         {credibilityEnabled && (
-          <td
-            className="excel-cell total-cell sticky-col sticky-credibility"
-            style={getStickyStyle('credibility')}
-          >
-            {credibilitySummary}
-          </td>
+          <td className="excel-cell total-cell">{credibilitySummary}</td>
         )}
-        <td
-          className="excel-cell total-cell sticky-col sticky-bid"
-          style={getStickyStyle('bid')}
-        >
-          {bidScoreDisplay}
-        </td>
-        <td
-          className="excel-cell total-cell sticky-col sticky-total"
-          style={getStickyStyle('total')}
-        >
-          {totalScoreDisplay}
-        </td>
-        <td
-          className="excel-cell actions-cell sticky-col sticky-actions"
-          style={getStickyStyle('actions')}
-        >
+        <td className="excel-cell total-cell">{bidScoreDisplay}</td>
+        <td className="excel-cell total-cell">{totalScoreDisplay}</td>
+        <td className="excel-cell actions-cell">
           <button type="button" onClick={() => copyGroupMetric(groupIndex, 'management')}>경영</button>
           <button type="button" onClick={() => copyGroupMetric(groupIndex, 'perf5y')}>실적</button>
           <button type="button" onClick={() => copyGroupMetric(groupIndex, 'sipyung')}>시평</button>
@@ -3222,28 +3184,10 @@ export default function AgreementBoardWindow({
                   <th rowSpan="2">실적(15점)</th>
                   <th rowSpan="2">지분합계</th>
                   <th colSpan={slotLabels.length}>시공실적</th>
-                  {credibilityEnabled && (
-                    <th
-                      rowSpan="2"
-                      className="sticky-col sticky-credibility"
-                      style={getStickyStyle('credibility')}
-                    >신인도 합</th>
-                  )}
-                  <th
-                    rowSpan="2"
-                    className="sticky-col sticky-bid"
-                    style={getStickyStyle('bid')}
-                  >입찰점수</th>
-                  <th
-                    rowSpan="2"
-                    className="sticky-col sticky-total"
-                    style={getStickyStyle('total')}
-                  >예상점수</th>
-                  <th
-                    rowSpan="2"
-                    className="sticky-col sticky-actions"
-                    style={getStickyStyle('actions')}
-                  >조치</th>
+                  {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
+                  <th rowSpan="2">입찰점수</th>
+                  <th rowSpan="2">예상점수</th>
+                  <th rowSpan="2">조치</th>
                 </tr>
                 <tr>
                   {slotLabels.map((label, index) => (
