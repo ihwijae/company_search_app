@@ -261,15 +261,15 @@ button.primary:hover { background: var(--accent-2); }
 }
 .excel-header-grid {
   display: grid;
-  grid-template-columns: 150px minmax(320px, 1fr) minmax(560px, 2.1fr) minmax(220px, 0.9fr);
-  gap: 10px;
+  grid-template-columns: 130px minmax(260px, 0.9fr) minmax(480px, 1.5fr) minmax(200px, 0.7fr);
+  gap: 8px;
   align-items: stretch;
 }
 @media (max-width: 1500px) {
-  .excel-header-grid { grid-template-columns: 130px minmax(260px, 1fr) minmax(460px, 2fr) minmax(200px, 1fr); }
+  .excel-header-grid { grid-template-columns: repeat(3, minmax(220px, 1fr)); }
 }
-@media (max-width: 1340px) {
-  .excel-header-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+@media (max-width: 1280px) {
+  .excel-header-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 }
 .excel-amount-column,
 .excel-bid-column,
@@ -281,54 +281,54 @@ button.primary:hover { background: var(--accent-2); }
 .excel-field-block {
   background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 6px 8px;
+  border-radius: 9px;
+  padding: 4px 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   min-height: 0;
 }
 .excel-field-block.accent { background: #f4f6ff; border-color: #d5def8; }
-.field-label { font-size: 12px; font-weight: 600; color: #334155; letter-spacing: 0.04em; }
+.field-label { font-size: 11px; font-weight: 600; color: #334155; letter-spacing: 0.04em; }
 .excel-field-block .input,
 .excel-field-block input,
 .excel-field-block .amount-input input { width: 100%; }
+.excel-field-block .amount-input input { padding: 4px 5px; font-size: 13px; }
 .excel-select-block {
   background: #f8f9ff;
   border: 1px solid #dde3f4;
   border-radius: 10px;
-  padding: 6px 8px;
-  display: grid;
-  grid-template-columns: 1fr;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
-.excel-select-block label { font-size: 11px; letter-spacing: 0.05em; color: #475569; text-transform: uppercase; }
-.excel-select-block select { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+.excel-select-block label { font-size: 10px; letter-spacing: 0.06em; color: #475569; text-transform: uppercase; }
+.excel-select-block select { border: 1px solid #d1d5db; border-radius: 6px; padding: 5px 6px; font-size: 13px; }
 .excel-info-block { display: flex; flex-direction: column; gap: 6px; }
 .excel-info-column .excel-field-block.wide { grid-column: 1 / -1; }
-.excel-info-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
-.excel-info-row.first { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
-@media (max-width: 1500px) { .excel-info-row.first { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
-.excel-info-row.second { grid-template-columns: minmax(320px, 3fr) minmax(200px, 1fr); }
+.excel-info-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; }
+.excel-info-row.first { grid-template-columns: repeat(4, minmax(120px, 1fr)); }
+.excel-info-row.second { grid-template-columns: minmax(320px, 2.2fr) minmax(160px, 0.8fr); }
 @media (max-width: 1500px) { .excel-info-row.second { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } }
-.excel-info-row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: #475569; }
+.excel-info-row label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #475569; }
 .excel-info-row .input,
-.excel-info-row input { border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 7px; font-size: 13px; }
+.excel-info-row input { border: 1px solid #d1d5db; border-radius: 5px; padding: 5px 6px; font-size: 13px; }
 .notice-combined-box { display: flex; gap: 4px; border: 1px solid #d3daf2; border-radius: 10px; padding: 4px 6px; background: #f9fafc; }
 .notice-combined-box .dual { flex: 1; border: none; background: transparent; font-size: 13px; }
 .notice-combined-box .dual:focus { outline: none; }
 .excel-duty-column {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 8px 10px;
+  border-radius: 10px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   position: relative;
 }
-.duty-header { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-.duty-summary { display: flex; justify-content: space-between; font-size: 12px; color: #475569; }
+.duty-header { display: flex; justify-content: space-between; gap: 6px; align-items: center; font-size: 11px; font-weight: 600; }
+.duty-summary { display: flex; justify-content: space-between; font-size: 11px; color: #475569; }
 .notice-combined-field { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; max-width: 520px; }
 .notice-combined-label { font-size: 11px; letter-spacing: 0.08em; color: #475569; text-transform: uppercase; }
 .notice-combined-box { display: flex; gap: 4px; background: #fff; border: 1px solid #d3daf2; border-radius: 12px; padding: 6px 8px; }
@@ -354,9 +354,9 @@ button.primary:hover { background: var(--accent-2); }
 .region-picker-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
 .picker-title { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; color: #475569; text-transform: uppercase; }
 .picker-helper { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-.picker-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.excel-region-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip-empty { font-size: 12px; color: #94a3b8; }
+.picker-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.excel-region-chips { display: flex; flex-wrap: wrap; gap: 4px; min-height: 28px; }
+.chip-empty { font-size: 11px; color: #94a3b8; }
 .excel-region-panel { border: 1px solid #dbeafe; border-radius: 12px; padding: 10px; background: #fff; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12); position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 40; }
 .excel-region-panel .input { width: 100%; }
 .excel-region-panel-list { max-height: 220px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }

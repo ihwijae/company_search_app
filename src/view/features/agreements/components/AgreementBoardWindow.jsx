@@ -846,9 +846,26 @@ export default function AgreementBoardWindow({
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ noticeDate: event.target.value });
   }, [onUpdateBoard]);
 
-  const handleBidDeadlineChange = React.useCallback((event) => {
-    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: event.target.value });
-  }, [onUpdateBoard]);
+  const handleBidDeadlineDateChange = React.useCallback((event) => {
+    const datePart = event.target.value;
+    if (!datePart) {
+      if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: '' });
+      return;
+    }
+    const currentTime = (bidDeadline || '').slice(11, 16) || '00:00';
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: `${datePart}T${currentTime}` });
+  }, [bidDeadline, onUpdateBoard]);
+
+  const handleBidDeadlineTimeChange = React.useCallback((event) => {
+    const timePart = event.target.value;
+    const datePart = (bidDeadline || '').slice(0, 10) || noticeDate || '';
+    if (!datePart) {
+      if (!timePart && typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: '' });
+      return;
+    }
+    const safeTime = timePart || '00:00';
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: `${datePart}T${safeTime}` });
+  }, [bidDeadline, noticeDate, onUpdateBoard]);
 
   const handleBaseAmountChange = React.useCallback((value) => {
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ baseAmount: value });
@@ -2951,6 +2968,9 @@ export default function AgreementBoardWindow({
     };
   }, [portalContainer, open, inlineMode]);
 
+  const bidDateValue = bidDeadline ? bidDeadline.slice(0, 10) : '';
+  const bidTimeValue = bidDeadline ? bidDeadline.slice(11, 16) : '';
+
   const boardMarkup = (
     <>
       <div className="agreement-board-root" ref={rootRef}>
@@ -3011,8 +3031,12 @@ export default function AgreementBoardWindow({
                 </div>
                 <div className="excel-info-row first">
                   <label>
-                    입찰일시
-                    <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
+                    입찰일
+                    <input className="input" type="date" value={bidDateValue} onChange={handleBidDeadlineDateChange} />
+                  </label>
+                  <label>
+                    입찰시간
+                    <input className="input" type="time" value={bidTimeValue} onChange={handleBidDeadlineTimeChange} />
                   </label>
                   <label>
                     공고일
