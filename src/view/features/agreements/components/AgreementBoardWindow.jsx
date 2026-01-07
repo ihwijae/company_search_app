@@ -2970,34 +2970,34 @@ export default function AgreementBoardWindow({
           <div className="excel-board-header">
             <div className="excel-header-summary">
               <div className="summary-row">
-                <div className="summary-item">
-                  <span className="summary-label">발주처</span>
-                  <strong>{summaryOwner}</strong>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">금액 구간</span>
-                  <strong>{summaryRange}</strong>
-                </div>
-                <div className="summary-item wide">
-                  <span className="summary-label">공고번호</span>
-                  <strong>{noticeNo || '-'}</strong>
-                </div>
-                <div className="summary-item wide">
-                  <span className="summary-label">공고명</span>
-                  <strong title={noticeTitle || '-'}>{noticeTitle || '-'}</strong>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">공종</span>
-                  <strong>{summaryIndustry}</strong>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">의무지역 / 지분</span>
-                  <strong>{summaryDuty}</strong>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">추정가격</span>
-                  <strong>{estimatedAmount ? `${estimatedAmount}원` : '-'}</strong>
-                </div>
+              <div className="summary-item summary-owner">
+                <span className="summary-label">발주처</span>
+                <strong>{summaryOwner}</strong>
+              </div>
+              <div className="summary-item summary-range">
+                <span className="summary-label">금액 구간</span>
+                <strong>{summaryRange}</strong>
+              </div>
+              <div className="summary-item summary-number">
+                <span className="summary-label">공고번호</span>
+                <strong>{noticeNo || '-'}</strong>
+              </div>
+              <div className="summary-item summary-title">
+                <span className="summary-label">공고명</span>
+                <strong title={noticeTitle || '-'}>{noticeTitle || '-'}</strong>
+              </div>
+              <div className="summary-item summary-industry">
+                <span className="summary-label">공종</span>
+                <strong>{summaryIndustry}</strong>
+              </div>
+              <div className="summary-item summary-duty">
+                <span className="summary-label">의무지역 / 지분</span>
+                <strong>{summaryDuty}</strong>
+              </div>
+              <div className="summary-item summary-estimate">
+                <span className="summary-label">추정가격</span>
+                <strong>{estimatedAmount ? `${estimatedAmount}원` : '-'}</strong>
+              </div>
               </div>
               <button type="button" className="excel-btn summary-toggle" onClick={toggleHeaderExpanded}>
                 {headerExpanded ? '공고 정보 접기' : '공고 정보 펼치기'}
