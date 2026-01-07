@@ -14,7 +14,7 @@
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Pretendard','Noto Sans KR','Segoe UI Variable','Segoe UI', ui-sans-serif, system-ui, -apple-system, Roboto, Arial, Apple Color Emoji, Segoe UI Emoji; overflow: hidden; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Pretendard','Noto Sans KR','Segoe UI Variable','Segoe UI', ui-sans-serif, system-ui, -apple-system, Roboto, Arial, Apple Color Emoji, Segoe UI Emoji; }
 
 .app-shell { display: grid; grid-template-columns: 88px 1fr; height: 100vh; transition: grid-template-columns .24s ease-in-out; background: var(--bg); }
 .app-shell.sidebar-wide { grid-template-columns: 220px 1fr; }
