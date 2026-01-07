@@ -788,6 +788,7 @@ export default function AgreementBoardWindow({
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState([]);
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
+  const isLHOwner = ownerKeyUpper === 'LH';
   const selectedGroup = React.useMemo(
     () => AGREEMENT_GROUPS.find((group) => String(group.ownerId || '').toUpperCase() === ownerKeyUpper) || AGREEMENT_GROUPS[0],
     [ownerKeyUpper],
@@ -2451,18 +2452,6 @@ export default function AgreementBoardWindow({
     });
   };
 
-  const handleCredibilityInput = (groupIndex, slotIndex, rawValue) => {
-    const sanitized = rawValue.replace(/[^0-9.]/g, '');
-    if ((sanitized.match(/\./g) || []).length > 1) return;
-    setGroupCredibility((prev) => {
-      const next = prev.map((row) => row.slice());
-      while (next.length <= groupIndex) next.push([]);
-      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
-      next[groupIndex][slotIndex] = sanitized;
-      return next;
-    });
-  };
-
   const handleApprovalChange = React.useCallback((groupIndex, value) => {
     setGroupApprovals((prev) => {
       const next = prev.slice();
@@ -2775,12 +2764,10 @@ export default function AgreementBoardWindow({
       tags.push({ key: 'female', label: '女' });
     }
     const qualityBadge = getQualityBadgeText(candidate);
-    if (qualityBadge) {
+    if (isLHOwner && qualityBadge) {
       tags.push({ key: 'quality', label: `품질 ${qualityBadge}` });
     }
     const managerName = getCandidateManagerName(candidate);
-    const storedCredibility = groupCredibility[groupIndex]?.[slotIndex];
-    const credibilityValue = storedCredibility !== undefined ? storedCredibility : '';
     const managementScore = getCandidateManagementScore(candidate);
     const managementNumeric = clampScore(toNumber(managementScore));
 
@@ -2791,7 +2778,6 @@ export default function AgreementBoardWindow({
       label,
       uid,
       companyName: getCompanyName(candidate),
-      regionLabel: getRegionLabel(candidate),
       managerName,
       tags,
       shareValue: shareValue != null ? String(shareValue) : '',
@@ -2801,7 +2787,6 @@ export default function AgreementBoardWindow({
       performanceDisplay: formatAmount(performanceAmount),
       managementDisplay: formatScore(managementScore),
       managementAlert: managementNumeric != null && managementNumeric < (MANAGEMENT_SCORE_MAX - 0.01),
-      credibilityValue,
     };
   };
 
@@ -2839,11 +2824,19 @@ export default function AgreementBoardWindow({
                 <span key={`${meta.uid}-${tag.key}`} className={`excel-tag excel-tag-${tag.key}`}>{tag.label}</span>
               ))}
             </div>
-            <div className="excel-member-name" title={meta.companyName}>{meta.companyName}</div>
-            <div className="excel-member-sub">
-              <span>{meta.regionLabel}</span>
-              {meta.managerName && <span className="excel-badge">{meta.managerName}</span>}
+            <div className="excel-member-header">
+              <div className="excel-member-name" title={meta.companyName}>{meta.companyName}</div>
+              <button
+                type="button"
+                className="excel-remove-btn"
+                onClick={() => handleRemove(meta.groupIndex, meta.slotIndex)}
+              >제거</button>
             </div>
+            {meta.managerName && (
+              <div className="excel-member-sub">
+                <span className="excel-badge">{meta.managerName}</span>
+              </div>
+            )}
             {meta.possibleShareText && (
               <div className="excel-member-hint">가능 {meta.possibleShareText}</div>
             )}
@@ -2878,29 +2871,9 @@ export default function AgreementBoardWindow({
       {meta.empty ? (
         <span className="excel-placeholder">-</span>
       ) : (
-        <div className="excel-status">
-          <div className="status-line"><span>지역</span><span>{meta.regionLabel}</span></div>
-          <div className="status-line"><span>담당</span><span>{meta.managerName || '-'}</span></div>
-          <div className={`status-line score ${meta.managementAlert ? 'warn' : ''}`}>
-            <span>경영</span>
-            <span>{meta.managementDisplay}</span>
-          </div>
-          {credibilityEnabled && (
-            <div className="status-line">
-              <span>신인도</span>
-              <input
-                type="text"
-                value={meta.credibilityValue}
-                placeholder={`0 ~ ${ownerCredibilityMax}`}
-                onChange={(event) => handleCredibilityInput(meta.groupIndex, meta.slotIndex, event.target.value)}
-              />
-            </div>
-          )}
-          <button
-            type="button"
-            className="excel-link"
-            onClick={() => handleRemove(meta.groupIndex, meta.slotIndex)}
-          >제거</button>
+        <div className={`excel-status score-only ${meta.managementAlert ? 'warn' : ''}`}>
+          <span className="status-label">경영점수</span>
+          <span className="status-score">{meta.managementDisplay}</span>
         </div>
       )}
     </td>

@@ -685,6 +685,13 @@ button.primary:hover { background: var(--accent-2); }
   opacity: 0.6;
 }
 
+.excel-member-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
 .excel-member-tags {
   display: flex;
   gap: 4px;
@@ -733,6 +740,16 @@ button.primary:hover { background: var(--accent-2); }
   text-overflow: ellipsis;
 }
 
+.excel-remove-btn {
+  border: none;
+  background: none;
+  color: #ef4444;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  align-self: flex-start;
+}
+
 .excel-member-sub {
   display: flex;
   gap: 8px;
@@ -757,8 +774,7 @@ button.primary:hover { background: var(--accent-2); }
   color: #047857;
 }
 
-.excel-share-cell input,
-.excel-status-cell input {
+.excel-share-cell input {
   width: 100%;
   border-radius: 8px;
   border: 1px solid #d1d5db;
@@ -767,30 +783,29 @@ button.primary:hover { background: var(--accent-2); }
   font-size: 13px;
 }
 
-.excel-status {
+.excel-status.score-only {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 48px;
 }
 
-.excel-status .status-line {
-  display: flex;
-  justify-content: space-between;
+.excel-status.score-only .status-label {
   font-size: 11px;
-  color: #475569;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
 }
 
-.excel-status .status-line.score.warn span:last-child {
+.excel-status.score-only .status-score {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.excel-status.score-only.warn .status-score {
   color: #b91c1c;
-}
-
-.excel-link {
-  border: none;
-  background: none;
-  color: #2563eb;
-  font-size: 12px;
-  cursor: pointer;
-  align-self: flex-end;
 }
 
 .excel-performance div {
@@ -838,16 +853,6 @@ button.primary:hover { background: var(--accent-2); }
   text-align: center;
   padding: 28px 12px;
   color: #94a3b8;
-}
-
-.excel-share-cell input,
-.excel-status-cell input {
-  width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 4px 6px;
-  font-size: 12px;
-  background: #fff;
 }
 
 .button-group { display: flex; flex-wrap: wrap; gap: 8px; }
