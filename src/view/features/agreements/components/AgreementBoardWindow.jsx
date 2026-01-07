@@ -38,16 +38,16 @@ const industryToFileType = (label) => {
 const COLUMN_WIDTHS = {
   order: 40,
   approval: 70,
-  name: 210,
-  share: 70,
+  name: 185,
+  share: 60,
   status: 60,
   management: 100,
-  shareTotal: 90,
-  performanceCell: 110,
-  performanceSummary: 95,
-  credibility: 90,
-  bid: 90,
-  total: 95,
+  shareTotal: 75,
+  performanceCell: 95,
+  performanceSummary: 80,
+  credibility: 75,
+  bid: 75,
+  total: 85,
 };
 const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
 const BOARD_COPY_BUTTON_STYLE_MAP = {
