@@ -3170,7 +3170,6 @@ export default function AgreementBoardWindow({
               </div>
             </div>
           </div>
-          </div>
 
           <div className="excel-table-wrapper" ref={boardMainRef}>
             <table
