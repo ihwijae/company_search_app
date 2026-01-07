@@ -2952,6 +2952,8 @@ export default function AgreementBoardWindow({
     };
   }, [portalContainer, open, inlineMode]);
 
+  const dutySummaryDisplay = buildDutySummary(safeDutyRegions, regionDutyRate, slotLabels.length);
+
   const boardMarkup = (
     <>
       <div className="agreement-board-root" ref={rootRef}>
@@ -3034,15 +3036,8 @@ export default function AgreementBoardWindow({
                     <button type="button" className="excel-btn" onClick={toggleRegionPicker}>{regionPickerOpen ? '닫기' : '지역 선택'}</button>
                   </div>
                 </div>
-                <div className="excel-region-chips">
-                  {safeDutyRegions.length === 0 && <span className="chip-empty">선택된 지역 없음</span>}
-                  {safeDutyRegions.map((region) => (
-                    <span key={region} className="chip">{region}</span>
-                  ))}
-                </div>
-                <div className="duty-summary">
-                  <span>의무지분 {regionDutyRate ? `${regionDutyRate}%` : '-'}</span>
-                  <span>{slotLabels.length}개사</span>
+                <div className="duty-summary" title={dutySummaryDisplay || '의무지역 미지정'}>
+                  <span>{dutySummaryDisplay || '의무지역 미지정'}</span>
                 </div>
                 {regionPickerOpen && (
                   <div className="excel-region-panel">

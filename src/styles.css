@@ -261,15 +261,15 @@ button.primary:hover { background: var(--accent-2); }
 }
 .excel-header-grid {
   display: grid;
-  grid-template-columns: 130px minmax(260px, 0.9fr) minmax(480px, 1.5fr) minmax(200px, 0.7fr);
-  gap: 8px;
+  grid-template-columns: 150px minmax(420px, 2fr) minmax(220px, 0.8fr);
+  gap: 10px;
   align-items: stretch;
 }
-@media (max-width: 1500px) {
-  .excel-header-grid { grid-template-columns: repeat(3, minmax(220px, 1fr)); }
+@media (max-width: 1450px) {
+  .excel-header-grid { grid-template-columns: 150px minmax(320px, 1.6fr) minmax(200px, 0.8fr); }
 }
-@media (max-width: 1280px) {
-  .excel-header-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+@media (max-width: 1180px) {
+  .excel-header-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 }
 .excel-amount-column,
 .excel-info-column {
@@ -306,9 +306,9 @@ button.primary:hover { background: var(--accent-2); }
 .excel-select-block select { border: 1px solid #d1d5db; border-radius: 6px; padding: 5px 6px; font-size: 13px; }
 .excel-info-block { display: flex; flex-direction: column; gap: 6px; }
 .excel-info-column .excel-field-block.wide { grid-column: 1 / -1; }
-.excel-info-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; }
-.excel-info-row.first { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
-.excel-info-row.second { grid-template-columns: minmax(320px, 2.2fr) minmax(160px, 0.8fr); }
+.excel-info-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+.excel-info-row.first { grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+.excel-info-row.second { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
 @media (max-width: 1500px) { .excel-info-row.second { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } }
 .excel-info-row label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #475569; }
 .excel-info-row .input,
@@ -325,9 +325,10 @@ button.primary:hover { background: var(--accent-2); }
   flex-direction: column;
   gap: 6px;
   position: relative;
+  min-height: 0;
 }
 .duty-header { display: flex; justify-content: space-between; gap: 6px; align-items: center; font-size: 11px; font-weight: 600; }
-.duty-summary { display: flex; justify-content: space-between; font-size: 11px; color: #475569; }
+.duty-summary { font-size: 11px; color: #475569; line-height: 1.4; min-height: 32px; display: flex; align-items: center; }
 .notice-combined-field { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; max-width: 520px; }
 .notice-combined-label { font-size: 11px; letter-spacing: 0.08em; color: #475569; text-transform: uppercase; }
 .notice-combined-box { display: flex; gap: 4px; background: #fff; border: 1px solid #d3daf2; border-radius: 12px; padding: 6px 8px; }
