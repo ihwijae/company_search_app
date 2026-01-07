@@ -3036,7 +3036,6 @@ export default function AgreementBoardWindow({
                 <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
               )}
             </div>
-            </div>
 
             <div className="excel-header-main">
               <div className="excel-notice-block">
@@ -3170,6 +3169,7 @@ export default function AgreementBoardWindow({
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
               </div>
             </div>
+          </div>
           </div>
 
           <div className="excel-table-wrapper" ref={boardMainRef}>
