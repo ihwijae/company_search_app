@@ -251,6 +251,27 @@ button.primary:hover { background: var(--accent-2); }
   min-width: 0;
   box-sizing: border-box;
 }
+.excel-board-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.excel-header-top {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.excel-header-main {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+.excel-header-main .excel-notice-block,
+.excel-header-main .excel-config-bar {
+  height: 100%;
+}
 .excel-board-banner {
   display: flex;
   flex-direction: column;
@@ -518,18 +539,14 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-toolbar {
   background: #ffffff;
-  border-radius: 18px;
-  padding: 16px 20px;
+  border-radius: 12px;
+  padding: 10px 12px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   border: 1px solid #e2e8f0;
-}
-
-.excel-toolbar-left {
-  min-width: 220px;
 }
 
 .excel-toolbar-actions {

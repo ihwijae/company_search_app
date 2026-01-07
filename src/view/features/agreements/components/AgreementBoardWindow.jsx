@@ -2994,48 +2994,52 @@ export default function AgreementBoardWindow({
     <>
       <div className="agreement-board-root" ref={rootRef}>
         <div className="excel-board-shell">
-          <div className="excel-board-banner">
-            <div className="excel-banner-top">
-              <div className="excel-owner-card">
-                <div className="owner-chip">
-                  <span className="owner-chip-title">{ownerDisplayLabel}</span>
-                  <span className="owner-chip-sub">{rangeDisplayLabel}</span>
-                </div>
-                <div className="owner-select-row">
-                  <label>
-                    발주처
-                    <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
-                      {AGREEMENT_GROUPS.map((group) => (
-                        <option key={group.id} value={group.id}>{group.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    금액 구간
-                    <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
-                      {rangeOptions.map((item) => (
-                        <option key={item.key} value={item.key}>{item.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-              </div>
-              <div className="excel-amount-cards">
-                {amountCardConfigs.map((card) => (
-                  <div key={card.key} className={`excel-amount-card ${card.highlight ? 'accent' : ''}`}>
-                    <span className="info-label">{card.label}</span>
-                    {card.body}
+          <div className="excel-board-header">
+            <div className="excel-header-top">
+              <div className="excel-board-banner">
+                <div className="excel-banner-top">
+                  <div className="excel-owner-card">
+                    <div className="owner-chip">
+                      <span className="owner-chip-title">{ownerDisplayLabel}</span>
+                      <span className="owner-chip-sub">{rangeDisplayLabel}</span>
+                    </div>
+                    <div className="owner-select-row">
+                      <label>
+                        발주처
+                        <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
+                          {AGREEMENT_GROUPS.map((group) => (
+                            <option key={group.id} value={group.id}>{group.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        금액 구간
+                        <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
+                          {rangeOptions.map((item) => (
+                            <option key={item.key} value={item.key}>{item.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                   </div>
-                ))}
+                  <div className="excel-amount-cards">
+                    {amountCardConfigs.map((card) => (
+                      <div key={card.key} className={`excel-amount-card ${card.highlight ? 'accent' : ''}`}>
+                        <span className="info-label">{card.label}</span>
+                        {card.body}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
+              {!inlineMode && (
+                <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
+              )}
             </div>
-          </div>
-          {!inlineMode && (
-            <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
-          )}
 
-          <div className="excel-notice-block">
-            <div className="excel-notice-meta">
+            <div className="excel-header-main">
+              <div className="excel-notice-block">
+                <div className="excel-notice-meta">
             <div className="notice-combined-field">
               <div className="notice-combined-label">공고번호 / 공고명</div>
               <div className="notice-combined-box">
@@ -3063,7 +3067,6 @@ export default function AgreementBoardWindow({
               <div className="region-picker-heading">
                 <div>
                   <div className="picker-title">의무지역</div>
-                  <div className="picker-helper">선택된 지역 {safeDutyRegions.length}개</div>
                 </div>
                 <div className="picker-actions">
                   {safeDutyRegions.length > 0 && (
@@ -3104,70 +3107,66 @@ export default function AgreementBoardWindow({
                 </div>
               )}
             </div>
-            <div className="excel-notice-summary">{dutySummaryText || '의무지역 없음'}</div>
-          </div>
-        </div>
-
-          <div className="excel-config-bar">
-            <div className="excel-field">
-              <label>참가자격</label>
-              {entryModeResolved === 'none' ? (
-                <span className="excel-placeholder">없음</span>
-              ) : (
-                <AmountInput value={editableEntryAmount} onChange={handleEntryAmountChange} placeholder="0" />
-              )}
             </div>
-            <div className="excel-field excel-field-mode">
-              <label>산출방식</label>
-              <div className="excel-toggle-group">
-                <button
-                  type="button"
-                  className={entryModeResolved === 'ratio' ? 'active' : ''}
-                  onClick={() => handleEntryModeChange('ratio')}
-                >비율제</button>
-                <button
-                  type="button"
-                  className={entryModeResolved === 'sum' ? 'active' : ''}
-                  onClick={() => handleEntryModeChange('sum')}
-                >단순합산제</button>
-                <button
-                  type="button"
-                  className={entryModeResolved === 'none' ? 'active' : ''}
-                  onClick={() => handleEntryModeChange('none')}
-                >없음</button>
+              <div className="excel-config-bar">
+                <div className="excel-field">
+                  <label>참가자격</label>
+                  {entryModeResolved === 'none' ? (
+                    <span className="excel-placeholder">없음</span>
+                  ) : (
+                    <AmountInput value={editableEntryAmount} onChange={handleEntryAmountChange} placeholder="0" />
+                  )}
+                </div>
+                <div className="excel-field excel-field-mode">
+                  <label>산출방식</label>
+                  <div className="excel-toggle-group">
+                    <button
+                      type="button"
+                      className={entryModeResolved === 'ratio' ? 'active' : ''}
+                      onClick={() => handleEntryModeChange('ratio')}
+                    >비율제</button>
+                    <button
+                      type="button"
+                      className={entryModeResolved === 'sum' ? 'active' : ''}
+                      onClick={() => handleEntryModeChange('sum')}
+                    >단순합산제</button>
+                    <button
+                      type="button"
+                      className={entryModeResolved === 'none' ? 'active' : ''}
+                      onClick={() => handleEntryModeChange('none')}
+                    >없음</button>
+                  </div>
+                </div>
+                <div className="excel-field excel-field-stats">
+                  <label>후보 현황</label>
+                  <span>실적사 {summary.performanceTotal}명 · 지역사 {summary.regionTotal}명 · 협정 {summary.groups}개</span>
+                </div>
               </div>
             </div>
-            <div className="excel-field excel-field-stats">
-              <label>후보 현황</label>
-              <span>실적사 {summary.performanceTotal}명 · 지역사 {summary.regionTotal}명 · 협정 {summary.groups}개</span>
-            </div>
-          </div>
 
-          <div className="excel-toolbar">
-            <div className="excel-toolbar-left">
-              <div className="excel-subtext">의무지역 {dutySummaryText || '없음'}</div>
-            </div>
-            <div className="excel-toolbar-actions">
-              <button
-                type="button"
-                onClick={handleExportExcel}
-                className="excel-btn"
-                disabled={exporting}
-              >{exporting ? '엑셀 생성 중…' : '엑셀로 내보내기'}</button>
-              <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
-              {BOARD_COPY_ACTIONS.map((action) => (
+            <div className="excel-toolbar">
+              <div className="excel-toolbar-actions">
                 <button
-                  key={action.kind}
                   type="button"
+                  onClick={handleExportExcel}
                   className="excel-btn"
-                  onClick={() => copyBoardDataset(action.kind)}
-                  disabled={excelCopying}
-                >
-                  {excelCopying && copyingKind === action.kind ? '복사 중…' : action.label}
-                </button>
-              ))}
-              <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
-              <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
+                  disabled={exporting}
+                >{exporting ? '엑셀 생성 중…' : '엑셀로 내보내기'}</button>
+                <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
+                {BOARD_COPY_ACTIONS.map((action) => (
+                  <button
+                    key={action.kind}
+                    type="button"
+                    className="excel-btn"
+                    onClick={() => copyBoardDataset(action.kind)}
+                    disabled={excelCopying}
+                  >
+                    {excelCopying && copyingKind === action.kind ? '복사 중…' : action.label}
+                  </button>
+                ))}
+                <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
+                <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
+              </div>
             </div>
           </div>
 
