@@ -28,18 +28,18 @@ const BOARD_COPY_LOOKUP = BOARD_COPY_ACTIONS.reduce((acc, action) => {
   return acc;
 }, {});
 const COLUMN_WIDTHS = {
-  order: 48,
-  approval: 85,
-  name: 185,
-  share: 85,
-  status: 70,
-  management: 110,
-  shareTotal: 110,
-  performanceCell: 120,
-  performanceSummary: 110,
-  credibility: 110,
-  bid: 110,
-  total: 110,
+  order: 40,
+  approval: 70,
+  name: 210,
+  share: 70,
+  status: 60,
+  management: 100,
+  shareTotal: 90,
+  performanceCell: 110,
+  performanceSummary: 95,
+  credibility: 90,
+  bid: 90,
+  total: 95,
 };
 const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
 const BOARD_COPY_BUTTON_STYLE_MAP = {
@@ -1049,7 +1049,7 @@ export default function AgreementBoardWindow({
       + COLUMN_WIDTHS.bid
       + COLUMN_WIDTHS.total;
     const total = base + nameWidth + shareWidth + statusWidth + perfCellsWidth;
-    return Math.max(1300, total);
+    return Math.max(1200, total);
   }, [slotLabels.length, credibilityEnabled]);
 
   React.useEffect(() => {
@@ -3188,15 +3188,15 @@ export default function AgreementBoardWindow({
                 {slotLabels.map((_, index) => (
                   <col key={`col-status-${index}`} className="col-status" />
                 ))}
-                <col className="col-summary" />
-                <col className="col-summary" />
+                <col className="col-management" />
+                <col className="col-share-total" />
                 {slotLabels.map((_, index) => (
                   <col key={`col-performance-${index}`} className="col-performance" />
                 ))}
-                <col className="col-summary" />
-                {credibilityEnabled && <col className="col-summary" />}
-                <col className="col-summary" />
-                <col className="col-summary" />
+                <col className="col-performance-summary" />
+                {credibilityEnabled && <col className="col-credibility" />}
+                <col className="col-bid" />
+                <col className="col-total" />
               </colgroup>
               <thead>
                 <tr>

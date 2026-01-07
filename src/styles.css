@@ -373,18 +373,18 @@ button.primary:hover { background: var(--accent-2); }
 }
 .excel-config-bar {
   background: #fff;
-  border-radius: 16px;
-  padding: 12px;
+  border-radius: 12px;
+  padding: 8px;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid #e5e7eb;
 }
 .excel-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 150px;
+  min-width: 120px;
   flex: 1;
 }
 .excel-field label {
@@ -593,13 +593,18 @@ button.primary:hover { background: var(--accent-2); }
   vertical-align: top;
   background: #fff;
 }
-.col-order { width: 48px; }
-.col-approval { width: 85px; }
-.col-name { width: 185px; }
-.col-share { width: 85px; }
-.col-status { width: 70px; }
-.col-summary { width: 110px; }
-.col-performance { width: 120px; }
+.col-order { width: 40px; }
+.col-approval { width: 70px; }
+.col-name { width: 210px; }
+.col-share { width: 70px; }
+.col-status { width: 60px; }
+.col-management { width: 100px; }
+.col-share-total { width: 90px; }
+.col-performance { width: 110px; }
+.col-performance-summary { width: 95px; }
+.col-credibility { width: 90px; }
+.col-bid { width: 90px; }
+.col-total { width: 95px; }
 
 .excel-cell {
   min-width: 90px;
@@ -612,18 +617,21 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-name-cell {
-  min-width: 185px;
+  min-width: 210px;
   background: #fbfbfe;
   overflow: hidden;
 }
 
-.excel-share-cell,
+.excel-share-cell {
+  min-width: 70px;
+}
+
 .excel-perf-cell {
-  min-width: 90px;
+  min-width: 110px;
 }
 
 .excel-status-cell {
-  min-width: 70px;
+  min-width: 60px;
 }
 
 .order-cell,
