@@ -1124,6 +1124,44 @@ export default function AgreementBoardWindow({
     });
   }, [safeGroupSize]);
 
+  const attemptPendingPlacement = React.useCallback(() => {
+    const pending = pendingPlacementRef.current;
+    if (!pending) return false;
+    const {
+      candidateId,
+      groupIndex,
+      slotIndex,
+      matchBizNo,
+      matchNameKey,
+    } = pending;
+    let targetUid = null;
+    for (const [uid, entry] of participantMap.entries()) {
+      if (candidateId && entry?.candidate?.id === candidateId) {
+        targetUid = uid;
+        break;
+      }
+      if (!entry?.candidate) continue;
+      if (!targetUid && matchBizNo) {
+        const candidateBiz = normalizeBizNo(getBizNo(entry.candidate));
+        if (candidateBiz && candidateBiz === matchBizNo) {
+          targetUid = uid;
+          break;
+        }
+      }
+      if (!targetUid && matchNameKey) {
+        const candidateNameKey = sanitizeCompanyName(getCompanyName(entry.candidate) || '').toLowerCase();
+        if (candidateNameKey && candidateNameKey === matchNameKey) {
+          targetUid = uid;
+          break;
+        }
+      }
+    }
+    if (!targetUid) return false;
+    placeEntryInSlot(targetUid, groupIndex, slotIndex);
+    pendingPlacementRef.current = null;
+    return true;
+  }, [participantMap, placeEntryInSlot]);
+
   const handleRepresentativePicked = React.useCallback((picked) => {
     if (!picked) return;
     const target = searchTargetRef.current;
@@ -1137,9 +1175,11 @@ export default function AgreementBoardWindow({
         slotIndex: target.slotIndex,
       };
     }
+    // 이미 후보 목록에 있는 업체라면 즉시 슬롯에 배치 시도
+    attemptPendingPlacement();
     onAddRepresentatives?.([picked]);
     closeRepresentativeSearch();
-  }, [onAddRepresentatives, closeRepresentativeSearch, derivePendingPlacementHint]);
+  }, [onAddRepresentatives, closeRepresentativeSearch, derivePendingPlacementHint, attemptPendingPlacement]);
 
   const closeWindow = React.useCallback(() => {
     if (inlineMode) return;
@@ -2050,41 +2090,8 @@ export default function AgreementBoardWindow({
   }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion]);
 
   React.useEffect(() => {
-    const pending = pendingPlacementRef.current;
-    if (!pending) return;
-    const {
-      candidateId,
-      groupIndex,
-      slotIndex,
-      matchBizNo,
-      matchNameKey,
-    } = pending;
-    let targetUid = null;
-    for (const [uid, entry] of participantMap.entries()) {
-      if (candidateId && entry?.candidate?.id === candidateId) {
-        targetUid = uid;
-        break;
-      }
-      if (!entry?.candidate) continue;
-      if (!targetUid && matchBizNo) {
-        const candidateBiz = normalizeBizNo(getBizNo(entry.candidate));
-        if (candidateBiz && candidateBiz === matchBizNo) {
-          targetUid = uid;
-          break;
-        }
-      }
-      if (!targetUid && matchNameKey) {
-        const candidateNameKey = sanitizeCompanyName(getCompanyName(entry.candidate) || '').toLowerCase();
-        if (candidateNameKey && candidateNameKey === matchNameKey) {
-          targetUid = uid;
-          break;
-        }
-      }
-    }
-    if (!targetUid) return;
-    placeEntryInSlot(targetUid, groupIndex, slotIndex);
-    pendingPlacementRef.current = null;
-  }, [participantMap, placeEntryInSlot]);
+    attemptPendingPlacement();
+  }, [participantMap, attemptPendingPlacement]);
 
   React.useEffect(() => {
     if (!open) return;
