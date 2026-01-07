@@ -257,8 +257,28 @@ button.primary:hover { background: var(--accent-2); }
 .excel-board-header {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+.excel-header-summary {
+  background: #fff;
+  border: 1px solid #e4e7f2;
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+.summary-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 6px 8px; min-height: 0; }
+.summary-item.wide { grid-column: span 2; }
+.summary-label { display: block; font-size: 10px; letter-spacing: 0.06em; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
+.summary-item strong { font-size: 13px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.summary-toggle { align-self: flex-end; }
 .excel-header-grid {
   display: grid;
   grid-template-columns: 140px minmax(220px, 0.9fr) minmax(380px, 1.4fr) minmax(200px, 0.7fr);

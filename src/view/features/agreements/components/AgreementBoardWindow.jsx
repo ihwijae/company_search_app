@@ -2954,11 +2954,56 @@ export default function AgreementBoardWindow({
 
   const headerDutySummary = buildDutySummary(safeDutyRegions, regionDutyRate, slotLabels.length);
 
+  const [headerExpanded, setHeaderExpanded] = React.useState(false);
+  const toggleHeaderExpanded = React.useCallback(() => {
+    setHeaderExpanded((prev) => !prev);
+  }, []);
+  const summaryIndustry = industryLabel || '미지정';
+  const summaryOwner = (AGREEMENT_GROUPS.find((group) => group.id === ownerSelectValue)?.label) || '발주처 미지정';
+  const summaryRange = (rangeOptions.find((item) => item.key === selectedRangeKey)?.label) || '구간 미지정';
+  const summaryDuty = buildDutySummary(safeDutyRegions, regionDutyRate, slotLabels.length) || '의무지역 미지정';
+
   const boardMarkup = (
     <>
       <div className="agreement-board-root" ref={rootRef}>
         <div className="excel-board-shell">
           <div className="excel-board-header">
+            <div className="excel-header-summary">
+              <div className="summary-row">
+                <div className="summary-item">
+                  <span className="summary-label">발주처</span>
+                  <strong>{summaryOwner}</strong>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">금액 구간</span>
+                  <strong>{summaryRange}</strong>
+                </div>
+                <div className="summary-item wide">
+                  <span className="summary-label">공고번호</span>
+                  <strong>{noticeNo || '-'}</strong>
+                </div>
+                <div className="summary-item wide">
+                  <span className="summary-label">공고명</span>
+                  <strong title={noticeTitle || '-'}>{noticeTitle || '-'}</strong>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">공종</span>
+                  <strong>{summaryIndustry}</strong>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">의무지역 / 지분</span>
+                  <strong>{summaryDuty}</strong>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">추정가격</span>
+                  <strong>{estimatedAmount ? `${estimatedAmount}원` : '-'}</strong>
+                </div>
+              </div>
+              <button type="button" className="excel-btn summary-toggle" onClick={toggleHeaderExpanded}>
+                {headerExpanded ? '공고 정보 접기' : '공고 정보 펼치기'}
+              </button>
+            </div>
+            {headerExpanded && (
             <div className="excel-header-grid">
               <div className="excel-amount-column">
                 <div className="excel-field-block accent">
@@ -3086,6 +3131,7 @@ export default function AgreementBoardWindow({
                 )}
               </div>
             </div>
+            )}
 
               <div className="excel-header-bottom">
                 <div className="excel-config-bar">
