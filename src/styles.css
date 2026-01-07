@@ -605,7 +605,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-name-cell {
-  min-width: 160px;
+  min-width: 220px;
   background: #fbfbfe;
   overflow: hidden;
 }
