@@ -183,6 +183,7 @@ button.primary:hover { background: var(--accent-2); }
 .title-drag {
   height: 32px;
   flex: 0 0 32px;
+  min-height: 32px;
   -webkit-app-region: drag;
   background: #e0ecff;
   border-bottom: 1px solid rgba(92, 117, 171, 0.2);
