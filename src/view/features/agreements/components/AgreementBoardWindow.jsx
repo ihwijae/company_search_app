@@ -3026,13 +3026,13 @@ export default function AgreementBoardWindow({
         {slotMetas.map(renderShareCell)}
         <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
         {credibilityEnabled && slotMetas.map(renderCredibilityCell)}
+        {credibilityEnabled && (
+          <td className="excel-cell total-cell">{credibilitySummary}</td>
+        )}
         {slotMetas.map(renderStatusCell)}
         <td className="excel-cell total-cell">{managementSummary}</td>
         {slotMetas.map(renderPerformanceCell)}
         <td className="excel-cell total-cell">{performanceSummary}</td>
-        {credibilityEnabled && (
-          <td className="excel-cell total-cell">{credibilitySummary}</td>
-        )}
         <td className="excel-cell total-cell">{bidScoreDisplay}</td>
         <td className="excel-cell total-cell">{totalScoreDisplay}</td>
       </tr>
@@ -3255,19 +3255,19 @@ export default function AgreementBoardWindow({
                 {slotLabels.map((_, index) => (
                   <col key={`col-share-${index}`} className="col-share" />
                 ))}
+                <col className="col-share-total" />
                 {credibilityEnabled && slotLabels.map((_, index) => (
                   <col key={`col-credibility-slot-${index}`} className="col-credibility-slot" />
                 ))}
+                {credibilityEnabled && <col className="col-credibility" />}
                 {slotLabels.map((_, index) => (
                   <col key={`col-status-${index}`} className="col-status" />
                 ))}
                 <col className="col-management" />
-                <col className="col-share-total" />
                 {slotLabels.map((_, index) => (
                   <col key={`col-performance-${index}`} className="col-performance" />
                 ))}
                 <col className="col-performance-summary" />
-                {credibilityEnabled && <col className="col-credibility" />}
                 <col className="col-bid" />
                 <col className="col-total" />
               </colgroup>
@@ -3294,11 +3294,9 @@ export default function AgreementBoardWindow({
                   {slotLabels.map((label, index) => (
                     <th key={`share-head-${index}`}>{label}</th>
                   ))}
-                  <th key="share-total-head" />
                   {credibilityEnabled && slotLabels.map((label, index) => (
                     <th key={`credibility-head-${index}`}>{label}</th>
                   ))}
-                  {credibilityEnabled && <th key="credibility-total-head" />}
                   {slotLabels.map((label, index) => (
                     <th key={`status-head-${index}`}>{label}</th>
                   ))}
