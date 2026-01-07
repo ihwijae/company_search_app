@@ -1124,62 +1124,7 @@ export default function AgreementBoardWindow({
     });
   }, [safeGroupSize]);
 
-  const attemptPendingPlacement = React.useCallback(() => {
-    const pending = pendingPlacementRef.current;
-    if (!pending) return false;
-    const {
-      candidateId,
-      groupIndex,
-      slotIndex,
-      matchBizNo,
-      matchNameKey,
-    } = pending;
-    let targetUid = null;
-    for (const [uid, entry] of participantMap.entries()) {
-      if (candidateId && entry?.candidate?.id === candidateId) {
-        targetUid = uid;
-        break;
-      }
-      if (!entry?.candidate) continue;
-      if (!targetUid && matchBizNo) {
-        const candidateBiz = normalizeBizNo(getBizNo(entry.candidate));
-        if (candidateBiz && candidateBiz === matchBizNo) {
-          targetUid = uid;
-          break;
-        }
-      }
-      if (!targetUid && matchNameKey) {
-        const candidateNameKey = sanitizeCompanyName(getCompanyName(entry.candidate) || '').toLowerCase();
-        if (candidateNameKey && candidateNameKey === matchNameKey) {
-          targetUid = uid;
-          break;
-        }
-      }
-    }
-    if (!targetUid) return false;
-    placeEntryInSlot(targetUid, groupIndex, slotIndex);
-    pendingPlacementRef.current = null;
-    return true;
-  }, [participantMap, placeEntryInSlot]);
-
-  const handleRepresentativePicked = React.useCallback((picked) => {
-    if (!picked) return;
-    const target = searchTargetRef.current;
-    if (target) {
-      const hints = derivePendingPlacementHint(picked);
-      pendingPlacementRef.current = {
-        candidateId: hints.candidateId,
-        matchBizNo: hints.matchBizNo,
-        matchNameKey: hints.matchNameKey,
-        groupIndex: target.groupIndex,
-        slotIndex: target.slotIndex,
-      };
-    }
-    // 이미 후보 목록에 있는 업체라면 즉시 슬롯에 배치 시도
-    attemptPendingPlacement();
-    onAddRepresentatives?.([picked]);
-    closeRepresentativeSearch();
-  }, [onAddRepresentatives, closeRepresentativeSearch, derivePendingPlacementHint, attemptPendingPlacement]);
+  // handleRepresentativePicked defined later after participant map is ready
 
   const closeWindow = React.useCallback(() => {
     if (inlineMode) return;
@@ -1506,6 +1451,62 @@ export default function AgreementBoardWindow({
     }
     return map;
   }, [representativeEntries, regionEntries]);
+
+  const attemptPendingPlacement = React.useCallback(() => {
+    const pending = pendingPlacementRef.current;
+    if (!pending) return false;
+    const {
+      candidateId,
+      groupIndex,
+      slotIndex,
+      matchBizNo,
+      matchNameKey,
+    } = pending;
+    let targetUid = null;
+    for (const [uid, entry] of participantMap.entries()) {
+      if (candidateId && entry?.candidate?.id === candidateId) {
+        targetUid = uid;
+        break;
+      }
+      if (!entry?.candidate) continue;
+      if (!targetUid && matchBizNo) {
+        const candidateBiz = normalizeBizNo(getBizNo(entry.candidate));
+        if (candidateBiz && candidateBiz === matchBizNo) {
+          targetUid = uid;
+          break;
+        }
+      }
+      if (!targetUid && matchNameKey) {
+        const candidateNameKey = sanitizeCompanyName(getCompanyName(entry.candidate) || '').toLowerCase();
+        if (candidateNameKey && candidateNameKey === matchNameKey) {
+          targetUid = uid;
+          break;
+        }
+      }
+    }
+    if (!targetUid) return false;
+    placeEntryInSlot(targetUid, groupIndex, slotIndex);
+    pendingPlacementRef.current = null;
+    return true;
+  }, [participantMap, placeEntryInSlot]);
+
+  const handleRepresentativePicked = React.useCallback((picked) => {
+    if (!picked) return;
+    const target = searchTargetRef.current;
+    if (target) {
+      const hints = derivePendingPlacementHint(picked);
+      pendingPlacementRef.current = {
+        candidateId: hints.candidateId,
+        matchBizNo: hints.matchBizNo,
+        matchNameKey: hints.matchNameKey,
+        groupIndex: target.groupIndex,
+        slotIndex: target.slotIndex,
+      };
+    }
+    attemptPendingPlacement();
+    onAddRepresentatives?.([picked]);
+    closeRepresentativeSearch();
+  }, [onAddRepresentatives, closeRepresentativeSearch, derivePendingPlacementHint, attemptPendingPlacement]);
 
   const buildInitialAssignments = React.useCallback(() => {
     const baseCount = representativeEntries.length > 0
