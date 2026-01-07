@@ -243,8 +243,8 @@ button.primary:hover { background: var(--accent-2); }
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 8px 12px 18px;
+  gap: 10px;
+  padding: 4px 8px 12px;
   overflow: visible;
   align-self: stretch;
   width: 100%;
@@ -254,31 +254,31 @@ button.primary:hover { background: var(--accent-2); }
 .excel-board-banner {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   background: #fefefe;
-  border-radius: 20px;
-  padding: 16px 18px;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+  border-radius: 16px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
   min-width: 0;
 }
 .excel-banner-top { display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch; }
-.excel-owner-card { flex: 0 0 260px; max-width: 280px; background: linear-gradient(135deg, #4d2de6, #7c3aed); border-radius: 24px; padding: 18px 20px; color: #fff; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 45px rgba(77, 45, 230, 0.4); }
+.excel-owner-card { flex: 0 0 220px; max-width: 240px; background: linear-gradient(135deg, #4d2de6, #7c3aed); border-radius: 18px; padding: 14px 16px; color: #fff; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 16px 30px rgba(77, 45, 230, 0.35); }
 .owner-chip { background: rgba(255, 255, 255, 0.18); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
 .owner-chip-title { font-size: 22px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .owner-chip-sub { font-size: 13px; opacity: 0.9; letter-spacing: 0.04em; }
 .owner-select-row { display: flex; flex-direction: column; gap: 10px; }
 .owner-select-row label { display: flex; flex-direction: column; gap: 6px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.9); }
 .owner-select-row select { border: none; border-radius: 12px; padding: 8px 12px; font-size: 13px; color: #111827; background: rgba(255,255,255,0.95); min-height: 38px; }
-.excel-amount-cards { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.excel-amount-card { background: #fff; border-radius: 18px; border: 1px solid #e7eaf7; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08); min-width: 0; }
+.excel-amount-cards { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.excel-amount-card { background: #fff; border-radius: 12px; border: 1px solid #e7eaf7; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06); min-width: 0; }
 .excel-amount-card.accent { border-color: #cdd6ff; box-shadow: 0 10px 18px rgba(79, 70, 229, 0.16); }
 .excel-amount-card .input,
 .excel-amount-card input,
-.excel-amount-card .amount-input input { background: #fff; border-radius: 8px; border: 1px solid #d1d5db; padding: 4px 6px; font-weight: 600; font-size: 13px; }
+.excel-amount-card .amount-input input { background: #fff; border-radius: 6px; border: 1px solid #d1d5db; padding: 4px 6px; font-weight: 600; font-size: 12px; }
 .excel-info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 6px;
   width: 100%;
 }
 .excel-info-cell {
@@ -302,10 +302,10 @@ button.primary:hover { background: var(--accent-2); }
 }
 .excel-notice-block {
   background: #fff;
-  border-radius: 16px;
-  padding: 12px;
+  border-radius: 12px;
+  padding: 10px;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
 }
 .excel-notice-headline input {
   width: 100%;
@@ -593,13 +593,13 @@ button.primary:hover { background: var(--accent-2); }
   vertical-align: top;
   background: #fff;
 }
-.col-order { width: 60px; }
-.col-approval { width: 90px; }
-.col-name { width: 220px; }
-.col-share { width: 100px; }
-.col-status { width: 80px; }
-.col-summary { width: 120px; }
-.col-performance { width: 140px; }
+.col-order { width: 48px; }
+.col-approval { width: 85px; }
+.col-name { width: 185px; }
+.col-share { width: 85px; }
+.col-status { width: 70px; }
+.col-summary { width: 110px; }
+.col-performance { width: 120px; }
 
 .excel-cell {
   min-width: 90px;
@@ -612,7 +612,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-name-cell {
-  min-width: 220px;
+  min-width: 185px;
   background: #fbfbfe;
   overflow: hidden;
 }

@@ -27,6 +27,20 @@ const BOARD_COPY_LOOKUP = BOARD_COPY_ACTIONS.reduce((acc, action) => {
   acc[action.kind] = action;
   return acc;
 }, {});
+const COLUMN_WIDTHS = {
+  order: 48,
+  approval: 85,
+  name: 185,
+  share: 85,
+  status: 70,
+  management: 110,
+  shareTotal: 110,
+  performanceCell: 120,
+  performanceSummary: 110,
+  credibility: 110,
+  bid: 110,
+  total: 110,
+};
 const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
 const BOARD_COPY_BUTTON_STYLE_MAP = {
   names: { backgroundColor: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' },
@@ -1022,20 +1036,20 @@ export default function AgreementBoardWindow({
   ), [safeGroupSize]);
 
   const tableMinWidth = React.useMemo(() => {
-    const orderAndApproval = 60 + 90;
-    const nameWidth = slotLabels.length * 220;
-    const shareWidth = slotLabels.length * 100;
-    const statusWidth = slotLabels.length * 80;
-    const managementWidth = 120;
-    const shareTotalWidth = 120;
-    const perfCellsWidth = slotLabels.length * 140;
-    const perfSummaryWidth = 120;
-    const credibilityWidth = credibilityEnabled ? 120 : 0;
-    const bidWidth = 120;
-    const totalWidth = 120;
-    const total = orderAndApproval + nameWidth + shareWidth + statusWidth + managementWidth + shareTotalWidth
-      + perfCellsWidth + perfSummaryWidth + credibilityWidth + bidWidth + totalWidth;
-    return Math.max(1500, total);
+    const nameWidth = slotLabels.length * COLUMN_WIDTHS.name;
+    const shareWidth = slotLabels.length * COLUMN_WIDTHS.share;
+    const statusWidth = slotLabels.length * COLUMN_WIDTHS.status;
+    const perfCellsWidth = slotLabels.length * COLUMN_WIDTHS.performanceCell;
+    const base = COLUMN_WIDTHS.order
+      + COLUMN_WIDTHS.approval
+      + COLUMN_WIDTHS.management
+      + COLUMN_WIDTHS.shareTotal
+      + COLUMN_WIDTHS.performanceSummary
+      + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
+      + COLUMN_WIDTHS.bid
+      + COLUMN_WIDTHS.total;
+    const total = base + nameWidth + shareWidth + statusWidth + perfCellsWidth;
+    return Math.max(1300, total);
   }, [slotLabels.length, credibilityEnabled]);
 
   React.useEffect(() => {
