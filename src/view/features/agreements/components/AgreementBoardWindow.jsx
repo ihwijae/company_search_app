@@ -3147,6 +3147,12 @@ export default function AgreementBoardWindow({
               className="excel-board-table"
               style={{ minWidth: `${tableMinWidth}px`, width: `${tableMinWidth}px` }}
             >
+              <colgroup>
+                <col span={slotLabels.length} style={{ width: '220px' }} />
+                <col span={slotLabels.length} />
+                <col span={slotLabels.length} />
+                <col span={slotLabels.length} />
+              </colgroup>
               <thead>
                 <tr>
                   <th rowSpan="2">연번</th>
