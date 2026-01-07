@@ -711,13 +711,13 @@ button.primary:hover { background: var(--accent-2); }
 }
 .col-order { width: 40px; }
 .col-approval { width: 70px; }
-.col-name { width: 140px; }
-.col-share { width: 60px; }
+.col-name { width: 100px; }
+.col-share { width: 50px; }
 .col-status { width: 60px; }
 .col-management { width: 100px; }
-.col-share-total { width: 75px; }
-.col-performance { width: 95px; }
-.col-performance-summary { width: 80px; }
+.col-share-total { width: 60px; }
+.col-performance { width: 90px; }
+.col-performance-summary { width: 70px; }
 .col-credibility { width: 75px; }
 .col-bid { width: 75px; }
 .col-total { width: 85px; }
@@ -733,17 +733,17 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-name-cell {
-  min-width: 140px;
+  min-width: 100px;
   background: #fbfbfe;
   overflow: hidden;
 }
 
 .excel-share-cell {
-  min-width: 60px;
+  min-width: 50px;
 }
 
 .excel-perf-cell {
-  min-width: 95px;
+  min-width: 90px;
 }
 
 .excel-status-cell {
