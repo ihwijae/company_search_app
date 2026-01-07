@@ -276,13 +276,13 @@ const toNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const formatScore = (score) => {
+const formatScore = (score, digits = 3) => {
   const value = toNumber(score);
   if (value === null) return '-';
   if (Math.abs(value) >= 1000) {
     try { return value.toLocaleString('ko-KR'); } catch (err) { return String(value); }
   }
-  return value.toFixed(3);
+  return value.toFixed(digits);
 };
 
 const formatPlainAmount = (value) => {
@@ -2785,7 +2785,7 @@ export default function AgreementBoardWindow({
       possibleShareText,
       sipyungDisplay: formatAmount(sipyungAmount),
       performanceDisplay: formatAmount(performanceAmount),
-      managementDisplay: formatScore(managementScore),
+      managementDisplay: formatScore(managementScore, 2),
       managementAlert: managementNumeric != null && managementNumeric < (MANAGEMENT_SCORE_MAX - 0.01),
     };
   };
@@ -2895,7 +2895,7 @@ export default function AgreementBoardWindow({
     const summaryInfo = group.summary;
     const slotMetas = slotLabels.map((label, slotIndex) => buildSlotMeta(group, groupIndex, slotIndex, label));
     const managementSummary = summaryInfo?.managementScore != null
-      ? `${formatScore(summaryInfo.managementScore)} / ${formatScore(summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX)}`
+      ? `${formatScore(summaryInfo.managementScore, 2)} / ${formatScore(summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX, 2)}`
       : '-';
     const performanceSummary = summaryInfo?.performanceScore != null
       ? `${formatScore(summaryInfo.performanceScore)} / ${formatScore(summaryInfo.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper))}`

@@ -611,9 +611,12 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-share-cell,
-.excel-status-cell,
 .excel-perf-cell {
   min-width: 90px;
+}
+
+.excel-status-cell {
+  min-width: 70px;
 }
 
 .order-cell,
@@ -785,16 +788,16 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-status.score-only {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
+  min-height: 36px;
 }
 
 .excel-status.score-only .status-score {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   color: #111827;
+  text-align: center;
 }
 
 .excel-status.score-only.warn .status-score {
@@ -804,7 +807,7 @@ button.primary:hover { background: var(--accent-2); }
 .excel-performance {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 2px;
 }
 
@@ -818,9 +821,10 @@ button.primary:hover { background: var(--accent-2); }
   font-size: 13px;
   font-weight: 600;
   color: #111827;
-  word-break: break-all;
+  word-break: break-word;
   text-align: right;
   width: 100%;
+  white-space: normal;
 }
 
 .excel-cell.total-cell {
