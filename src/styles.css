@@ -449,7 +449,7 @@ button.primary:hover { background: var(--accent-2); }
   box-sizing: border-box;
   border-radius: 0;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .excel-banner-info {
