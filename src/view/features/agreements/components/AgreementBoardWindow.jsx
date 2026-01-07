@@ -942,6 +942,10 @@ export default function AgreementBoardWindow({
     setRegionPickerOpen((prev) => !prev);
   }, []);
 
+  const closeRegionModal = React.useCallback(() => {
+    setRegionPickerOpen(false);
+  }, []);
+
   const handleRegionFilterChange = React.useCallback((event) => {
     setRegionFilter(event.target.value);
   }, []);
@@ -984,10 +988,38 @@ export default function AgreementBoardWindow({
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
   const [excelCopying, setExcelCopying] = React.useState(false);
   const [copyingKind, setCopyingKind] = React.useState(null);
+  const [headerAlert, setHeaderAlert] = React.useState('');
+  const headerAlertTimerRef = React.useRef(null);
   const searchTargetRef = React.useRef(null);
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
   const boardMainRef = React.useRef(null);
+
+  const clearHeaderAlertTimer = React.useCallback(() => {
+    if (headerAlertTimerRef.current) {
+      clearTimeout(headerAlertTimerRef.current);
+      headerAlertTimerRef.current = null;
+    }
+  }, []);
+
+  const dismissHeaderAlert = React.useCallback(() => {
+    clearHeaderAlertTimer();
+    setHeaderAlert('');
+  }, [clearHeaderAlertTimer]);
+
+  const showHeaderAlert = React.useCallback((message) => {
+    if (!message) return;
+    clearHeaderAlertTimer();
+    setHeaderAlert(message);
+    headerAlertTimerRef.current = setTimeout(() => {
+      headerAlertTimerRef.current = null;
+      setHeaderAlert('');
+    }, 2600);
+  }, [clearHeaderAlertTimer]);
+
+  React.useEffect(() => () => {
+    clearHeaderAlertTimer();
+  }, [clearHeaderAlertTimer]);
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -1119,9 +1151,13 @@ export default function AgreementBoardWindow({
   }, [groupCredibility]);
 
   const openRepresentativeSearch = React.useCallback((target = null) => {
+    if (!String(industryLabel || '').trim()) {
+      showHeaderAlert('공종을 먼저 선택해 주세요.');
+      return;
+    }
     searchTargetRef.current = target;
     setRepresentativeSearchOpen(true);
-  }, []);
+  }, [industryLabel, showHeaderAlert]);
 
   const closeRepresentativeSearch = React.useCallback(() => {
     setRepresentativeSearchOpen(false);
@@ -2971,6 +3007,12 @@ export default function AgreementBoardWindow({
       <div className="agreement-board-root" ref={rootRef}>
         <div className="excel-board-shell">
           <div className="excel-board-header">
+            {headerAlert && (
+              <div className="excel-inline-alert">
+                <span>{headerAlert}</span>
+                <button type="button" onClick={dismissHeaderAlert}>확인</button>
+              </div>
+            )}
             <div className="excel-header-grid condensed">
               <div className="header-stack stack-owner">
                 <div className="excel-select-block">
@@ -3103,31 +3145,6 @@ export default function AgreementBoardWindow({
                       <input className="input" value={regionDutyRate || ''} onChange={handleRegionDutyRateChange} placeholder="예: 49" />
                     </div>
                   </div>
-                  {regionPickerOpen && (
-                    <div className="excel-region-panel">
-                      <input
-                        className="input"
-                        value={regionFilter}
-                        onChange={handleRegionFilterChange}
-                        placeholder="지역명 검색"
-                      />
-                      <div className="excel-region-panel-list">
-                        {filteredRegionOptions.length === 0 && (
-                          <div className="region-panel-empty">검색 결과가 없습니다.</div>
-                        )}
-                        {filteredRegionOptions.map((region) => (
-                          <label key={region}>
-                            <input
-                              type="checkbox"
-                              checked={safeDutyRegions.includes(region)}
-                              onChange={() => handleDutyRegionToggle(region)}
-                            />
-                            <span>{region}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -3238,6 +3255,48 @@ export default function AgreementBoardWindow({
           onPick={handleRepresentativePicked}
           fileType={fileType || 'all'}
         />
+      )}
+      {regionPickerOpen && (
+        <div className="region-modal-backdrop" onClick={closeRegionModal}>
+          <div className="region-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="region-modal-header">
+              <div>
+                <h3>의무지역 선택</h3>
+                <p>의무지역을 선택하고 지분을 입력해 주세요.</p>
+              </div>
+              <button type="button" className="region-modal-close" onClick={closeRegionModal}>×</button>
+            </div>
+            <div className="region-modal-search">
+              <input
+                className="input"
+                value={regionFilter}
+                onChange={handleRegionFilterChange}
+                placeholder="지역명 검색"
+              />
+              <div className="region-modal-actions">
+                {safeDutyRegions.length > 0 && (
+                  <button type="button" className="excel-btn" onClick={handleDutyRegionsClear}>선택 초기화</button>
+                )}
+                <button type="button" className="excel-btn primary" onClick={closeRegionModal}>선택 완료</button>
+              </div>
+            </div>
+            <div className="region-modal-list">
+              {filteredRegionOptions.length === 0 && (
+                <div className="region-panel-empty">검색 결과가 없습니다.</div>
+              )}
+              {filteredRegionOptions.map((region) => (
+                <label key={region}>
+                  <input
+                    type="checkbox"
+                    checked={safeDutyRegions.includes(region)}
+                    onChange={() => handleDutyRegionToggle(region)}
+                  />
+                  <span>{region}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
