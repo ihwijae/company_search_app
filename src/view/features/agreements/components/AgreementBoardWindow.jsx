@@ -1503,8 +1503,10 @@ export default function AgreementBoardWindow({
         slotIndex: target.slotIndex,
       };
     }
-    attemptPendingPlacement();
-    onAddRepresentatives?.([picked]);
+    const placed = attemptPendingPlacement();
+    if (!placed) {
+      onAddRepresentatives?.([picked]);
+    }
     closeRepresentativeSearch();
   }, [onAddRepresentatives, closeRepresentativeSearch, derivePendingPlacementHint, attemptPendingPlacement]);
 
