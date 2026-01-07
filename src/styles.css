@@ -261,42 +261,37 @@ button.primary:hover { background: var(--accent-2); }
 }
 .excel-header-top {
   display: grid;
-  grid-template-columns: 240px minmax(260px, 0.7fr) minmax(520px, 2fr);
-  gap: 12px;
+  grid-template-columns: 150px minmax(320px, 1fr) minmax(560px, 2.1fr);
+  gap: 10px;
   align-items: stretch;
 }
 @media (max-width: 1500px) {
-  .excel-header-top { grid-template-columns: 220px minmax(220px, 0.8fr) minmax(420px, 1.6fr); }
+  .excel-header-top { grid-template-columns: 140px minmax(260px, 1fr) minmax(460px, 2fr); }
 }
 @media (max-width: 1320px) {
   .excel-header-top { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 }
-.excel-owner-stack { display: flex; flex-direction: column; gap: 12px; }
-.excel-amount-stack { display: flex; flex-direction: column; gap: 12px; }
-.excel-info-stack { display: flex; flex-direction: column; gap: 12px; }
-.excel-info-panel {
-  background: #fff;
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  padding: 12px 14px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
-  gap: 14px;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
-}
-@media (max-width: 1300px) {
-  .excel-info-panel { grid-template-columns: 1fr; }
-}
-.excel-info-fields { display: flex; flex-direction: column; gap: 12px; }
-.excel-info-row { display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 8px; }
-@media (max-width: 1500px) {
-  .excel-info-row { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
-}
-@media (max-width: 1100px) {
-  .excel-info-row { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-}
-.excel-entry-row { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 10px; }
-.excel-entry-row .excel-entry-field { min-width: 0; }
+.excel-banner { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; box-shadow: 0 5px 12px rgba(15, 23, 42, 0.05); }
+.excel-meta-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.excel-meta-group { display: flex; flex-direction: column; gap: 4px; }
+.excel-meta-group label { font-size: 12px; color: #475569; letter-spacing: 0.05em; text-transform: uppercase; }
+.excel-meta-group select { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+.excel-amount-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
+.excel-amount-box { background: #fff; border: 1px solid #e5e7eb; border-radius: 9px; padding: 5px 7px; display: flex; flex-direction: column; gap: 3px; }
+.excel-amount-box.accent { border-color: #cbd5f5; box-shadow: 0 6px 12px rgba(79, 70, 229, 0.16); }
+.excel-info-panel { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06); }
+.excel-info-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.excel-info-row.first { grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+@media (max-width: 1500px) { .excel-info-row.first { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
+.excel-info-row.second { grid-template-columns: minmax(280px, 2.5fr) minmax(200px, 1fr) minmax(120px, 0.8fr) minmax(180px, 1fr); }
+@media (max-width: 1500px) { .excel-info-row.second { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } }
+.excel-info-row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: #475569; }
+.excel-info-row .input,
+.excel-info-row input { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+.excel-info-row .notice-combined-box { display: flex; gap: 4px; border: 1px solid #d3daf2; border-radius: 10px; padding: 4px 6px; background: #f9fafc; }
+.excel-info-row .notice-combined-box .dual { flex: 1; border: none; background: transparent; font-size: 13px; }
+.excel-info-row .notice-combined-box .dual:focus { outline: none; }
+.excel-region-card { border: 1px dashed #dbeafe; border-radius: 10px; padding: 8px 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 6px; position: relative; }
 .excel-board-banner {
   display: flex;
   flex-direction: column;
