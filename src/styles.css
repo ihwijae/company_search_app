@@ -261,17 +261,18 @@ button.primary:hover { background: var(--accent-2); }
 }
 .excel-header-grid {
   display: grid;
-  grid-template-columns: 150px minmax(420px, 2fr) minmax(220px, 0.8fr);
+  grid-template-columns: 150px minmax(200px, 0.7fr) minmax(420px, 1.6fr) minmax(220px, 0.7fr);
   gap: 10px;
   align-items: stretch;
 }
-@media (max-width: 1450px) {
-  .excel-header-grid { grid-template-columns: 150px minmax(320px, 1.6fr) minmax(200px, 0.8fr); }
+@media (max-width: 1500px) {
+  .excel-header-grid { grid-template-columns: 150px minmax(180px, 0.8fr) minmax(360px, 1.4fr) minmax(200px, 0.7fr); }
 }
-@media (max-width: 1180px) {
-  .excel-header-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+@media (max-width: 1260px) {
+  .excel-header-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
 }
 .excel-amount-column,
+.excel-bid-column,
 .excel-info-column {
   display: flex;
   flex-direction: column;

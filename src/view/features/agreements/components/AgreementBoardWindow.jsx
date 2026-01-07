@@ -2952,7 +2952,7 @@ export default function AgreementBoardWindow({
     };
   }, [portalContainer, open, inlineMode]);
 
-  const dutySummaryDisplay = buildDutySummary(safeDutyRegions, regionDutyRate, slotLabels.length);
+  const headerDutySummary = buildDutySummary(safeDutyRegions, regionDutyRate, slotLabels.length);
 
   const boardMarkup = (
     <>
@@ -2983,6 +2983,26 @@ export default function AgreementBoardWindow({
                     ))}
                   </select>
                 </div>
+              </div>
+              <div className="excel-bid-column">
+                <div className="excel-field-block">
+                  <span className="field-label">투찰금액</span>
+                  <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
+                </div>
+                <div className="excel-field-block">
+                  <span className="field-label">사정율</span>
+                  <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 101.5" />
+                </div>
+                <div className="excel-field-block">
+                  <span className="field-label">투찰율</span>
+                  <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
+                </div>
+                {isLH && (
+                  <div className="excel-field-block">
+                    <span className="field-label">시공비율기준금액</span>
+                    <AmountInput value={ratioBaseAmount || ''} onChange={handleRatioBaseAmountChange} placeholder="원" />
+                  </div>
+                )}
               </div>
               <div className="excel-info-column">
                 <div className="excel-field-block wide">
@@ -3036,8 +3056,8 @@ export default function AgreementBoardWindow({
                     <button type="button" className="excel-btn" onClick={toggleRegionPicker}>{regionPickerOpen ? '닫기' : '지역 선택'}</button>
                   </div>
                 </div>
-                <div className="duty-summary" title={dutySummaryDisplay || '의무지역 미지정'}>
-                  <span>{dutySummaryDisplay || '의무지역 미지정'}</span>
+                <div className="duty-summary" title={headerDutySummary || '의무지역 미지정'}>
+                  <span>{headerDutySummary || '의무지역 미지정'}</span>
                 </div>
                 {regionPickerOpen && (
                   <div className="excel-region-panel">
