@@ -568,13 +568,14 @@ button.primary:hover { background: var(--accent-2); }
   padding-bottom: 8px;
   min-width: 0;
   scrollbar-gutter: stable both-edges;
+  position: relative;
 }
 
 .excel-board-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
-  min-width: 2000px;
+  font-size: 12px;
+  table-layout: fixed;
 }
 
 .excel-board-table th {
@@ -582,18 +583,20 @@ button.primary:hover { background: var(--accent-2); }
   color: #312e81;
   font-weight: 600;
   text-align: center;
-  padding: 10px 8px;
+  padding: 6px 4px;
   border: 1px solid #c7d2fe;
 }
 
 .excel-board-table td {
   border: 1px solid #e2e8f0;
-  padding: 10px;
+  padding: 6px 4px;
   vertical-align: top;
   background: #fff;
 }
 
-.excel-cell { min-width: 120px;
+.excel-cell {
+  min-width: 90px;
+  white-space: nowrap;
 }
 
 .excel-cell.drop-target {
@@ -602,19 +605,19 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-name-cell {
-  min-width: 150px;
+  min-width: 120px;
   background: #fbfbfe;
 }
 
 .excel-share-cell,
 .excel-status-cell,
 .excel-perf-cell {
-  min-width: 120px;
+  min-width: 90px;
 }
 
 .order-cell,
 .status-cell {
-  min-width: 70px;
+  min-width: 56px;
   text-align: center;
   font-weight: 600;
 }
@@ -738,13 +741,13 @@ button.primary:hover { background: var(--accent-2); }
 .excel-status {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .excel-status .status-line {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 11px;
   color: #475569;
 }
 
@@ -764,12 +767,12 @@ button.primary:hover { background: var(--accent-2); }
 .excel-performance div {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 11px;
   color: #475569;
 }
 
 .excel-cell.total-cell {
-  min-width: 140px;
+  min-width: 110px;
   text-align: center;
   font-weight: 600;
 }
@@ -806,6 +809,38 @@ button.primary:hover { background: var(--accent-2); }
   text-align: center;
   padding: 28px 12px;
   color: #94a3b8;
+}
+
+.excel-board-table th.sticky-col,
+.excel-board-table td.sticky-col {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background: #fff;
+  box-shadow: -6px 0 10px rgba(15, 23, 42, 0.08);
+}
+
+.excel-board-table th.sticky-col {
+  z-index: 5;
+  background: #eef2ff;
+}
+
+.excel-board-table td.sticky-col {
+  background: #fff;
+}
+
+.excel-board-table .sticky-actions {
+  box-shadow: -6px 0 10px rgba(15, 23, 42, 0.12);
+}
+
+.excel-share-cell input,
+.excel-status-cell input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+  background: #fff;
 }
 
 .button-group { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -1,7 +1,7 @@
 import React from 'react';
 import AgreementBoardWindow from '../components/AgreementBoardWindow.jsx';
 
-const DEFAULT_GROUP_SIZE = 3;
+const DEFAULT_GROUP_SIZE = 5;
 const DEFAULT_OWNER_ID = 'LH';
 const DEFAULT_FILE_TYPE = 'eung';
 

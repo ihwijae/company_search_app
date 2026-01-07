@@ -36,7 +36,7 @@ const createDefaultForm = () => {
     entryQualificationAmount: '',
     entryQualificationMode: 'ratio',
     regionDutyRate: '',
-    teamSizeMax: '3',
+    teamSizeMax: '5',
   };
 };
 
@@ -199,7 +199,7 @@ export default function AgreementFlowPage({
   }, [isPPS, isMoisShareRange, entryMode]);
 
   React.useEffect(() => {
-    const groupSizeValue = Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3;
+    const groupSizeValue = Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 5;
     const boardDutyRegions = Array.isArray(boardState?.dutyRegions) ? boardState.dutyRegions : [];
     const sameRegions = boardDutyRegions.length === dutyRegions.length
       && boardDutyRegions.every((region, index) => region === dutyRegions[index]);
@@ -588,7 +588,7 @@ export default function AgreementFlowPage({
       pinned: [],
       excluded: [],
       dutyRegions,
-      groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 3,
+      groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 5,
       ownerId: (resolvedOwnerId || 'LH').toUpperCase(),
       fileType: currentFileType,
       rangeId: activeMenuKey,

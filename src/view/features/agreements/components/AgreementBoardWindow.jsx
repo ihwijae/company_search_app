@@ -7,7 +7,7 @@ import { isWomenOwnedCompany, getQualityBadgeText, extractManagerNames } from '.
 import { generateMany } from '../../../../shared/agreements/generator.js';
 import { AGREEMENT_GROUPS } from '../../../../shared/navigation.js';
 
-const DEFAULT_GROUP_SIZE = 3;
+const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
 const BID_SCORE = 65;
 const MANAGEMENT_SCORE_MAX = 15;
@@ -16,6 +16,12 @@ const PERFORMANCE_MOIS_DEFAULT_MAX = 15;
 const PERFORMANCE_CAP_VERSION = 2;
 const MANAGEMENT_SCORE_VERSION = 3;
 const BOARD_COPY_SLOT_COUNT = 5;
+const STICKY_COLUMN_WIDTHS = {
+  actions: 140,
+  total: 120,
+  bid: 110,
+  credibility: 110,
+};
 const BOARD_COPY_ACTIONS = [
   { kind: 'names', label: '업체명 복사', successMessage: '업체명 데이터가 복사되었습니다.' },
   { kind: 'shares', label: '지분 복사', successMessage: '지분 값이 복사되었습니다.' },
@@ -1018,6 +1024,8 @@ export default function AgreementBoardWindow({
   const slotLabels = React.useMemo(() => (
     Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))
   ), [safeGroupSize]);
+
+  const tableMinWidth = React.useMemo(() => Math.max(1500, slotLabels.length * 220), [slotLabels.length]);
 
   React.useEffect(() => {
     if (open) {
@@ -2714,6 +2722,27 @@ export default function AgreementBoardWindow({
     (8 + (credibilityEnabled ? 1 : 0)) + (slotLabels.length * 4)
   ), [credibilityEnabled, slotLabels.length]);
 
+  const stickyOffsets = React.useMemo(() => {
+    let offset = 0;
+    const offsets = {};
+    const register = (key) => {
+      offsets[key] = offset;
+      offset += STICKY_COLUMN_WIDTHS[key];
+    };
+    register('actions');
+    register('total');
+    register('bid');
+    if (credibilityEnabled) {
+      register('credibility');
+    }
+    return offsets;
+  }, [credibilityEnabled]);
+
+  const getStickyStyle = React.useCallback((key) => ({
+    right: `${stickyOffsets[key] || 0}px`,
+    minWidth: `${STICKY_COLUMN_WIDTHS[key]}px`,
+  }), [stickyOffsets]);
+
   const buildSlotMeta = (group, groupIndex, slotIndex, label) => {
     const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
     const uid = memberIds[slotIndex];
@@ -2944,11 +2973,29 @@ export default function AgreementBoardWindow({
         <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
         {slotMetas.map(renderPerformanceCell)}
         {credibilityEnabled && (
-          <td className="excel-cell total-cell">{credibilitySummary}</td>
+          <td
+            className="excel-cell total-cell sticky-col sticky-credibility"
+            style={getStickyStyle('credibility')}
+          >
+            {credibilitySummary}
+          </td>
         )}
-        <td className="excel-cell total-cell">{bidScoreDisplay}</td>
-        <td className="excel-cell total-cell">{totalScoreDisplay}</td>
-        <td className="excel-cell actions-cell">
+        <td
+          className="excel-cell total-cell sticky-col sticky-bid"
+          style={getStickyStyle('bid')}
+        >
+          {bidScoreDisplay}
+        </td>
+        <td
+          className="excel-cell total-cell sticky-col sticky-total"
+          style={getStickyStyle('total')}
+        >
+          {totalScoreDisplay}
+        </td>
+        <td
+          className="excel-cell actions-cell sticky-col sticky-actions"
+          style={getStickyStyle('actions')}
+        >
           <button type="button" onClick={() => copyGroupMetric(groupIndex, 'management')}>경영</button>
           <button type="button" onClick={() => copyGroupMetric(groupIndex, 'perf5y')}>실적</button>
           <button type="button" onClick={() => copyGroupMetric(groupIndex, 'sipyung')}>시평</button>
@@ -3163,7 +3210,7 @@ export default function AgreementBoardWindow({
           </div>
 
           <div className="excel-table-wrapper" ref={boardMainRef}>
-            <table className="excel-board-table" style={{ minWidth: '2000px' }}>
+            <table className="excel-board-table" style={{ minWidth: `${tableMinWidth}px` }}>
               <thead>
                 <tr>
                   <th rowSpan="2">연번</th>
@@ -3175,10 +3222,28 @@ export default function AgreementBoardWindow({
                   <th rowSpan="2">실적(15점)</th>
                   <th rowSpan="2">지분합계</th>
                   <th colSpan={slotLabels.length}>시공실적</th>
-                  {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
-                  <th rowSpan="2">입찰점수</th>
-                  <th rowSpan="2">예상점수</th>
-                  <th rowSpan="2">조치</th>
+                  {credibilityEnabled && (
+                    <th
+                      rowSpan="2"
+                      className="sticky-col sticky-credibility"
+                      style={getStickyStyle('credibility')}
+                    >신인도 합</th>
+                  )}
+                  <th
+                    rowSpan="2"
+                    className="sticky-col sticky-bid"
+                    style={getStickyStyle('bid')}
+                  >입찰점수</th>
+                  <th
+                    rowSpan="2"
+                    className="sticky-col sticky-total"
+                    style={getStickyStyle('total')}
+                  >예상점수</th>
+                  <th
+                    rowSpan="2"
+                    className="sticky-col sticky-actions"
+                    style={getStickyStyle('actions')}
+                  >조치</th>
                 </tr>
                 <tr>
                   {slotLabels.map((label, index) => (
