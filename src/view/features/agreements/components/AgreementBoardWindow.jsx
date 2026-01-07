@@ -2996,152 +2996,157 @@ export default function AgreementBoardWindow({
         <div className="excel-board-shell">
           <div className="excel-board-header">
             <div className="excel-header-top">
-              <div className="excel-board-banner">
-                <div className="excel-banner-top">
-                  <div className="excel-owner-card">
-                    <div className="owner-chip">
-                      <span className="owner-chip-title">{ownerDisplayLabel}</span>
-                      <span className="owner-chip-sub">{rangeDisplayLabel}</span>
-                    </div>
-                    <div className="owner-select-row">
-                      <label>
-                        발주처
-                        <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
-                          {AGREEMENT_GROUPS.map((group) => (
-                            <option key={group.id} value={group.id}>{group.label}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        금액 구간
-                        <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
-                          {rangeOptions.map((item) => (
-                            <option key={item.key} value={item.key}>{item.label}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                  </div>
-                  <div className="excel-amount-cards">
-                    {amountCardConfigs.map((card) => (
-                      <div key={card.key} className={`excel-amount-card ${card.highlight ? 'accent' : ''}`}>
-                        <span className="info-label">{card.label}</span>
-                        {card.body}
+              <div className="excel-header-left">
+                <div className="excel-board-banner">
+                  <div className="excel-banner-top">
+                    <div className="excel-owner-card">
+                      <div className="owner-chip">
+                        <span className="owner-chip-title">{ownerDisplayLabel}</span>
+                        <span className="owner-chip-sub">{rangeDisplayLabel}</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {!inlineMode && (
-                <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
-              )}
-            </div>
-
-            <div className="excel-header-main">
-              <div className="excel-notice-block">
-                <div className="excel-notice-meta">
-                  <div className="notice-combined-field">
-                    <div className="notice-combined-label">공고번호 / 공고명</div>
-                    <div className="notice-combined-box">
-                      <input className="dual" value={noticeNo || ''} onChange={handleNoticeNoChange} placeholder="예: R26BK..." />
-                      <input className="dual" value={noticeTitle || ''} onChange={handleNoticeTitleChange} placeholder="공고명을 입력하세요" />
-                    </div>
-                  </div>
-                  <label>
-                    공고일
-                    <input className="input" type="date" value={noticeDate || ''} onChange={handleNoticeDateChange} />
-                  </label>
-                  <label>
-                    공종
-                    <input className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange} placeholder="예: 전기" />
-                  </label>
-                  <label>
-                    개찰
-                    <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
-                  </label>
-                  <label>
-                    의무지분(%)
-                    <input className="input" value={regionDutyRate || ''} onChange={handleRegionDutyRateChange} placeholder="예: 49" />
-                  </label>
-                  <div className="excel-region-picker">
-                    <div className="region-picker-heading">
-                      <div>
-                        <div className="picker-title">의무지역</div>
-                      </div>
-                      <div className="picker-actions">
-                        {safeDutyRegions.length > 0 && (
-                          <button type="button" className="excel-btn" onClick={handleDutyRegionsClear}>초기화</button>
-                        )}
-                        <button type="button" className="excel-btn" onClick={toggleRegionPicker}>{regionPickerOpen ? '닫기' : '지역 선택'}</button>
+                      <div className="owner-select-row">
+                        <label>
+                          발주처
+                          <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
+                            {AGREEMENT_GROUPS.map((group) => (
+                              <option key={group.id} value={group.id}>{group.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          금액 구간
+                          <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
+                            {rangeOptions.map((item) => (
+                              <option key={item.key} value={item.key}>{item.label}</option>
+                            ))}
+                          </select>
+                        </label>
                       </div>
                     </div>
-                    <div className="excel-region-chips">
-                      {safeDutyRegions.length === 0 && <span className="chip-empty">선택된 지역 없음</span>}
-                      {safeDutyRegions.map((region) => (
-                        <span key={region} className="chip">{region}</span>
+                    <div className="excel-amount-cards">
+                      {amountCardConfigs.map((card) => (
+                        <div key={card.key} className={`excel-amount-card ${card.highlight ? 'accent' : ''}`}>
+                          <span className="info-label">{card.label}</span>
+                          {card.body}
+                        </div>
                       ))}
                     </div>
-                    {regionPickerOpen && (
-                      <div className="excel-region-panel">
-                        <input
-                          className="input"
-                          value={regionFilter}
-                          onChange={handleRegionFilterChange}
-                          placeholder="지역명 검색"
-                        />
-                        <div className="excel-region-panel-list">
-                          {filteredRegionOptions.length === 0 && (
-                            <div className="region-panel-empty">검색 결과가 없습니다.</div>
-                          )}
-                          {filteredRegionOptions.map((region) => (
-                            <label key={region}>
-                              <input
-                                type="checkbox"
-                                checked={safeDutyRegions.includes(region)}
-                                onChange={() => handleDutyRegionToggle(region)}
-                              />
-                              <span>{region}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  </div>
+                  <div className="excel-banner-bottom">
+                    <div className="excel-quick-meta-grid">
+                      <label>
+                        공고일
+                        <input className="input" type="date" value={noticeDate || ''} onChange={handleNoticeDateChange} />
+                      </label>
+                      <label>
+                        공종
+                        <input className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange} placeholder="예: 전기" />
+                      </label>
+                      <label>
+                        개찰
+                        <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
+                      </label>
+                      <label>
+                        의무지분(%)
+                        <input className="input" value={regionDutyRate || ''} onChange={handleRegionDutyRateChange} placeholder="예: 49" />
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="excel-config-bar">
-                <div className="excel-field">
-                  <label>참가자격</label>
-                  {entryModeResolved === 'none' ? (
-                    <span className="excel-placeholder">없음</span>
-                  ) : (
-                    <AmountInput value={editableEntryAmount} onChange={handleEntryAmountChange} placeholder="0" />
-                  )}
-                </div>
-                <div className="excel-field excel-field-mode">
-                  <label>산출방식</label>
-                  <div className="excel-toggle-group">
-                    <button
-                      type="button"
-                      className={entryModeResolved === 'ratio' ? 'active' : ''}
-                      onClick={() => handleEntryModeChange('ratio')}
-                    >비율제</button>
-                    <button
-                      type="button"
-                      className={entryModeResolved === 'sum' ? 'active' : ''}
-                      onClick={() => handleEntryModeChange('sum')}
-                    >단순합산제</button>
-                    <button
-                      type="button"
-                      className={entryModeResolved === 'none' ? 'active' : ''}
-                      onClick={() => handleEntryModeChange('none')}
-                    >없음</button>
+              <div className="excel-header-right">
+                <div className="excel-notice-block">
+                  <div className="excel-notice-meta">
+                    <div className="notice-combined-field">
+                      <div className="notice-combined-label">공고번호 / 공고명</div>
+                      <div className="notice-combined-box">
+                        <input className="dual" value={noticeNo || ''} onChange={handleNoticeNoChange} placeholder="예: R26BK..." />
+                        <input className="dual" value={noticeTitle || ''} onChange={handleNoticeTitleChange} placeholder="공고명을 입력하세요" />
+                      </div>
+                    </div>
+                    <div className="excel-region-picker">
+                      <div className="region-picker-heading">
+                        <div>
+                          <div className="picker-title">의무지역</div>
+                        </div>
+                        <div className="picker-actions">
+                          {safeDutyRegions.length > 0 && (
+                            <button type="button" className="excel-btn" onClick={handleDutyRegionsClear}>초기화</button>
+                          )}
+                          <button type="button" className="excel-btn" onClick={toggleRegionPicker}>{regionPickerOpen ? '닫기' : '지역 선택'}</button>
+                        </div>
+                      </div>
+                      <div className="excel-region-chips">
+                        {safeDutyRegions.length === 0 && <span className="chip-empty">선택된 지역 없음</span>}
+                        {safeDutyRegions.map((region) => (
+                          <span key={region} className="chip">{region}</span>
+                        ))}
+                      </div>
+                      {regionPickerOpen && (
+                        <div className="excel-region-panel">
+                          <input
+                            className="input"
+                            value={regionFilter}
+                            onChange={handleRegionFilterChange}
+                            placeholder="지역명 검색"
+                          />
+                          <div className="excel-region-panel-list">
+                            {filteredRegionOptions.length === 0 && (
+                              <div className="region-panel-empty">검색 결과가 없습니다.</div>
+                            )}
+                            {filteredRegionOptions.map((region) => (
+                              <label key={region}>
+                                <input
+                                  type="checkbox"
+                                  checked={safeDutyRegions.includes(region)}
+                                  onChange={() => handleDutyRegionToggle(region)}
+                                />
+                                <span>{region}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="excel-field excel-field-stats">
-                  <label>후보 현황</label>
-                  <span>실적사 {summary.performanceTotal}명 · 지역사 {summary.regionTotal}명 · 협정 {summary.groups}개</span>
+                <div className="excel-config-bar">
+                  <div className="excel-field">
+                    <label>참가자격</label>
+                    {entryModeResolved === 'none' ? (
+                      <span className="excel-placeholder">없음</span>
+                    ) : (
+                      <AmountInput value={editableEntryAmount} onChange={handleEntryAmountChange} placeholder="0" />
+                    )}
+                  </div>
+                  <div className="excel-field excel-field-mode">
+                    <label>산출방식</label>
+                    <div className="excel-toggle-group">
+                      <button
+                        type="button"
+                        className={entryModeResolved === 'ratio' ? 'active' : ''}
+                        onClick={() => handleEntryModeChange('ratio')}
+                      >비율제</button>
+                      <button
+                        type="button"
+                        className={entryModeResolved === 'sum' ? 'active' : ''}
+                        onClick={() => handleEntryModeChange('sum')}
+                      >단순합산제</button>
+                      <button
+                        type="button"
+                        className={entryModeResolved === 'none' ? 'active' : ''}
+                        onClick={() => handleEntryModeChange('none')}
+                      >없음</button>
+                    </div>
+                  </div>
+                  <div className="excel-field excel-field-stats">
+                    <label>후보 현황</label>
+                    <span>실적사 {summary.performanceTotal}명 · 지역사 {summary.regionTotal}명 · 협정 {summary.groups}개</span>
+                  </div>
                 </div>
+                {!inlineMode && (
+                  <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
+                )}
               </div>
             </div>
 

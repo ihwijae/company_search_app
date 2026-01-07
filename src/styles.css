@@ -260,7 +260,18 @@ button.primary:hover { background: var(--accent-2); }
   display: flex;
   gap: 8px;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: stretch;
+}
+.excel-header-left {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.excel-header-right {
+  flex: 0 1 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 320px;
 }
 .excel-header-main {
   display: grid;
@@ -283,6 +294,11 @@ button.primary:hover { background: var(--accent-2); }
   min-width: 0;
 }
 .excel-banner-top { display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch; }
+.excel-banner-bottom { margin-top: 10px; }
+.excel-quick-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.excel-quick-meta-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; }
+.excel-quick-meta-grid .input,
+.excel-quick-meta-grid input { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
 .excel-owner-card { flex: 0 0 220px; max-width: 240px; background: linear-gradient(135deg, #4d2de6, #7c3aed); border-radius: 18px; padding: 14px 16px; color: #fff; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 16px 30px rgba(77, 45, 230, 0.35); }
 .owner-chip { background: rgba(255, 255, 255, 0.18); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
 .owner-chip-title { font-size: 22px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
