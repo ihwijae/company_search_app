@@ -2499,45 +2499,6 @@ export default function AgreementBoardWindow({
     }))
   ), [groupAssignments, participantMap, summaryByGroup, candidateMetricsVersion]);
 
-  const amountCardConfigs = React.useMemo(() => {
-    const cards = [
-      {
-        key: 'baseAmount',
-        label: '기초금액',
-        body: <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />,
-      },
-      {
-        key: 'estimatedAmount',
-        label: '추정금액',
-        highlight: true,
-        body: <AmountInput value={estimatedAmount || ''} onChange={handleEstimatedAmountChange} placeholder="원" />,
-      },
-      {
-        key: 'bidAmount',
-        label: '투찰금액',
-        body: <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />,
-      },
-      {
-        key: 'adjustmentRate',
-        label: '사정율',
-        body: <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 101.5" />, 
-      },
-      {
-        key: 'bidRate',
-        label: '투찰율',
-        body: <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />, 
-      },
-    ];
-    if (isLH) {
-      cards.push({
-        key: 'ratioBase',
-        label: '시공비율기준금액',
-        body: <AmountInput value={ratioBaseAmount || ''} onChange={handleRatioBaseAmountChange} placeholder="원" />, 
-      });
-    }
-    return cards;
-  }, [baseAmount, estimatedAmount, editableBidAmount, adjustmentRate, bidRate, ratioBaseAmount, handleBaseAmountChange, handleEstimatedAmountChange, handleBidAmountChange, handleAdjustmentRateChange, handleBidRateChange, handleRatioBaseAmountChange, isLH]);
-
   const formatShareDecimal = (value) => {
     if (value === null || value === undefined) return '';
     const numeric = Number(value);
@@ -2994,111 +2955,136 @@ export default function AgreementBoardWindow({
     <>
       <div className="agreement-board-root" ref={rootRef}>
         <div className="excel-board-shell">
-            <div className="excel-board-header">
-              <div className="excel-header-top">
-                <div className="excel-banner">
-                  <div className="excel-meta-grid">
-                    <div className="excel-meta-group">
-                      <label>발주처</label>
-                      <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
-                        {AGREEMENT_GROUPS.map((group) => (
-                          <option key={group.id} value={group.id}>{group.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="excel-meta-group">
-                      <label>금액 구간</label>
-                      <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
-                        {rangeOptions.map((item) => (
-                          <option key={item.key} value={item.key}>{item.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+          <div className="excel-board-header">
+            <div className="excel-header-grid">
+              <div className="excel-amount-column">
+                <div className="excel-field-block accent">
+                  <span className="field-label">추정가격</span>
+                  <AmountInput value={estimatedAmount || ''} onChange={handleEstimatedAmountChange} placeholder="원" />
                 </div>
-                <div className="excel-amount-strip">
-                  {amountCardConfigs.map((card) => (
-                    <div key={card.key} className={`excel-amount-box ${card.highlight ? 'accent' : ''}`}>
-                      <span className="info-label">{card.label}</span>
-                      {card.body}
-                    </div>
-                  ))}
+                <div className="excel-field-block">
+                  <span className="field-label">기초금액</span>
+                  <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />
                 </div>
-                <div className="excel-info-panel">
-                  <div className="excel-info-row first">
-                    <label>사정율
-                      <input className="input" value={adjustmentRate ?? ''} onChange={handleAdjustmentRateChange} placeholder="예: 52.78" />
-                    </label>
-                    <label>입찰일
-                      <input className="input" type="date" value={noticeDate || ''} onChange={handleNoticeDateChange} />
-                    </label>
-                    <label>입찰시간
-                      <input className="input" type="time" value={bidDeadline ? bidDeadline.slice(11, 16) : ''} onChange={(e) => handleBidDeadlineChange((noticeDate || '') + 'T' + e.target.value)} />
-                    </label>
-                    <label>공종
-                      <input className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange} placeholder="예: 전기" />
-                    </label>
-                  </div>
-                  <div className="excel-info-row second">
-                    <label className="wide">공고번호 / 공고명
-                      <div className="notice-combined-box">
-                        <input className="dual" value={noticeNo || ''} onChange={handleNoticeNoChange} placeholder="예: R26BK..." />
-                        <input className="dual" value={noticeTitle || ''} onChange={handleNoticeTitleChange} placeholder="공고명을 입력" />
-                      </div>
-                    </label>
-                    <label>참가자격금액
-                      {entryModeResolved === 'none' ? (
-                        <span className="excel-placeholder">없음</span>
-                      ) : (
-                        <AmountInput value={editableEntryAmount} onChange={handleEntryAmountChange} placeholder="0" />
-                      )}
-                    </label>
-                    <label>의무지분(%)
-                      <input className="input" value={regionDutyRate || ''} onChange={handleRegionDutyRateChange} placeholder="예: 49" />
-                    </label>
-                    <div className="excel-region-card">
-                      <div className="picker-title">의무지역 / 구성사</div>
-                      <div className="excel-region-chips">
-                        {safeDutyRegions.length === 0 && <span className="chip-empty">선택된 지역 없음</span>}
-                        {safeDutyRegions.map((region) => (
-                          <span key={region} className="chip">{region}</span>
-                        ))}
-                      </div>
-                      <div className="picker-actions">
-                        {safeDutyRegions.length > 0 && (
-                          <button type="button" className="excel-btn" onClick={handleDutyRegionsClear}>초기화</button>
-                        )}
-                        <button type="button" className="excel-btn" onClick={toggleRegionPicker}>{regionPickerOpen ? '닫기' : '지역 선택'}</button>
-                      </div>
-                      {regionPickerOpen && (
-                        <div className="excel-region-panel">
-                          <input
-                            className="input"
-                            value={regionFilter}
-                            onChange={handleRegionFilterChange}
-                            placeholder="지역명 검색"
-                          />
-                          <div className="excel-region-panel-list">
-                            {filteredRegionOptions.length === 0 && (
-                              <div className="region-panel-empty">검색 결과가 없습니다.</div>
-                            )}
-                            {filteredRegionOptions.map((region) => (
-                              <label key={region}>
-                                <input
-                                  type="checkbox"
-                                  checked={safeDutyRegions.includes(region)}
-                                  onChange={() => handleDutyRegionToggle(region)}
-                                />
-                                <span>{region}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                <div className="excel-select-block">
+                  <label>발주처</label>
+                  <select value={ownerSelectValue} onChange={handleOwnerSelectChange}>
+                    {AGREEMENT_GROUPS.map((group) => (
+                      <option key={group.id} value={group.id}>{group.label}</option>
+                    ))}
+                  </select>
+                  <label>금액 구간</label>
+                  <select value={selectedRangeKey} onChange={handleRangeSelectChange}>
+                    {rangeOptions.map((item) => (
+                      <option key={item.key} value={item.key}>{item.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
+              <div className="excel-bid-column">
+                <div className="excel-field-block">
+                  <span className="field-label">투찰금액</span>
+                  <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
+                </div>
+                <div className="excel-field-block">
+                  <span className="field-label">사정율</span>
+                  <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 48.78" />
+                </div>
+                <div className="excel-field-block">
+                  <span className="field-label">투찰율</span>
+                  <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
+                </div>
+                {isLH && (
+                  <div className="excel-field-block">
+                    <span className="field-label">시공비율기준금액</span>
+                    <AmountInput value={ratioBaseAmount || ''} onChange={handleRatioBaseAmountChange} placeholder="원" />
+                  </div>
+                )}
+              </div>
+              <div className="excel-info-column">
+                <div className="excel-field-block wide">
+                  <span className="field-label">공고번호 / 공고명</span>
+                  <div className="notice-combined-box">
+                    <input className="dual" value={noticeNo || ''} onChange={handleNoticeNoChange} placeholder="예: R26BK..." />
+                    <input className="dual" value={noticeTitle || ''} onChange={handleNoticeTitleChange} placeholder="공고명을 입력" />
+                  </div>
+                </div>
+                <div className="excel-info-row first">
+                  <label>
+                    입찰일시
+                    <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
+                  </label>
+                  <label>
+                    공고일
+                    <input className="input" type="date" value={noticeDate || ''} onChange={handleNoticeDateChange} />
+                  </label>
+                  <label>
+                    공종
+                    <input className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange} placeholder="예: 전기" />
+                  </label>
+                </div>
+                <div className="excel-info-row second">
+                  <label>
+                    참가자격금액
+                    {entryModeResolved === 'none' ? (
+                      <span className="excel-placeholder">없음</span>
+                    ) : (
+                      <AmountInput value={editableEntryAmount} onChange={handleEntryAmountChange} placeholder="0" />
+                    )}
+                  </label>
+                  <label>
+                    의무지분(%)
+                    <input className="input" value={regionDutyRate || ''} onChange={handleRegionDutyRateChange} placeholder="예: 49" />
+                  </label>
+                </div>
+              </div>
+              <div className="excel-duty-column">
+                <div className="duty-header">
+                  <span>의무지역</span>
+                  <div className="picker-actions">
+                    {safeDutyRegions.length > 0 && (
+                      <button type="button" className="excel-btn" onClick={handleDutyRegionsClear}>초기화</button>
+                    )}
+                    <button type="button" className="excel-btn" onClick={toggleRegionPicker}>{regionPickerOpen ? '닫기' : '지역 선택'}</button>
+                  </div>
+                </div>
+                <div className="excel-region-chips">
+                  {safeDutyRegions.length === 0 && <span className="chip-empty">선택된 지역 없음</span>}
+                  {safeDutyRegions.map((region) => (
+                    <span key={region} className="chip">{region}</span>
+                  ))}
+                </div>
+                <div className="duty-summary">
+                  <span>의무지분 {regionDutyRate ? `${regionDutyRate}%` : '-'}</span>
+                  <span>{slotLabels.length}개사</span>
+                </div>
+                {regionPickerOpen && (
+                  <div className="excel-region-panel">
+                    <input
+                      className="input"
+                      value={regionFilter}
+                      onChange={handleRegionFilterChange}
+                      placeholder="지역명 검색"
+                    />
+                    <div className="excel-region-panel-list">
+                      {filteredRegionOptions.length === 0 && (
+                        <div className="region-panel-empty">검색 결과가 없습니다.</div>
+                      )}
+                      {filteredRegionOptions.map((region) => (
+                        <label key={region}>
+                          <input
+                            type="checkbox"
+                            checked={safeDutyRegions.includes(region)}
+                            onChange={() => handleDutyRegionToggle(region)}
+                          />
+                          <span>{region}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
               <div className="excel-header-bottom">
                 <div className="excel-config-bar">
