@@ -272,7 +272,6 @@ button.primary:hover { background: var(--accent-2); }
   .excel-header-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 }
 .excel-amount-column,
-.excel-bid-column,
 .excel-info-column {
   display: flex;
   flex-direction: column;
@@ -308,7 +307,7 @@ button.primary:hover { background: var(--accent-2); }
 .excel-info-block { display: flex; flex-direction: column; gap: 6px; }
 .excel-info-column .excel-field-block.wide { grid-column: 1 / -1; }
 .excel-info-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; }
-.excel-info-row.first { grid-template-columns: repeat(4, minmax(120px, 1fr)); }
+.excel-info-row.first { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
 .excel-info-row.second { grid-template-columns: minmax(320px, 2.2fr) minmax(160px, 0.8fr); }
 @media (max-width: 1500px) { .excel-info-row.second { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } }
 .excel-info-row label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: #475569; }

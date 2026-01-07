@@ -27,6 +27,7 @@ const BOARD_COPY_LOOKUP = BOARD_COPY_ACTIONS.reduce((acc, action) => {
   acc[action.kind] = action;
   return acc;
 }, {});
+const INDUSTRY_OPTIONS = ['전기', '통신', '소방'];
 const COLUMN_WIDTHS = {
   order: 40,
   approval: 70,
@@ -846,26 +847,9 @@ export default function AgreementBoardWindow({
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ noticeDate: event.target.value });
   }, [onUpdateBoard]);
 
-  const handleBidDeadlineDateChange = React.useCallback((event) => {
-    const datePart = event.target.value;
-    if (!datePart) {
-      if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: '' });
-      return;
-    }
-    const currentTime = (bidDeadline || '').slice(11, 16) || '00:00';
-    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: `${datePart}T${currentTime}` });
-  }, [bidDeadline, onUpdateBoard]);
-
-  const handleBidDeadlineTimeChange = React.useCallback((event) => {
-    const timePart = event.target.value;
-    const datePart = (bidDeadline || '').slice(0, 10) || noticeDate || '';
-    if (!datePart) {
-      if (!timePart && typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: '' });
-      return;
-    }
-    const safeTime = timePart || '00:00';
-    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: `${datePart}T${safeTime}` });
-  }, [bidDeadline, noticeDate, onUpdateBoard]);
+  const handleBidDeadlineChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: event.target.value });
+  }, [onUpdateBoard]);
 
   const handleBaseAmountChange = React.useCallback((value) => {
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ baseAmount: value });
@@ -2968,9 +2952,6 @@ export default function AgreementBoardWindow({
     };
   }, [portalContainer, open, inlineMode]);
 
-  const bidDateValue = bidDeadline ? bidDeadline.slice(0, 10) : '';
-  const bidTimeValue = bidDeadline ? bidDeadline.slice(11, 16) : '';
-
   const boardMarkup = (
     <>
       <div className="agreement-board-root" ref={rootRef}>
@@ -3001,26 +2982,6 @@ export default function AgreementBoardWindow({
                   </select>
                 </div>
               </div>
-              <div className="excel-bid-column">
-                <div className="excel-field-block">
-                  <span className="field-label">투찰금액</span>
-                  <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
-                </div>
-                <div className="excel-field-block">
-                  <span className="field-label">사정율</span>
-                  <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 48.78" />
-                </div>
-                <div className="excel-field-block">
-                  <span className="field-label">투찰율</span>
-                  <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
-                </div>
-                {isLH && (
-                  <div className="excel-field-block">
-                    <span className="field-label">시공비율기준금액</span>
-                    <AmountInput value={ratioBaseAmount || ''} onChange={handleRatioBaseAmountChange} placeholder="원" />
-                  </div>
-                )}
-              </div>
               <div className="excel-info-column">
                 <div className="excel-field-block wide">
                   <span className="field-label">공고번호 / 공고명</span>
@@ -3031,12 +2992,8 @@ export default function AgreementBoardWindow({
                 </div>
                 <div className="excel-info-row first">
                   <label>
-                    입찰일
-                    <input className="input" type="date" value={bidDateValue} onChange={handleBidDeadlineDateChange} />
-                  </label>
-                  <label>
-                    입찰시간
-                    <input className="input" type="time" value={bidTimeValue} onChange={handleBidDeadlineTimeChange} />
+                    개찰일
+                    <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
                   </label>
                   <label>
                     공고일
@@ -3044,7 +3001,12 @@ export default function AgreementBoardWindow({
                   </label>
                   <label>
                     공종
-                    <input className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange} placeholder="예: 전기" />
+                    <select className="input" value={industryLabel || ''} onChange={handleIndustryLabelChange}>
+                      <option value="">선택</option>
+                      {INDUSTRY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
                   </label>
                 </div>
                 <div className="excel-info-row second">
