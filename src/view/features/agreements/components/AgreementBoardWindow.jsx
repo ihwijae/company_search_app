@@ -2872,8 +2872,7 @@ export default function AgreementBoardWindow({
         <span className="excel-placeholder">-</span>
       ) : (
         <div className={`excel-status score-only ${meta.managementAlert ? 'warn' : ''}`}>
-          <span className="status-label">경영점수</span>
-          <span className="status-score">{meta.managementDisplay}</span>
+          <span className="status-score" title="경영점수">{meta.managementDisplay}</span>
         </div>
       )}
     </td>
@@ -2885,8 +2884,8 @@ export default function AgreementBoardWindow({
         <span className="excel-placeholder">-</span>
       ) : (
         <div className="excel-performance">
-          <div><span>시평</span><strong>{meta.sipyungDisplay}</strong></div>
-          <div><span>5년</span><strong>{meta.performanceDisplay}</strong></div>
+          <span className="perf-label">5년 실적</span>
+          <strong className="perf-value">{meta.performanceDisplay}</strong>
         </div>
       )}
     </td>

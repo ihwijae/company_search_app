@@ -788,18 +788,11 @@ button.primary:hover { background: var(--accent-2); }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-height: 48px;
-}
-
-.excel-status.score-only .status-label {
-  font-size: 11px;
-  color: #94a3b8;
-  letter-spacing: 0.05em;
+  min-height: 42px;
 }
 
 .excel-status.score-only .status-score {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
   color: #111827;
 }
@@ -808,11 +801,26 @@ button.primary:hover { background: var(--accent-2); }
   color: #b91c1c;
 }
 
-.excel-performance div {
+.excel-performance {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.excel-performance .perf-label {
   font-size: 11px;
-  color: #475569;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+.excel-performance .perf-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  word-break: break-all;
+  text-align: right;
+  width: 100%;
 }
 
 .excel-cell.total-cell {
