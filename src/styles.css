@@ -719,7 +719,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-share-total { width: 60px; }
 .col-performance { width: 90px; }
 .col-performance-summary { width: 70px; }
-.col-credibility { width: 75px; }
+.col-credibility { width: 95px; }
 .col-bid { width: 75px; }
 .col-total { width: 85px; }
 

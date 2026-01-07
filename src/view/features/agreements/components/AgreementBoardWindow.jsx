@@ -46,7 +46,7 @@ const COLUMN_WIDTHS = {
   performanceCell: 90,
   performanceSummary: 70,
   credibilityCell: 45,
-  credibility: 75,
+  credibility: 95,
   bid: 75,
   total: 85,
 };
