@@ -1191,6 +1191,24 @@ export default function AgreementBoardWindow({
     return truncated != null ? clampScore(truncated, 999) : 0;
   }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
 
+  const netCostPenaltyNotice = React.useMemo(() => {
+    if (!isLHOwner) return false;
+    if (selectedRangeOption?.key !== LH_UNDER_50_KEY) return false;
+    const base = toNumber(baseAmount);
+    const netCost = toNumber(netCostAmount);
+    const aValueNumber = toNumber(aValue);
+    if (!base || !netCost || !aValueNumber) return false;
+    const expectedMin = roundUpThousand(base * 0.988);
+    const expectedMax = roundUpThousand(base * 1.012);
+    if (!expectedMin || !expectedMax) return false;
+    if (expectedMin <= aValueNumber || expectedMax <= aValueNumber) return false;
+    const bidMin = netCost * (expectedMin / base) * 0.98;
+    const bidMax = netCost * (expectedMax / base) * 0.98;
+    const rMin = roundTo((bidMin - aValueNumber) / (expectedMin - aValueNumber), 4);
+    const rMax = roundTo((bidMax - aValueNumber) / (expectedMax - aValueNumber), 4);
+    return Number.isFinite(rMin) && Number.isFinite(rMax) && (rMin > 0.88 || rMax > 0.88);
+  }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
+
   React.useEffect(() => {
     let canceled = false;
     const load = async () => {
@@ -3398,6 +3416,9 @@ export default function AgreementBoardWindow({
           <div className="excel-field-block size-xs readonly">
             <span className="field-label">순공사원가가점</span>
             <div className="readonly-value">{formatScore(netCostBonusScore, 2)}</div>
+            {netCostPenaltyNotice && (
+              <div className="readonly-note">올라탈수록 점수 깎임</div>
+            )}
           </div>
         )}
       </div>
