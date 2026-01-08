@@ -3094,6 +3094,8 @@ export default function AgreementBoardWindow({
 
   const renderQualityRow = (group, groupIndex, slotMetas) => {
     if (!isLHOwner) return null;
+    const prefixCount = 2 + (slotMetas.length * 2) + 1;
+    const remainingCount = Math.max(tableColumnCount - prefixCount, 0);
     return (
       <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
         <td className="excel-cell order-cell quality-label">품질</td>
@@ -3110,20 +3112,9 @@ export default function AgreementBoardWindow({
           </td>
         ))}
         <td className="excel-cell total-cell quality-empty" />
-        {credibilityEnabled && slotMetas.map((meta) => (
-          <td key={`quality-cred-${groupIndex}-${meta.slotIndex}`} className="excel-cell excel-credibility-cell quality-empty" />
-        ))}
-        {credibilityEnabled && <td className="excel-cell total-cell quality-empty" />}
-        {slotMetas.map((meta) => (
-          <td key={`quality-status-${groupIndex}-${meta.slotIndex}`} className="excel-cell excel-status-cell quality-empty" />
-        ))}
-        <td className="excel-cell total-cell quality-empty" />
-        {slotMetas.map((meta) => (
-          <td key={`quality-perf-${groupIndex}-${meta.slotIndex}`} className="excel-cell excel-perf-cell quality-empty" />
-        ))}
-        <td className="excel-cell total-cell quality-empty" />
-        <td className="excel-cell total-cell quality-empty" />
-        <td className="excel-cell total-cell quality-empty" />
+        {remainingCount > 0 && (
+          <td className="excel-cell quality-empty" colSpan={remainingCount} />
+        )}
       </tr>
     );
   };
