@@ -2966,6 +2966,7 @@ export default function AgreementBoardWindow({
       managerName,
       tags,
       shareValue: shareValue != null ? String(shareValue) : '',
+      shareForCalc,
       sharePlaceholder: possibleShareText || '0',
       possibleShareText,
       sipyungDisplay: formatAmount(sipyungAmount),
@@ -3094,6 +3095,16 @@ export default function AgreementBoardWindow({
 
   const renderQualityRow = (group, groupIndex, slotMetas) => {
     if (!isLHOwner) return null;
+    const qualityTotal = slotMetas.reduce((acc, meta) => {
+      if (meta.empty) return acc;
+      const share = toNumber(meta.shareForCalc);
+      const score = toNumber(meta.qualityScore);
+      if (share == null || score == null) return acc;
+      return acc + (score * (share / 100));
+    }, 0);
+    const qualityTotalDisplay = slotMetas.some((meta) => !meta.empty)
+      ? formatScore(qualityTotal, 2)
+      : '-';
     return (
       <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
         <td className="excel-cell order-cell quality-label">품질</td>
@@ -3109,7 +3120,7 @@ export default function AgreementBoardWindow({
             {meta.empty ? '' : formatScore(meta.qualityScore, 2)}
           </td>
         ))}
-        <td className="excel-cell total-cell quality-empty" />
+        <td className="excel-cell total-cell quality-total">{qualityTotalDisplay}</td>
       </tr>
     );
   };
@@ -3426,7 +3437,16 @@ export default function AgreementBoardWindow({
                   <th rowSpan="2">승인</th>
                   <th colSpan={slotLabels.length}>업체명</th>
                   <th colSpan={slotLabels.length}>지분(%)</th>
-                  <th rowSpan="2">지분합계</th>
+                  <th rowSpan="2">
+                    {isLHOwner ? (
+                      <div className="share-total-header">
+                        <span>지분합계</span>
+                        <span className="sub">품질총점</span>
+                      </div>
+                    ) : (
+                      '지분합계'
+                    )}
+                  </th>
                   {credibilityEnabled && <th colSpan={slotLabels.length}>신인도</th>}
                   {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
                   <th colSpan={slotLabels.length}>경영상태</th>

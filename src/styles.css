@@ -1004,6 +1004,18 @@ button.primary:hover { background: var(--accent-2); }
   font-weight: 700;
 }
 
+.share-total-header {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  gap: 2px;
+}
+
+.share-total-header .sub {
+  font-size: 11px;
+  color: #b91c1c;
+}
+
 .quality-row .quality-label {
   font-size: 12px;
   font-weight: 700;
@@ -1013,6 +1025,11 @@ button.primary:hover { background: var(--accent-2); }
 .quality-row .quality-score {
   text-align: center;
   font-weight: 600;
+  color: #b91c1c;
+}
+
+.quality-row .quality-total {
+  font-weight: 700;
   color: #b91c1c;
 }
 
