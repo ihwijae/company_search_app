@@ -716,6 +716,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-credibility-slot { width: 45px; }
 .col-status { width: 60px; }
 .col-management { width: 100px; }
+.col-management-bonus { width: 50px; }
 .col-share-total { width: 60px; }
 .col-performance { width: 90px; }
 .col-performance-summary { width: 70px; }
@@ -1002,6 +1003,15 @@ button.primary:hover { background: var(--accent-2); }
 .excel-cell.total-cell.warn {
   color: #b91c1c;
   font-weight: 700;
+}
+
+.management-bonus-cell {
+  text-align: center;
+}
+
+.management-bonus-cell input {
+  width: 16px;
+  height: 16px;
 }
 
 .share-total-header {

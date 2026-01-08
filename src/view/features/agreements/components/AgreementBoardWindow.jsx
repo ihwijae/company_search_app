@@ -44,6 +44,7 @@ const COLUMN_WIDTHS = {
   share: 50,
   status: 60,
   management: 100,
+  managementBonus: 50,
   shareTotal: 60,
   performanceCell: 90,
   performanceSummary: 70,
@@ -858,6 +859,7 @@ export default function AgreementBoardWindow({
   const [groupShares, setGroupShares] = React.useState([]);
   const [groupShareRawInputs, setGroupShareRawInputs] = React.useState([]);
   const [groupApprovals, setGroupApprovals] = React.useState([]);
+  const [groupManagementBonus, setGroupManagementBonus] = React.useState([]);
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState([]);
   const [formulasDoc, setFormulasDoc] = React.useState(null);
@@ -1169,6 +1171,7 @@ export default function AgreementBoardWindow({
     const base = COLUMN_WIDTHS.order
       + COLUMN_WIDTHS.approval
       + COLUMN_WIDTHS.management
+      + COLUMN_WIDTHS.managementBonus
       + COLUMN_WIDTHS.shareTotal
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
@@ -1775,6 +1778,12 @@ export default function AgreementBoardWindow({
     ));
   }, [groupAssignments]);
 
+  React.useEffect(() => {
+    setGroupManagementBonus((prev) => (
+      groupAssignments.map((_, index) => Boolean(prev[index]))
+    ));
+  }, [groupAssignments]);
+
   const dutySummaryText = React.useMemo(() => {
     const rateNumber = parseNumeric(regionDutyRate);
     return buildDutySummary(dutyRegions, rateNumber, safeGroupSize);
@@ -2214,9 +2223,13 @@ export default function AgreementBoardWindow({
     const run = async () => {
       const results = await Promise.all(metrics.map(async (metric) => {
         const shareReady = metric.memberCount > 0 && metric.shareValid;
-        const managementScore = shareReady && !metric.managementMissing
-          ? clampScore(metric.managementScore)
+        const managementScoreBase = shareReady && !metric.managementMissing
+          ? clampScore(metric.managementScore, derivedManagementMax)
           : null;
+        const bonusEnabled = Boolean(groupManagementBonus[metric.groupIndex]);
+        const managementScore = (managementScoreBase != null && bonusEnabled)
+          ? clampScore(managementScoreBase * 1.1, derivedManagementMax)
+          : managementScoreBase;
 
         let performanceScore = null;
         let performanceRatio = null;
@@ -2284,7 +2297,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores]);
+  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -2623,6 +2636,7 @@ export default function AgreementBoardWindow({
     setGroupShareRawInputs([]);
     setGroupCredibility([]);
     setGroupApprovals([]);
+    setGroupManagementBonus([]);
   };
 
   const handleShareInput = (groupIndex, slotIndex, rawValue) => {
@@ -2897,7 +2911,7 @@ export default function AgreementBoardWindow({
 
   const tableColumnCount = React.useMemo(() => {
     const perSlotCols = credibilityEnabled ? 5 : 4;
-    const baseColumns = 8 + (credibilityEnabled ? 1 : 0);
+    const baseColumns = 9 + (credibilityEnabled ? 1 : 0);
     return baseColumns + (slotLabels.length * perSlotCols);
   }, [credibilityEnabled, slotLabels.length]);
 
@@ -3088,6 +3102,14 @@ export default function AgreementBoardWindow({
   const managementHeaderMax = derivedMaxScores.managementMax ?? MANAGEMENT_SCORE_MAX;
   const performanceHeaderMax = derivedMaxScores.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper);
 
+  const handleManagementBonusToggle = (groupIndex) => {
+    setGroupManagementBonus((prev) => {
+      const next = prev.slice();
+      next[groupIndex] = !next[groupIndex];
+      return next;
+    });
+  };
+
   const renderQualityRow = (group, groupIndex, slotMetas) => {
     if (!isLHOwner) return null;
     const qualityGuide = (selectedRangeOption?.key === 'lh-50to100')
@@ -3155,6 +3177,7 @@ export default function AgreementBoardWindow({
       : '-';
     const approvalValue = groupApprovals[groupIndex] || '';
     const rightRowSpan = isLHOwner ? 2 : undefined;
+    const bonusChecked = Boolean(groupManagementBonus[groupIndex]);
 
     const managementState = summaryInfo?.managementScore != null
       ? (summaryInfo.managementScore >= ((summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX) - 0.01) ? 'ok' : 'warn')
@@ -3187,6 +3210,14 @@ export default function AgreementBoardWindow({
         )}
         {slotMetas.map((meta) => renderStatusCell(meta, rightRowSpan))}
         <td className={`excel-cell total-cell ${managementState}`} rowSpan={rightRowSpan}>{managementSummary}</td>
+        <td className="excel-cell management-bonus-cell" rowSpan={rightRowSpan}>
+          <input
+            type="checkbox"
+            checked={bonusChecked}
+            onChange={() => handleManagementBonusToggle(groupIndex)}
+            aria-label="경영점수 가점 적용"
+          />
+        </td>
         {slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
         <td className={`excel-cell total-cell ${performanceState}`} rowSpan={rightRowSpan}>{performanceSummary}</td>
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
@@ -3422,6 +3453,7 @@ export default function AgreementBoardWindow({
                   <col key={`col-status-${index}`} className="col-status" />
                 ))}
                 <col className="col-management" />
+                <col className="col-management-bonus" />
                 {slotLabels.map((_, index) => (
                   <col key={`col-performance-${index}`} className="col-performance" />
                 ))}
@@ -3449,6 +3481,7 @@ export default function AgreementBoardWindow({
                   {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
                   <th colSpan={slotLabels.length}>경영상태</th>
                   <th rowSpan="2">경영({formatScore(managementHeaderMax, 0)}점)</th>
+                  <th rowSpan="2">가점</th>
                   <th colSpan={slotLabels.length}>시공실적</th>
                   <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
                   <th rowSpan="2">입찰점수</th>
