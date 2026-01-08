@@ -3113,7 +3113,7 @@ export default function AgreementBoardWindow({
         ))}
         <td className="excel-cell total-cell quality-empty" />
         {remainingCount > 0 && (
-          <td className="excel-cell quality-empty" colSpan={remainingCount} />
+          <td className="excel-cell quality-merged" colSpan={remainingCount} />
         )}
       </tr>
     );
