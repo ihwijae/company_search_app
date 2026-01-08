@@ -2934,7 +2934,6 @@ export default function AgreementBoardWindow({
       ? `${possibleShare >= 100 ? possibleShare.toFixed(0) : possibleShare.toFixed(2)}%`
       : '';
     const tags = [];
-    tags.push(slotIndex === 0 ? { key: 'leader', label: '대표사' } : { key: 'member', label: '구성사' });
     if (entry.type === 'region' || isDutyRegionCompany(candidate)) {
       tags.push({ key: 'region', label: '지역사' });
     }
