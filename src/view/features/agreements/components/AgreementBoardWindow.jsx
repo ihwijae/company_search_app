@@ -19,6 +19,7 @@ const LH_QUALITY_DEFAULT_UNDER_100B = 85;
 const LH_QUALITY_DEFAULT_OVER_100B = 88;
 const LH_UNDER_50_KEY = 'lh-under50';
 const LH_50_TO_100_KEY = 'lh-50to100';
+const KOREAN_UNIT = 100000000;
 const BOARD_COPY_SLOT_COUNT = 5;
 const BOARD_COPY_ACTIONS = [
   { kind: 'names', label: '업체명 복사', successMessage: '업체명 데이터가 복사되었습니다.' },
@@ -165,6 +166,40 @@ const formatNoticeDate = (value) => {
   if (Number.isNaN(date.getTime())) return String(value);
   const pad = (num) => String(num).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const parseKoreanAmount = (text) => {
+  if (!text) return 0;
+  const label = String(text);
+  const match = label.match(/([0-9]+(?:\.[0-9]+)?)\s*억/);
+  if (!match) return 0;
+  const base = Number(match[1]);
+  if (!Number.isFinite(base)) return 0;
+  return base * KOREAN_UNIT;
+};
+
+const parseRangeAmountHint = (ownerKeyUpper, rangeLabel) => {
+  if (!rangeLabel) return 0;
+  const label = String(rangeLabel);
+  const ownerKey = String(ownerKeyUpper || '').toUpperCase();
+  if (label.includes('~')) {
+    const [minRaw, maxRaw] = label.split('~');
+    const minVal = parseKoreanAmount(minRaw);
+    const maxVal = parseKoreanAmount(maxRaw);
+    if (minVal && maxVal) return Math.round((minVal + maxVal) / 2);
+  }
+  if (label.includes('미만')) {
+    const target = parseKoreanAmount(label);
+    return target > 0 ? Math.round(target * 0.9) : 0;
+  }
+  if (label.includes('이상')) {
+    const target = parseKoreanAmount(label);
+    if (target > 0) {
+      return ownerKey === 'MOIS' ? Math.round(target * 1.2) : Math.round(target * 1.1);
+    }
+  }
+  const fallback = parseKoreanAmount(label);
+  return fallback > 0 ? fallback : 0;
 };
 
 const roundUpThousand = (value) => {
@@ -1276,17 +1311,14 @@ export default function AgreementBoardWindow({
     const agencies = Array.isArray(formulasDoc.agencies) ? formulasDoc.agencies : [];
     const agency = agencies.find((item) => String(item?.id || '').toLowerCase() === agencyId) || null;
     if (!agency) return { managementMax: null, performanceMax: null };
-    const amountHint = parseAmountValue(estimatedAmount)
-      ?? parseAmountValue(baseAmount)
-      ?? parseAmountValue(entryAmount)
-      ?? null;
+    const amountHint = parseRangeAmountHint(ownerKeyUpper, selectedRangeOption?.label);
     const tier = selectTierByAmount(agency.tiers || [], amountHint);
     if (!tier) return { managementMax: null, performanceMax: null };
     return {
       managementMax: deriveManagementMax(tier.rules?.management),
       performanceMax: derivePerformanceMax(tier.rules?.performance),
     };
-  }, [formulasDoc, ownerId, estimatedAmount, baseAmount, entryAmount]);
+  }, [formulasDoc, ownerId, ownerKeyUpper, selectedRangeOption?.label]);
 
   React.useEffect(() => {
     if (open) {
@@ -2147,9 +2179,8 @@ export default function AgreementBoardWindow({
     const perfBase = (estimatedValue != null && estimatedValue > 0)
       ? estimatedValue
       : (baseValue != null && baseValue > 0 ? baseValue : null);
-    const evaluationAmount = (estimatedValue != null && estimatedValue > 0)
-      ? estimatedValue
-      : (baseValue != null && baseValue > 0 ? baseValue : null);
+    const rangeAmountHint = parseRangeAmountHint(ownerKeyUpper, selectedRangeOption?.label);
+    const evaluationAmount = rangeAmountHint > 0 ? rangeAmountHint : 0;
     const ownerKey = String(ownerId || 'lh').toLowerCase();
     const performanceBaseReady = perfBase != null && perfBase > 0;
 
@@ -2387,7 +2418,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore]);
+  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -2401,9 +2432,8 @@ export default function AgreementBoardWindow({
     const perfBase = (estimatedValue != null && estimatedValue > 0)
       ? estimatedValue
       : (baseValue != null && baseValue > 0 ? baseValue : null);
-    const evaluationAmount = (estimatedValue != null && estimatedValue > 0)
-      ? estimatedValue
-      : (baseValue != null && baseValue > 0 ? baseValue : null);
+    const rangeAmountHint = parseRangeAmountHint(ownerKeyUpper, selectedRangeOption?.label);
+    const evaluationAmount = rangeAmountHint > 0 ? rangeAmountHint : 0;
     const ownerKey = String(ownerId || 'lh').toLowerCase();
     const performanceBaseReady = perfBase != null && perfBase > 0;
 
@@ -2499,7 +2529,7 @@ export default function AgreementBoardWindow({
 
         const candidateKey = normalizeCandidateKey(candidate);
         if (!candidateKey) continue;
-        const cacheKey = `${ownerKey}|${String(fileType || '')}|${evaluationAmount || ''}|${perfBase || ''}|${candidateKey}`;
+        const cacheKey = `${ownerKey}|${String(fileType || '')}|${selectedRangeOption?.key || ''}|${evaluationAmount || ''}|${perfBase || ''}|${candidateKey}`;
         const cacheEntry = candidateScoreCacheRef.current.get(cacheKey);
         if (cacheEntry === 'pending') continue;
         if (cacheEntry === 'done' && !needsManagement && !needsPerformanceScore) continue;
@@ -2632,7 +2662,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantMap, ownerId, baseAmount, estimatedAmount, fileType]);
+  }, [open, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType]);
 
   const handleDragStart = (id) => (event) => {
     if (!id) return;
