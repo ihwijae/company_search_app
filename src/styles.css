@@ -737,6 +737,7 @@ button.primary:hover { background: var(--accent-2); }
   min-width: 100px;
   background: #fbfbfe;
   overflow: hidden;
+  white-space: normal;
 }
 
 .excel-share-cell {
@@ -882,9 +883,9 @@ button.primary:hover { background: var(--accent-2); }
 .excel-member-name {
   font-weight: 700;
   color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
 }
 
 .excel-remove-btn {
