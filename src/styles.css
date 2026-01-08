@@ -372,6 +372,13 @@ button.primary:hover { background: var(--accent-2); }
 .excel-field-block.size-md { width: 160px; }
 .excel-field-block.size-lg { width: 220px; }
 .excel-field-block.accent { background: #f4f6ff; border-color: #d5def8; }
+.excel-field-block.readonly .readonly-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #b91c1c;
+  text-align: right;
+  padding: 6px 8px;
+}
 .field-label { font-size: 11px; font-weight: 600; color: #334155; letter-spacing: 0.04em; }
 .excel-field-block .input,
 .excel-field-block input,
@@ -719,6 +726,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-management-bonus { width: 50px; }
 .col-share-total { width: 60px; }
 .col-performance { width: 90px; }
+.col-netcost-bonus { width: 80px; }
 .col-performance-summary { width: 70px; }
 .col-credibility { width: 95px; }
 .col-bid { width: 75px; }

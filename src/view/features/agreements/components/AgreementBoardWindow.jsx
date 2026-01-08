@@ -17,6 +17,7 @@ const PERFORMANCE_CAP_VERSION = 2;
 const MANAGEMENT_SCORE_VERSION = 3;
 const LH_QUALITY_DEFAULT_UNDER_100B = 85;
 const LH_QUALITY_DEFAULT_OVER_100B = 88;
+const LH_UNDER_50_KEY = 'lh-under50';
 const BOARD_COPY_SLOT_COUNT = 5;
 const BOARD_COPY_ACTIONS = [
   { kind: 'names', label: '업체명 복사', successMessage: '업체명 데이터가 복사되었습니다.' },
@@ -51,6 +52,7 @@ const COLUMN_WIDTHS = {
   credibilityCell: 45,
   credibility: 95,
   bid: 75,
+  netCostBonus: 80,
   total: 85,
 };
 const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
@@ -162,6 +164,13 @@ const formatNoticeDate = (value) => {
   if (Number.isNaN(date.getTime())) return String(value);
   const pad = (num) => String(num).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const roundUpThousand = (value) => {
+  if (value == null) return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return Math.ceil(numeric / 1000) * 1000;
 };
 
 const buildDutySummary = (regions = [], dutyRate = null, teamSize = null) => {
@@ -1139,6 +1148,29 @@ export default function AgreementBoardWindow({
     return resolveLhQualityDefaultByRange(selectedRangeOption?.label, selectedRangeOption?.key);
   }, [isLHOwner, selectedRangeOption?.label, selectedRangeOption?.key]);
 
+  const netCostBonusScore = React.useMemo(() => {
+    if (!isLHOwner) return 0;
+    if (selectedRangeOption?.key !== LH_UNDER_50_KEY) return 0;
+    const base = toNumber(baseAmount);
+    const netCost = toNumber(netCostAmount);
+    const aValueNumber = toNumber(aValue);
+    if (!base || !netCost || !aValueNumber) return 0;
+    const expectedMin = roundUpThousand(base * 0.988);
+    const expectedMax = roundUpThousand(base * 1.012);
+    if (!expectedMin || !expectedMax) return 0;
+    if (expectedMin <= aValueNumber || expectedMax <= aValueNumber) return 0;
+    const bidMin = netCost * (expectedMin / base) * 0.98;
+    const bidMax = netCost * (expectedMax / base) * 0.98;
+    const rMin = (bidMin - aValueNumber) / (expectedMin - aValueNumber);
+    const rMax = (bidMax - aValueNumber) / (expectedMax - aValueNumber);
+    if (!Number.isFinite(rMin) || !Number.isFinite(rMax)) return 0;
+    const priceScore = (ratio) => 70 - (4 * Math.abs((0.88 - ratio) * 100));
+    const bonusMin = priceScore(rMin) - 65;
+    const bonusMax = priceScore(rMax) - 65;
+    const conservative = Math.min(bonusMin, bonusMax);
+    return conservative > 0 ? clampScore(conservative, 999) : 0;
+  }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
+
   React.useEffect(() => {
     let canceled = false;
     const load = async () => {
@@ -1186,6 +1218,7 @@ export default function AgreementBoardWindow({
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
       + COLUMN_WIDTHS.bid
+      + COLUMN_WIDTHS.netCostBonus
       + COLUMN_WIDTHS.total;
     const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth + perfCellsWidth;
     return Math.max(1200, total);
@@ -2259,12 +2292,12 @@ export default function AgreementBoardWindow({
           : (credibilityEnabled && shareReady ? 0 : (credibilityEnabled ? null : null));
         const credibilityMax = credibilityEnabled ? ownerCredibilityMax : null;
         const totalScoreBase = (managementScore != null && performanceScore != null)
-          ? managementScore + performanceScore + BID_SCORE
+          ? managementScore + performanceScore + BID_SCORE + netCostBonusScore
           : null;
         const totalScoreWithCred = (totalScoreBase != null)
           ? totalScoreBase + (credibilityScore != null ? credibilityScore : 0)
           : null;
-        const totalMaxBase = managementMax + performanceMax + BID_SCORE;
+        const totalMaxBase = managementMax + performanceMax + BID_SCORE + netCostBonusScore;
         const totalMaxWithCred = credibilityEnabled ? totalMaxBase + (credibilityMax || 0) : totalMaxBase;
 
       return {
@@ -2286,6 +2319,7 @@ export default function AgreementBoardWindow({
         totalMaxWithCred,
         totalScore: totalScoreWithCred,
         bidScore: metric.memberCount > 0 ? BID_SCORE : null,
+        netCostBonusScore,
         managementMax,
         performanceMax,
         totalMax: totalMaxBase,
@@ -2307,7 +2341,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus]);
+  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -2921,7 +2955,7 @@ export default function AgreementBoardWindow({
 
   const tableColumnCount = React.useMemo(() => {
     const perSlotCols = credibilityEnabled ? 5 : 4;
-    const baseColumns = 9 + (credibilityEnabled ? 1 : 0);
+    const baseColumns = 10 + (credibilityEnabled ? 1 : 0);
     return baseColumns + (slotLabels.length * perSlotCols);
   }, [credibilityEnabled, slotLabels.length]);
 
@@ -3182,6 +3216,9 @@ export default function AgreementBoardWindow({
         : '-')
       : null;
     const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore) : '-';
+    const netCostBonusDisplay = summaryInfo?.netCostBonusScore != null
+      ? formatScore(summaryInfo.netCostBonusScore, 2)
+      : '0';
     const totalScoreDisplay = summaryInfo
       ? formatScore(summaryInfo.totalScoreWithCred ?? summaryInfo.totalScoreBase)
       : '-';
@@ -3231,6 +3268,7 @@ export default function AgreementBoardWindow({
         {slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
         <td className={`excel-cell total-cell ${performanceState}`} rowSpan={rightRowSpan}>{performanceSummary}</td>
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
+        <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{totalScoreDisplay}</td>
         </tr>
         {renderQualityRow(group, groupIndex, slotMetas)}
@@ -3327,16 +3365,22 @@ export default function AgreementBoardWindow({
                 )}
               </div>
 
-              <div className="header-stack stack-rate">
-                <div className="excel-field-block size-xs">
-                  <span className="field-label">사정율</span>
-                  <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 101.5" />
-                </div>
-                <div className="excel-field-block size-xs">
-                  <span className="field-label">투찰율</span>
-                  <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
-                </div>
-              </div>
+      <div className="header-stack stack-rate">
+        <div className="excel-field-block size-xs">
+          <span className="field-label">사정율</span>
+          <input className="input" value={adjustmentRate || ''} onChange={handleAdjustmentRateChange} placeholder="예: 101.5" />
+        </div>
+        <div className="excel-field-block size-xs">
+          <span className="field-label">투찰율</span>
+          <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
+        </div>
+        {isLH && (
+          <div className="excel-field-block size-xs readonly">
+            <span className="field-label">순공사원가가점</span>
+            <div className="readonly-value">{formatScore(netCostBonusScore, 2)}</div>
+          </div>
+        )}
+      </div>
 
               <div className="header-stack stack-bid">
                 <div className="excel-field-block size-sm">
@@ -3472,16 +3516,17 @@ export default function AgreementBoardWindow({
                 ))}
                 {credibilityEnabled && <col className="col-credibility" />}
                 {slotLabels.map((_, index) => (
-                  <col key={`col-status-${index}`} className="col-status" />
-                ))}
-                <col className="col-management" />
-                <col className="col-management-bonus" />
-                {slotLabels.map((_, index) => (
-                  <col key={`col-performance-${index}`} className="col-performance" />
-                ))}
-                <col className="col-performance-summary" />
-                <col className="col-bid" />
-                <col className="col-total" />
+                <col key={`col-status-${index}`} className="col-status" />
+              ))}
+              <col className="col-management" />
+              <col className="col-management-bonus" />
+              {slotLabels.map((_, index) => (
+                <col key={`col-performance-${index}`} className="col-performance" />
+              ))}
+              <col className="col-performance-summary" />
+              <col className="col-bid" />
+              <col className="col-netcost-bonus" />
+              <col className="col-total" />
               </colgroup>
               <thead>
                 <tr>
@@ -3505,10 +3550,11 @@ export default function AgreementBoardWindow({
                   <th rowSpan="2">경영({formatScore(managementHeaderMax, 0)}점)</th>
                   <th rowSpan="2">가점</th>
                   <th colSpan={slotLabels.length}>시공실적</th>
-                  <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
-                  <th rowSpan="2">입찰점수</th>
-                  <th rowSpan="2">예상점수</th>
-                </tr>
+                <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
+                <th rowSpan="2">입찰점수</th>
+                <th rowSpan="2">순공사원가가점</th>
+                <th rowSpan="2">예상점수</th>
+              </tr>
                 <tr>
                   {slotLabels.map((label, index) => (
                     <th key={`name-head-${index}`}>{label}</th>
