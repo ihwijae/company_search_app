@@ -63,6 +63,45 @@ const resolveOwnerPerformanceMax = (ownerId) => {
   return upper === 'MOIS' ? PERFORMANCE_MOIS_DEFAULT_MAX : PERFORMANCE_DEFAULT_MAX;
 };
 
+const selectTierByAmount = (tiers = [], amount) => {
+  const sorted = Array.isArray(tiers)
+    ? tiers.slice().sort((a, b) => toNumber(a?.minAmount) - toNumber(b?.minAmount))
+    : [];
+  if (!sorted.length) return null;
+  const target = toNumber(amount);
+  const findTier = (value) => {
+    if (!(value > 0)) return null;
+    return sorted.find((tier) => {
+      const min = toNumber(tier?.minAmount) || 0;
+      const rawMax = tier?.maxAmount;
+      const maxVal = rawMax === null || rawMax === undefined || rawMax === '' ? Infinity : toNumber(rawMax);
+      const upper = Number.isFinite(maxVal) && maxVal > 0 ? maxVal : Infinity;
+      return value >= min && value < upper;
+    }) || null;
+  };
+  return findTier(target) || sorted[sorted.length - 1];
+};
+
+const derivePerformanceMax = (performanceRules) => {
+  const maxScore = toNumber(performanceRules?.maxScore);
+  if (maxScore != null && maxScore > 0) return maxScore;
+  const thresholds = Array.isArray(performanceRules?.thresholds) ? performanceRules.thresholds : [];
+  const thresholdMax = thresholds.reduce((acc, item) => {
+    const value = toNumber(item?.score);
+    return value != null && value > acc ? value : acc;
+  }, 0);
+  return thresholdMax > 0 ? thresholdMax : null;
+};
+
+const deriveManagementMax = (managementRules) => {
+  const methods = Array.isArray(managementRules?.methods) ? managementRules.methods : [];
+  const methodMaxes = methods
+    .map((method) => toNumber(method?.maxScore))
+    .filter((value) => value != null && value > 0);
+  if (methodMaxes.length) return Math.max(...methodMaxes);
+  return null;
+};
+
 const resolvePerformanceCap = (value, fallback = PERFORMANCE_DEFAULT_MAX) => {
   if (value === null || value === undefined) return fallback;
   const parsed = Number(value);
@@ -810,6 +849,7 @@ export default function AgreementBoardWindow({
   const [groupApprovals, setGroupApprovals] = React.useState([]);
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState([]);
+  const [formulasDoc, setFormulasDoc] = React.useState(null);
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
   const isLHOwner = ownerKeyUpper === 'LH';
   const selectedGroup = React.useMemo(
@@ -1024,14 +1064,14 @@ export default function AgreementBoardWindow({
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
-      ? [ratioBaseAmount, editableBidAmount, bidAmount, baseAmount, estimatedAmount]
-      : [editableBidAmount, bidAmount, ratioBaseAmount, baseAmount, estimatedAmount];
+      ? [ratioBaseAmount]
+      : [editableBidAmount, bidAmount];
     for (const source of sources) {
       const parsed = parseAmountValue(source);
       if (parsed !== null && parsed > 0) return parsed;
     }
     return null;
-  }, [ownerKeyUpper, ratioBaseAmount, editableBidAmount, bidAmount, baseAmount, estimatedAmount]);
+  }, [ownerKeyUpper, ratioBaseAmount, editableBidAmount, bidAmount]);
 
   const derivePendingPlacementHint = React.useCallback((picked) => {
     if (!picked || typeof picked !== 'object') {
@@ -1071,6 +1111,28 @@ export default function AgreementBoardWindow({
 
   const isLH = ownerId === 'LH';
   const entryModeResolved = entryMode === 'sum' ? 'sum' : (entryMode === 'none' ? 'none' : 'ratio');
+
+  React.useEffect(() => {
+    let canceled = false;
+    const load = async () => {
+      if (!open) return;
+      const api = typeof window !== 'undefined' ? window.electronAPI : null;
+      if (!api?.formulasLoad) return;
+      try {
+        const response = await api.formulasLoad();
+        if (canceled) return;
+        if (response?.data) {
+          setFormulasDoc(response.data);
+        }
+      } catch (err) {
+        console.warn('[AgreementBoard] formulasLoad failed:', err?.message || err);
+      }
+    };
+    load();
+    return () => {
+      canceled = true;
+    };
+  }, [open]);
   const safeGroupSize = React.useMemo(() => {
     const parsed = Number(groupSize);
     if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_GROUP_SIZE;
@@ -1100,6 +1162,24 @@ export default function AgreementBoardWindow({
     const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth + perfCellsWidth;
     return Math.max(1200, total);
   }, [slotLabels.length, credibilityEnabled]);
+
+  const derivedMaxScores = React.useMemo(() => {
+    if (!formulasDoc) return { managementMax: null, performanceMax: null };
+    const agencyId = String(ownerId || '').toLowerCase();
+    const agencies = Array.isArray(formulasDoc.agencies) ? formulasDoc.agencies : [];
+    const agency = agencies.find((item) => String(item?.id || '').toLowerCase() === agencyId) || null;
+    if (!agency) return { managementMax: null, performanceMax: null };
+    const amountHint = parseAmountValue(estimatedAmount)
+      ?? parseAmountValue(baseAmount)
+      ?? parseAmountValue(entryAmount)
+      ?? null;
+    const tier = selectTierByAmount(agency.tiers || [], amountHint);
+    if (!tier) return { managementMax: null, performanceMax: null };
+    return {
+      managementMax: deriveManagementMax(tier.rules?.management),
+      performanceMax: derivePerformanceMax(tier.rules?.performance),
+    };
+  }, [formulasDoc, ownerId, estimatedAmount, baseAmount, entryAmount]);
 
   React.useEffect(() => {
     if (open) {
@@ -1963,6 +2043,8 @@ export default function AgreementBoardWindow({
     const entryLimitValue = parseAmountValue(entryAmount);
     const entryModeForCalc = entryModeResolved;
     const ownerPerformanceFallback = resolveOwnerPerformanceMax(ownerKeyUpper);
+    const derivedManagementMax = derivedMaxScores.managementMax ?? MANAGEMENT_SCORE_MAX;
+    const derivedPerformanceMax = derivedMaxScores.performanceMax ?? ownerPerformanceFallback;
 
     const metrics = groupAssignments.map((memberIds, groupIndex) => {
       const members = memberIds.map((uid, slotIndex) => {
@@ -2132,8 +2214,8 @@ export default function AgreementBoardWindow({
         }
 
         const perfCapCurrent = getPerformanceCap();
-        const managementMax = MANAGEMENT_SCORE_MAX;
-        const performanceMax = perfCapCurrent || ownerPerformanceFallback;
+        const managementMax = derivedManagementMax;
+        const performanceMax = perfCapCurrent || derivedPerformanceMax;
         const credibilityScore = (credibilityEnabled && shareReady && metric.credibilityScore != null)
           ? clampScore(metric.credibilityScore, ownerCredibilityMax)
           : (credibilityEnabled && shareReady ? 0 : (credibilityEnabled ? null : null));
@@ -2187,7 +2269,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion]);
+  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -2942,9 +3024,6 @@ export default function AgreementBoardWindow({
             onChange={(event) => handleShareInput(meta.groupIndex, meta.slotIndex, event.target.value)}
             placeholder={meta.sharePlaceholder}
           />
-          {meta.possibleShareText && (
-            <div className="excel-hint">가능 {meta.possibleShareText}</div>
-          )}
         </>
       )}
     </td>
@@ -2988,6 +3067,9 @@ export default function AgreementBoardWindow({
       )}
     </td>
   );
+
+  const managementHeaderMax = derivedMaxScores.managementMax ?? MANAGEMENT_SCORE_MAX;
+  const performanceHeaderMax = derivedMaxScores.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper);
 
   const renderSheetRow = (group, groupIndex) => {
     const summaryInfo = group.summary;
@@ -3301,9 +3383,9 @@ export default function AgreementBoardWindow({
                   {credibilityEnabled && <th colSpan={slotLabels.length}>신인도</th>}
                   {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
                   <th colSpan={slotLabels.length}>경영상태</th>
-                  <th rowSpan="2">경영(15점)</th>
+                  <th rowSpan="2">경영({formatScore(managementHeaderMax, 0)}점)</th>
                   <th colSpan={slotLabels.length}>시공실적</th>
-                  <th rowSpan="2">실적(15점)</th>
+                  <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
                   <th rowSpan="2">입찰점수</th>
                   <th rowSpan="2">예상점수</th>
                 </tr>
