@@ -1008,10 +1008,12 @@ button.primary:hover { background: var(--accent-2); }
   display: flex;
   flex-direction: column;
   line-height: 1.1;
-  gap: 2px;
+  gap: 4px;
 }
 
 .share-total-header .sub {
+  border-top: 1px solid #c7d2fe;
+  padding-top: 2px;
   font-size: 11px;
   color: #b91c1c;
 }
