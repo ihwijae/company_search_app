@@ -1030,6 +1030,14 @@ button.primary:hover { background: var(--accent-2); }
   color: #b91c1c;
 }
 
+.quality-row .quality-guide {
+  font-size: 12px;
+  color: #b91c1c;
+  font-weight: 600;
+  text-align: left;
+  white-space: normal;
+}
+
 .quality-row .quality-total {
   font-weight: 700;
   color: #b91c1c;

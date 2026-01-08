@@ -3095,6 +3095,10 @@ export default function AgreementBoardWindow({
 
   const renderQualityRow = (group, groupIndex, slotMetas) => {
     if (!isLHOwner) return null;
+    const qualityGuide = (selectedRangeOption?.key === 'lh-50to100')
+      ? '90점이상:5점/88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점'
+      : '품질 88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점';
+    const guideSpan = 1 + slotMetas.length;
     const qualityTotal = slotMetas.reduce((acc, meta) => {
       if (meta.empty) return acc;
       const share = toNumber(meta.shareForCalc);
@@ -3108,10 +3112,9 @@ export default function AgreementBoardWindow({
     return (
       <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
         <td className="excel-cell order-cell quality-label">품질</td>
-        <td className="excel-cell approval-cell" />
-        {slotMetas.map((meta) => (
-          <td key={`quality-name-${groupIndex}-${meta.slotIndex}`} className="excel-cell excel-name-cell quality-empty" />
-        ))}
+        <td className="excel-cell quality-guide" colSpan={guideSpan}>
+          {qualityGuide}
+        </td>
         {slotMetas.map((meta) => (
           <td
             key={`quality-share-${groupIndex}-${meta.slotIndex}`}
