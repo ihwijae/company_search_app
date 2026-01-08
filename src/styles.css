@@ -1022,18 +1022,7 @@ button.primary:hover { background: var(--accent-2); }
 
 .quality-row .quality-merged {
   background: #fff;
-  border: none;
-  position: relative;
-  overflow: hidden;
-}
-
-.quality-row .quality-merged::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: #fff;
-  box-shadow: inset 1px 0 0 #e2e8f0;
-  z-index: 1;
+  border-style: hidden;
 }
 
 .excel-chip {
