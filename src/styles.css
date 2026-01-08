@@ -740,12 +740,8 @@ button.primary:hover { background: var(--accent-2); }
   white-space: normal;
 }
 
-.excel-name-cell.score-full {
-  background: #ecfdf5;
-}
-
-.excel-name-cell.score-partial {
-  background: #fef2f2;
+.excel-name-cell.duty-region {
+  background: #fef9c3;
 }
 
 .excel-share-cell {
@@ -777,6 +773,16 @@ button.primary:hover { background: var(--accent-2); }
   min-width: 56px;
   text-align: center;
   font-weight: 600;
+}
+
+.order-cell.score-full {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.order-cell.score-partial {
+  background: #fee2e2;
+  color: #7f1d1d;
 }
 
 .approval-cell input {
@@ -988,10 +994,12 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-cell.total-cell.ok {
   color: #15803d;
+  font-weight: 700;
 }
 
 .excel-cell.total-cell.warn {
   color: #b91c1c;
+  font-weight: 700;
 }
 
 .excel-chip {

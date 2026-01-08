@@ -2815,6 +2815,7 @@ export default function AgreementBoardWindow({
       return { empty: true, slotIndex, groupIndex, label };
     }
     const candidate = entry.candidate;
+    const isDutyRegion = entry.type === 'region' || isDutyRegionCompany(candidate);
     const shareRaw = groupShareRawInputs[groupIndex]?.[slotIndex];
     const storedShare = groupShares[groupIndex]?.[slotIndex];
     const shareValue = shareRaw !== undefined ? shareRaw : (storedShare !== undefined ? storedShare : '');
@@ -2859,6 +2860,7 @@ export default function AgreementBoardWindow({
       label,
       uid,
       companyName: getCompanyName(candidate),
+      isDutyRegion,
       managerName,
       tags,
       shareValue: shareValue != null ? String(shareValue) : '',
@@ -2873,11 +2875,10 @@ export default function AgreementBoardWindow({
     };
   };
 
-  const renderNameCell = (meta, scoreState) => {
+  const renderNameCell = (meta) => {
     const isDropTarget = dropTarget && dropTarget.groupIndex === meta.groupIndex && dropTarget.slotIndex === meta.slotIndex;
     const cellClasses = ['excel-cell', 'excel-name-cell'];
-    if (!meta.empty && scoreState === 'full') cellClasses.push('score-full');
-    if (!meta.empty && scoreState === 'partial') cellClasses.push('score-partial');
+    if (!meta.empty && meta.isDutyRegion) cellClasses.push('duty-region');
     if (isDropTarget) cellClasses.push('drop-target');
     return (
       <td
@@ -3002,10 +3003,10 @@ export default function AgreementBoardWindow({
     }
     const slotMetas = slotLabels.map((label, slotIndex) => buildSlotMeta(group, groupIndex, slotIndex, label));
     const managementSummary = summaryInfo?.managementScore != null
-      ? `${formatScore(summaryInfo.managementScore, 2)} / ${formatScore(summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX, 2)}`
+      ? formatScore(summaryInfo.managementScore, 2)
       : '-';
     const performanceSummary = summaryInfo?.performanceScore != null
-      ? `${formatScore(summaryInfo.performanceScore)} / ${formatScore(summaryInfo.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper))}`
+      ? formatScore(summaryInfo.performanceScore)
       : '-';
     const shareSumDisplay = summaryInfo?.shareSum != null ? formatPercent(summaryInfo.shareSum) : '-';
     const shareSummaryClass = summaryInfo?.shareComplete ? 'ok' : 'warn';
@@ -3020,9 +3021,16 @@ export default function AgreementBoardWindow({
       : '-';
     const approvalValue = groupApprovals[groupIndex] || '';
 
+    const managementState = summaryInfo?.managementScore != null
+      ? (summaryInfo.managementScore >= ((summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX) - 0.01) ? 'ok' : 'warn')
+      : '';
+    const performanceState = summaryInfo?.performanceScore != null
+      ? (summaryInfo.performanceScore >= ((summaryInfo.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper)) - 0.01) ? 'ok' : 'warn')
+      : '';
+
     return (
       <tr key={group.id} className="excel-board-row">
-        <td className="excel-cell order-cell">{group.id}</td>
+        <td className={`excel-cell order-cell${scoreState ? ` score-${scoreState}` : ''}`}>{group.id}</td>
         <td className="excel-cell approval-cell">
           <input
             type="text"
@@ -3034,7 +3042,7 @@ export default function AgreementBoardWindow({
             <small>기준 {formatAmount(summaryInfo.entryLimit)}</small>
           )}
         </td>
-        {slotMetas.map((meta) => renderNameCell(meta, scoreState))}
+        {slotMetas.map((meta) => renderNameCell(meta))}
         {slotMetas.map(renderShareCell)}
         <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
         {credibilityEnabled && slotMetas.map(renderCredibilityCell)}
@@ -3042,9 +3050,9 @@ export default function AgreementBoardWindow({
           <td className="excel-cell total-cell">{credibilitySummary}</td>
         )}
         {slotMetas.map(renderStatusCell)}
-        <td className="excel-cell total-cell">{managementSummary}</td>
+        <td className={`excel-cell total-cell ${managementState}`}>{managementSummary}</td>
         {slotMetas.map(renderPerformanceCell)}
-        <td className="excel-cell total-cell">{performanceSummary}</td>
+        <td className={`excel-cell total-cell ${performanceState}`}>{performanceSummary}</td>
         <td className="excel-cell total-cell">{bidScoreDisplay}</td>
         <td className="excel-cell total-cell">{totalScoreDisplay}</td>
       </tr>
