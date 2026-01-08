@@ -2940,10 +2940,6 @@ export default function AgreementBoardWindow({
     if (isWomenOwnedCompany(candidate)) {
       tags.push({ key: 'female', label: '女' });
     }
-    const qualityBadge = getQualityBadgeText(candidate);
-    if (!isLHOwner && qualityBadge) {
-      tags.push({ key: 'quality', label: `품질 ${qualityBadge}` });
-    }
     const managerName = getCandidateManagerName(candidate);
     const managementScore = getCandidateManagementScore(candidate);
     const managementNumeric = clampScore(toNumber(managementScore));
