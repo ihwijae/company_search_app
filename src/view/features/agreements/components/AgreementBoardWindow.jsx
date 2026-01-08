@@ -181,6 +181,14 @@ const truncateScore = (value, digits = 2) => {
   return Math.floor(numeric * factor) / factor;
 };
 
+const roundTo = (value, digits = 4) => {
+  if (value == null) return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  const factor = 10 ** digits;
+  return Math.round(numeric * factor) / factor;
+};
+
 const buildDutySummary = (regions = [], dutyRate = null, teamSize = null) => {
   const normalizedRegions = (Array.isArray(regions) ? regions : [])
     .map((entry) => (entry ? String(entry).trim() : ''))
@@ -1169,8 +1177,10 @@ export default function AgreementBoardWindow({
     if (expectedMin <= aValueNumber || expectedMax <= aValueNumber) return 0;
     const bidMin = netCost * (expectedMin / base) * 0.98;
     const bidMax = netCost * (expectedMax / base) * 0.98;
-    const rMin = (bidMin - aValueNumber) / (expectedMin - aValueNumber);
-    const rMax = (bidMax - aValueNumber) / (expectedMax - aValueNumber);
+    const rMinRaw = (bidMin - aValueNumber) / (expectedMin - aValueNumber);
+    const rMaxRaw = (bidMax - aValueNumber) / (expectedMax - aValueNumber);
+    const rMin = roundTo(rMinRaw, 4);
+    const rMax = roundTo(rMaxRaw, 4);
     if (!Number.isFinite(rMin) || !Number.isFinite(rMax)) return 0;
     const priceScore = (ratio) => 70 - (4 * Math.abs((0.88 - ratio) * 100));
     const bonusMin = priceScore(rMin) - 65;
