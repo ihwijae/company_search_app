@@ -18,6 +18,7 @@ const MANAGEMENT_SCORE_VERSION = 3;
 const LH_QUALITY_DEFAULT_UNDER_100B = 85;
 const LH_QUALITY_DEFAULT_OVER_100B = 88;
 const LH_UNDER_50_KEY = 'lh-under50';
+const LH_50_TO_100_KEY = 'lh-50to100';
 const BOARD_COPY_SLOT_COUNT = 5;
 const BOARD_COPY_ACTIONS = [
   { kind: 'names', label: '업체명 복사', successMessage: '업체명 데이터가 복사되었습니다.' },
@@ -1166,7 +1167,8 @@ export default function AgreementBoardWindow({
 
   const netCostBonusScore = React.useMemo(() => {
     if (!isLHOwner) return 0;
-    if (selectedRangeOption?.key !== LH_UNDER_50_KEY) return 0;
+    const rangeKey = selectedRangeOption?.key;
+    if (rangeKey !== LH_UNDER_50_KEY && rangeKey !== LH_50_TO_100_KEY) return 0;
     const base = toNumber(baseAmount);
     const netCost = toNumber(netCostAmount);
     const aValueNumber = toNumber(aValue);
@@ -1182,7 +1184,11 @@ export default function AgreementBoardWindow({
     const rMin = roundTo(rMinRaw, 4);
     const rMax = roundTo(rMaxRaw, 4);
     if (!Number.isFinite(rMin) || !Number.isFinite(rMax)) return 0;
-    const priceScore = (ratio) => 70 - (4 * Math.abs((0.88 - ratio) * 100));
+    const priceScore = (ratio) => (
+      rangeKey === LH_50_TO_100_KEY
+        ? 50 - (2 * Math.abs((0.88 - ratio) * 100))
+        : 70 - (4 * Math.abs((0.88 - ratio) * 100))
+    );
     const bonusMin = priceScore(rMin) - 65;
     const bonusMax = priceScore(rMax) - 65;
     const conservative = Math.min(bonusMin, bonusMax);
@@ -1193,7 +1199,8 @@ export default function AgreementBoardWindow({
 
   const netCostPenaltyNotice = React.useMemo(() => {
     if (!isLHOwner) return false;
-    if (selectedRangeOption?.key !== LH_UNDER_50_KEY) return false;
+    const rangeKey = selectedRangeOption?.key;
+    if (rangeKey !== LH_UNDER_50_KEY && rangeKey !== LH_50_TO_100_KEY) return false;
     const base = toNumber(baseAmount);
     const netCost = toNumber(netCostAmount);
     const aValueNumber = toNumber(aValue);
