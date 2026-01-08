@@ -1020,18 +1020,7 @@ button.primary:hover { background: var(--accent-2); }
   background: #fff;
 }
 
-.quality-row .quality-merged {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  position: relative;
-}
-
-.quality-row .quality-merged::before {
-  content: '';
-  position: absolute;
-  inset: 1px;
-  background: #fff;
-}
+ 
 
 .excel-chip {
   border-radius: 999px;

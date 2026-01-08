@@ -3050,8 +3050,8 @@ export default function AgreementBoardWindow({
     </td>
   );
 
-  const renderCredibilityCell = (meta) => (
-    <td key={`cred-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-credibility-cell">
+  const renderCredibilityCell = (meta, rowSpan) => (
+    <td key={`cred-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-credibility-cell" rowSpan={rowSpan}>
       {meta.empty ? null : (
         <>
           <input
@@ -3068,8 +3068,8 @@ export default function AgreementBoardWindow({
     </td>
   );
 
-  const renderStatusCell = (meta) => (
-    <td key={`status-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-status-cell">
+  const renderStatusCell = (meta, rowSpan) => (
+    <td key={`status-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-status-cell" rowSpan={rowSpan}>
       {meta.empty ? null : (
         <div className={`excel-status score-only ${meta.managementAlert ? 'warn' : ''}`}>
           <span className="status-score" title="경영점수">{meta.managementDisplay}</span>
@@ -3078,8 +3078,8 @@ export default function AgreementBoardWindow({
     </td>
   );
 
-  const renderPerformanceCell = (meta) => (
-    <td key={`perf-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-perf-cell">
+  const renderPerformanceCell = (meta, rowSpan) => (
+    <td key={`perf-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-perf-cell" rowSpan={rowSpan}>
       {meta.empty ? null : (
         <div className="excel-performance">
           <span className="perf-label">5년 실적</span>
@@ -3094,8 +3094,6 @@ export default function AgreementBoardWindow({
 
   const renderQualityRow = (group, groupIndex, slotMetas) => {
     if (!isLHOwner) return null;
-    const filledCount = 2 + (slotMetas.length * 2) + 1;
-    const remainingCount = Math.max(tableColumnCount - filledCount, 0);
     return (
       <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
         <td className="excel-cell order-cell quality-label">품질</td>
@@ -3112,9 +3110,6 @@ export default function AgreementBoardWindow({
           </td>
         ))}
         <td className="excel-cell total-cell quality-empty" />
-        {remainingCount > 0 && (
-          <td className="excel-cell quality-merged" colSpan={remainingCount} />
-        )}
       </tr>
     );
   };
@@ -3150,6 +3145,7 @@ export default function AgreementBoardWindow({
       ? formatScore(summaryInfo.totalScoreWithCred ?? summaryInfo.totalScoreBase)
       : '-';
     const approvalValue = groupApprovals[groupIndex] || '';
+    const rightRowSpan = isLHOwner ? 2 : undefined;
 
     const managementState = summaryInfo?.managementScore != null
       ? (summaryInfo.managementScore >= ((summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX) - 0.01) ? 'ok' : 'warn')
@@ -3176,16 +3172,16 @@ export default function AgreementBoardWindow({
         {slotMetas.map((meta) => renderNameCell(meta))}
         {slotMetas.map(renderShareCell)}
         <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
-        {credibilityEnabled && slotMetas.map(renderCredibilityCell)}
+        {credibilityEnabled && slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan))}
         {credibilityEnabled && (
-          <td className="excel-cell total-cell">{credibilitySummary}</td>
+          <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{credibilitySummary}</td>
         )}
-        {slotMetas.map(renderStatusCell)}
-        <td className={`excel-cell total-cell ${managementState}`}>{managementSummary}</td>
-        {slotMetas.map(renderPerformanceCell)}
-        <td className={`excel-cell total-cell ${performanceState}`}>{performanceSummary}</td>
-        <td className="excel-cell total-cell">{bidScoreDisplay}</td>
-        <td className="excel-cell total-cell">{totalScoreDisplay}</td>
+        {slotMetas.map((meta) => renderStatusCell(meta, rightRowSpan))}
+        <td className={`excel-cell total-cell ${managementState}`} rowSpan={rightRowSpan}>{managementSummary}</td>
+        {slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
+        <td className={`excel-cell total-cell ${performanceState}`} rowSpan={rightRowSpan}>{performanceSummary}</td>
+        <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
+        <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{totalScoreDisplay}</td>
         </tr>
         {renderQualityRow(group, groupIndex, slotMetas)}
       </React.Fragment>
