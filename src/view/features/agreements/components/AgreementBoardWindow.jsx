@@ -15,6 +15,8 @@ const PERFORMANCE_DEFAULT_MAX = 13;
 const PERFORMANCE_MOIS_DEFAULT_MAX = 15;
 const PERFORMANCE_CAP_VERSION = 2;
 const MANAGEMENT_SCORE_VERSION = 3;
+const LH_QUALITY_DEFAULT_UNDER_100B = 85;
+const LH_QUALITY_DEFAULT_OVER_100B = 88;
 const BOARD_COPY_SLOT_COUNT = 5;
 const BOARD_COPY_ACTIONS = [
   { kind: 'names', label: '업체명 복사', successMessage: '업체명 데이터가 복사되었습니다.' },
@@ -61,6 +63,15 @@ const BOARD_COPY_BUTTON_STYLE_MAP = {
 const resolveOwnerPerformanceMax = (ownerId) => {
   const upper = String(ownerId || '').toUpperCase();
   return upper === 'MOIS' ? PERFORMANCE_MOIS_DEFAULT_MAX : PERFORMANCE_DEFAULT_MAX;
+};
+
+const resolveLhQualityDefaultByRange = (rangeLabel, rangeKey) => {
+  const label = String(rangeLabel || '').trim();
+  const key = String(rangeKey || '').trim().toLowerCase();
+  if (label.includes('100억') || key.includes('over100') || key.includes('above100')) {
+    return LH_QUALITY_DEFAULT_OVER_100B;
+  }
+  return LH_QUALITY_DEFAULT_UNDER_100B;
 };
 
 const selectTierByAmount = (tiers = [], amount) => {
@@ -1111,6 +1122,10 @@ export default function AgreementBoardWindow({
 
   const isLH = ownerId === 'LH';
   const entryModeResolved = entryMode === 'sum' ? 'sum' : (entryMode === 'none' ? 'none' : 'ratio');
+  const lhQualityDefault = React.useMemo(() => {
+    if (!isLHOwner) return null;
+    return resolveLhQualityDefaultByRange(selectedRangeOption?.label, selectedRangeOption?.key);
+  }, [isLHOwner, selectedRangeOption?.label, selectedRangeOption?.key]);
 
   React.useEffect(() => {
     let canceled = false;
@@ -2898,6 +2913,11 @@ export default function AgreementBoardWindow({
     }
     const candidate = entry.candidate;
     const isDutyRegion = entry.type === 'region' || isDutyRegionCompany(candidate);
+    const qualityText = isLHOwner ? getQualityBadgeText(candidate) : null;
+    const qualityNumeric = isLHOwner ? toNumber(qualityText) : null;
+    const qualityScore = isLHOwner
+      ? (qualityNumeric != null ? qualityNumeric : lhQualityDefault)
+      : null;
     const shareRaw = groupShareRawInputs[groupIndex]?.[slotIndex];
     const storedShare = groupShares[groupIndex]?.[slotIndex];
     const shareValue = shareRaw !== undefined ? shareRaw : (storedShare !== undefined ? storedShare : '');
@@ -2952,6 +2972,7 @@ export default function AgreementBoardWindow({
       performanceDisplay: formatAmount(performanceAmount),
       managementDisplay: formatScore(managementScore, 2),
       managementAlert: managementNumeric != null && managementNumeric < (MANAGEMENT_SCORE_MAX - 0.01),
+      qualityScore,
       credibilityValue,
       credibilityProduct: credibilityProduct != null ? `${credibilityProduct.toFixed(2)}점` : '',
     };
@@ -3071,6 +3092,42 @@ export default function AgreementBoardWindow({
   const managementHeaderMax = derivedMaxScores.managementMax ?? MANAGEMENT_SCORE_MAX;
   const performanceHeaderMax = derivedMaxScores.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper);
 
+  const renderQualityRow = (group, groupIndex, slotMetas) => {
+    if (!isLHOwner) return null;
+    return (
+      <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
+        <td className="excel-cell order-cell quality-label">품질</td>
+        <td className="excel-cell approval-cell" />
+        {slotMetas.map((meta) => (
+          <td key={`quality-name-${groupIndex}-${meta.slotIndex}`} className="excel-cell excel-name-cell quality-empty" />
+        ))}
+        {slotMetas.map((meta) => (
+          <td
+            key={`quality-share-${groupIndex}-${meta.slotIndex}`}
+            className="excel-cell excel-share-cell quality-score"
+          >
+            {meta.empty ? '' : formatScore(meta.qualityScore, 2)}
+          </td>
+        ))}
+        <td className="excel-cell total-cell quality-empty" />
+        {credibilityEnabled && slotMetas.map((meta) => (
+          <td key={`quality-cred-${groupIndex}-${meta.slotIndex}`} className="excel-cell excel-credibility-cell quality-empty" />
+        ))}
+        {credibilityEnabled && <td className="excel-cell total-cell quality-empty" />}
+        {slotMetas.map((meta) => (
+          <td key={`quality-status-${groupIndex}-${meta.slotIndex}`} className="excel-cell excel-status-cell quality-empty" />
+        ))}
+        <td className="excel-cell total-cell quality-empty" />
+        {slotMetas.map((meta) => (
+          <td key={`quality-perf-${groupIndex}-${meta.slotIndex}`} className="excel-cell excel-perf-cell quality-empty" />
+        ))}
+        <td className="excel-cell total-cell quality-empty" />
+        <td className="excel-cell total-cell quality-empty" />
+        <td className="excel-cell total-cell quality-empty" />
+      </tr>
+    );
+  };
+
   const renderSheetRow = (group, groupIndex) => {
     const summaryInfo = group.summary;
     const totalScore = credibilityEnabled
@@ -3111,7 +3168,8 @@ export default function AgreementBoardWindow({
       : '';
 
     return (
-      <tr key={group.id} className="excel-board-row">
+      <React.Fragment key={group.id}>
+        <tr className="excel-board-row">
         <td className={`excel-cell order-cell${scoreState ? ` score-${scoreState}` : ''}`}>{group.id}</td>
         <td className="excel-cell approval-cell">
           <input
@@ -3137,7 +3195,9 @@ export default function AgreementBoardWindow({
         <td className={`excel-cell total-cell ${performanceState}`}>{performanceSummary}</td>
         <td className="excel-cell total-cell">{bidScoreDisplay}</td>
         <td className="excel-cell total-cell">{totalScoreDisplay}</td>
-      </tr>
+        </tr>
+        {renderQualityRow(group, groupIndex, slotMetas)}
+      </React.Fragment>
     );
   };
 

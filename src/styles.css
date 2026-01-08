@@ -1004,6 +1004,22 @@ button.primary:hover { background: var(--accent-2); }
   font-weight: 700;
 }
 
+.quality-row .quality-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.quality-row .quality-score {
+  text-align: center;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.quality-row .quality-empty {
+  background: #fff;
+}
+
 .excel-chip {
   border-radius: 999px;
   padding: 4px 12px;
