@@ -173,6 +173,14 @@ const roundUpThousand = (value) => {
   return Math.ceil(numeric / 1000) * 1000;
 };
 
+const truncateScore = (value, digits = 2) => {
+  if (value == null) return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  const factor = 10 ** digits;
+  return Math.floor(numeric * factor) / factor;
+};
+
 const buildDutySummary = (regions = [], dutyRate = null, teamSize = null) => {
   const normalizedRegions = (Array.isArray(regions) ? regions : [])
     .map((entry) => (entry ? String(entry).trim() : ''))
@@ -1168,7 +1176,9 @@ export default function AgreementBoardWindow({
     const bonusMin = priceScore(rMin) - 65;
     const bonusMax = priceScore(rMax) - 65;
     const conservative = Math.min(bonusMin, bonusMax);
-    return conservative > 0 ? clampScore(conservative, 999) : 0;
+    if (!(conservative > 0)) return 0;
+    const truncated = truncateScore(conservative, 2);
+    return truncated != null ? clampScore(truncated, 999) : 0;
   }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
 
   React.useEffect(() => {
