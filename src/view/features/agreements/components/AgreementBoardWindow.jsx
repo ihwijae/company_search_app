@@ -3094,8 +3094,15 @@ export default function AgreementBoardWindow({
 
   const renderQualityRow = (group, groupIndex, slotMetas) => {
     if (!isLHOwner) return null;
-    const prefixCount = 2 + (slotMetas.length * 2) + 1;
-    const remainingCount = Math.max(tableColumnCount - prefixCount, 0);
+    const remainingCount = (
+      (credibilityEnabled ? (slotMetas.length + 1) : 0)
+      + slotMetas.length
+      + 1
+      + slotMetas.length
+      + 1
+      + 1
+      + 1
+    );
     return (
       <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
         <td className="excel-cell order-cell quality-label">품질</td>
