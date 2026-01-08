@@ -1189,8 +1189,9 @@ export default function AgreementBoardWindow({
         ? 50 - (2 * Math.abs((0.88 - ratio) * 100))
         : 70 - (4 * Math.abs((0.88 - ratio) * 100))
     );
-    const bonusMin = priceScore(rMin) - 65;
-    const bonusMax = priceScore(rMax) - 65;
+    const baseline = rangeKey === LH_50_TO_100_KEY ? 45 : 65;
+    const bonusMin = priceScore(rMin) - baseline;
+    const bonusMax = priceScore(rMax) - baseline;
     const conservative = Math.min(bonusMin, bonusMax);
     if (!(conservative > 0)) return 0;
     const truncated = truncateScore(conservative, 2);
