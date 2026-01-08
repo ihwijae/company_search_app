@@ -2942,7 +2942,7 @@ export default function AgreementBoardWindow({
       tags.push({ key: 'female', label: '女' });
     }
     const qualityBadge = getQualityBadgeText(candidate);
-    if (isLHOwner && qualityBadge) {
+    if (!isLHOwner && qualityBadge) {
       tags.push({ key: 'quality', label: `품질 ${qualityBadge}` });
     }
     const managerName = getCandidateManagerName(candidate);
