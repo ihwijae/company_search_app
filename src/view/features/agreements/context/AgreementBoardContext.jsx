@@ -33,6 +33,8 @@ const initialState = {
   adjustmentRate: '',
   entryAmount: '',
   entryMode: 'ratio',
+  netCostAmount: '',
+  aValue: '',
 };
 
 const normalizeRuleEntry = (item = {}) => ({
@@ -418,6 +420,8 @@ export function AgreementBoardProvider({ children }) {
           adjustmentRate={boardState.adjustmentRate || ''}
           bidDeadline={boardState.bidDeadline || ''}
           regionDutyRate={boardState.regionDutyRate || ''}
+          netCostAmount={boardState.netCostAmount || ''}
+          aValue={boardState.aValue || ''}
         />
       )}
     </AgreementBoardContext.Provider>

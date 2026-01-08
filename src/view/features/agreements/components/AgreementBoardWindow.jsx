@@ -848,6 +848,8 @@ export default function AgreementBoardWindow({
   adjustmentRate = '',
   bidDeadline = '',
   regionDutyRate = '',
+  netCostAmount = '',
+  aValue = '',
   inlineMode = false,
 }) {
   const rangeId = _rangeId;
@@ -927,6 +929,14 @@ export default function AgreementBoardWindow({
 
   const handleRatioBaseAmountChange = React.useCallback((value) => {
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ ratioBaseAmount: value });
+  }, [onUpdateBoard]);
+
+  const handleNetCostAmountChange = React.useCallback((value) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ netCostAmount: value });
+  }, [onUpdateBoard]);
+
+  const handleAValueChange = React.useCallback((value) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ aValue: value });
   }, [onUpdateBoard]);
 
   const handleAdjustmentRateChange = React.useCallback((event) => {
@@ -3303,6 +3313,18 @@ export default function AgreementBoardWindow({
                   <span className="field-label">기초금액</span>
                   <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />
                 </div>
+                {isLH && (
+                  <>
+                    <div className="excel-field-block size-lg">
+                      <span className="field-label">순공사원가</span>
+                      <AmountInput value={netCostAmount || ''} onChange={handleNetCostAmountChange} placeholder="원" />
+                    </div>
+                    <div className="excel-field-block size-lg">
+                      <span className="field-label">A값</span>
+                      <AmountInput value={aValue || ''} onChange={handleAValueChange} placeholder="원" />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="header-stack stack-rate">

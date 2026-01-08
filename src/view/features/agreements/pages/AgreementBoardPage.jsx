@@ -94,6 +94,8 @@ export default function AgreementBoardPage() {
             adjustmentRate={boardState.adjustmentRate}
             bidDeadline={boardState.bidDeadline}
             regionDutyRate={boardState.regionDutyRate}
+            netCostAmount={boardState.netCostAmount}
+            aValue={boardState.aValue}
           />
         </div>
       </div>
