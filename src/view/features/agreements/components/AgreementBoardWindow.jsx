@@ -2873,9 +2873,11 @@ export default function AgreementBoardWindow({
     };
   };
 
-  const renderNameCell = (meta) => {
+  const renderNameCell = (meta, scoreState) => {
     const isDropTarget = dropTarget && dropTarget.groupIndex === meta.groupIndex && dropTarget.slotIndex === meta.slotIndex;
     const cellClasses = ['excel-cell', 'excel-name-cell'];
+    if (!meta.empty && scoreState === 'full') cellClasses.push('score-full');
+    if (!meta.empty && scoreState === 'partial') cellClasses.push('score-partial');
     if (isDropTarget) cellClasses.push('drop-target');
     return (
       <td
@@ -2988,6 +2990,16 @@ export default function AgreementBoardWindow({
 
   const renderSheetRow = (group, groupIndex) => {
     const summaryInfo = group.summary;
+    const totalScore = credibilityEnabled
+      ? summaryInfo?.totalScoreWithCred
+      : summaryInfo?.totalScoreBase;
+    const totalMax = credibilityEnabled
+      ? summaryInfo?.totalMaxWithCred
+      : summaryInfo?.totalMaxBase;
+    let scoreState = null;
+    if (totalScore != null && totalMax != null) {
+      scoreState = totalScore >= (totalMax - 0.01) ? 'full' : 'partial';
+    }
     const slotMetas = slotLabels.map((label, slotIndex) => buildSlotMeta(group, groupIndex, slotIndex, label));
     const managementSummary = summaryInfo?.managementScore != null
       ? `${formatScore(summaryInfo.managementScore, 2)} / ${formatScore(summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX, 2)}`
@@ -3022,7 +3034,7 @@ export default function AgreementBoardWindow({
             <small>기준 {formatAmount(summaryInfo.entryLimit)}</small>
           )}
         </td>
-        {slotMetas.map(renderNameCell)}
+        {slotMetas.map((meta) => renderNameCell(meta, scoreState))}
         {slotMetas.map(renderShareCell)}
         <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
         {credibilityEnabled && slotMetas.map(renderCredibilityCell)}

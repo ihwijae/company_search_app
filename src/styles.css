@@ -740,6 +740,14 @@ button.primary:hover { background: var(--accent-2); }
   white-space: normal;
 }
 
+.excel-name-cell.score-full {
+  background: #ecfdf5;
+}
+
+.excel-name-cell.score-partial {
+  background: #fef2f2;
+}
+
 .excel-share-cell {
   min-width: 50px;
 }
