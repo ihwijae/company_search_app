@@ -25,6 +25,15 @@ export default function AgreementBoardPage() {
     updateBoard({ open: false, inlineMode: false });
   }, [updateBoard]);
 
+  React.useEffect(() => {
+    if (!boardState.open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [boardState.open]);
+
   const handleMenuSelect = React.useCallback((key) => {
     if (!key) return;
     if (key === 'search') { window.location.hash = BASE_ROUTES.search; return; }
