@@ -757,7 +757,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-total { width: 70px; }
 
 .excel-cell {
-  min-width: 90px;
+  min-width: 0;
   white-space: nowrap;
 }
 
