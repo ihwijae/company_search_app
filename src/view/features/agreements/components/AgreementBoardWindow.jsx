@@ -45,7 +45,7 @@ const COLUMN_WIDTHS = {
   order: 40,
   approval: 40,
   name: 100,
-  share: 50,
+  share: 65,
   status: 45,
   management: 55,
   managementBonus: 50,
