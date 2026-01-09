@@ -284,11 +284,11 @@ button.primary:hover { background: var(--accent-2); }
 .excel-inline-alert button:hover { background: #fde68a; }
 .excel-header-grid {
   display: grid;
-  grid-template-columns: 160px 180px 140px 180px 320px 220px;
+  grid-template-columns: 1fr 1.1fr 0.9fr 1.1fr 2fr 1.2fr;
   gap: 8px 12px;
   align-items: flex-start;
 }
-.excel-header-grid.condensed { grid-template-columns: 160px 180px 140px 180px 320px 220px; }
+.excel-header-grid.condensed { grid-template-columns: 1fr 1.1fr 0.9fr 1.1fr 2fr 1.2fr; }
 @media (max-width: 1700px) {
   .excel-header-grid,
   .excel-header-grid.condensed {
