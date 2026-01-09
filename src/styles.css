@@ -1146,6 +1146,17 @@ button.primary:hover { background: var(--accent-2); }
   white-space: normal;
   word-break: break-word;
 }
+.excel-member-warning {
+  font-size: 11px;
+  color: #b91c1c;
+  font-weight: 700;
+}
+.excel-warning {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #b91c1c;
+  font-weight: 700;
+}
 
 .excel-share-cell input {
   width: 100%;

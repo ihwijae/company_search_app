@@ -923,6 +923,7 @@ export default function AgreementBoardWindow({
   adjustmentRate = '',
   bidDeadline = '',
   regionDutyRate = '',
+  participantLimit = DEFAULT_GROUP_SIZE,
   netCostAmount = '',
   aValue = '',
   inlineMode = false,
@@ -1027,6 +1028,10 @@ export default function AgreementBoardWindow({
 
   const handleRegionDutyRateChange = React.useCallback((event) => {
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ regionDutyRate: event.target.value });
+  }, [onUpdateBoard]);
+
+  const handleParticipantLimitChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ participantLimit: event.target.value });
   }, [onUpdateBoard]);
 
   const safeDutyRegions = React.useMemo(
@@ -1348,6 +1353,13 @@ export default function AgreementBoardWindow({
     if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_GROUP_SIZE;
     return Math.max(1, Math.floor(parsed));
   }, [groupSize]);
+  const safeParticipantLimit = React.useMemo(() => {
+    const parsed = Number(participantLimit);
+    const fallback = Math.min(DEFAULT_GROUP_SIZE, safeGroupSize);
+    if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+    const clamped = Math.min(Math.max(Math.floor(parsed), 2), Math.min(5, safeGroupSize));
+    return clamped;
+  }, [participantLimit, safeGroupSize]);
 
   const {
     loadModalOpen,
@@ -1383,6 +1395,7 @@ export default function AgreementBoardWindow({
     noticeTitle,
     bidDeadline,
     regionDutyRate,
+    participantLimit,
     dutyRegions,
     safeGroupSize,
     fileType,
@@ -3370,6 +3383,9 @@ export default function AgreementBoardWindow({
             {meta.possibleShareText && (
               <div className="excel-member-hint">가능 {meta.possibleShareText}</div>
             )}
+            {meta.overLimit && (
+              <div className="excel-member-warning">참여업체수 초과</div>
+            )}
           </div>
         )}
       </td>
@@ -3480,8 +3496,14 @@ export default function AgreementBoardWindow({
     const summaryInfo = group.summary;
     let scoreState = null;
     const slotMetas = slotLabels.map((label, slotIndex) => buildSlotMeta(group, groupIndex, slotIndex, label));
+    const memberCount = slotMetas.filter((meta) => !meta.empty).length;
+    const participantLimitExceeded = safeParticipantLimit > 0 && memberCount > safeParticipantLimit;
+    const slotMetasWithLimit = slotMetas.map((meta) => ({
+      ...meta,
+      overLimit: participantLimitExceeded && !meta.empty && meta.slotIndex >= safeParticipantLimit,
+    }));
     const qualityTotal = isLHOwner
-      ? slotMetas.reduce((acc, meta) => {
+      ? slotMetasWithLimit.reduce((acc, meta) => {
         if (meta.empty) return acc;
         const share = toNumber(meta.shareForCalc);
         const score = toNumber(meta.qualityScore);
@@ -3489,6 +3511,16 @@ export default function AgreementBoardWindow({
         return acc + (score * (share / 100));
       }, 0)
       : null;
+    const dutyRateValue = parseNumeric(regionDutyRate);
+    const dutyShareTotal = slotMetasWithLimit.reduce((acc, meta) => {
+      if (meta.empty || !meta.isDutyRegion) return acc;
+      const share = toNumber(meta.shareForCalc);
+      if (share == null) return acc;
+      return acc + share;
+    }, 0);
+    const dutyShareInsufficient = dutyRateValue != null
+      && dutyRateValue > 0
+      && dutyShareTotal < (dutyRateValue - 0.01);
     const baseTotalScore = credibilityEnabled
       ? summaryInfo?.totalScoreWithCred
       : summaryInfo?.totalScoreBase;
@@ -3555,9 +3587,14 @@ export default function AgreementBoardWindow({
             <small>기준 {formatAmount(summaryInfo.entryLimit)}</small>
           )}
         </td>
-        {slotMetas.map((meta) => renderNameCell(meta))}
-        {slotMetas.map(renderShareCell)}
-        <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>{shareSumDisplay}</td>
+        {slotMetasWithLimit.map((meta) => renderNameCell(meta))}
+        {slotMetasWithLimit.map(renderShareCell)}
+        <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>
+          <div>{shareSumDisplay}</div>
+          {dutyShareInsufficient && (
+            <div className="excel-warning">의무지분 미충족</div>
+          )}
+        </td>
         {credibilityEnabled && slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan))}
         {credibilityEnabled && (
           <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{credibilitySummary}</td>
@@ -3782,6 +3819,14 @@ export default function AgreementBoardWindow({
                       </div>
                     </div>
                   </div>
+                </div>
+                <div className="excel-field-block size-xs">
+                  <span className="field-label">참여업체수</span>
+                  <select className="input" value={safeParticipantLimit} onChange={handleParticipantLimitChange}>
+                    {[2, 3, 4, 5].map((count) => (
+                      <option key={count} value={count}>{count}개</option>
+                    ))}
+                  </select>
                 </div>
                 <div className={`excel-field-block duty-combo ${regionPickerOpen ? 'open' : ''}`}>
                   <div className="duty-combo-header">

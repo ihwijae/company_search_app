@@ -22,6 +22,7 @@ const initialState = {
   alwaysInclude: [],
   bidDeadline: '',
   regionDutyRate: '',
+  participantLimit: DEFAULT_GROUP_SIZE,
   noticeNo: '',
   noticeTitle: '',
   industryLabel: '',
@@ -420,6 +421,7 @@ export function AgreementBoardProvider({ children }) {
           adjustmentRate={boardState.adjustmentRate || ''}
           bidDeadline={boardState.bidDeadline || ''}
           regionDutyRate={boardState.regionDutyRate || ''}
+          participantLimit={boardState.participantLimit || DEFAULT_GROUP_SIZE}
           netCostAmount={boardState.netCostAmount || ''}
           aValue={boardState.aValue || ''}
         />
