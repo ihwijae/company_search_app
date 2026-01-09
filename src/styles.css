@@ -710,6 +710,7 @@ button.primary:hover { background: var(--accent-2); }
   border-collapse: collapse;
   font-size: 12px;
   table-layout: fixed;
+  border-right: 18px solid transparent;
 }
 
 .excel-board-table th {
