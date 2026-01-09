@@ -32,6 +32,7 @@ const BOARD_COPY_LOOKUP = BOARD_COPY_ACTIONS.reduce((acc, action) => {
   acc[action.kind] = action;
   return acc;
 }, {});
+const LH_FULL_SCORE = 95;
 const INDUSTRY_OPTIONS = ['전기', '통신', '소방'];
 const industryToFileType = (label) => {
   const normalized = String(label || '').trim();
@@ -3313,10 +3314,11 @@ export default function AgreementBoardWindow({
       ? baseTotalScore + (qualityPoints || 0)
       : null;
     const totalMax = baseTotalMax != null
-      ? baseTotalMax + (isLHOwner ? qualityMax : 0)
+      ? baseTotalMax + (isLHOwner ? (qualityPoints || 0) : 0)
       : null;
-    if (totalScore != null && totalMax != null) {
-      scoreState = totalScore >= (totalMax - 0.01) ? 'full' : 'partial';
+    if (totalScore != null && (isLHOwner ? LH_FULL_SCORE : totalMax) != null) {
+      const threshold = isLHOwner ? LH_FULL_SCORE : totalMax;
+      scoreState = totalScore >= (threshold - 0.01) ? 'full' : 'partial';
     }
     const managementSummary = summaryInfo?.managementScore != null
       ? formatScore(summaryInfo.managementScore, 2)
@@ -3334,6 +3336,7 @@ export default function AgreementBoardWindow({
     const qualityPointsDisplay = isLHOwner
       ? (qualityPoints != null ? formatScore(qualityPoints, 2) : '-')
       : null;
+    const qualityPointsState = (isLHOwner && qualityPoints != null && qualityPoints < 2) ? 'warn' : '';
     const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore) : '-';
     const netCostBonusDisplay = summaryInfo?.netCostBonusScore != null
       ? formatScore(summaryInfo.netCostBonusScore, 2)
@@ -3385,7 +3388,7 @@ export default function AgreementBoardWindow({
         {slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
         <td className={`excel-cell total-cell ${performanceState}`} rowSpan={rightRowSpan}>{performanceSummary}</td>
         {isLHOwner && (
-          <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{qualityPointsDisplay}</td>
+          <td className={`excel-cell total-cell ${qualityPointsState}`} rowSpan={rightRowSpan}>{qualityPointsDisplay}</td>
         )}
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
