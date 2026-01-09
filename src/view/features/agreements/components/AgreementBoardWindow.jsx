@@ -1152,61 +1152,16 @@ export default function AgreementBoardWindow({
     clearHeaderAlertTimer();
   }, [clearHeaderAlertTimer]);
 
-  const {
-    loadModalOpen,
-    loadFilters,
-    loadItems: filteredLoadItems,
-    loadBusy,
-    loadError,
-    setLoadFilters,
-    openLoadModal,
-    closeLoadModal,
-    handleSaveAgreement,
-    handleLoadAgreement,
-    resetFilters,
-  } = useAgreementBoardStorage({
-    ownerId,
-    ownerDisplayLabel,
-    selectedRangeOption,
-    industryLabel,
-    estimatedAmount,
-    noticeDate,
-    baseAmount,
-    bidAmount,
-    ratioBaseAmount,
-    bidRate,
-    adjustmentRate,
-    entryAmount,
-    entryModeResolved,
-    noticeNo,
-    noticeTitle,
-    bidDeadline,
-    regionDutyRate,
-    dutyRegions,
-    safeGroupSize,
-    fileType,
-    netCostAmount,
-    aValue,
-    candidates,
-    pinned,
-    excluded,
-    alwaysInclude,
-    groupAssignments,
-    groupShares,
-    groupShareRawInputs,
-    groupCredibility,
-    groupApprovals,
-    groupManagementBonus,
-    setGroupAssignments,
-    setGroupShares,
-    setGroupShareRawInputs,
-    setGroupCredibility,
-    setGroupApprovals,
-    setGroupManagementBonus,
-    onUpdateBoard,
-    showHeaderAlert,
-    parseNumeric,
-  });
+  const possibleShareBase = React.useMemo(() => {
+    const sources = ownerKeyUpper === 'LH'
+      ? [ratioBaseAmount]
+      : [editableBidAmount, bidAmount];
+    for (const source of sources) {
+      const parsed = parseAmountValue(source);
+      if (parsed !== null && parsed > 0) return parsed;
+    }
+    return null;
+  }, [ownerKeyUpper, ratioBaseAmount, editableBidAmount, bidAmount]);
 
   const loadRangeOptions = React.useMemo(() => {
     const map = new Map();
@@ -1219,17 +1174,6 @@ export default function AgreementBoardWindow({
     });
     return Array.from(map.values());
   }, []);
-
-  const possibleShareBase = React.useMemo(() => {
-    const sources = ownerKeyUpper === 'LH'
-      ? [ratioBaseAmount]
-      : [editableBidAmount, bidAmount];
-    for (const source of sources) {
-      const parsed = parseAmountValue(source);
-      if (parsed !== null && parsed > 0) return parsed;
-    }
-    return null;
-  }, [ownerKeyUpper, ratioBaseAmount, editableBidAmount, bidAmount]);
 
   const derivePendingPlacementHint = React.useCallback((picked) => {
     if (!picked || typeof picked !== 'object') {
@@ -1372,6 +1316,62 @@ export default function AgreementBoardWindow({
     if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_GROUP_SIZE;
     return Math.max(1, Math.floor(parsed));
   }, [groupSize]);
+
+  const {
+    loadModalOpen,
+    loadFilters,
+    loadItems: filteredLoadItems,
+    loadBusy,
+    loadError,
+    setLoadFilters,
+    openLoadModal,
+    closeLoadModal,
+    handleSaveAgreement,
+    handleLoadAgreement,
+    resetFilters,
+  } = useAgreementBoardStorage({
+    ownerId,
+    ownerDisplayLabel,
+    selectedRangeOption,
+    industryLabel,
+    estimatedAmount,
+    noticeDate,
+    baseAmount,
+    bidAmount,
+    ratioBaseAmount,
+    bidRate,
+    adjustmentRate,
+    entryAmount,
+    entryModeResolved,
+    noticeNo,
+    noticeTitle,
+    bidDeadline,
+    regionDutyRate,
+    dutyRegions,
+    safeGroupSize,
+    fileType,
+    netCostAmount,
+    aValue,
+    candidates,
+    pinned,
+    excluded,
+    alwaysInclude,
+    groupAssignments,
+    groupShares,
+    groupShareRawInputs,
+    groupCredibility,
+    groupApprovals,
+    groupManagementBonus,
+    setGroupAssignments,
+    setGroupShares,
+    setGroupShareRawInputs,
+    setGroupCredibility,
+    setGroupApprovals,
+    setGroupManagementBonus,
+    onUpdateBoard,
+    showHeaderAlert,
+    parseNumeric,
+  });
 
   const slotLabels = React.useMemo(() => (
     Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))
