@@ -3596,94 +3596,96 @@ export default function AgreementBoardWindow({
             </div>
           </div>
 
-          <div className="excel-table-wrapper" ref={boardMainRef}>
-            <table
-              className="excel-board-table"
-              style={{ minWidth: `${tableMinWidth}px`, width: `${tableMinWidth}px` }}
-            >
-              <colgroup>
-                <col className="col-order" />
-                <col className="col-approval" />
-                {slotLabels.map((_, index) => (
-                  <col key={`col-name-${index}`} className="col-name" />
-                ))}
-                {slotLabels.map((_, index) => (
-                  <col key={`col-share-${index}`} className="col-share" />
-                ))}
-                <col className="col-share-total" />
-                {credibilityEnabled && slotLabels.map((_, index) => (
-                  <col key={`col-credibility-slot-${index}`} className="col-credibility-slot" />
-                ))}
-                {credibilityEnabled && <col className="col-credibility" />}
-                {slotLabels.map((_, index) => (
-                <col key={`col-status-${index}`} className="col-status" />
-              ))}
-              <col className="col-management" />
-              <col className="col-management-bonus" />
-              {slotLabels.map((_, index) => (
-                <col key={`col-performance-${index}`} className="col-performance" />
-              ))}
-              <col className="col-performance-summary" />
-              <col className="col-bid" />
-              <col className="col-netcost-bonus" />
-              <col className="col-total" />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th rowSpan="2">연번</th>
-                  <th rowSpan="2">승인</th>
-                  <th colSpan={slotLabels.length}>업체명</th>
-                  <th colSpan={slotLabels.length}>지분(%)</th>
-                  <th rowSpan="2">
-                    {isLHOwner ? (
-                      <div className="share-total-header">
-                        <span>지분합계</span>
-                        <span className="sub">품질총점</span>
-                      </div>
-                    ) : (
-                      '지분합계'
-                    )}
-                  </th>
-                  {credibilityEnabled && <th colSpan={slotLabels.length}>신인도</th>}
-                  {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
-                  <th colSpan={slotLabels.length}>경영상태</th>
-                  <th rowSpan="2">경영({formatScore(managementHeaderMax, 0)}점)</th>
-                  <th rowSpan="2">가점</th>
-                  <th colSpan={slotLabels.length}>시공실적</th>
-                <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
-                <th rowSpan="2">입찰점수</th>
-                <th rowSpan="2">순공사원가가점</th>
-                <th rowSpan="2">예상점수</th>
-              </tr>
-                <tr>
-                  {slotLabels.map((label, index) => (
-                    <th key={`name-head-${index}`}>{label}</th>
+        <div className="excel-table-wrapper" ref={boardMainRef}>
+          <div className="excel-table-inner">
+              <table
+                className="excel-board-table"
+                style={{ minWidth: `${tableMinWidth}px`, width: `${tableMinWidth}px` }}
+              >
+                <colgroup>
+                  <col className="col-order" />
+                  <col className="col-approval" />
+                  {slotLabels.map((_, index) => (
+                    <col key={`col-name-${index}`} className="col-name" />
                   ))}
-                  {slotLabels.map((label, index) => (
-                    <th key={`share-head-${index}`}>{label}</th>
+                  {slotLabels.map((_, index) => (
+                    <col key={`col-share-${index}`} className="col-share" />
                   ))}
-                  {credibilityEnabled && slotLabels.map((label, index) => (
-                    <th key={`credibility-head-${index}`}>{label}</th>
+                  <col className="col-share-total" />
+                  {credibilityEnabled && slotLabels.map((_, index) => (
+                    <col key={`col-credibility-slot-${index}`} className="col-credibility-slot" />
                   ))}
-                  {slotLabels.map((label, index) => (
-                    <th key={`status-head-${index}`}>{label}</th>
+                  {credibilityEnabled && <col className="col-credibility" />}
+                  {slotLabels.map((_, index) => (
+                    <col key={`col-status-${index}`} className="col-status" />
                   ))}
-                  {slotLabels.map((label, index) => (
-                    <th key={`perf-head-${index}`}>{label}</th>
+                  <col className="col-management" />
+                  <col className="col-management-bonus" />
+                  {slotLabels.map((_, index) => (
+                    <col key={`col-performance-${index}`} className="col-performance" />
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {groups.length === 0 ? (
-                  <tr className="excel-board-row empty">
-                    <td colSpan={tableColumnCount}>협정을 추가하거나 업체를 배치하세요.</td>
+                  <col className="col-performance-summary" />
+                  <col className="col-bid" />
+                  <col className="col-netcost-bonus" />
+                  <col className="col-total" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th rowSpan="2">연번</th>
+                    <th rowSpan="2">승인</th>
+                    <th colSpan={slotLabels.length}>업체명</th>
+                    <th colSpan={slotLabels.length}>지분(%)</th>
+                    <th rowSpan="2">
+                      {isLHOwner ? (
+                        <div className="share-total-header">
+                          <span>지분합계</span>
+                          <span className="sub">품질총점</span>
+                        </div>
+                      ) : (
+                        '지분합계'
+                      )}
+                    </th>
+                    {credibilityEnabled && <th colSpan={slotLabels.length}>신인도</th>}
+                    {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
+                    <th colSpan={slotLabels.length}>경영상태</th>
+                    <th rowSpan="2">경영({formatScore(managementHeaderMax, 0)}점)</th>
+                    <th rowSpan="2">가점</th>
+                    <th colSpan={slotLabels.length}>시공실적</th>
+                    <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
+                    <th rowSpan="2">입찰점수</th>
+                    <th rowSpan="2">순공사원가가점</th>
+                    <th rowSpan="2">예상점수</th>
                   </tr>
-                ) : (
-                  groups.map((group, groupIndex) => renderSheetRow(group, groupIndex))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  <tr>
+                    {slotLabels.map((label, index) => (
+                      <th key={`name-head-${index}`}>{label}</th>
+                    ))}
+                    {slotLabels.map((label, index) => (
+                      <th key={`share-head-${index}`}>{label}</th>
+                    ))}
+                    {credibilityEnabled && slotLabels.map((label, index) => (
+                      <th key={`credibility-head-${index}`}>{label}</th>
+                    ))}
+                    {slotLabels.map((label, index) => (
+                      <th key={`status-head-${index}`}>{label}</th>
+                    ))}
+                    {slotLabels.map((label, index) => (
+                      <th key={`perf-head-${index}`}>{label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {groups.length === 0 ? (
+                    <tr className="excel-board-row empty">
+                      <td colSpan={tableColumnCount}>협정을 추가하거나 업체를 배치하세요.</td>
+                    </tr>
+                  ) : (
+                    groups.map((group, groupIndex) => renderSheetRow(group, groupIndex))
+                  )}
+                </tbody>
+              </table>
+            </div>
+        </div>
         </div>
       </div>
       {representativeSearchOpen && (
