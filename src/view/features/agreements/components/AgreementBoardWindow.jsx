@@ -3359,12 +3359,14 @@ export default function AgreementBoardWindow({
     if (!rootEl || !mainEl) return undefined;
 
     const handleMainWheel = (event) => {
+      if (!event.shiftKey) return;
+      if (mainEl.scrollWidth <= mainEl.clientWidth + 1) return;
       const deltaX = event.deltaX;
       const deltaY = event.deltaY;
-      const wantsHorizontal = event.shiftKey || Math.abs(deltaX) > Math.abs(deltaY);
-      if (!wantsHorizontal) return;
-      if (mainEl.scrollWidth <= mainEl.clientWidth + 1) return;
-      const delta = Math.abs(deltaX) > 0.1 ? deltaX : deltaY;
+      const legacyDelta = typeof event.wheelDelta === 'number'
+        ? -event.wheelDelta
+        : (typeof event.wheelDeltaY === 'number' ? -event.wheelDeltaY : 0);
+      const delta = (Math.abs(deltaX) > 0.1 ? deltaX : (Math.abs(deltaY) > 0.1 ? deltaY : legacyDelta));
       if (Math.abs(delta) < 0.1) return;
       mainEl.scrollBy({ left: delta, behavior: 'auto' });
       event.preventDefault();
