@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
+import AgreementLoadModal from './AgreementLoadModal.jsx';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
 import { isWomenOwnedCompany, getQualityBadgeText, extractManagerNames } from '../../../../utils/companyIndicators.js';
@@ -3984,111 +3985,21 @@ export default function AgreementBoardWindow({
           fileType={fileType || 'all'}
         />
       )}
-      {loadModalOpen && (
-        <div className="agreement-load-overlay" onClick={closeLoadModal}>
-          <div className="agreement-load-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="agreement-load-header">
-              <div>
-                <h3>협정 불러오기</h3>
-                <p>필터를 선택해서 원하는 협정을 찾으세요.</p>
-              </div>
-              <button type="button" className="agreement-load-close" onClick={closeLoadModal}>×</button>
-            </div>
-            <div className="agreement-load-filters">
-              <label>
-                <span>발주처</span>
-                <select
-                  value={loadFilters.ownerId}
-                  onChange={(event) => setLoadFilters((prev) => ({ ...prev, ownerId: event.target.value }))}
-                >
-                  <option value="">전체</option>
-                  {AGREEMENT_GROUPS.map((group) => (
-                    <option key={group.ownerId} value={group.ownerId}>{group.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>금액 구간</span>
-                <select
-                  value={loadFilters.rangeId}
-                  onChange={(event) => setLoadFilters((prev) => ({ ...prev, rangeId: event.target.value }))}
-                >
-                  <option value="">전체</option>
-                  {loadRangeOptions.map((item) => (
-                    <option key={item.key} value={item.key}>{item.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>공종</span>
-                <select
-                  value={loadFilters.industryLabel}
-                  onChange={(event) => setLoadFilters((prev) => ({ ...prev, industryLabel: event.target.value }))}
-                >
-                  <option value="">전체</option>
-                  {INDUSTRY_OPTIONS.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>추정금액 최소</span>
-                <input
-                  value={loadFilters.amountMin}
-                  onChange={(event) => setLoadFilters((prev) => ({ ...prev, amountMin: event.target.value }))}
-                  placeholder="예: 5000000000"
-                />
-              </label>
-              <label>
-                <span>추정금액 최대</span>
-                <input
-                  value={loadFilters.amountMax}
-                  onChange={(event) => setLoadFilters((prev) => ({ ...prev, amountMax: event.target.value }))}
-                  placeholder="예: 10000000000"
-                />
-              </label>
-              <button
-                type="button"
-                className="excel-btn"
-                onClick={() => setLoadFilters({ ownerId: '', rangeId: '', industryLabel: '', amountMin: '', amountMax: '' })}
-              >필터 초기화</button>
-            </div>
-            <div className="agreement-load-list">
-              {loadBusy && <div className="agreement-load-empty">불러오는 중...</div>}
-              {!loadBusy && loadError && <div className="agreement-load-error">{loadError}</div>}
-              {!loadBusy && !loadError && filteredLoadItems.length === 0 && (
-                <div className="agreement-load-empty">조건에 맞는 협정이 없습니다.</div>
-              )}
-              {!loadBusy && !loadError && filteredLoadItems.map((item) => {
-                const meta = item.meta || {};
-                const amountLabel = meta.estimatedAmount != null
-                  ? formatAmount(meta.estimatedAmount)
-                  : (meta.estimatedAmountLabel || '-');
-                return (
-                  <div key={item.path} className="agreement-load-item">
-                    <div className="agreement-load-main">
-                      <div className="agreement-load-title">
-                        <strong>{meta.ownerLabel || meta.ownerId || '발주처'}</strong>
-                        <span>{meta.rangeLabel || meta.rangeId || '구간'}</span>
-                        {meta.industryLabel && <span>{meta.industryLabel}</span>}
-                      </div>
-                      <div className="agreement-load-meta">
-                        <span>추정금액 {amountLabel || '-'}</span>
-                        <span>개찰일 {meta.noticeDate || '-'}</span>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="excel-btn primary"
-                      onClick={() => handleLoadAgreement(item.path)}
-                    >불러오기</button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+      <AgreementLoadModal
+        open={loadModalOpen}
+        onClose={closeLoadModal}
+        filters={loadFilters}
+        setFilters={setLoadFilters}
+        rangeOptions={loadRangeOptions}
+        agreementGroups={AGREEMENT_GROUPS}
+        industryOptions={INDUSTRY_OPTIONS}
+        items={filteredLoadItems}
+        busy={loadBusy}
+        error={loadError}
+        onLoad={handleLoadAgreement}
+        onResetFilters={() => setLoadFilters({ ownerId: '', rangeId: '', industryLabel: '', amountMin: '', amountMax: '' })}
+        formatAmount={formatAmount}
+      />
       {regionPickerOpen && (
         <div className="region-modal-backdrop" onClick={closeRegionModal}>
           <div className="region-modal" onClick={(event) => event.stopPropagation()}>
