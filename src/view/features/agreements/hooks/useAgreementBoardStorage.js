@@ -48,6 +48,7 @@ export default function useAgreementBoardStorage({
   setGroupCredibility,
   setGroupApprovals,
   setGroupManagementBonus,
+  markSkipAssignmentSync,
   onUpdateBoard,
   showHeaderAlert,
   parseNumeric,
@@ -218,6 +219,7 @@ export default function useAgreementBoardStorage({
       alwaysInclude: Array.isArray(snapshot.alwaysInclude) ? snapshot.alwaysInclude : [],
     };
     if (typeof onUpdateBoard === 'function') onUpdateBoard(next);
+    if (typeof markSkipAssignmentSync === 'function') markSkipAssignmentSync();
     if (Array.isArray(snapshot.groupAssignments)) setGroupAssignments(snapshot.groupAssignments);
     if (Array.isArray(snapshot.groupShares)) setGroupShares(snapshot.groupShares);
     if (Array.isArray(snapshot.groupShareRawInputs)) setGroupShareRawInputs(snapshot.groupShareRawInputs);
@@ -236,6 +238,7 @@ export default function useAgreementBoardStorage({
     setGroupCredibility,
     setGroupApprovals,
     setGroupManagementBonus,
+    markSkipAssignmentSync,
   ]);
 
   const handleLoadAgreement = React.useCallback(async (path) => {

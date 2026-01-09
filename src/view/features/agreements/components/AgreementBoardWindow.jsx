@@ -1125,6 +1125,11 @@ export default function AgreementBoardWindow({
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
   const boardMainRef = React.useRef(null);
+  const skipAssignmentSyncRef = React.useRef(false);
+
+  const markSkipAssignmentSync = React.useCallback(() => {
+    skipAssignmentSyncRef.current = true;
+  }, []);
 
   const showHeaderAlert = React.useCallback((message) => {
     if (!message) return;
@@ -1339,6 +1344,7 @@ export default function AgreementBoardWindow({
     setGroupCredibility,
     setGroupApprovals,
     setGroupManagementBonus,
+    markSkipAssignmentSync,
     onUpdateBoard,
     showHeaderAlert,
     parseNumeric,
@@ -2204,6 +2210,11 @@ export default function AgreementBoardWindow({
   }, [groupAssignments, participantMap, groupShares, ownerId, noticeNo, noticeTitle]);
 
   React.useEffect(() => {
+    if (skipAssignmentSyncRef.current) {
+      skipAssignmentSyncRef.current = false;
+      prevAssignmentsRef.current = groupAssignments;
+      return;
+    }
     const prevAssignments = prevAssignmentsRef.current || [];
     setGroupShares((prevShares) => {
       const shareMap = new Map();
