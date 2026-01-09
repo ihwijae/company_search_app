@@ -3358,6 +3358,22 @@ export default function AgreementBoardWindow({
     const mainEl = boardMainRef.current;
     if (!rootEl || !mainEl) return undefined;
 
+    const handleMainWheel = (event) => {
+      const deltaX = event.deltaX;
+      const deltaY = event.deltaY;
+      const horizontalIntent = Math.abs(deltaX) > 0.1 && Math.abs(deltaX) >= Math.abs(deltaY);
+      const shiftHorizontal = event.shiftKey && Math.abs(deltaY) > 0.1;
+      if (horizontalIntent) {
+        mainEl.scrollBy({ left: deltaX, behavior: 'auto' });
+        event.preventDefault();
+        return;
+      }
+      if (shiftHorizontal) {
+        mainEl.scrollBy({ left: deltaY, behavior: 'auto' });
+        event.preventDefault();
+      }
+    };
+
     const handleWheel = (event) => {
       if (!mainEl) return;
       if (mainEl.contains(event.target)) return;
@@ -3386,8 +3402,10 @@ export default function AgreementBoardWindow({
       event.preventDefault();
     };
 
+    mainEl.addEventListener('wheel', handleMainWheel, { passive: false });
     rootEl.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
+      mainEl.removeEventListener('wheel', handleMainWheel, { passive: false });
       rootEl.removeEventListener('wheel', handleWheel, { passive: false });
     };
   }, [portalContainer, open, inlineMode]);
