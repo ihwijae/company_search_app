@@ -42,20 +42,20 @@ const industryToFileType = (label) => {
 };
 const COLUMN_WIDTHS = {
   order: 40,
-  approval: 70,
+  approval: 50,
   name: 100,
   share: 50,
   status: 60,
-  management: 100,
+  management: 70,
   managementBonus: 50,
   shareTotal: 60,
   performanceCell: 90,
-  performanceSummary: 70,
+  performanceSummary: 60,
   credibilityCell: 45,
-  credibility: 95,
-  bid: 75,
-  netCostBonus: 80,
-  total: 85,
+  credibility: 70,
+  bid: 60,
+  netCostBonus: 70,
+  total: 70,
 };
 const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
 const BOARD_COPY_BUTTON_STYLE_MAP = {
