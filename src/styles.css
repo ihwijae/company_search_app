@@ -1156,6 +1156,7 @@ button.primary:hover { background: var(--accent-2); }
   font-size: 11px;
   color: #b91c1c;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .excel-share-cell input {
