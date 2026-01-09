@@ -754,6 +754,10 @@ button.primary:hover { background: var(--accent-2); }
   font-size: 12px;
   font-weight: 600;
 }
+.agreement-badge { background: #eef2ff; color: #4338ca; }
+.agreement-badge--eung { background: #fef9c3; color: #92400e; }
+.agreement-badge--tongsin { background: #e0f2fe; color: #075985; }
+.agreement-badge--sobang { background: #fee2e2; color: #991b1b; }
 
 .agreement-load-meta {
   display: flex;

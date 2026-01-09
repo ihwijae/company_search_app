@@ -124,9 +124,23 @@ export default function AgreementLoadModal({
                     <strong>{noticeTitle || meta.noticeTitle || meta.noticeNo || '협정'}</strong>
                     {(meta.ownerLabel || meta.ownerId) && <span>{meta.ownerLabel || meta.ownerId}</span>}
                     {(meta.rangeLabel || meta.rangeId) && <span>{meta.rangeLabel || meta.rangeId}</span>}
-                    {meta.industryLabel && <span>{meta.industryLabel}</span>}
+                    {meta.industryLabel && (
+                      <span
+                        className={
+                          meta.industryLabel === '전기'
+                            ? 'agreement-badge agreement-badge--eung'
+                            : meta.industryLabel === '통신'
+                              ? 'agreement-badge agreement-badge--tongsin'
+                              : meta.industryLabel === '소방'
+                                ? 'agreement-badge agreement-badge--sobang'
+                                : 'agreement-badge'
+                        }
+                      >
+                        {meta.industryLabel}
+                      </span>
+                    )}
                     {dutyRegions.map((region) => (
-                      <span key={region}>{region}</span>
+                      <span key={region} className="agreement-badge">{region}</span>
                     ))}
                   </div>
                   <div className="agreement-load-meta">

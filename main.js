@@ -1939,10 +1939,6 @@ try {
       };
       const runtimeSavePath = toWSLPathIfNeeded(saveDialogResult.filePath) || saveDialogResult.filePath;
       fs.writeFileSync(runtimeSavePath, JSON.stringify(savePayload, null, 2));
-      const savedDir = path.dirname(saveDialogResult.filePath);
-      if (savedDir && savedDir !== AGREEMENT_BOARD_DIR) {
-        setAgreementBoardDir(savedDir);
-      }
       return { success: true, path: saveDialogResult.filePath };
     } catch (e) {
       return { success: false, message: e?.message || 'Failed to save agreement board' };
