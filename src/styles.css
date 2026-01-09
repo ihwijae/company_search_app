@@ -711,6 +711,7 @@ button.primary:hover { background: var(--accent-2); }
   font-size: 12px;
   table-layout: fixed;
   border-right: 18px solid transparent;
+  box-shadow: inset -1px 0 0 #e2e8f0;
 }
 .excel-board-table th:last-child,
 .excel-board-table td:last-child {
