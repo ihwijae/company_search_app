@@ -3365,7 +3365,10 @@ export default function AgreementBoardWindow({
       if (Math.abs(deltaY) < 0.1) return;
       const atTop = mainEl.scrollTop <= 0;
       const atBottom = (mainEl.scrollHeight - mainEl.clientHeight - mainEl.scrollTop) <= 1;
-      if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) return;
+      if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) {
+        event.preventDefault();
+        return;
+      }
       mainEl.scrollBy({ top: deltaY, behavior: 'auto' });
       event.preventDefault();
     };
