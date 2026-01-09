@@ -122,8 +122,12 @@ export default function AgreementLoadModal({
                 <div className="agreement-load-main">
                   <div className="agreement-load-title">
                     <strong>{noticeTitle || meta.noticeTitle || meta.noticeNo || '협정'}</strong>
-                    {(meta.ownerLabel || meta.ownerId) && <span>{meta.ownerLabel || meta.ownerId}</span>}
-                    {(meta.rangeLabel || meta.rangeId) && <span>{meta.rangeLabel || meta.rangeId}</span>}
+                    {(meta.ownerLabel || meta.ownerId) && (
+                      <span className="agreement-badge">{meta.ownerLabel || meta.ownerId}</span>
+                    )}
+                    {(meta.rangeLabel || meta.rangeId) && (
+                      <span className="agreement-badge">{meta.rangeLabel || meta.rangeId}</span>
+                    )}
                     {meta.industryLabel && (
                       <span
                         className={

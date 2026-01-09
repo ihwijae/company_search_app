@@ -746,7 +746,7 @@ button.primary:hover { background: var(--accent-2); }
   color: #1f2937;
 }
 
-.agreement-load-title span {
+.agreement-load-title .agreement-badge {
   background: #eef2ff;
   color: #4338ca;
   border-radius: 999px;
@@ -754,7 +754,6 @@ button.primary:hover { background: var(--accent-2); }
   font-size: 12px;
   font-weight: 600;
 }
-.agreement-badge { background: #eef2ff; color: #4338ca; }
 .agreement-badge--eung { background: #fef9c3; color: #92400e; }
 .agreement-badge--tongsin { background: #e0f2fe; color: #075985; }
 .agreement-badge--sobang { background: #fee2e2; color: #991b1b; }
