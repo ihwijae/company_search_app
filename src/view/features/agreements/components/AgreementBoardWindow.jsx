@@ -1116,6 +1116,17 @@ export default function AgreementBoardWindow({
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
   const [excelCopying, setExcelCopying] = React.useState(false);
   const [copyingKind, setCopyingKind] = React.useState(null);
+  const [loadModalOpen, setLoadModalOpen] = React.useState(false);
+  const [loadItems, setLoadItems] = React.useState([]);
+  const [loadFilters, setLoadFilters] = React.useState({
+    ownerId: '',
+    rangeId: '',
+    industryLabel: '',
+    amountMin: '',
+    amountMax: '',
+  });
+  const [loadBusy, setLoadBusy] = React.useState(false);
+  const [loadError, setLoadError] = React.useState('');
   const [headerAlert, setHeaderAlert] = React.useState('');
   const headerAlertTimerRef = React.useRef(null);
   const searchTargetRef = React.useRef(null);
@@ -1148,6 +1159,213 @@ export default function AgreementBoardWindow({
   React.useEffect(() => () => {
     clearHeaderAlertTimer();
   }, [clearHeaderAlertTimer]);
+
+  const buildAgreementSnapshot = React.useCallback(() => ({
+    meta: {
+      ownerId,
+      ownerLabel: ownerDisplayLabel,
+      rangeId: selectedRangeOption?.key || '',
+      rangeLabel: selectedRangeOption?.label || '',
+      industryLabel: industryLabel || '',
+      estimatedAmount: parseNumeric(estimatedAmount),
+      estimatedAmountLabel: estimatedAmount || '',
+      noticeDate: noticeDate || '',
+    },
+    payload: {
+      ownerId,
+      rangeId: selectedRangeOption?.key || '',
+      industryLabel: industryLabel || '',
+      estimatedAmount: estimatedAmount || '',
+      baseAmount: baseAmount || '',
+      bidAmount: bidAmount || '',
+      ratioBaseAmount: ratioBaseAmount || '',
+      bidRate: bidRate || '',
+      adjustmentRate: adjustmentRate || '',
+      entryAmount: entryAmount || '',
+      entryMode: entryModeResolved || '',
+      noticeNo: noticeNo || '',
+      noticeTitle: noticeTitle || '',
+      noticeDate: noticeDate || '',
+      bidDeadline: bidDeadline || '',
+      regionDutyRate: regionDutyRate || '',
+      dutyRegions: Array.isArray(dutyRegions) ? dutyRegions.slice() : [],
+      groupSize: safeGroupSize,
+      fileType: fileType || '',
+      netCostAmount: netCostAmount || '',
+      aValue: aValue || '',
+      candidates: Array.isArray(candidates) ? candidates : [],
+      pinned: Array.isArray(pinned) ? pinned : [],
+      excluded: Array.isArray(excluded) ? excluded : [],
+      alwaysInclude: Array.isArray(alwaysInclude) ? alwaysInclude : [],
+      groupAssignments: Array.isArray(groupAssignments) ? groupAssignments : [],
+      groupShares: Array.isArray(groupShares) ? groupShares : [],
+      groupShareRawInputs: Array.isArray(groupShareRawInputs) ? groupShareRawInputs : [],
+      groupCredibility: Array.isArray(groupCredibility) ? groupCredibility : [],
+      groupApprovals: Array.isArray(groupApprovals) ? groupApprovals : [],
+      groupManagementBonus: Array.isArray(groupManagementBonus) ? groupManagementBonus : [],
+    },
+  }), [
+    ownerId,
+    ownerDisplayLabel,
+    selectedRangeOption?.key,
+    selectedRangeOption?.label,
+    industryLabel,
+    estimatedAmount,
+    noticeDate,
+    baseAmount,
+    bidAmount,
+    ratioBaseAmount,
+    bidRate,
+    adjustmentRate,
+    entryAmount,
+    entryModeResolved,
+    noticeNo,
+    noticeTitle,
+    bidDeadline,
+    regionDutyRate,
+    dutyRegions,
+    safeGroupSize,
+    fileType,
+    netCostAmount,
+    aValue,
+    candidates,
+    pinned,
+    excluded,
+    alwaysInclude,
+    groupAssignments,
+    groupShares,
+    groupShareRawInputs,
+    groupCredibility,
+    groupApprovals,
+    groupManagementBonus,
+  ]);
+
+  const handleSaveAgreement = React.useCallback(async () => {
+    const payload = buildAgreementSnapshot();
+    try {
+      const result = await window.electronAPI?.agreementBoardSave?.(payload);
+      if (!result?.success) throw new Error(result?.message || '저장 실패');
+      showHeaderAlert('협정 저장 완료');
+    } catch (err) {
+      showHeaderAlert(err?.message || '협정 저장 실패');
+    }
+  }, [buildAgreementSnapshot, showHeaderAlert]);
+
+  const refreshLoadList = React.useCallback(async () => {
+    setLoadBusy(true);
+    setLoadError('');
+    try {
+      const result = await window.electronAPI?.agreementBoardList?.();
+      if (!result?.success) throw new Error(result?.message || '불러오기 목록 실패');
+      setLoadItems(Array.isArray(result.data) ? result.data : []);
+    } catch (err) {
+      setLoadItems([]);
+      setLoadError(err?.message || '불러오기 목록 실패');
+    } finally {
+      setLoadBusy(false);
+    }
+  }, []);
+
+  const openLoadModal = React.useCallback(async () => {
+    setLoadModalOpen(true);
+    await refreshLoadList();
+  }, [refreshLoadList]);
+
+  const closeLoadModal = React.useCallback(() => {
+    setLoadModalOpen(false);
+    setLoadError('');
+  }, []);
+
+  const applyAgreementSnapshot = React.useCallback((snapshot) => {
+    if (!snapshot || typeof snapshot !== 'object') return;
+    const next = {
+      ownerId: snapshot.ownerId || ownerId,
+      rangeId: snapshot.rangeId || null,
+      industryLabel: snapshot.industryLabel || '',
+      estimatedAmount: snapshot.estimatedAmount || '',
+      baseAmount: snapshot.baseAmount || '',
+      bidAmount: snapshot.bidAmount || '',
+      ratioBaseAmount: snapshot.ratioBaseAmount || '',
+      bidRate: snapshot.bidRate || '',
+      adjustmentRate: snapshot.adjustmentRate || '',
+      entryAmount: snapshot.entryAmount || '',
+      entryMode: snapshot.entryMode || entryModeResolved,
+      noticeNo: snapshot.noticeNo || '',
+      noticeTitle: snapshot.noticeTitle || '',
+      noticeDate: snapshot.noticeDate || '',
+      bidDeadline: snapshot.bidDeadline || '',
+      regionDutyRate: snapshot.regionDutyRate || '',
+      dutyRegions: Array.isArray(snapshot.dutyRegions) ? snapshot.dutyRegions : [],
+      groupSize: snapshot.groupSize || safeGroupSize,
+      fileType: snapshot.fileType || fileType,
+      netCostAmount: snapshot.netCostAmount || '',
+      aValue: snapshot.aValue || '',
+      candidates: Array.isArray(snapshot.candidates) ? snapshot.candidates : [],
+      pinned: Array.isArray(snapshot.pinned) ? snapshot.pinned : [],
+      excluded: Array.isArray(snapshot.excluded) ? snapshot.excluded : [],
+      alwaysInclude: Array.isArray(snapshot.alwaysInclude) ? snapshot.alwaysInclude : [],
+    };
+    if (typeof onUpdateBoard === 'function') onUpdateBoard(next);
+    if (Array.isArray(snapshot.groupAssignments)) setGroupAssignments(snapshot.groupAssignments);
+    if (Array.isArray(snapshot.groupShares)) setGroupShares(snapshot.groupShares);
+    if (Array.isArray(snapshot.groupShareRawInputs)) setGroupShareRawInputs(snapshot.groupShareRawInputs);
+    if (Array.isArray(snapshot.groupCredibility)) setGroupCredibility(snapshot.groupCredibility);
+    if (Array.isArray(snapshot.groupApprovals)) setGroupApprovals(snapshot.groupApprovals);
+    if (Array.isArray(snapshot.groupManagementBonus)) setGroupManagementBonus(snapshot.groupManagementBonus);
+  }, [
+    entryModeResolved,
+    fileType,
+    onUpdateBoard,
+    ownerId,
+    safeGroupSize,
+  ]);
+
+  const handleLoadAgreement = React.useCallback(async (path) => {
+    if (!path) return;
+    setLoadBusy(true);
+    try {
+      const result = await window.electronAPI?.agreementBoardLoad?.(path);
+      if (!result?.success) throw new Error(result?.message || '불러오기 실패');
+      applyAgreementSnapshot(result.data || {});
+      showHeaderAlert('협정 불러오기 완료');
+      setLoadModalOpen(false);
+    } catch (err) {
+      setLoadError(err?.message || '불러오기 실패');
+    } finally {
+      setLoadBusy(false);
+    }
+  }, [applyAgreementSnapshot, showHeaderAlert]);
+
+  const filteredLoadItems = React.useMemo(() => {
+    const ownerFilter = String(loadFilters.ownerId || '').trim();
+    const rangeFilter = String(loadFilters.rangeId || '').trim();
+    const industryFilter = String(loadFilters.industryLabel || '').trim();
+    const amountMin = parseNumeric(loadFilters.amountMin);
+    const amountMax = parseNumeric(loadFilters.amountMax);
+    return (loadItems || []).filter((item) => {
+      const meta = item?.meta || {};
+      if (ownerFilter && String(meta.ownerId || '') !== ownerFilter) return false;
+      if (rangeFilter && String(meta.rangeId || '') !== rangeFilter) return false;
+      if (industryFilter && String(meta.industryLabel || '') !== industryFilter) return false;
+      const amount = parseNumeric(meta.estimatedAmount ?? meta.estimatedAmountLabel);
+      if (Number.isFinite(amountMin) && amount != null && amount < amountMin) return false;
+      if (Number.isFinite(amountMax) && amount != null && amount > amountMax) return false;
+      if ((Number.isFinite(amountMin) || Number.isFinite(amountMax)) && amount == null) return false;
+      return true;
+    });
+  }, [loadFilters, loadItems]);
+
+  const loadRangeOptions = React.useMemo(() => {
+    const map = new Map();
+    AGREEMENT_GROUPS.forEach((group) => {
+      (group.items || []).forEach((item) => {
+        if (!map.has(item.key)) {
+          map.set(item.key, { key: item.key, label: item.label });
+        }
+      });
+    });
+    return Array.from(map.values());
+  }, []);
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -3652,6 +3870,8 @@ export default function AgreementBoardWindow({
                 ))}
                 <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
+                <button type="button" className="excel-btn" onClick={handleSaveAgreement}>저장</button>
+                <button type="button" className="excel-btn" onClick={openLoadModal}>불러오기</button>
                 {!inlineMode && (
                   <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
                 )}
@@ -3763,6 +3983,111 @@ export default function AgreementBoardWindow({
           onPick={handleRepresentativePicked}
           fileType={fileType || 'all'}
         />
+      )}
+      {loadModalOpen && (
+        <div className="agreement-load-overlay" onClick={closeLoadModal}>
+          <div className="agreement-load-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="agreement-load-header">
+              <div>
+                <h3>협정 불러오기</h3>
+                <p>필터를 선택해서 원하는 협정을 찾으세요.</p>
+              </div>
+              <button type="button" className="agreement-load-close" onClick={closeLoadModal}>×</button>
+            </div>
+            <div className="agreement-load-filters">
+              <label>
+                <span>발주처</span>
+                <select
+                  value={loadFilters.ownerId}
+                  onChange={(event) => setLoadFilters((prev) => ({ ...prev, ownerId: event.target.value }))}
+                >
+                  <option value="">전체</option>
+                  {AGREEMENT_GROUPS.map((group) => (
+                    <option key={group.ownerId} value={group.ownerId}>{group.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>금액 구간</span>
+                <select
+                  value={loadFilters.rangeId}
+                  onChange={(event) => setLoadFilters((prev) => ({ ...prev, rangeId: event.target.value }))}
+                >
+                  <option value="">전체</option>
+                  {loadRangeOptions.map((item) => (
+                    <option key={item.key} value={item.key}>{item.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>공종</span>
+                <select
+                  value={loadFilters.industryLabel}
+                  onChange={(event) => setLoadFilters((prev) => ({ ...prev, industryLabel: event.target.value }))}
+                >
+                  <option value="">전체</option>
+                  {INDUSTRY_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>추정금액 최소</span>
+                <input
+                  value={loadFilters.amountMin}
+                  onChange={(event) => setLoadFilters((prev) => ({ ...prev, amountMin: event.target.value }))}
+                  placeholder="예: 5000000000"
+                />
+              </label>
+              <label>
+                <span>추정금액 최대</span>
+                <input
+                  value={loadFilters.amountMax}
+                  onChange={(event) => setLoadFilters((prev) => ({ ...prev, amountMax: event.target.value }))}
+                  placeholder="예: 10000000000"
+                />
+              </label>
+              <button
+                type="button"
+                className="excel-btn"
+                onClick={() => setLoadFilters({ ownerId: '', rangeId: '', industryLabel: '', amountMin: '', amountMax: '' })}
+              >필터 초기화</button>
+            </div>
+            <div className="agreement-load-list">
+              {loadBusy && <div className="agreement-load-empty">불러오는 중...</div>}
+              {!loadBusy && loadError && <div className="agreement-load-error">{loadError}</div>}
+              {!loadBusy && !loadError && filteredLoadItems.length === 0 && (
+                <div className="agreement-load-empty">조건에 맞는 협정이 없습니다.</div>
+              )}
+              {!loadBusy && !loadError && filteredLoadItems.map((item) => {
+                const meta = item.meta || {};
+                const amountLabel = meta.estimatedAmount != null
+                  ? formatAmount(meta.estimatedAmount)
+                  : (meta.estimatedAmountLabel || '-');
+                return (
+                  <div key={item.path} className="agreement-load-item">
+                    <div className="agreement-load-main">
+                      <div className="agreement-load-title">
+                        <strong>{meta.ownerLabel || meta.ownerId || '발주처'}</strong>
+                        <span>{meta.rangeLabel || meta.rangeId || '구간'}</span>
+                        {meta.industryLabel && <span>{meta.industryLabel}</span>}
+                      </div>
+                      <div className="agreement-load-meta">
+                        <span>추정금액 {amountLabel || '-'}</span>
+                        <span>개찰일 {meta.noticeDate || '-'}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="excel-btn primary"
+                      onClick={() => handleLoadAgreement(item.path)}
+                    >불러오기</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
       {regionPickerOpen && (
         <div className="region-modal-backdrop" onClick={closeRegionModal}>

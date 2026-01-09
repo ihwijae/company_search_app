@@ -284,6 +284,7 @@ if (windowsUserDataDir) {
 const CONFIG_PATH = path.join(userDataDir, 'config.json');
 const WINDOW_STATE_PATH = path.join(userDataDir, 'window-state.json');
 const AGREEMENTS_PATH = path.join(userDataDir, 'agreements.json');
+const AGREEMENT_BOARD_DIR = path.join(userDataDir, 'agreement-board');
 const AGREEMENTS_RULES_PATH = path.join(userDataDir, 'agreements.rules.json');
 const FORMULAS_PATH = path.join(userDataDir, 'formulas.json');
 const RENDERER_STATE_PATH = path.join(userDataDir, 'renderer-state.json');
@@ -1782,6 +1783,110 @@ try {
     }
   });
 } catch {}
+
+// Agreement board save/load (file-based)
+try {
+  const ensureAgreementBoardDir = () => {
+    try {
+      if (!fs.existsSync(AGREEMENT_BOARD_DIR)) fs.mkdirSync(AGREEMENT_BOARD_DIR, { recursive: true });
+    } catch (err) {
+      console.error('[MAIN] agreement board dir create failed:', err);
+    }
+  };
+
+  const sanitizeFileName = (value = '') => (
+    String(value)
+      .replace(/[\\/:*?"<>|]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+
+  if (ipcMain.removeHandler) {
+    try { ipcMain.removeHandler('agreement-board-save'); } catch {}
+    try { ipcMain.removeHandler('agreement-board-list'); } catch {}
+    try { ipcMain.removeHandler('agreement-board-load'); } catch {}
+  }
+
+  ipcMain.handle('agreement-board-save', async (_event, payload) => {
+    try {
+      if (!payload || typeof payload !== 'object') throw new Error('Invalid payload');
+      ensureAgreementBoardDir();
+      const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {};
+      const fileLabelParts = [
+        meta.ownerLabel || meta.ownerId,
+        meta.rangeLabel || meta.rangeId,
+        meta.industryLabel,
+        meta.estimatedAmountLabel || meta.estimatedAmount,
+        meta.noticeDate,
+      ].filter(Boolean);
+      const baseName = sanitizeFileName(fileLabelParts.join('_') || '협정');
+      const defaultPath = path.join(AGREEMENT_BOARD_DIR, `${baseName}.json`);
+      const targetWindow = BrowserWindow.getFocusedWindow();
+      const saveDialogResult = await dialog.showSaveDialog(targetWindow, {
+        title: '협정 저장',
+        defaultPath,
+        filters: [{ name: '협정 파일', extensions: ['json'] }],
+      });
+      if (saveDialogResult.canceled || !saveDialogResult.filePath) {
+        return { success: false, message: '사용자 취소' };
+      }
+      const savePayload = {
+        meta: { ...meta, savedAt: new Date().toISOString() },
+        payload: payload.payload || {},
+      };
+      fs.writeFileSync(saveDialogResult.filePath, JSON.stringify(savePayload, null, 2));
+      const normalizedPath = path.normalize(saveDialogResult.filePath);
+      const normalizedDir = path.normalize(AGREEMENT_BOARD_DIR);
+      if (!normalizedPath.startsWith(normalizedDir)) {
+        const fallbackPath = path.join(AGREEMENT_BOARD_DIR, path.basename(saveDialogResult.filePath));
+        try {
+          fs.writeFileSync(fallbackPath, JSON.stringify(savePayload, null, 2));
+        } catch (err) {
+          console.warn('[MAIN] agreement board secondary save failed:', err?.message || err);
+        }
+      }
+      return { success: true, path: saveDialogResult.filePath };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to save agreement board' };
+    }
+  });
+
+  ipcMain.handle('agreement-board-list', async () => {
+    try {
+      ensureAgreementBoardDir();
+      if (!fs.existsSync(AGREEMENT_BOARD_DIR)) return { success: true, data: [] };
+      const entries = fs.readdirSync(AGREEMENT_BOARD_DIR)
+        .filter((name) => name.toLowerCase().endsWith('.json'))
+        .map((name) => {
+          const fullPath = path.join(AGREEMENT_BOARD_DIR, name);
+          try {
+            const raw = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+            const meta = raw && raw.meta && typeof raw.meta === 'object' ? raw.meta : {};
+            return { path: fullPath, meta };
+          } catch (err) {
+            return null;
+          }
+        })
+        .filter(Boolean);
+      entries.sort((a, b) => String(b.meta?.savedAt || '').localeCompare(String(a.meta?.savedAt || '')));
+      return { success: true, data: entries };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to list agreement boards' };
+    }
+  });
+
+  ipcMain.handle('agreement-board-load', async (_event, filePath) => {
+    try {
+      if (!filePath) throw new Error('Missing path');
+      const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      return { success: true, data: raw?.payload || {} };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to load agreement board' };
+    }
+  });
+} catch (e) {
+  console.error('[MAIN] agreement board IPC setup failed:', e);
+}
 
 
 // Formulas (defaults + overrides) and evaluation IPC

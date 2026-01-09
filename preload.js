@@ -33,6 +33,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Agreements persistence APIs
   loadAgreements: () => ipcRenderer.invoke('agreements-load'),
   saveAgreements: (items) => ipcRenderer.invoke('agreements-save', items),
+  agreementBoardSave: (payload) => ipcRenderer.invoke('agreement-board-save', payload),
+  agreementBoardList: () => ipcRenderer.invoke('agreement-board-list'),
+  agreementBoardLoad: (path) => ipcRenderer.invoke('agreement-board-load', path),
 
   // Formulas: load/save/evaluate
   formulasLoad: () => ipcRenderer.invoke('formulas-load'),
