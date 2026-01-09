@@ -1163,22 +1163,6 @@ export default function AgreementBoardWindow({
     return null;
   }, [ownerKeyUpper, ratioBaseAmount, editableBidAmount, bidAmount]);
 
-  const loadRangeOptions = React.useMemo(() => {
-    if (loadFilters.ownerId) {
-      const group = AGREEMENT_GROUPS.find((item) => item.ownerId === loadFilters.ownerId);
-      return group?.items || [];
-    }
-    const map = new Map();
-    AGREEMENT_GROUPS.forEach((group) => {
-      (group.items || []).forEach((item) => {
-        if (!map.has(item.key)) {
-          map.set(item.key, { key: item.key, label: item.label });
-        }
-      });
-    });
-    return Array.from(map.values());
-  }, [loadFilters.ownerId]);
-
   const derivePendingPlacementHint = React.useCallback((picked) => {
     if (!picked || typeof picked !== 'object') {
       return { candidateId: null, matchBizNo: '', matchNameKey: '' };
@@ -1376,6 +1360,22 @@ export default function AgreementBoardWindow({
     showHeaderAlert,
     parseNumeric,
   });
+
+  const loadRangeOptions = React.useMemo(() => {
+    if (loadFilters.ownerId) {
+      const group = AGREEMENT_GROUPS.find((item) => item.ownerId === loadFilters.ownerId);
+      return group?.items || [];
+    }
+    const map = new Map();
+    AGREEMENT_GROUPS.forEach((group) => {
+      (group.items || []).forEach((item) => {
+        if (!map.has(item.key)) {
+          map.set(item.key, { key: item.key, label: item.label });
+        }
+      });
+    });
+    return Array.from(map.values());
+  }, [loadFilters.ownerId]);
 
   const slotLabels = React.useMemo(() => (
     Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))
