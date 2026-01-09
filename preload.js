@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   agreementBoardSave: (payload) => ipcRenderer.invoke('agreement-board-save', payload),
   agreementBoardList: () => ipcRenderer.invoke('agreement-board-list'),
   agreementBoardLoad: (path) => ipcRenderer.invoke('agreement-board-load', path),
+  agreementBoardGetRoot: () => ipcRenderer.invoke('agreement-board-get-root'),
+  agreementBoardSetRoot: (path) => ipcRenderer.invoke('agreement-board-set-root', path),
+  agreementBoardPickRoot: () => ipcRenderer.invoke('agreement-board-pick-root'),
 
   // Formulas: load/save/evaluate
   formulasLoad: () => ipcRenderer.invoke('formulas-load'),

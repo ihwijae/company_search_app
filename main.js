@@ -115,6 +115,7 @@ const buildConfigSnapshot = () => ({
     sobang: FILE_PATHS.sobang || '',
   },
   smpp: sanitizeSmppCredentials(SMPP_CREDENTIALS),
+  agreementBoardDir: AGREEMENT_BOARD_DIR,
 });
 
 const getSmppCredentials = () => sanitizeSmppCredentials(SMPP_CREDENTIALS);
@@ -284,7 +285,8 @@ if (windowsUserDataDir) {
 const CONFIG_PATH = path.join(userDataDir, 'config.json');
 const WINDOW_STATE_PATH = path.join(userDataDir, 'window-state.json');
 const AGREEMENTS_PATH = path.join(userDataDir, 'agreements.json');
-const AGREEMENT_BOARD_DIR = path.join(userDataDir, 'agreement-board');
+const DEFAULT_AGREEMENT_BOARD_DIR = path.join(userDataDir, 'agreement-board');
+let AGREEMENT_BOARD_DIR = DEFAULT_AGREEMENT_BOARD_DIR;
 const AGREEMENTS_RULES_PATH = path.join(userDataDir, 'agreements.rules.json');
 const FORMULAS_PATH = path.join(userDataDir, 'formulas.json');
 const RENDERER_STATE_PATH = path.join(userDataDir, 'renderer-state.json');
@@ -381,6 +383,12 @@ function loadConfig() {
             const smppSource = (rawConfig && typeof rawConfig.smpp === 'object') ? rawConfig.smpp : {};
             SMPP_CREDENTIALS = sanitizeSmppCredentials(smppSource);
 
+            if (typeof rawConfig.agreementBoardDir === 'string' && rawConfig.agreementBoardDir.trim()) {
+                AGREEMENT_BOARD_DIR = rawConfig.agreementBoardDir.trim();
+            } else {
+                AGREEMENT_BOARD_DIR = DEFAULT_AGREEMENT_BOARD_DIR;
+            }
+
             const snapshot = buildConfigSnapshot();
             const shouldRewrite = JSON.stringify(rawConfig) !== JSON.stringify(snapshot);
             console.log('[MAIN] 설정 파일 로드 완료 (경로만 표시):', snapshot.filePaths);
@@ -404,6 +412,14 @@ function saveConfig(payload) {
     } catch (err) {
         console.error('[MAIN] 설정 저장 실패:', err);
     }
+}
+
+function setAgreementBoardDir(nextPath) {
+    if (!nextPath || typeof nextPath !== 'string') return;
+    const trimmed = nextPath.trim();
+    if (!trimmed) return;
+    AGREEMENT_BOARD_DIR = trimmed;
+    saveConfig();
 }
 
 loadConfig();
@@ -1788,6 +1804,9 @@ try {
 try {
   const ensureAgreementBoardDir = () => {
     try {
+      if (!AGREEMENT_BOARD_DIR || !String(AGREEMENT_BOARD_DIR).trim()) {
+        AGREEMENT_BOARD_DIR = DEFAULT_AGREEMENT_BOARD_DIR;
+      }
       if (!fs.existsSync(AGREEMENT_BOARD_DIR)) fs.mkdirSync(AGREEMENT_BOARD_DIR, { recursive: true });
     } catch (err) {
       console.error('[MAIN] agreement board dir create failed:', err);
@@ -1805,7 +1824,48 @@ try {
     try { ipcMain.removeHandler('agreement-board-save'); } catch {}
     try { ipcMain.removeHandler('agreement-board-list'); } catch {}
     try { ipcMain.removeHandler('agreement-board-load'); } catch {}
+    try { ipcMain.removeHandler('agreement-board-get-root'); } catch {}
+    try { ipcMain.removeHandler('agreement-board-set-root'); } catch {}
+    try { ipcMain.removeHandler('agreement-board-pick-root'); } catch {}
   }
+
+  ipcMain.handle('agreement-board-get-root', async () => {
+    try {
+      ensureAgreementBoardDir();
+      return { success: true, path: AGREEMENT_BOARD_DIR };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to get agreement board path' };
+    }
+  });
+
+  ipcMain.handle('agreement-board-set-root', async (_event, nextPath) => {
+    try {
+      if (!nextPath || typeof nextPath !== 'string') throw new Error('Invalid path');
+      setAgreementBoardDir(nextPath);
+      ensureAgreementBoardDir();
+      return { success: true, path: AGREEMENT_BOARD_DIR };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to set agreement board path' };
+    }
+  });
+
+  ipcMain.handle('agreement-board-pick-root', async () => {
+    try {
+      const targetWindow = BrowserWindow.getFocusedWindow();
+      const result = await dialog.showOpenDialog(targetWindow, {
+        title: '협정 저장 폴더 선택',
+        properties: ['openDirectory', 'createDirectory'],
+      });
+      if (result.canceled || !result.filePaths?.[0]) {
+        return { success: false, canceled: true };
+      }
+      setAgreementBoardDir(result.filePaths[0]);
+      ensureAgreementBoardDir();
+      return { success: true, path: AGREEMENT_BOARD_DIR };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to choose agreement board path' };
+    }
+  });
 
   ipcMain.handle('agreement-board-save', async (_event, payload) => {
     try {
@@ -1835,15 +1895,9 @@ try {
         payload: payload.payload || {},
       };
       fs.writeFileSync(saveDialogResult.filePath, JSON.stringify(savePayload, null, 2));
-      const normalizedPath = path.normalize(saveDialogResult.filePath);
-      const normalizedDir = path.normalize(AGREEMENT_BOARD_DIR);
-      if (!normalizedPath.startsWith(normalizedDir)) {
-        const fallbackPath = path.join(AGREEMENT_BOARD_DIR, path.basename(saveDialogResult.filePath));
-        try {
-          fs.writeFileSync(fallbackPath, JSON.stringify(savePayload, null, 2));
-        } catch (err) {
-          console.warn('[MAIN] agreement board secondary save failed:', err?.message || err);
-        }
+      const savedDir = path.dirname(saveDialogResult.filePath);
+      if (savedDir && savedDir !== AGREEMENT_BOARD_DIR) {
+        setAgreementBoardDir(savedDir);
       }
       return { success: true, path: saveDialogResult.filePath };
     } catch (e) {

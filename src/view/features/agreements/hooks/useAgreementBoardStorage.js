@@ -56,6 +56,7 @@ export default function useAgreementBoardStorage({
   const [loadFilters, setLoadFilters] = React.useState({ ...DEFAULT_FILTERS });
   const [loadBusy, setLoadBusy] = React.useState(false);
   const [loadError, setLoadError] = React.useState('');
+  const [loadRootPath, setLoadRootPath] = React.useState('');
 
   const buildAgreementSnapshot = React.useCallback(() => ({
     meta: {
@@ -164,10 +165,19 @@ export default function useAgreementBoardStorage({
     }
   }, []);
 
+  const refreshLoadRoot = React.useCallback(async () => {
+    try {
+      const result = await window.electronAPI?.agreementBoardGetRoot?.();
+      if (result?.success && result?.path) {
+        setLoadRootPath(result.path);
+      }
+    } catch {}
+  }, []);
+
   const openLoadModal = React.useCallback(async () => {
     setLoadModalOpen(true);
-    await refreshLoadList();
-  }, [refreshLoadList]);
+    await Promise.all([refreshLoadRoot(), refreshLoadList()]);
+  }, [refreshLoadList, refreshLoadRoot]);
 
   const closeLoadModal = React.useCallback(() => {
     setLoadModalOpen(false);
@@ -240,6 +250,24 @@ export default function useAgreementBoardStorage({
     }
   }, [applyAgreementSnapshot, showHeaderAlert]);
 
+  const handlePickRoot = React.useCallback(async () => {
+    setLoadBusy(true);
+    setLoadError('');
+    try {
+      const result = await window.electronAPI?.agreementBoardPickRoot?.();
+      if (!result?.success) {
+        if (result?.canceled) return;
+        throw new Error(result?.message || '폴더 선택 실패');
+      }
+      if (result?.path) setLoadRootPath(result.path);
+      await refreshLoadList();
+    } catch (err) {
+      setLoadError(err?.message || '폴더 선택 실패');
+    } finally {
+      setLoadBusy(false);
+    }
+  }, [refreshLoadList]);
+
   const filteredLoadItems = React.useMemo(() => {
     const ownerFilter = String(loadFilters.ownerId || '').trim();
     const rangeFilter = String(loadFilters.rangeId || '').trim();
@@ -265,11 +293,13 @@ export default function useAgreementBoardStorage({
     loadItems: filteredLoadItems,
     loadBusy,
     loadError,
+    loadRootPath,
     setLoadFilters,
     openLoadModal,
     closeLoadModal,
     handleSaveAgreement,
     handleLoadAgreement,
+    handlePickRoot,
     refreshLoadList,
     resetFilters: () => setLoadFilters({ ...DEFAULT_FILTERS }),
   };

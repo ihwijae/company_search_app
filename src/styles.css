@@ -663,6 +663,32 @@ button.primary:hover { background: var(--accent-2); }
 }
 .agreement-load-close:hover { color: #334155; }
 
+.agreement-load-root {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px dashed #cbd5f5;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.agreement-load-root__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.agreement-load-root__info strong {
+  font-size: 13px;
+  color: #0f172a;
+  font-weight: 600;
+  word-break: break-all;
+}
+
 .agreement-load-filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

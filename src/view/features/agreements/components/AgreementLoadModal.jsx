@@ -5,6 +5,8 @@ export default function AgreementLoadModal({
   onClose,
   filters,
   setFilters,
+  rootPath,
+  onPickRoot,
   rangeOptions,
   agreementGroups,
   industryOptions,
@@ -26,6 +28,13 @@ export default function AgreementLoadModal({
             <p>필터를 선택해서 원하는 협정을 찾으세요.</p>
           </div>
           <button type="button" className="agreement-load-close" onClick={onClose}>×</button>
+        </div>
+        <div className="agreement-load-root">
+          <div className="agreement-load-root__info">
+            <span>저장 폴더</span>
+            <strong>{rootPath || '경로를 선택해 주세요.'}</strong>
+          </div>
+          <button type="button" className="excel-btn" onClick={onPickRoot}>폴더 변경</button>
         </div>
         <div className="agreement-load-filters">
           <label>

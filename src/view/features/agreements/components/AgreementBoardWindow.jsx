@@ -1290,11 +1290,13 @@ export default function AgreementBoardWindow({
     loadItems: filteredLoadItems,
     loadBusy,
     loadError,
+    loadRootPath,
     setLoadFilters,
     openLoadModal,
     closeLoadModal,
     handleSaveAgreement,
     handleLoadAgreement,
+    handlePickRoot,
     resetFilters,
   } = useAgreementBoardStorage({
     ownerId,
@@ -3818,6 +3820,8 @@ export default function AgreementBoardWindow({
         onClose={closeLoadModal}
         filters={loadFilters}
         setFilters={setLoadFilters}
+        rootPath={loadRootPath}
+        onPickRoot={handlePickRoot}
         rangeOptions={loadRangeOptions}
         agreementGroups={AGREEMENT_GROUPS}
         industryOptions={INDUSTRY_OPTIONS}
