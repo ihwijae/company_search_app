@@ -697,6 +697,8 @@ button.primary:hover { background: var(--accent-2); }
   overflow-y: auto;
   padding-bottom: 8px;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
   scrollbar-gutter: stable both-edges;
   position: relative;
   overscroll-behavior: contain;
