@@ -2111,7 +2111,7 @@ export default function AgreementBoardWindow({
 
   const dutySummaryText = React.useMemo(() => {
     const rateNumber = parseNumeric(regionDutyRate);
-    return buildDutySummary(dutyRegions, rateNumber, safeGroupSize);
+    return buildDutySummary(dutyRegions, rateNumber, safeParticipantLimit);
   }, [regionDutyRate, dutyRegions, safeGroupSize]);
 
   const rangeBadgeLabel = selectedRangeOption?.label || '기본 구간';
@@ -2139,7 +2139,7 @@ export default function AgreementBoardWindow({
         ? estimatedValue
         : (baseValue != null && baseValue > 0 ? baseValue : null);
       const dutyRateNumber = parseNumeric(regionDutyRate);
-      const dutySummaryText = buildDutySummary(dutyRegions, dutyRateNumber, safeGroupSize);
+      const dutySummaryText = buildDutySummary(dutyRegions, dutyRateNumber, safeParticipantLimit);
       const formattedDeadline = formatBidDeadline(bidDeadline);
 
       const groupPayloads = groupAssignments.map((memberIds, groupIndex) => {
@@ -3668,7 +3668,7 @@ export default function AgreementBoardWindow({
     };
   }, [portalContainer, open, inlineMode]);
 
-  const headerDutySummary = buildDutySummary(safeDutyRegions, regionDutyRate, slotLabels.length);
+  const headerDutySummary = buildDutySummary(safeDutyRegions, regionDutyRate, safeParticipantLimit);
 
   const boardMarkup = (
     <>
