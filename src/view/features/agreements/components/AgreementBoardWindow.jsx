@@ -3361,7 +3361,14 @@ export default function AgreementBoardWindow({
     const handleWheel = (event) => {
       if (!mainEl) return;
       if (mainEl.contains(event.target)) return;
+      const deltaX = event.deltaX;
       const deltaY = event.deltaY;
+      const horizontalIntent = Math.abs(deltaX) > 0.1 && Math.abs(deltaX) >= Math.abs(deltaY);
+      if (horizontalIntent) {
+        mainEl.scrollBy({ left: deltaX, behavior: 'auto' });
+        event.preventDefault();
+        return;
+      }
       if (Math.abs(deltaY) < 0.1) return;
       const atTop = mainEl.scrollTop <= 0;
       const atBottom = (mainEl.scrollHeight - mainEl.clientHeight - mainEl.scrollTop) <= 1;
