@@ -21,6 +21,14 @@ export default function AgreementLoadModal({
 }) {
   if (!open) return null;
 
+  const resolveIndustryBadgeClass = (label) => {
+    const value = String(label || '');
+    if (value.includes('전기')) return 'agreement-badge agreement-badge--eung';
+    if (value.includes('통신')) return 'agreement-badge agreement-badge--tongsin';
+    if (value.includes('소방')) return 'agreement-badge agreement-badge--sobang';
+    return 'agreement-badge';
+  };
+
   return (
     <div className="agreement-load-overlay" onClick={onClose}>
       <div className="agreement-load-modal" onClick={(event) => event.stopPropagation()}>
@@ -130,17 +138,7 @@ export default function AgreementLoadModal({
                       <span className="agreement-badge">{meta.rangeLabel || meta.rangeId}</span>
                     )}
                     {meta.industryLabel && (
-                      <span
-                        className={
-                          meta.industryLabel === '전기'
-                            ? 'agreement-badge agreement-badge--eung'
-                            : meta.industryLabel === '통신'
-                              ? 'agreement-badge agreement-badge--tongsin'
-                              : meta.industryLabel === '소방'
-                                ? 'agreement-badge agreement-badge--sobang'
-                                : 'agreement-badge'
-                        }
-                      >
+                      <span className={resolveIndustryBadgeClass(meta.industryLabel)}>
                         {meta.industryLabel}
                       </span>
                     )}
@@ -154,8 +152,8 @@ export default function AgreementLoadModal({
                   </div>
                 </div>
                 <div className="agreement-load-actions">
-                  <button type="button" className="excel-btn" onClick={() => onDelete(item.path)}>삭제</button>
                   <button type="button" className="excel-btn primary" onClick={() => onLoad(item.path)}>불러오기</button>
+                  <button type="button" className="excel-btn" onClick={() => onDelete(item.path)}>삭제</button>
                 </div>
               </div>
             );
