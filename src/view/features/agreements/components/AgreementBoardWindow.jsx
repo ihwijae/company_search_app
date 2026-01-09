@@ -3359,6 +3359,7 @@ export default function AgreementBoardWindow({
     if (!rootEl || !mainEl) return undefined;
 
     const handleHorizontalWheel = (event) => {
+      if (event.defaultPrevented) return;
       const deltaX = event.deltaX;
       const deltaY = event.deltaY;
       const wantsHorizontal = event.shiftKey || Math.abs(deltaX) > Math.abs(deltaY);
@@ -3368,6 +3369,7 @@ export default function AgreementBoardWindow({
       if (Math.abs(delta) < 0.1) return;
       mainEl.scrollBy({ left: delta, behavior: 'auto' });
       event.preventDefault();
+      event.stopPropagation();
     };
 
     const handleWheel = (event) => {
@@ -3385,9 +3387,11 @@ export default function AgreementBoardWindow({
       event.preventDefault();
     };
 
+    mainEl.addEventListener('wheel', handleHorizontalWheel, { passive: false, capture: true });
     rootEl.addEventListener('wheel', handleHorizontalWheel, { passive: false, capture: true });
     rootEl.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
+      mainEl.removeEventListener('wheel', handleHorizontalWheel, { passive: false, capture: true });
       rootEl.removeEventListener('wheel', handleHorizontalWheel, { passive: false, capture: true });
       rootEl.removeEventListener('wheel', handleWheel, { passive: false });
     };
