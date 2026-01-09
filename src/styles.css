@@ -704,6 +704,16 @@ button.primary:hover { background: var(--accent-2); }
   position: relative;
   overscroll-behavior: contain;
 }
+.excel-table-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 12px;
+  width: 1px;
+  background: #e2e8f0;
+  pointer-events: none;
+}
 
 .excel-board-table {
   width: auto;
