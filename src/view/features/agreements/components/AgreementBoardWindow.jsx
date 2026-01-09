@@ -36,6 +36,7 @@ const BOARD_COPY_LOOKUP = BOARD_COPY_ACTIONS.reduce((acc, action) => {
   return acc;
 }, {});
 const LH_FULL_SCORE = 95;
+const PPS_FULL_SCORE = 95;
 const INDUSTRY_OPTIONS = ['전기', '통신', '소방'];
 const industryToFileType = (label) => {
   const normalized = String(label || '').trim();
@@ -1103,7 +1104,7 @@ export default function AgreementBoardWindow({
 
   const credibilityConfig = React.useMemo(() => {
     if (ownerKeyUpper === 'LH') return { enabled: true, max: 1.5 };
-    if (ownerKeyUpper === 'PPS') return { enabled: false, max: 0 };
+    if (ownerKeyUpper === 'PPS') return { enabled: true, max: 3 };
     return { enabled: false, max: 0 };
   }, [ownerKeyUpper]);
   const credibilityEnabled = credibilityConfig.enabled;
@@ -3502,8 +3503,8 @@ export default function AgreementBoardWindow({
     const totalMax = baseTotalMax != null
       ? baseTotalMax + (isLHOwner ? (qualityPoints || 0) : 0)
       : null;
-    if (totalScore != null && (isLHOwner ? LH_FULL_SCORE : totalMax) != null) {
-      const threshold = isLHOwner ? LH_FULL_SCORE : totalMax;
+    if (totalScore != null && (isLHOwner ? LH_FULL_SCORE : (ownerKeyUpper === 'PPS' ? PPS_FULL_SCORE : totalMax)) != null) {
+      const threshold = isLHOwner ? LH_FULL_SCORE : (ownerKeyUpper === 'PPS' ? PPS_FULL_SCORE : totalMax);
       scoreState = totalScore >= (threshold - 0.01) ? 'full' : 'partial';
     }
     const managementSummary = summaryInfo?.managementScore != null
