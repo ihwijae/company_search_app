@@ -921,6 +921,7 @@ export default function AgreementBoardWindow({
   const [groupAssignments, setGroupAssignments] = React.useState([]);
   const [draggingId, setDraggingId] = React.useState(null);
   const [dropTarget, setDropTarget] = React.useState(null);
+  const [dragSource, setDragSource] = React.useState(null);
   const [groupShares, setGroupShares] = React.useState([]);
   const [groupShareRawInputs, setGroupShareRawInputs] = React.useState([]);
   const [groupApprovals, setGroupApprovals] = React.useState([]);
@@ -2688,16 +2689,18 @@ export default function AgreementBoardWindow({
     };
   }, [open, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType]);
 
-  const handleDragStart = (id) => (event) => {
+  const handleDragStart = (id, groupIndex, slotIndex) => (event) => {
     if (!id) return;
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', id);
     setDraggingId(id);
+    setDragSource({ groupIndex, slotIndex, id });
   };
 
   const handleDragEnd = () => {
     setDraggingId(null);
     setDropTarget(null);
+    setDragSource(null);
   };
 
   const handleRemove = (groupIndex, slotIndex) => {
@@ -2733,6 +2736,21 @@ export default function AgreementBoardWindow({
     if (!id || !participantMap.has(id)) return;
     setGroupAssignments((prev) => {
       const next = prev.map((group) => group.slice());
+      if (!next[groupIndex]) {
+        next[groupIndex] = Array(safeGroupSize).fill(null);
+      }
+      const targetId = next[groupIndex][slotIndex] || null;
+      const isSource = dragSource && dragSource.id === id;
+      if (isSource && dragSource.groupIndex === groupIndex && dragSource.slotIndex === slotIndex) {
+        return next;
+      }
+      if (isSource) {
+        if (next[dragSource.groupIndex]) {
+          next[dragSource.groupIndex][dragSource.slotIndex] = targetId;
+        }
+        next[groupIndex][slotIndex] = id;
+        return next;
+      }
       next.forEach((group, gIdx) => {
         for (let i = 0; i < group.length; i += 1) {
           if (group[i] === id) {
@@ -2740,14 +2758,12 @@ export default function AgreementBoardWindow({
           }
         }
       });
-      if (!next[groupIndex]) {
-        next[groupIndex] = Array(safeGroupSize).fill(null);
-      }
       next[groupIndex][slotIndex] = id;
       return next;
     });
     setDraggingId(null);
     setDropTarget(null);
+    setDragSource(null);
   };
 
   const handleDropFromEvent = (groupIndex, slotIndex) => (event) => {
@@ -3159,7 +3175,7 @@ export default function AgreementBoardWindow({
           <div
             className={`excel-member-card${draggingId === meta.uid ? ' dragging' : ''}`}
             draggable
-            onDragStart={handleDragStart(meta.uid)}
+            onDragStart={handleDragStart(meta.uid, meta.groupIndex, meta.slotIndex)}
             onDragEnd={handleDragEnd}
           >
             <div className="excel-member-tags">
