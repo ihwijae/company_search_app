@@ -3358,22 +3358,8 @@ export default function AgreementBoardWindow({
     const mainEl = boardMainRef.current;
     if (!rootEl || !mainEl) return undefined;
 
-    const handleHorizontalWheel = (event) => {
-      const deltaX = event.deltaX;
-      const deltaY = event.deltaY;
-      const wantsHorizontal = event.shiftKey || Math.abs(deltaX) > Math.abs(deltaY);
-      if (!wantsHorizontal) return;
-      if (mainEl.scrollWidth <= mainEl.clientWidth + 1) return;
-      const delta = Math.abs(deltaX) > 0.1 ? deltaX : deltaY;
-      if (Math.abs(delta) < 0.1) return;
-      mainEl.scrollBy({ left: delta, behavior: 'auto' });
-      event.preventDefault();
-      event.stopPropagation();
-    };
-
-    const handleDocWheel = (event) => {
+    const handleMainWheel = (event) => {
       if (!event.shiftKey) return;
-      if (!mainEl) return;
       if (mainEl.scrollWidth <= mainEl.clientWidth + 1) return;
       const deltaX = event.deltaX;
       const deltaY = event.deltaY;
@@ -3381,11 +3367,11 @@ export default function AgreementBoardWindow({
       if (Math.abs(delta) < 0.1) return;
       mainEl.scrollBy({ left: delta, behavior: 'auto' });
       event.preventDefault();
-      event.stopPropagation();
     };
 
     const handleWheel = (event) => {
       if (!mainEl) return;
+      if (event.shiftKey) return;
       if (mainEl.contains(event.target)) return;
       const deltaY = event.deltaY;
       if (Math.abs(deltaY) < 0.1) return;
@@ -3399,15 +3385,10 @@ export default function AgreementBoardWindow({
       event.preventDefault();
     };
 
-    const doc = rootEl.ownerDocument;
-    doc.addEventListener('wheel', handleDocWheel, { passive: false, capture: true });
-    mainEl.addEventListener('wheel', handleHorizontalWheel, { passive: false, capture: true });
-    rootEl.addEventListener('wheel', handleHorizontalWheel, { passive: false, capture: true });
+    mainEl.addEventListener('wheel', handleMainWheel, { passive: false });
     rootEl.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
-      doc.removeEventListener('wheel', handleDocWheel, { passive: false, capture: true });
-      mainEl.removeEventListener('wheel', handleHorizontalWheel, { passive: false, capture: true });
-      rootEl.removeEventListener('wheel', handleHorizontalWheel, { passive: false, capture: true });
+      mainEl.removeEventListener('wheel', handleMainWheel, { passive: false });
       rootEl.removeEventListener('wheel', handleWheel, { passive: false });
     };
   }, [portalContainer, open, inlineMode]);
