@@ -745,16 +745,17 @@ button.primary:hover { background: var(--accent-2); }
 .col-name { width: 100px; }
 .col-share { width: 50px; }
 .col-credibility-slot { width: 45px; }
-.col-status { width: 50px; }
-.col-management { width: 60px; }
+.col-status { width: 45px; }
+.col-management { width: 55px; }
 .col-management-bonus { width: 50px; }
 .col-share-total { width: 60px; }
 .col-performance { width: 90px; }
-.col-netcost-bonus { width: 60px; }
-.col-performance-summary { width: 55px; }
-.col-credibility { width: 60px; }
+.col-netcost-bonus { width: 55px; }
+.col-performance-summary { width: 50px; }
+.col-credibility { width: 55px; }
 .col-bid { width: 55px; }
-.col-total { width: 60px; }
+.col-total { width: 55px; }
+.col-quality-points { width: 55px; }
 
 .excel-cell {
   min-width: 0;

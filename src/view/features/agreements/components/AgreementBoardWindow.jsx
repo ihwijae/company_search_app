@@ -45,17 +45,18 @@ const COLUMN_WIDTHS = {
   approval: 40,
   name: 100,
   share: 50,
-  status: 50,
-  management: 60,
+  status: 45,
+  management: 55,
   managementBonus: 50,
   shareTotal: 60,
+  qualityPoints: 55,
   performanceCell: 90,
-  performanceSummary: 55,
+  performanceSummary: 50,
   credibilityCell: 45,
-  credibility: 60,
+  credibility: 55,
   bid: 55,
-  netCostBonus: 60,
-  total: 60,
+  netCostBonus: 55,
+  total: 55,
 };
 const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
 const BOARD_COPY_BUTTON_STYLE_MAP = {
@@ -1200,6 +1201,27 @@ export default function AgreementBoardWindow({
     return resolveLhQualityDefaultByRange(selectedRangeOption?.label, selectedRangeOption?.key);
   }, [isLHOwner, selectedRangeOption?.label, selectedRangeOption?.key]);
 
+  const resolveQualityPoints = React.useCallback((qualityTotal, rangeKey) => {
+    if (!Number.isFinite(qualityTotal)) return null;
+    if (rangeKey === LH_50_TO_100_KEY) {
+      if (qualityTotal >= 90) return 5;
+      if (qualityTotal >= 88) return 3;
+      if (qualityTotal >= 85) return 2;
+      if (qualityTotal >= 83) return 1.5;
+      if (qualityTotal >= 80) return 1;
+      return 0;
+    }
+    if (qualityTotal >= 88) return 3;
+    if (qualityTotal >= 85) return 2;
+    if (qualityTotal >= 83) return 1.5;
+    if (qualityTotal >= 80) return 1;
+    return 0;
+  }, []);
+
+  const resolveQualityPointsMax = React.useCallback((rangeKey) => (
+    rangeKey === LH_50_TO_100_KEY ? 5 : 3
+  ), []);
+
   const netCostBonusScore = React.useMemo(() => {
     if (!isLHOwner) return 0;
     const rangeKey = selectedRangeOption?.key;
@@ -1296,6 +1318,7 @@ export default function AgreementBoardWindow({
       + COLUMN_WIDTHS.management
       + COLUMN_WIDTHS.managementBonus
       + COLUMN_WIDTHS.shareTotal
+      + (isLHOwner ? COLUMN_WIDTHS.qualityPoints : 0)
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
       + COLUMN_WIDTHS.bid
@@ -1303,7 +1326,7 @@ export default function AgreementBoardWindow({
       + COLUMN_WIDTHS.total;
     const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth + perfCellsWidth;
     return Math.max(1200, total);
-  }, [slotLabels.length, credibilityEnabled]);
+  }, [slotLabels.length, credibilityEnabled, isLHOwner]);
 
   const derivedMaxScores = React.useMemo(() => {
     if (!formulasDoc) return { managementMax: null, performanceMax: null };
@@ -3031,9 +3054,9 @@ export default function AgreementBoardWindow({
 
   const tableColumnCount = React.useMemo(() => {
     const perSlotCols = credibilityEnabled ? 5 : 4;
-    const baseColumns = 10 + (credibilityEnabled ? 1 : 0);
+    const baseColumns = 10 + (credibilityEnabled ? 1 : 0) + (isLHOwner ? 1 : 0);
     return baseColumns + (slotLabels.length * perSlotCols);
-  }, [credibilityEnabled, slotLabels.length]);
+  }, [credibilityEnabled, isLHOwner, slotLabels.length]);
 
   const buildSlotMeta = (group, groupIndex, slotIndex, label) => {
     const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
@@ -3230,13 +3253,13 @@ export default function AgreementBoardWindow({
     });
   };
 
-  const renderQualityRow = (group, groupIndex, slotMetas) => {
+  const renderQualityRow = (group, groupIndex, slotMetas, qualityTotal) => {
     if (!isLHOwner) return null;
     const qualityGuide = (selectedRangeOption?.key === 'lh-50to100')
       ? '90점이상:5점/88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점'
       : '품질 88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점';
     const guideSpan = 1 + slotMetas.length;
-    const qualityTotal = slotMetas.reduce((acc, meta) => {
+    const resolvedQualityTotal = qualityTotal ?? slotMetas.reduce((acc, meta) => {
       if (meta.empty) return acc;
       const share = toNumber(meta.shareForCalc);
       const score = toNumber(meta.qualityScore);
@@ -3244,7 +3267,7 @@ export default function AgreementBoardWindow({
       return acc + (score * (share / 100));
     }, 0);
     const qualityTotalDisplay = slotMetas.some((meta) => !meta.empty)
-      ? formatScore(qualityTotal, 2)
+      ? formatScore(resolvedQualityTotal, 2)
       : '-';
     return (
       <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
@@ -3267,17 +3290,34 @@ export default function AgreementBoardWindow({
 
   const renderSheetRow = (group, groupIndex) => {
     const summaryInfo = group.summary;
-    const totalScore = credibilityEnabled
+    let scoreState = null;
+    const slotMetas = slotLabels.map((label, slotIndex) => buildSlotMeta(group, groupIndex, slotIndex, label));
+    const qualityTotal = isLHOwner
+      ? slotMetas.reduce((acc, meta) => {
+        if (meta.empty) return acc;
+        const share = toNumber(meta.shareForCalc);
+        const score = toNumber(meta.qualityScore);
+        if (share == null || score == null) return acc;
+        return acc + (score * (share / 100));
+      }, 0)
+      : null;
+    const baseTotalScore = credibilityEnabled
       ? summaryInfo?.totalScoreWithCred
       : summaryInfo?.totalScoreBase;
-    const totalMax = credibilityEnabled
+    const baseTotalMax = credibilityEnabled
       ? summaryInfo?.totalMaxWithCred
       : summaryInfo?.totalMaxBase;
-    let scoreState = null;
+    const qualityPoints = isLHOwner ? resolveQualityPoints(qualityTotal, selectedRangeOption?.key) : null;
+    const qualityMax = isLHOwner ? resolveQualityPointsMax(selectedRangeOption?.key) : 0;
+    const totalScore = baseTotalScore != null
+      ? baseTotalScore + (qualityPoints || 0)
+      : null;
+    const totalMax = baseTotalMax != null
+      ? baseTotalMax + (isLHOwner ? qualityMax : 0)
+      : null;
     if (totalScore != null && totalMax != null) {
       scoreState = totalScore >= (totalMax - 0.01) ? 'full' : 'partial';
     }
-    const slotMetas = slotLabels.map((label, slotIndex) => buildSlotMeta(group, groupIndex, slotIndex, label));
     const managementSummary = summaryInfo?.managementScore != null
       ? formatScore(summaryInfo.managementScore, 2)
       : '-';
@@ -3291,13 +3331,14 @@ export default function AgreementBoardWindow({
         ? formatScore(summaryInfo.credibilityScore)
         : '-')
       : null;
+    const qualityPointsDisplay = isLHOwner
+      ? (qualityPoints != null ? formatScore(qualityPoints, 2) : '-')
+      : null;
     const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore) : '-';
     const netCostBonusDisplay = summaryInfo?.netCostBonusScore != null
       ? formatScore(summaryInfo.netCostBonusScore, 2)
       : '0';
-    const totalScoreDisplay = summaryInfo
-      ? formatScore(summaryInfo.totalScoreWithCred ?? summaryInfo.totalScoreBase)
-      : '-';
+    const totalScoreDisplay = totalScore != null ? formatScore(totalScore) : '-';
     const approvalValue = groupApprovals[groupIndex] || '';
     const rightRowSpan = isLHOwner ? 2 : undefined;
     const bonusChecked = Boolean(groupManagementBonus[groupIndex]);
@@ -3343,11 +3384,14 @@ export default function AgreementBoardWindow({
         </td>
         {slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
         <td className={`excel-cell total-cell ${performanceState}`} rowSpan={rightRowSpan}>{performanceSummary}</td>
+        {isLHOwner && (
+          <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{qualityPointsDisplay}</td>
+        )}
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{totalScoreDisplay}</td>
         </tr>
-        {renderQualityRow(group, groupIndex, slotMetas)}
+        {renderQualityRow(group, groupIndex, slotMetas, qualityTotal)}
       </React.Fragment>
     );
   };
@@ -3608,14 +3652,14 @@ export default function AgreementBoardWindow({
                   {slotLabels.map((_, index) => (
                     <col key={`col-name-${index}`} className="col-name" />
                   ))}
-                  {slotLabels.map((_, index) => (
-                    <col key={`col-share-${index}`} className="col-share" />
-                  ))}
-                  <col className="col-share-total" />
-                  {credibilityEnabled && slotLabels.map((_, index) => (
-                    <col key={`col-credibility-slot-${index}`} className="col-credibility-slot" />
-                  ))}
-                  {credibilityEnabled && <col className="col-credibility" />}
+                {slotLabels.map((_, index) => (
+                  <col key={`col-share-${index}`} className="col-share" />
+                ))}
+                <col className="col-share-total" />
+                {credibilityEnabled && slotLabels.map((_, index) => (
+                  <col key={`col-credibility-slot-${index}`} className="col-credibility-slot" />
+                ))}
+                {credibilityEnabled && <col className="col-credibility" />}
                   {slotLabels.map((_, index) => (
                     <col key={`col-status-${index}`} className="col-status" />
                   ))}
@@ -3625,6 +3669,7 @@ export default function AgreementBoardWindow({
                     <col key={`col-performance-${index}`} className="col-performance" />
                   ))}
                   <col className="col-performance-summary" />
+                  {isLHOwner && <col className="col-quality-points" />}
                   <col className="col-bid" />
                   <col className="col-netcost-bonus" />
                   <col className="col-total" />
@@ -3635,16 +3680,16 @@ export default function AgreementBoardWindow({
                     <th rowSpan="2">승인</th>
                     <th colSpan={slotLabels.length}>업체명</th>
                     <th colSpan={slotLabels.length}>지분(%)</th>
-                    <th rowSpan="2">
-                      {isLHOwner ? (
-                        <div className="share-total-header">
-                          <span>지분합계</span>
-                          <span className="sub">품질총점</span>
-                        </div>
-                      ) : (
-                        '지분합계'
-                      )}
-                    </th>
+                  <th rowSpan="2">
+                    {isLHOwner ? (
+                      <div className="share-total-header">
+                        <span>지분합계</span>
+                        <span className="sub">품질총점</span>
+                      </div>
+                    ) : (
+                      '지분합계'
+                    )}
+                  </th>
                     {credibilityEnabled && <th colSpan={slotLabels.length}>신인도</th>}
                   {credibilityEnabled && (
                     <th rowSpan="2">신인도 합({formatScore(ownerCredibilityMax, 1)}점)</th>
@@ -3654,6 +3699,7 @@ export default function AgreementBoardWindow({
                     <th rowSpan="2">가점</th>
                     <th colSpan={slotLabels.length}>시공실적</th>
                     <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
+                    {isLHOwner && <th rowSpan="2">품질점수</th>}
                     <th rowSpan="2">입찰점수</th>
                     <th rowSpan="2">순공사원가가점</th>
                     <th rowSpan="2">예상점수</th>
