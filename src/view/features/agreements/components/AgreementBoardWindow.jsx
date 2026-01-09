@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import AgreementLoadModal from './AgreementLoadModal.jsx';
+import AgreementAlertModal from './AgreementAlertModal.jsx';
 import useAgreementBoardStorage from '../hooks/useAgreementBoardStorage.js';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
@@ -1145,7 +1146,7 @@ export default function AgreementBoardWindow({
     headerAlertTimerRef.current = setTimeout(() => {
       headerAlertTimerRef.current = null;
       setHeaderAlert('');
-    }, 2600);
+    }, 2200);
   }, [clearHeaderAlertTimer]);
 
   React.useEffect(() => () => {
@@ -3542,10 +3543,7 @@ export default function AgreementBoardWindow({
         <div className="excel-board-shell">
           <div className="excel-board-header">
             {headerAlert && (
-              <div className="excel-inline-alert">
-                <span>{headerAlert}</span>
-                <button type="button" onClick={dismissHeaderAlert}>확인</button>
-              </div>
+              <AgreementAlertModal message={headerAlert} onClose={dismissHeaderAlert} />
             )}
             <div className="excel-header-grid condensed">
               <div className="header-stack stack-owner">
