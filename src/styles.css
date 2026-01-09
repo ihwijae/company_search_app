@@ -712,6 +712,10 @@ button.primary:hover { background: var(--accent-2); }
   table-layout: fixed;
   border-right: 18px solid transparent;
 }
+.excel-board-table th:last-child,
+.excel-board-table td:last-child {
+  border-right: 1px solid #e2e8f0;
+}
 
 .excel-board-table th {
   background: #eef2ff;
