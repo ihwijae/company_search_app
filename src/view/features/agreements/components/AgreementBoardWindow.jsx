@@ -1103,7 +1103,7 @@ export default function AgreementBoardWindow({
 
   const credibilityConfig = React.useMemo(() => {
     if (ownerKeyUpper === 'LH') return { enabled: true, max: 1.5 };
-    if (ownerKeyUpper === 'PPS') return { enabled: true, max: 3 };
+    if (ownerKeyUpper === 'PPS') return { enabled: false, max: 0 };
     return { enabled: false, max: 0 };
   }, [ownerKeyUpper]);
   const credibilityEnabled = credibilityConfig.enabled;
