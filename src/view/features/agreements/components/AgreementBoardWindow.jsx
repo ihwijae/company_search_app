@@ -3358,39 +3358,22 @@ export default function AgreementBoardWindow({
     const mainEl = boardMainRef.current;
     if (!rootEl || !mainEl) return undefined;
 
-    const handleMainWheel = (event) => {
+    const handleHorizontalWheel = (event) => {
       const deltaX = event.deltaX;
       const deltaY = event.deltaY;
-      const horizontalIntent = Math.abs(deltaX) > 0.1 && Math.abs(deltaX) >= Math.abs(deltaY);
-      const shiftHorizontal = event.shiftKey && Math.abs(deltaY) > 0.1;
-      if (horizontalIntent) {
-        mainEl.scrollBy({ left: deltaX, behavior: 'auto' });
-        event.preventDefault();
-        return;
-      }
-      if (shiftHorizontal) {
-        mainEl.scrollBy({ left: deltaY, behavior: 'auto' });
-        event.preventDefault();
-      }
+      const wantsHorizontal = event.shiftKey || Math.abs(deltaX) > Math.abs(deltaY);
+      if (!wantsHorizontal) return;
+      if (mainEl.scrollWidth <= mainEl.clientWidth + 1) return;
+      const delta = Math.abs(deltaX) > 0.1 ? deltaX : deltaY;
+      if (Math.abs(delta) < 0.1) return;
+      mainEl.scrollBy({ left: delta, behavior: 'auto' });
+      event.preventDefault();
     };
 
     const handleWheel = (event) => {
       if (!mainEl) return;
       if (mainEl.contains(event.target)) return;
-      const deltaX = event.deltaX;
       const deltaY = event.deltaY;
-      const horizontalIntent = Math.abs(deltaX) > 0.1 && Math.abs(deltaX) >= Math.abs(deltaY);
-      const shiftHorizontal = event.shiftKey && Math.abs(deltaY) > 0.1;
-      if (horizontalIntent) {
-        mainEl.scrollBy({ left: deltaX, behavior: 'auto' });
-        event.preventDefault();
-        return;
-      }
-      if (shiftHorizontal) {
-        mainEl.scrollBy({ left: deltaY, behavior: 'auto' });
-        event.preventDefault();
-        return;
-      }
       if (Math.abs(deltaY) < 0.1) return;
       const atTop = mainEl.scrollTop <= 0;
       const atBottom = (mainEl.scrollHeight - mainEl.clientHeight - mainEl.scrollTop) <= 1;
@@ -3402,10 +3385,10 @@ export default function AgreementBoardWindow({
       event.preventDefault();
     };
 
-    mainEl.addEventListener('wheel', handleMainWheel, { passive: false });
+    rootEl.addEventListener('wheel', handleHorizontalWheel, { passive: false, capture: true });
     rootEl.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
-      mainEl.removeEventListener('wheel', handleMainWheel, { passive: false });
+      rootEl.removeEventListener('wheel', handleHorizontalWheel, { passive: false, capture: true });
       rootEl.removeEventListener('wheel', handleWheel, { passive: false });
     };
   }, [portalContainer, open, inlineMode]);
