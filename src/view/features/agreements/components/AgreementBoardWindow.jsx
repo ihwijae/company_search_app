@@ -3392,7 +3392,7 @@ export default function AgreementBoardWindow({
         )}
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
-        <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{totalScoreDisplay}</td>
+        <td className={`excel-cell total-cell total-score${scoreState ? ` score-${scoreState}` : ''}`} rowSpan={rightRowSpan}>{totalScoreDisplay}</td>
         </tr>
         {renderQualityRow(group, groupIndex, slotMetas, qualityTotal)}
       </React.Fragment>

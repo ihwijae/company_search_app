@@ -731,6 +731,7 @@ button.primary:hover { background: var(--accent-2); }
   font-weight: 600;
   text-align: center;
   padding: 6px 4px;
+  vertical-align: middle;
   border: 1px solid #c7d2fe;
 }
 
@@ -738,7 +739,7 @@ button.primary:hover { background: var(--accent-2); }
   border: 1px solid #e2e8f0;
   text-align: center;
   padding: 6px 4px;
-  vertical-align: top;
+  vertical-align: middle;
   background: #fff;
 }
 .excel-board-table input,
@@ -1040,6 +1041,16 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-cell.total-cell.warn {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.excel-cell.total-score.score-full {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.excel-cell.total-score.score-partial {
   color: #b91c1c;
   font-weight: 700;
 }
