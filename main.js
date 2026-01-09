@@ -1802,15 +1802,56 @@ try {
 
 // Agreement board save/load (file-based)
 try {
+  const resolveAgreementBoardRuntimeDir = () => (
+    toWSLPathIfNeeded(AGREEMENT_BOARD_DIR) || AGREEMENT_BOARD_DIR
+  );
+
   const ensureAgreementBoardDir = () => {
     try {
       if (!AGREEMENT_BOARD_DIR || !String(AGREEMENT_BOARD_DIR).trim()) {
         AGREEMENT_BOARD_DIR = DEFAULT_AGREEMENT_BOARD_DIR;
       }
-      if (!fs.existsSync(AGREEMENT_BOARD_DIR)) fs.mkdirSync(AGREEMENT_BOARD_DIR, { recursive: true });
+      const runtimeDir = resolveAgreementBoardRuntimeDir();
+      if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
     } catch (err) {
       console.error('[MAIN] agreement board dir create failed:', err);
     }
+  };
+
+  const listAgreementBoardFiles = (rootDir) => {
+    const results = [];
+    const stack = [rootDir];
+    while (stack.length) {
+      const current = stack.pop();
+      let entries = null;
+      try {
+        entries = fs.readdirSync(current, { withFileTypes: true });
+      } catch (err) {
+        try {
+          entries = fs.readdirSync(current).map((name) => {
+            const fullPath = path.join(current, name);
+            let stat = null;
+            try { stat = fs.statSync(fullPath); } catch {}
+            return {
+              name,
+              isDirectory: () => Boolean(stat?.isDirectory?.()),
+              isFile: () => Boolean(stat?.isFile?.()),
+            };
+          });
+        } catch {
+          continue;
+        }
+      }
+      for (const entry of entries || []) {
+        const fullPath = path.join(current, entry.name);
+        if (entry.isDirectory()) {
+          stack.push(fullPath);
+        } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.json')) {
+          results.push(fullPath);
+        }
+      }
+    }
+    return results;
   };
 
   const sanitizeFileName = (value = '') => (
@@ -1894,7 +1935,8 @@ try {
         meta: { ...meta, savedAt: new Date().toISOString() },
         payload: payload.payload || {},
       };
-      fs.writeFileSync(saveDialogResult.filePath, JSON.stringify(savePayload, null, 2));
+      const runtimeSavePath = toWSLPathIfNeeded(saveDialogResult.filePath) || saveDialogResult.filePath;
+      fs.writeFileSync(runtimeSavePath, JSON.stringify(savePayload, null, 2));
       const savedDir = path.dirname(saveDialogResult.filePath);
       if (savedDir && savedDir !== AGREEMENT_BOARD_DIR) {
         setAgreementBoardDir(savedDir);
@@ -1908,11 +1950,10 @@ try {
   ipcMain.handle('agreement-board-list', async () => {
     try {
       ensureAgreementBoardDir();
-      if (!fs.existsSync(AGREEMENT_BOARD_DIR)) return { success: true, data: [] };
-      const entries = fs.readdirSync(AGREEMENT_BOARD_DIR)
-        .filter((name) => name.toLowerCase().endsWith('.json'))
-        .map((name) => {
-          const fullPath = path.join(AGREEMENT_BOARD_DIR, name);
+      const runtimeRoot = resolveAgreementBoardRuntimeDir();
+      if (!fs.existsSync(runtimeRoot)) return { success: true, data: [] };
+      const entries = listAgreementBoardFiles(runtimeRoot)
+        .map((fullPath) => {
           try {
             const raw = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
             const meta = raw && raw.meta && typeof raw.meta === 'object' ? raw.meta : {};
@@ -1932,7 +1973,8 @@ try {
   ipcMain.handle('agreement-board-load', async (_event, filePath) => {
     try {
       if (!filePath) throw new Error('Missing path');
-      const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      const runtimePath = toWSLPathIfNeeded(filePath) || filePath;
+      const raw = JSON.parse(fs.readFileSync(runtimePath, 'utf-8'));
       return { success: true, data: raw?.payload || {} };
     } catch (e) {
       return { success: false, message: e?.message || 'Failed to load agreement board' };
