@@ -4,7 +4,7 @@ import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import { validateAgreement, generateMany } from '../../../../shared/agreements/generator.js';
-import FeedbackProvider, { useFeedback } from '../../../../components/FeedbackProvider.jsx';
+import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 
 const OWNERS = [
   '조달청',
@@ -654,9 +654,5 @@ function AgreementsPageInner() {
 }
 
 export default function AgreementsPage() {
-  return (
-    <FeedbackProvider>
-      <AgreementsPageInner />
-    </FeedbackProvider>
-  );
+  return <AgreementsPageInner />;
 }

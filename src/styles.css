@@ -242,45 +242,6 @@ button.primary:hover { background: var(--accent-2); }
 .excel-helper-modal__option-meta { font-size: 13px; color: #6b7280; }
 .excel-helper-modal__option-managers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .excel-helper-modal__footer { padding: 16px 24px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 12px; }
-.agreement-alert-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.agreement-alert-modal {
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 20px 24px;
-  min-width: 280px;
-  max-width: 420px;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.agreement-alert-modal p {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
-  line-height: 1.5;
-}
-.agreement-alert-modal button {
-  align-self: center;
-  border: none;
-  background: #2563eb;
-  color: #ffffff;
-  padding: 8px 18px;
-  border-radius: 999px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.agreement-alert-modal button:hover { background: #1d4ed8; }
 .excel-board-shell {
   flex: 1;
   display: flex;

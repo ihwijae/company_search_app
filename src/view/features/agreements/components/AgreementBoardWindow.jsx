@@ -2,9 +2,9 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import AgreementLoadModal from './AgreementLoadModal.jsx';
-import AgreementAlertModal from './AgreementAlertModal.jsx';
 import useAgreementBoardStorage from '../hooks/useAgreementBoardStorage.js';
 import AmountInput from '../../../../components/AmountInput.jsx';
+import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
 import { isWomenOwnedCompany, getQualityBadgeText, extractManagerNames } from '../../../../utils/companyIndicators.js';
 import { generateMany } from '../../../../shared/agreements/generator.js';
@@ -1120,38 +1120,16 @@ export default function AgreementBoardWindow({
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
   const [excelCopying, setExcelCopying] = React.useState(false);
   const [copyingKind, setCopyingKind] = React.useState(null);
-  const [headerAlert, setHeaderAlert] = React.useState('');
-  const headerAlertTimerRef = React.useRef(null);
+  const { notify } = useFeedback();
   const searchTargetRef = React.useRef(null);
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
   const boardMainRef = React.useRef(null);
 
-  const clearHeaderAlertTimer = React.useCallback(() => {
-    if (headerAlertTimerRef.current) {
-      clearTimeout(headerAlertTimerRef.current);
-      headerAlertTimerRef.current = null;
-    }
-  }, []);
-
-  const dismissHeaderAlert = React.useCallback(() => {
-    clearHeaderAlertTimer();
-    setHeaderAlert('');
-  }, [clearHeaderAlertTimer]);
-
   const showHeaderAlert = React.useCallback((message) => {
     if (!message) return;
-    clearHeaderAlertTimer();
-    setHeaderAlert(message);
-    headerAlertTimerRef.current = setTimeout(() => {
-      headerAlertTimerRef.current = null;
-      setHeaderAlert('');
-    }, 2200);
-  }, [clearHeaderAlertTimer]);
-
-  React.useEffect(() => () => {
-    clearHeaderAlertTimer();
-  }, [clearHeaderAlertTimer]);
+    notify({ type: 'info', message });
+  }, [notify]);
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -3542,9 +3520,6 @@ export default function AgreementBoardWindow({
       <div className="agreement-board-root" ref={rootRef}>
         <div className="excel-board-shell">
           <div className="excel-board-header">
-            {headerAlert && (
-              <AgreementAlertModal message={headerAlert} onClose={dismissHeaderAlert} />
-            )}
             <div className="excel-header-grid condensed">
               <div className="header-stack stack-owner">
                 <div className="excel-select-block">
