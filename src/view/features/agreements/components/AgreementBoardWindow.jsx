@@ -42,20 +42,20 @@ const industryToFileType = (label) => {
 };
 const COLUMN_WIDTHS = {
   order: 40,
-  approval: 50,
+  approval: 40,
   name: 100,
   share: 50,
-  status: 60,
-  management: 70,
+  status: 50,
+  management: 60,
   managementBonus: 50,
   shareTotal: 60,
   performanceCell: 90,
-  performanceSummary: 60,
+  performanceSummary: 55,
   credibilityCell: 45,
-  credibility: 70,
-  bid: 60,
-  netCostBonus: 70,
-  total: 70,
+  credibility: 60,
+  bid: 55,
+  netCostBonus: 60,
+  total: 60,
 };
 const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
 const BOARD_COPY_BUTTON_STYLE_MAP = {
@@ -3288,7 +3288,7 @@ export default function AgreementBoardWindow({
     const shareSummaryClass = summaryInfo?.shareComplete ? 'ok' : 'warn';
     const credibilitySummary = credibilityEnabled
       ? (summaryInfo?.credibilityScore != null
-        ? `${formatScore(summaryInfo.credibilityScore)} / ${formatScore(summaryInfo.credibilityMax ?? ownerCredibilityMax)}`
+        ? formatScore(summaryInfo.credibilityScore)
         : '-')
       : null;
     const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore) : '-';
@@ -3646,7 +3646,9 @@ export default function AgreementBoardWindow({
                       )}
                     </th>
                     {credibilityEnabled && <th colSpan={slotLabels.length}>신인도</th>}
-                    {credibilityEnabled && <th rowSpan="2">신인도 합</th>}
+                  {credibilityEnabled && (
+                    <th rowSpan="2">신인도 합({formatScore(ownerCredibilityMax, 1)}점)</th>
+                  )}
                     <th colSpan={slotLabels.length}>경영상태</th>
                     <th rowSpan="2">경영({formatScore(managementHeaderMax, 0)}점)</th>
                     <th rowSpan="2">가점</th>

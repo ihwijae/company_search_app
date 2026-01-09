@@ -741,20 +741,20 @@ button.primary:hover { background: var(--accent-2); }
   background: #fff;
 }
 .col-order { width: 40px; }
-.col-approval { width: 50px; }
+.col-approval { width: 40px; }
 .col-name { width: 100px; }
 .col-share { width: 50px; }
 .col-credibility-slot { width: 45px; }
-.col-status { width: 60px; }
-.col-management { width: 70px; }
+.col-status { width: 50px; }
+.col-management { width: 60px; }
 .col-management-bonus { width: 50px; }
 .col-share-total { width: 60px; }
 .col-performance { width: 90px; }
-.col-netcost-bonus { width: 70px; }
-.col-performance-summary { width: 60px; }
-.col-credibility { width: 70px; }
-.col-bid { width: 60px; }
-.col-total { width: 70px; }
+.col-netcost-bonus { width: 60px; }
+.col-performance-summary { width: 55px; }
+.col-credibility { width: 60px; }
+.col-bid { width: 55px; }
+.col-total { width: 60px; }
 
 .excel-cell {
   min-width: 0;
