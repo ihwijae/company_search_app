@@ -172,7 +172,7 @@ const resolveFileTypeLabel = (type) => FILE_TYPE_LABELS[type] || String(type || 
 const AGREEMENT_TEMPLATE_CONFIGS = {
   'mois-under30': {
     label: '행안부 30억 미만',
-    path: path.join(__dirname, 'template', '행안부_30억미만.xlsx'),
+    path: path.join(__dirname, '템플릿', '행안부_30억미만.xlsx'),
     sheetName: '양식',
     startRow: 5,
     maxRows: 68,
