@@ -1222,6 +1222,7 @@ button.primary:hover { background: var(--accent-2); }
 .excel-cell.total-cell.warn {
   color: #b91c1c;
   font-weight: 700;
+  background: #ffedd5;
 }
 
 .excel-cell.total-score.score-full {
@@ -1232,6 +1233,7 @@ button.primary:hover { background: var(--accent-2); }
 .excel-cell.total-score.score-partial {
   color: #b91c1c;
   font-weight: 700;
+  background: #ffedd5;
 }
 
 .management-bonus-cell {
