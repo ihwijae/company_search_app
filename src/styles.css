@@ -731,6 +731,12 @@ button.primary:hover { background: var(--accent-2); }
   border-radius: 14px;
   background: #f8fafc;
 }
+.agreement-load-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
 .agreement-load-main {
   display: flex;

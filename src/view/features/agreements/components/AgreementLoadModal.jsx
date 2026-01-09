@@ -15,6 +15,7 @@ export default function AgreementLoadModal({
   busy,
   error,
   onLoad,
+  onDelete,
   onResetFilters,
   formatAmount,
 }) {
@@ -152,7 +153,10 @@ export default function AgreementLoadModal({
                     <span>개찰일 {meta.noticeDate || '-'}</span>
                   </div>
                 </div>
-                <button type="button" className="excel-btn primary" onClick={() => onLoad(item.path)}>불러오기</button>
+                <div className="agreement-load-actions">
+                  <button type="button" className="excel-btn" onClick={() => onDelete(item.path)}>삭제</button>
+                  <button type="button" className="excel-btn primary" onClick={() => onLoad(item.path)}>불러오기</button>
+                </div>
               </div>
             );
           })}

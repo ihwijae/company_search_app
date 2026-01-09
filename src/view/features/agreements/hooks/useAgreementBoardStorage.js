@@ -254,6 +254,30 @@ export default function useAgreementBoardStorage({
     }
   }, [applyAgreementSnapshot, showHeaderAlert]);
 
+  const handleDeleteAgreement = React.useCallback(async (path, confirm) => {
+    if (!path || typeof confirm !== 'function') return;
+    const ok = await confirm({
+      title: '협정을 삭제하시겠습니까?',
+      message: '삭제한 협정은 복구할 수 없습니다.',
+      confirmText: '예',
+      cancelText: '아니오',
+      tone: 'warning',
+    });
+    if (!ok) return;
+    setLoadBusy(true);
+    setLoadError('');
+    try {
+      const result = await window.electronAPI?.agreementBoardDelete?.(path);
+      if (!result?.success) throw new Error(result?.message || '삭제 실패');
+      showHeaderAlert('협정 삭제 완료');
+      await refreshLoadList();
+    } catch (err) {
+      setLoadError(err?.message || '삭제 실패');
+    } finally {
+      setLoadBusy(false);
+    }
+  }, [refreshLoadList, showHeaderAlert]);
+
   const handlePickRoot = React.useCallback(async () => {
     setLoadBusy(true);
     setLoadError('');
@@ -322,6 +346,7 @@ export default function useAgreementBoardStorage({
     closeLoadModal,
     handleSaveAgreement,
     handleLoadAgreement,
+    handleDeleteAgreement,
     handlePickRoot,
     refreshLoadList,
     resetFilters: () => setLoadFilters({ ...DEFAULT_FILTERS }),

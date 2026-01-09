@@ -1120,7 +1120,7 @@ export default function AgreementBoardWindow({
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
   const [excelCopying, setExcelCopying] = React.useState(false);
   const [copyingKind, setCopyingKind] = React.useState(null);
-  const { notify } = useFeedback();
+  const { notify, confirm } = useFeedback();
   const searchTargetRef = React.useRef(null);
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
@@ -1297,6 +1297,7 @@ export default function AgreementBoardWindow({
     closeLoadModal,
     handleSaveAgreement,
     handleLoadAgreement,
+    handleDeleteAgreement,
     handlePickRoot,
     resetFilters,
   } = useAgreementBoardStorage({
@@ -3832,6 +3833,7 @@ export default function AgreementBoardWindow({
         error={loadError}
         onLoad={handleLoadAgreement}
         onResetFilters={resetFilters}
+        onDelete={(path) => handleDeleteAgreement(path, confirm)}
         formatAmount={formatAmount}
       />
       {regionPickerOpen && (

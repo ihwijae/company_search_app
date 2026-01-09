@@ -1868,6 +1868,7 @@ try {
     try { ipcMain.removeHandler('agreement-board-get-root'); } catch {}
     try { ipcMain.removeHandler('agreement-board-set-root'); } catch {}
     try { ipcMain.removeHandler('agreement-board-pick-root'); } catch {}
+    try { ipcMain.removeHandler('agreement-board-delete'); } catch {}
   }
 
   ipcMain.handle('agreement-board-get-root', async () => {
@@ -1976,6 +1977,19 @@ try {
       return { success: true, data: raw?.payload || {} };
     } catch (e) {
       return { success: false, message: e?.message || 'Failed to load agreement board' };
+    }
+  });
+
+  ipcMain.handle('agreement-board-delete', async (_event, filePath) => {
+    try {
+      if (!filePath) throw new Error('Missing path');
+      const runtimePath = toWSLPathIfNeeded(filePath) || filePath;
+      if (fs.existsSync(runtimePath)) {
+        fs.unlinkSync(runtimePath);
+      }
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: e?.message || 'Failed to delete agreement board' };
     }
   });
 } catch (e) {
