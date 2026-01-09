@@ -72,7 +72,9 @@ const BOARD_COPY_BUTTON_STYLE_MAP = {
 };
 const resolveOwnerPerformanceMax = (ownerId) => {
   const upper = String(ownerId || '').toUpperCase();
-  return upper === 'MOIS' ? PERFORMANCE_MOIS_DEFAULT_MAX : PERFORMANCE_DEFAULT_MAX;
+  if (upper === 'MOIS') return PERFORMANCE_MOIS_DEFAULT_MAX;
+  if (upper === 'PPS') return PERFORMANCE_MOIS_DEFAULT_MAX;
+  return PERFORMANCE_DEFAULT_MAX;
 };
 
 const resolveLhQualityDefaultByRange = (rangeLabel, rangeKey) => {
