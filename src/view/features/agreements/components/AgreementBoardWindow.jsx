@@ -1164,6 +1164,10 @@ export default function AgreementBoardWindow({
   }, [ownerKeyUpper, ratioBaseAmount, editableBidAmount, bidAmount]);
 
   const loadRangeOptions = React.useMemo(() => {
+    if (loadFilters.ownerId) {
+      const group = AGREEMENT_GROUPS.find((item) => item.ownerId === loadFilters.ownerId);
+      return group?.items || [];
+    }
     const map = new Map();
     AGREEMENT_GROUPS.forEach((group) => {
       (group.items || []).forEach((item) => {
@@ -1173,7 +1177,7 @@ export default function AgreementBoardWindow({
       });
     });
     return Array.from(map.values());
-  }, []);
+  }, [loadFilters.ownerId]);
 
   const derivePendingPlacementHint = React.useCallback((picked) => {
     if (!picked || typeof picked !== 'object') {
@@ -2013,12 +2017,12 @@ export default function AgreementBoardWindow({
     if (exporting) return;
     const api = typeof window !== 'undefined' ? window.electronAPI : null;
     if (!api?.agreementsExportExcel) {
-      window.alert('엑셀 내보내기 채널이 준비되지 않았습니다. 데스크탑 앱에서만 실행 가능합니다.');
+      showHeaderAlert('엑셀 내보내기 채널이 준비되지 않았습니다. 데스크탑 앱에서만 실행 가능합니다.');
       return;
     }
     const templateKey = resolveTemplateKey(ownerId, rangeId);
     if (!templateKey) {
-      window.alert('현재 선택한 발주처/구간은 엑셀 템플릿이 아직 준비되지 않았습니다.');
+      showHeaderAlert('현재 선택한 발주처/구간은 엑셀 템플릿이 아직 준비되지 않았습니다.');
       return;
     }
 
@@ -2139,13 +2143,13 @@ export default function AgreementBoardWindow({
 
       const response = await api.agreementsExportExcel(payload);
       if (response?.success) {
-        window.alert('엑셀 파일을 저장했습니다.');
+        showHeaderAlert('엑셀 파일을 저장했습니다.');
       } else {
-        window.alert(response?.message || '엑셀 내보내기에 실패했습니다.');
+        showHeaderAlert(response?.message || '엑셀 내보내기에 실패했습니다.');
       }
     } catch (error) {
       console.error('[AgreementBoard] Excel export failed:', error);
-      window.alert('엑셀 내보내기 중 오류가 발생했습니다.');
+      showHeaderAlert('엑셀 내보내기 중 오류가 발생했습니다.');
     } finally {
       setExporting(false);
     }
@@ -2198,7 +2202,7 @@ export default function AgreementBoardWindow({
       .filter(Boolean);
 
     if (items.length === 0) {
-      window.alert('문자를 생성할 협정 정보가 없습니다. 업체를 배치하고 지분율을 입력해주세요.');
+      showHeaderAlert('문자를 생성할 협정 정보가 없습니다. 업체를 배치하고 지분율을 입력해주세요.');
       return;
     }
 
@@ -2206,13 +2210,13 @@ export default function AgreementBoardWindow({
       const text = generateMany(items);
       const result = await window.electronAPI.clipboardWriteText(text);
       if (result.success) {
-        window.alert('협정 문자 내용이 클립보드에 복사되었습니다.');
+        showHeaderAlert('협정 문자 내용이 클립보드에 복사되었습니다.');
       } else {
         throw new Error(result.message || 'Clipboard write failed');
       }
     } catch (err) {
       console.error('Failed to copy text: ', err);
-      window.alert('클립보드 복사에 실패했습니다.');
+      showHeaderAlert('클립보드 복사에 실패했습니다.');
     }
   }, [groupAssignments, participantMap, groupShares, ownerId, noticeNo, noticeTitle]);
 
@@ -3067,7 +3071,7 @@ export default function AgreementBoardWindow({
 
     const payload = rows.join('\r\n');
     if (!payload.trim()) {
-      window.alert('복사할 협정이 없습니다.');
+      showHeaderAlert('복사할 협정이 없습니다.');
       return;
     }
 
@@ -3075,10 +3079,10 @@ export default function AgreementBoardWindow({
       setExcelCopying(true);
       setCopyingKind(kind);
       await copyToClipboard(payload);
-      window.alert(action.successMessage || '복사가 완료되었습니다.');
+      showHeaderAlert(action.successMessage || '복사가 완료되었습니다.');
     } catch (error) {
       console.error('[AgreementBoard] Excel copy failed:', error);
-      window.alert('복사에 실패했습니다. 다시 시도해 주세요.');
+      showHeaderAlert('복사에 실패했습니다. 다시 시도해 주세요.');
     } finally {
       setCopyingKind(null);
       setExcelCopying(false);
@@ -3089,7 +3093,7 @@ export default function AgreementBoardWindow({
   const copyGroupMetric = React.useCallback(async (groupIndex, metric) => {
     const group = groups[groupIndex];
     if (!group) {
-      window.alert('협정 조합을 찾을 수 없습니다.');
+      showHeaderAlert('협정 조합을 찾을 수 없습니다.');
       return;
     }
 
@@ -3132,10 +3136,10 @@ export default function AgreementBoardWindow({
       } else {
         throw new Error('clipboard unavailable');
       }
-      window.alert(`${config.label} 복사 완료`);
+      showHeaderAlert(`${config.label} 복사 완료`);
     } catch (err) {
       console.error('[AgreementBoard] copy failed', err);
-      window.alert('복사에 실패했습니다. 다시 시도해 주세요.');
+      showHeaderAlert('복사에 실패했습니다. 다시 시도해 주세요.');
     }
   }, [groups]);
 
