@@ -74,6 +74,14 @@ export default function AgreementLoadModal({
             </select>
           </label>
           <label>
+            <span>의무지역</span>
+            <input
+              value={filters.dutyRegion}
+              onChange={(event) => setFilters((prev) => ({ ...prev, dutyRegion: event.target.value }))}
+              placeholder="예: 서울"
+            />
+          </label>
+          <label>
             <span>추정금액 최소</span>
             <input
               value={filters.amountMin}

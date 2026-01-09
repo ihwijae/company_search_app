@@ -4,6 +4,7 @@ const DEFAULT_FILTERS = {
   ownerId: '',
   rangeId: '',
   industryLabel: '',
+  dutyRegion: '',
   amountMin: '',
   amountMax: '',
 };
@@ -65,9 +66,12 @@ export default function useAgreementBoardStorage({
       rangeId: selectedRangeOption?.key || '',
       rangeLabel: selectedRangeOption?.label || '',
       industryLabel: industryLabel || '',
+      dutyRegions: Array.isArray(dutyRegions) ? dutyRegions.slice() : [],
       estimatedAmount: parseNumeric(estimatedAmount),
       estimatedAmountLabel: estimatedAmount || '',
       noticeDate: noticeDate || '',
+      noticeNo: noticeNo || '',
+      noticeTitle: noticeTitle || '',
     },
     payload: {
       ownerId,
@@ -272,6 +276,7 @@ export default function useAgreementBoardStorage({
     const ownerFilter = String(loadFilters.ownerId || '').trim();
     const rangeFilter = String(loadFilters.rangeId || '').trim();
     const industryFilter = String(loadFilters.industryLabel || '').trim();
+    const dutyFilter = String(loadFilters.dutyRegion || '').trim();
     const amountMin = parseNumeric(loadFilters.amountMin);
     const amountMax = parseNumeric(loadFilters.amountMax);
     return (loadItems || []).filter((item) => {
@@ -279,6 +284,10 @@ export default function useAgreementBoardStorage({
       if (ownerFilter && String(meta.ownerId || '') !== ownerFilter) return false;
       if (rangeFilter && String(meta.rangeId || '') !== rangeFilter) return false;
       if (industryFilter && String(meta.industryLabel || '') !== industryFilter) return false;
+      if (dutyFilter) {
+        const regions = Array.isArray(meta.dutyRegions) ? meta.dutyRegions : [];
+        if (!regions.some((region) => String(region || '') === dutyFilter)) return false;
+      }
       const amount = parseNumeric(meta.estimatedAmount ?? meta.estimatedAmountLabel);
       if (Number.isFinite(amountMin) && amount != null && amount < amountMin) return false;
       if (Number.isFinite(amountMax) && amount != null && amount > amountMax) return false;

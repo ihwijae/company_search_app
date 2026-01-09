@@ -1913,7 +1913,9 @@ try {
       if (!payload || typeof payload !== 'object') throw new Error('Invalid payload');
       ensureAgreementBoardDir();
       const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {};
+      const noticeLabel = [meta.noticeNo, meta.noticeTitle].filter(Boolean).join('-');
       const fileLabelParts = [
+        noticeLabel,
         meta.ownerLabel || meta.ownerId,
         meta.rangeLabel || meta.rangeId,
         meta.industryLabel,
