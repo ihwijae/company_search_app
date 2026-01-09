@@ -3359,14 +3359,16 @@ export default function AgreementBoardWindow({
     if (!rootEl || !mainEl) return undefined;
 
     const handleMainWheel = (event) => {
-      if (!event.shiftKey) return;
-      if (mainEl.scrollWidth <= mainEl.clientWidth + 1) return;
       const deltaX = event.deltaX;
       const deltaY = event.deltaY;
+      const wantsHorizontal = event.shiftKey || Math.abs(deltaX) > Math.abs(deltaY);
+      if (!wantsHorizontal) return;
+      if (mainEl.scrollWidth <= mainEl.clientWidth + 1) return;
       const delta = Math.abs(deltaX) > 0.1 ? deltaX : deltaY;
       if (Math.abs(delta) < 0.1) return;
       mainEl.scrollBy({ left: delta, behavior: 'auto' });
       event.preventDefault();
+      event.stopPropagation();
     };
 
     const handleWheel = (event) => {
@@ -3385,10 +3387,10 @@ export default function AgreementBoardWindow({
       event.preventDefault();
     };
 
-    mainEl.addEventListener('wheel', handleMainWheel, { passive: false });
+    mainEl.addEventListener('wheel', handleMainWheel, { passive: false, capture: true });
     rootEl.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
-      mainEl.removeEventListener('wheel', handleMainWheel, { passive: false });
+      mainEl.removeEventListener('wheel', handleMainWheel, { passive: false, capture: true });
       rootEl.removeEventListener('wheel', handleWheel, { passive: false });
     };
   }, [portalContainer, open, inlineMode]);
