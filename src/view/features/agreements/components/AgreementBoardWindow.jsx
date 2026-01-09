@@ -454,6 +454,12 @@ const formatPercent = (value) => {
   return `${number.toFixed(2)}%`;
 };
 
+const parsePercentValue = (value) => {
+  const number = toNumber(value);
+  if (number === null) return NaN;
+  return number / 100;
+};
+
 const parseAmountValue = (value) => {
   const parsed = toNumber(value);
   return parsed === null ? null : parsed;
@@ -988,6 +994,7 @@ export default function AgreementBoardWindow({
   }, [onUpdateBoard]);
 
   const handleBaseAmountChange = React.useCallback((value) => {
+    setBaseTouched(true);
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ baseAmount: value });
   }, [onUpdateBoard]);
 
@@ -1120,6 +1127,10 @@ export default function AgreementBoardWindow({
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
   const [excelCopying, setExcelCopying] = React.useState(false);
   const [copyingKind, setCopyingKind] = React.useState(null);
+  const [baseTouched, setBaseTouched] = React.useState(false);
+  const [bidTouched, setBidTouched] = React.useState(false);
+  const baseAutoRef = React.useRef('');
+  const bidAutoRef = React.useRef('');
   const { notify, confirm } = useFeedback();
   const searchTargetRef = React.useRef(null);
   const pendingPlacementRef = React.useRef(null);
@@ -1461,8 +1472,51 @@ export default function AgreementBoardWindow({
     }
   }, [bidAmount, entryAmount, open]);
 
+  React.useEffect(() => {
+    setBaseTouched(false);
+    setBidTouched(false);
+    baseAutoRef.current = '';
+    bidAutoRef.current = '';
+  }, [ownerKeyUpper]);
+
+  React.useEffect(() => {
+    if (ownerKeyUpper !== 'PPS') return;
+    const estimated = parseAmountValue(estimatedAmount);
+    const autoValue = estimated && estimated > 0 ? Math.round(estimated * 1.1) : 0;
+    const autoFormatted = formatPlainAmount(autoValue);
+    const current = baseAmount || '';
+    const lastAuto = baseAutoRef.current;
+    baseAutoRef.current = autoFormatted;
+    if (baseTouched && current !== lastAuto) return;
+    if (current && current !== lastAuto && current !== autoFormatted) return;
+    if (current === (autoFormatted || '')) return;
+    if (!autoFormatted && current === '') return;
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ baseAmount: autoFormatted });
+  }, [ownerKeyUpper, estimatedAmount, baseAmount, baseTouched, onUpdateBoard]);
+
+  React.useEffect(() => {
+    if (ownerKeyUpper !== 'PPS') return;
+    const base = parseAmountValue(baseAmount);
+    const bidRateValue = parsePercentValue(bidRate);
+    const adjustmentValue = parsePercentValue(adjustmentRate);
+    const autoValue = base && base > 0 && Number.isFinite(bidRateValue) && Number.isFinite(adjustmentValue)
+      ? Math.round(base * bidRateValue * adjustmentValue)
+      : 0;
+    const autoFormatted = formatPlainAmount(autoValue);
+    const current = editableBidAmount || '';
+    const lastAuto = bidAutoRef.current;
+    bidAutoRef.current = autoFormatted;
+    if (bidTouched && current !== lastAuto) return;
+    if (current && current !== lastAuto && current !== autoFormatted) return;
+    if (current === (autoFormatted || '')) return;
+    if (!autoFormatted && current === '') return;
+    setEditableBidAmount(autoFormatted);
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidAmount: autoFormatted });
+  }, [ownerKeyUpper, baseAmount, bidRate, adjustmentRate, editableBidAmount, bidTouched, onUpdateBoard]);
+
   const handleBidAmountChange = (value) => {
     setEditableBidAmount(value);
+    setBidTouched(true);
     if (onUpdateBoard) {
       onUpdateBoard && onUpdateBoard({ bidAmount: value });
     }
