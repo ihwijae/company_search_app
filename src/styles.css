@@ -1157,6 +1157,10 @@ button.primary:hover { background: var(--accent-2); }
   color: #b91c1c;
   font-weight: 700;
   white-space: nowrap;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .excel-share-cell input {
