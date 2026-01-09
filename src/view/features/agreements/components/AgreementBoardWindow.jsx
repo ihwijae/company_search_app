@@ -1147,6 +1147,52 @@ export default function AgreementBoardWindow({
     return null;
   }, [ownerKeyUpper, ratioBaseAmount, editableBidAmount, bidAmount]);
 
+  const { perfectPerformanceAmount, perfectPerformanceBasis } = React.useMemo(() => {
+    const rangeKey = String(selectedRangeOption?.key || '').toLowerCase();
+    const estimated = parseAmountValue(estimatedAmount) || 0;
+    const base = parseAmountValue(baseAmount) || 0;
+
+    if (ownerKeyUpper === 'PPS') {
+      return base > 0
+        ? { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' }
+        : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+    }
+
+    if (ownerKeyUpper === 'MOIS') {
+      if (rangeKey === 'mois-under30' || rangeKey === 'mois-30to50') {
+        return estimated > 0
+          ? { perfectPerformanceAmount: Math.round(estimated * 0.8), perfectPerformanceBasis: '추정가격 × 80%' }
+          : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+      }
+      if (rangeKey === 'mois-50to100') {
+        return estimated > 0
+          ? { perfectPerformanceAmount: Math.round(estimated * 1.7), perfectPerformanceBasis: '추정가격 × 1.7배' }
+          : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+      }
+    }
+
+    if (ownerKeyUpper === 'LH') {
+      if (rangeKey === 'lh-under50') {
+        return base > 0
+          ? { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' }
+          : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+      }
+      if (rangeKey === 'lh-50to100') {
+        return base > 0
+          ? { perfectPerformanceAmount: base * 2, perfectPerformanceBasis: '기초금액 × 2배' }
+          : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+      }
+    }
+
+    return { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+  }, [ownerKeyUpper, selectedRangeOption?.key, estimatedAmount, baseAmount]);
+
+  const perfectPerformanceDisplay = React.useMemo(() => {
+    if (!perfectPerformanceAmount || perfectPerformanceAmount <= 0) return '';
+    const formatted = Math.round(perfectPerformanceAmount).toLocaleString();
+    return perfectPerformanceBasis ? `${formatted} (${perfectPerformanceBasis})` : formatted;
+  }, [perfectPerformanceAmount, perfectPerformanceBasis]);
+
   const derivePendingPlacementHint = React.useCallback((picked) => {
     if (!picked || typeof picked !== 'object') {
       return { candidateId: null, matchBizNo: '', matchNameKey: '' };
@@ -3619,6 +3665,15 @@ export default function AgreementBoardWindow({
                   ) : (
                     <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
                   )}
+                </div>
+                <div className="excel-field-block size-md">
+                  <span className="field-label">실적만점금액</span>
+                  <input
+                    className="input"
+                    value={perfectPerformanceDisplay}
+                    readOnly
+                    placeholder="금액 입력 시 자동 계산"
+                  />
                 </div>
               </div>
 
