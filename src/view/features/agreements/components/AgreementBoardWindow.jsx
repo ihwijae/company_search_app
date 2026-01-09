@@ -3684,6 +3684,7 @@ export default function AgreementBoardWindow({
                   )}
                 </tbody>
               </table>
+              <div className="excel-table-spacer" aria-hidden="true" />
             </div>
         </div>
         </div>

@@ -705,8 +705,12 @@ button.primary:hover { background: var(--accent-2); }
   overscroll-behavior: contain;
 }
 .excel-table-inner {
-  display: inline-block;
-  padding-right: 16px;
+  display: inline-flex;
+  align-items: stretch;
+}
+.excel-table-spacer {
+  width: 16px;
+  flex: 0 0 16px;
 }
 
 .excel-board-table {
