@@ -945,6 +945,7 @@ export default function AgreementBoardWindow({
   const selectedRangeKey = selectedRangeOption?.key || '';
   const ownerDisplayLabel = selectedGroup?.label || '발주처 미지정';
   const rangeDisplayLabel = selectedRangeOption?.label || '금액대 선택';
+  const entryModeResolved = entryMode === 'sum' ? 'sum' : (entryMode === 'none' ? 'none' : 'ratio');
 
   const handleOwnerSelectChange = React.useCallback((event) => {
     const groupId = event.target.value;
@@ -1267,7 +1268,6 @@ export default function AgreementBoardWindow({
   }, []);
 
   const isLH = ownerId === 'LH';
-  const entryModeResolved = entryMode === 'sum' ? 'sum' : (entryMode === 'none' ? 'none' : 'ratio');
   const lhQualityDefault = React.useMemo(() => {
     if (!isLHOwner) return null;
     return resolveLhQualityDefaultByRange(selectedRangeOption?.label, selectedRangeOption?.key);
