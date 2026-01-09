@@ -7,6 +7,7 @@ export default function AgreementLoadModal({
   setFilters,
   rootPath,
   onPickRoot,
+  dutyRegionOptions,
   rangeOptions,
   agreementGroups,
   industryOptions,
@@ -75,11 +76,15 @@ export default function AgreementLoadModal({
           </label>
           <label>
             <span>의무지역</span>
-            <input
+            <select
               value={filters.dutyRegion}
               onChange={(event) => setFilters((prev) => ({ ...prev, dutyRegion: event.target.value }))}
-              placeholder="예: 서울"
-            />
+            >
+              <option value="">전체</option>
+              {dutyRegionOptions.map((region) => (
+                <option key={region} value={region}>{region}</option>
+              ))}
+            </select>
           </label>
           <label>
             <span>추정금액 최소</span>
@@ -107,6 +112,8 @@ export default function AgreementLoadModal({
           )}
           {!busy && !error && items.map((item) => {
             const meta = item.meta || {};
+            const noticeTitle = [meta.noticeNo, meta.noticeTitle].filter(Boolean).join('-');
+            const dutyRegions = Array.isArray(meta.dutyRegions) ? meta.dutyRegions.filter(Boolean) : [];
             const amountLabel = meta.estimatedAmount != null
               ? formatAmount(meta.estimatedAmount)
               : (meta.estimatedAmountLabel || '-');
@@ -114,9 +121,13 @@ export default function AgreementLoadModal({
               <div key={item.path} className="agreement-load-item">
                 <div className="agreement-load-main">
                   <div className="agreement-load-title">
-                    <strong>{meta.ownerLabel || meta.ownerId || '발주처'}</strong>
-                    <span>{meta.rangeLabel || meta.rangeId || '구간'}</span>
+                    <strong>{noticeTitle || meta.noticeTitle || meta.noticeNo || '협정'}</strong>
+                    {(meta.ownerLabel || meta.ownerId) && <span>{meta.ownerLabel || meta.ownerId}</span>}
+                    {(meta.rangeLabel || meta.rangeId) && <span>{meta.rangeLabel || meta.rangeId}</span>}
                     {meta.industryLabel && <span>{meta.industryLabel}</span>}
+                    {dutyRegions.map((region) => (
+                      <span key={region}>{region}</span>
+                    ))}
                   </div>
                   <div className="agreement-load-meta">
                     <span>추정금액 {amountLabel || '-'}</span>

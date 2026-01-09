@@ -296,6 +296,19 @@ export default function useAgreementBoardStorage({
     });
   }, [loadFilters, loadItems, parseNumeric]);
 
+  const dutyRegionOptions = React.useMemo(() => {
+    const set = new Set();
+    (loadItems || []).forEach((item) => {
+      const regions = item?.meta?.dutyRegions;
+      if (Array.isArray(regions)) {
+        regions.forEach((region) => {
+          if (region) set.add(String(region));
+        });
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
+  }, [loadItems]);
+
   return {
     loadModalOpen,
     loadFilters,
@@ -303,6 +316,7 @@ export default function useAgreementBoardStorage({
     loadBusy,
     loadError,
     loadRootPath,
+    dutyRegionOptions,
     setLoadFilters,
     openLoadModal,
     closeLoadModal,

@@ -1291,6 +1291,7 @@ export default function AgreementBoardWindow({
     loadBusy,
     loadError,
     loadRootPath,
+    dutyRegionOptions,
     setLoadFilters,
     openLoadModal,
     closeLoadModal,
@@ -3822,6 +3823,7 @@ export default function AgreementBoardWindow({
         setFilters={setLoadFilters}
         rootPath={loadRootPath}
         onPickRoot={handlePickRoot}
+        dutyRegionOptions={dutyRegionOptions}
         rangeOptions={loadRangeOptions}
         agreementGroups={AGREEMENT_GROUPS}
         industryOptions={INDUSTRY_OPTIONS}
