@@ -28,9 +28,12 @@ export default function AgreementBoardPage() {
   React.useEffect(() => {
     if (!boardState.open) return undefined;
     const previousOverflowY = document.body.style.overflowY;
+    const previousOverflowX = document.body.style.overflowX;
     document.body.style.overflowY = 'hidden';
+    document.body.style.overflowX = 'hidden';
     return () => {
       document.body.style.overflowY = previousOverflowY;
+      document.body.style.overflowX = previousOverflowX;
     };
   }, [boardState.open]);
 
