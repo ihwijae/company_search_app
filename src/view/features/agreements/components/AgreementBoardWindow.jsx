@@ -1119,7 +1119,6 @@ export default function AgreementBoardWindow({
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
   const boardMainRef = React.useRef(null);
-  const [tableScale, setTableScale] = React.useState(1);
 
   const clearHeaderAlertTimer = React.useCallback(() => {
     if (headerAlertTimerRef.current) {
@@ -1305,35 +1304,6 @@ export default function AgreementBoardWindow({
     const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth + perfCellsWidth;
     return Math.max(1200, total);
   }, [slotLabels.length, credibilityEnabled]);
-
-  React.useEffect(() => {
-    const wrapper = boardMainRef.current;
-    if (!wrapper || !tableMinWidth) return undefined;
-    let rafId = null;
-    const updateScale = () => {
-      const width = wrapper.clientWidth;
-      if (!width) return;
-      const nextScale = Math.min(1, width / tableMinWidth);
-      setTableScale((prev) => (Math.abs(prev - nextScale) > 0.001 ? nextScale : prev));
-    };
-    const handleResize = () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(updateScale);
-    };
-    updateScale();
-    let observer = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(handleResize);
-      observer.observe(wrapper);
-    } else {
-      window.addEventListener('resize', handleResize);
-    }
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      if (observer) observer.disconnect();
-      else window.removeEventListener('resize', handleResize);
-    };
-  }, [tableMinWidth]);
 
   const derivedMaxScores = React.useMemo(() => {
     if (!formulasDoc) return { managementMax: null, performanceMax: null };
@@ -3394,8 +3364,14 @@ export default function AgreementBoardWindow({
       const deltaX = event.deltaX;
       const deltaY = event.deltaY;
       const horizontalIntent = Math.abs(deltaX) > 0.1 && Math.abs(deltaX) >= Math.abs(deltaY);
+      const shiftHorizontal = event.shiftKey && Math.abs(deltaY) > 0.1;
       if (horizontalIntent) {
         mainEl.scrollBy({ left: deltaX, behavior: 'auto' });
+        event.preventDefault();
+        return;
+      }
+      if (shiftHorizontal) {
+        mainEl.scrollBy({ left: deltaY, behavior: 'auto' });
         event.preventDefault();
         return;
       }
@@ -3618,7 +3594,7 @@ export default function AgreementBoardWindow({
           <div className="excel-table-wrapper" ref={boardMainRef}>
             <table
               className="excel-board-table"
-              style={{ width: `${tableMinWidth}px`, zoom: tableScale }}
+              style={{ minWidth: `${tableMinWidth}px`, width: `${tableMinWidth}px` }}
             >
               <colgroup>
                 <col className="col-order" />

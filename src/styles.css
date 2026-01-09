@@ -693,7 +693,7 @@ button.primary:hover { background: var(--accent-2); }
   background: #ffffff;
   border-radius: 10px;
   border: 1px solid #dbeafe;
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: auto;
   padding-bottom: 8px;
   min-width: 0;
