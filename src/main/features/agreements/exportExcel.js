@@ -66,6 +66,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   const qualityColumns = Array.isArray(config.qualityColumns) ? config.qualityColumns : [];
   const rowStep = Number(config.rowStep) > 0 ? Number(config.rowStep) : 1;
   const qualityRowOffset = Number.isFinite(config.qualityRowOffset) ? Number(config.qualityRowOffset) : 0;
+  const approvalColumn = config.approvalColumn || null;
 
   const availableRows = config.maxRows
     ? Math.floor((config.maxRows - config.startRow) / rowStep) + 1
@@ -161,6 +162,11 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
 
     const rowIndex = rowNumber;
     const summary = group?.summary || null;
+    if (approvalColumn) {
+      const approvalCell = worksheet.getCell(`${approvalColumn}${rowIndex}`);
+      const approvalValue = group?.approval ? String(group.approval) : '';
+      approvalCell.value = approvalValue || null;
+    }
     const indexValue = Number(group.index);
     if (Number.isFinite(indexValue)) {
       worksheet.getCell(`A${rowIndex}`).value = indexValue;

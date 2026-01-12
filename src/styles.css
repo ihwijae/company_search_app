@@ -916,6 +916,10 @@ button.primary:hover { background: var(--accent-2); }
 .excel-board-table textarea {
   text-align: center;
 }
+.excel-cell.select-cell input {
+  width: 16px;
+  height: 16px;
+}
 .excel-cell.entry-disabled {
   background: #e2e8f0;
   color: #64748b;
@@ -1008,6 +1012,7 @@ button.primary:hover { background: var(--accent-2); }
   text-align: left;
 }
 .col-order { width: 40px; }
+.col-select { width: 32px; }
 .col-approval { width: 40px; }
 .col-name { width: 100px; }
 .col-share { width: 65px; }

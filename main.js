@@ -190,6 +190,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       'W', 'X', 'Y', 'Z', 'AA',
       'AN', 'AO', 'AP', 'AQ', 'AR', 'AS', 'AT',
     ],
+    approvalColumn: 'B',
     regionFill: {
       type: 'pattern',
       pattern: 'solid',
@@ -226,6 +227,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       bidDeadline: 'P2',
       dutySummary: 'W2',
     },
+    approvalColumn: 'B',
     summaryColumns: {
       credibility: 'AD',
     },
@@ -270,6 +272,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       bidDeadline: 'M2',
       dutySummary: 'Q2',
     },
+    approvalColumn: 'B',
     summaryColumns: {
       credibility: 'AF',
       netCostBonus: 'AG',

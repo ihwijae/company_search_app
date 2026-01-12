@@ -49,6 +49,7 @@ const industryToFileType = (label) => {
   return '';
 };
 const COLUMN_WIDTHS = {
+  select: 32,
   order: 40,
   approval: 40,
   name: 100,
@@ -958,6 +959,7 @@ export default function AgreementBoardWindow({
   const [groupShareRawInputs, setGroupShareRawInputs] = React.useState([]);
   const [groupApprovals, setGroupApprovals] = React.useState([]);
   const [groupManagementBonus, setGroupManagementBonus] = React.useState([]);
+  const [selectedGroups, setSelectedGroups] = React.useState(() => new Set());
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState([]);
   const [formulasDoc, setFormulasDoc] = React.useState(null);
@@ -1517,6 +1519,7 @@ export default function AgreementBoardWindow({
     const perfCellsWidth = slotLabels.length * COLUMN_WIDTHS.performanceCell;
     const sipyungCellsWidth = slotLabels.length * COLUMN_WIDTHS.sipyungCell;
     const base = COLUMN_WIDTHS.order
+      + COLUMN_WIDTHS.select
       + COLUMN_WIDTHS.approval
       + COLUMN_WIDTHS.management
       + COLUMN_WIDTHS.managementBonus
@@ -2254,6 +2257,7 @@ export default function AgreementBoardWindow({
         const hasMembers = Array.isArray(memberIds) && memberIds.some((uid) => Boolean(uid));
         if (!hasMembers) return [];
         const summaryEntry = summaryByGroup.get(groupIndex) || null;
+        const approvalValue = String(groupApprovals[groupIndex] || '').trim();
         const members = memberIds.map((uid, slotIndex) => {
           if (!uid) {
             return {
@@ -2337,6 +2341,7 @@ export default function AgreementBoardWindow({
         }
         const payload = {
           index: exportIndex,
+          approval: approvalValue,
           members,
           summary: summaryEntry ? {
             shareSum: summaryEntry.shareSum ?? null,
@@ -2423,6 +2428,7 @@ export default function AgreementBoardWindow({
     groupAssignments,
     groupShares,
     getSharePercent,
+    groupApprovals,
     participantMap,
     summaryByGroup,
     summary,
@@ -2450,11 +2456,16 @@ export default function AgreementBoardWindow({
         if (members.length === 1 && soloExclusionSet.has(leaderName)) {
           return null;
         }
+        const approvalValue = String(groupApprovals[groupIndex] || '').trim();
+        if (approvalValue === '알림' || approvalValue === '취소') {
+          return null;
+        }
 
         return {
           owner: ownerId,
           noticeNo,
           title: noticeTitle,
+          approval: approvalValue,
           leader: {
             name: getCompanyName(leaderEntry.candidate),
             bizNo: normalizeBizNo(getBizNo(leaderEntry.candidate)),
@@ -2486,7 +2497,7 @@ export default function AgreementBoardWindow({
       console.error('Failed to copy text: ', err);
       showHeaderAlert('클립보드 복사에 실패했습니다.');
     }
-  }, [groupAssignments, participantMap, groupShares, ownerId, noticeNo, noticeTitle]);
+  }, [groupAssignments, participantMap, groupShares, groupApprovals, ownerId, noticeNo, noticeTitle]);
 
   React.useEffect(() => {
     if (skipAssignmentSyncRef.current) {
@@ -3174,6 +3185,41 @@ export default function AgreementBoardWindow({
     }
   };
 
+  const toggleGroupSelection = (groupIndex) => {
+    setSelectedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupIndex)) next.delete(groupIndex);
+      else next.add(groupIndex);
+      return next;
+    });
+  };
+
+  const clearSelectedGroups = () => setSelectedGroups(new Set());
+
+  const handleDeleteGroups = async () => {
+    if (selectedGroups.size === 0) {
+      showHeaderAlert('삭제할 협정을 선택해 주세요.');
+      return;
+    }
+    const ok = await confirm({
+      title: '협정을 삭제하시겠습니까?',
+      message: '선택한 협정은 복구할 수 없습니다.',
+      confirmText: '예',
+      cancelText: '아니오',
+      tone: 'warning',
+    });
+    if (!ok) return;
+    const selected = new Set(selectedGroups);
+    setGroupAssignments((prev) => prev.filter((_, idx) => !selected.has(idx)));
+    setGroupShares((prev) => prev.filter((_, idx) => !selected.has(idx)));
+    setGroupShareRawInputs((prev) => prev.filter((_, idx) => !selected.has(idx)));
+    setGroupCredibility((prev) => prev.filter((_, idx) => !selected.has(idx)));
+    setGroupApprovals((prev) => prev.filter((_, idx) => !selected.has(idx)));
+    setGroupManagementBonus((prev) => prev.filter((_, idx) => !selected.has(idx)));
+    setDropTarget(null);
+    clearSelectedGroups();
+  };
+
   const handleShareInput = (groupIndex, slotIndex, rawValue) => {
     const original = rawValue ?? '';
     const sanitized = original.replace(/[^0-9.]/g, '');
@@ -3449,7 +3495,7 @@ export default function AgreementBoardWindow({
 
   const tableColumnCount = React.useMemo(() => {
     const perSlotCols = credibilityEnabled ? 6 : 5;
-    const baseColumns = 11 + (credibilityEnabled ? 1 : 0) + (isLHOwner ? 1 : 0);
+    const baseColumns = 12 + (credibilityEnabled ? 1 : 0) + (isLHOwner ? 1 : 0);
     return baseColumns + (slotLabels.length * perSlotCols);
   }, [credibilityEnabled, isLHOwner, slotLabels.length]);
 
@@ -3798,14 +3844,25 @@ export default function AgreementBoardWindow({
     return (
       <React.Fragment key={group.id}>
         <tr className={`excel-board-row${entryFailed ? ' entry-failed' : ''}`}>
+        <td className="excel-cell select-cell">
+          <input
+            type="checkbox"
+            checked={selectedGroups.has(groupIndex)}
+            onChange={() => toggleGroupSelection(groupIndex)}
+            aria-label={`${group.id}번 협정 선택`}
+          />
+        </td>
         <td className={`excel-cell order-cell${scoreState ? ` score-${scoreState}` : ''}`}>{group.id}</td>
         <td className="excel-cell approval-cell">
-          <input
-            type="text"
+          <select
             value={approvalValue}
-            placeholder=""
             onChange={(event) => handleApprovalChange(groupIndex, event.target.value)}
-          />
+          >
+            <option value="">선택</option>
+            <option value="알림">알림</option>
+            <option value="정정">정정</option>
+            <option value="취소">취소</option>
+          </select>
         </td>
         {slotMetasWithLimit.map((meta) => renderNameCell(meta))}
         {slotMetasWithLimit.map(renderShareCell)}
@@ -4097,6 +4154,7 @@ export default function AgreementBoardWindow({
                   </button>
                 ))}
                 <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
+                <button type="button" className="excel-btn" onClick={handleDeleteGroups}>선택 삭제</button>
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
                 <button type="button" className="excel-btn" onClick={handleSaveAgreement}>저장</button>
                 <button type="button" className="excel-btn" onClick={openLoadModal}>불러오기</button>
@@ -4118,12 +4176,13 @@ export default function AgreementBoardWindow({
                 className="excel-board-table"
                 style={{ minWidth: `${tableMinWidth}px`, width: `${tableMinWidth}px` }}
               >
-                <colgroup>
-                  <col className="col-order" />
-                  <col className="col-approval" />
-                  {slotLabels.map((_, index) => (
-                    <col key={`col-name-${index}`} className="col-name" />
-                  ))}
+            <colgroup>
+              <col className="col-select" />
+              <col className="col-order" />
+              <col className="col-approval" />
+              {slotLabels.map((_, index) => (
+                <col key={`col-name-${index}`} className="col-name" />
+              ))}
                 {slotLabels.map((_, index) => (
                   <col key={`col-share-${index}`} className="col-share" />
                 ))}
@@ -4152,6 +4211,7 @@ export default function AgreementBoardWindow({
             </colgroup>
             <thead>
               <tr>
+                <th rowSpan="2">선택</th>
                 <th rowSpan="2">연번</th>
                 <th rowSpan="2">승인</th>
                 <th colSpan={slotLabels.length}>업체명</th>
