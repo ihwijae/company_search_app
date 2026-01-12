@@ -252,12 +252,12 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     },
     qualityColumns: ['I', 'J', 'K', 'L', 'M'],
     clearColumns: [
-      'B', 'C', 'D', 'E', 'F', 'G', 'H',
+      'C', 'D', 'E', 'F', 'G',
       'I', 'J', 'K', 'L', 'M',
-      'O', 'P', 'Q', 'R', 'S', 'T',
+      'P', 'Q', 'R', 'S', 'T',
       'W', 'X', 'Y', 'Z', 'AA',
+      'AF', 'AG',
       'AR', 'AS', 'AT', 'AU', 'AV',
-      'AW', 'AX',
     ],
     headerCells: {
       ratioBaseAmount: 'I1',
