@@ -1001,6 +1001,10 @@ export default function AgreementBoardWindow({
   const [memoDraft, setMemoDraft] = React.useState('');
   const memoEditorRef = React.useRef(null);
   const [copyModalOpen, setCopyModalOpen] = React.useState(false);
+  const [bidDatePart, setBidDatePart] = React.useState('');
+  const [bidTimePeriod, setBidTimePeriod] = React.useState('AM');
+  const [bidHourInput, setBidHourInput] = React.useState('');
+  const [bidMinuteInput, setBidMinuteInput] = React.useState('');
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
   const isLHOwner = ownerKeyUpper === 'LH';
   const isMoisOwner = ownerKeyUpper === 'MOIS';
@@ -1274,10 +1278,6 @@ export default function AgreementBoardWindow({
   const [bidTouched, setBidTouched] = React.useState(false);
   const [bidRateTouched, setBidRateTouched] = React.useState(false);
   const [adjustmentRateTouched, setAdjustmentRateTouched] = React.useState(false);
-  const [bidDatePart, setBidDatePart] = React.useState('');
-  const [bidTimePeriod, setBidTimePeriod] = React.useState('AM');
-  const [bidHourInput, setBidHourInput] = React.useState('');
-  const [bidMinuteInput, setBidMinuteInput] = React.useState('');
   const baseAutoRef = React.useRef('');
   const bidAutoRef = React.useRef('');
   const { notify, confirm } = useFeedback();
@@ -1304,8 +1304,17 @@ export default function AgreementBoardWindow({
       const parsed = parseAmountValue(source);
       if (parsed !== null && parsed > 0) return parsed;
     }
+    if (ownerKeyUpper === 'MOIS' && selectedRangeKey === MOIS_30_TO_50_KEY) {
+      const baseValue = parseAmountValue(baseAmount);
+      const bidRateValue = parsePercentValue(bidRate);
+      const adjustmentValue = parsePercentValue(adjustmentRate);
+      if (baseValue && baseValue > 0 && Number.isFinite(bidRateValue) && Number.isFinite(adjustmentValue)) {
+        const computed = Math.round(baseValue * bidRateValue * adjustmentValue);
+        if (computed > 0) return computed;
+      }
+    }
     return null;
-  }, [ownerKeyUpper, ratioBaseAmount, editableBidAmount, bidAmount]);
+  }, [ownerKeyUpper, selectedRangeKey, ratioBaseAmount, editableBidAmount, bidAmount, baseAmount, bidRate, adjustmentRate]);
 
   const { perfectPerformanceAmount, perfectPerformanceBasis } = React.useMemo(() => {
     const rangeKey = String(selectedRangeOption?.key || '').toLowerCase();
