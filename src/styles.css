@@ -1020,6 +1020,11 @@ button.primary:hover { background: var(--accent-2); }
   color: #64748b;
   text-align: left;
 }
+.copy-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .col-order { width: 40px; }
 .col-select { width: 32px; }
 .col-approval { width: 90px; }

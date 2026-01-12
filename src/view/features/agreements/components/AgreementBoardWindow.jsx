@@ -966,6 +966,7 @@ export default function AgreementBoardWindow({
   const [memoOpen, setMemoOpen] = React.useState(false);
   const [memoDraft, setMemoDraft] = React.useState('');
   const memoEditorRef = React.useRef(null);
+  const [copyModalOpen, setCopyModalOpen] = React.useState(false);
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
   const isLHOwner = ownerKeyUpper === 'LH';
   const selectedGroup = React.useMemo(
@@ -1056,6 +1057,14 @@ export default function AgreementBoardWindow({
 
   const closeMemoModal = React.useCallback(() => {
     setMemoOpen(false);
+  }, []);
+
+  const openCopyModal = React.useCallback(() => {
+    setCopyModalOpen(true);
+  }, []);
+
+  const closeCopyModal = React.useCallback(() => {
+    setCopyModalOpen(false);
   }, []);
 
   const handleMemoSave = React.useCallback(() => {
@@ -4144,17 +4153,7 @@ export default function AgreementBoardWindow({
                   disabled={exporting}
                 >{exporting ? '엑셀 생성 중…' : '엑셀로 내보내기'}</button>
                 <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
-                {BOARD_COPY_ACTIONS.map((action) => (
-                  <button
-                    key={action.kind}
-                    type="button"
-                    className="excel-btn"
-                    onClick={() => copyBoardDataset(action.kind)}
-                    disabled={excelCopying}
-                  >
-                    {excelCopying && copyingKind === action.kind ? '복사 중…' : action.label}
-                  </button>
-                ))}
+                <button type="button" className="excel-btn" onClick={openCopyModal}>복사</button>
                 <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="excel-btn" onClick={handleDeleteGroups}>선택 삭제</button>
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
@@ -4344,6 +4343,30 @@ export default function AgreementBoardWindow({
             data-placeholder="메모를 입력하세요."
           />
           <div className="memo-editor-hint">저장하면 협정 저장 데이터에 포함됩니다.</div>
+        </div>
+      </Modal>
+      <Modal
+        open={copyModalOpen}
+        title="복사"
+        onClose={closeCopyModal}
+        onCancel={closeCopyModal}
+        onSave={closeCopyModal}
+        closeOnSave
+        size="sm"
+        boxClassName="copy-modal"
+      >
+        <div className="copy-modal-body">
+          {BOARD_COPY_ACTIONS.map((action) => (
+            <button
+              key={action.kind}
+              type="button"
+              className="excel-btn"
+              onClick={() => copyBoardDataset(action.kind)}
+              disabled={excelCopying}
+            >
+              {excelCopying && copyingKind === action.kind ? '복사 중…' : action.label}
+            </button>
+          ))}
         </div>
       </Modal>
       <AgreementLoadModal
