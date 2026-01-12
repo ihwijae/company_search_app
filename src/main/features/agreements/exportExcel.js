@@ -23,14 +23,7 @@ const cloneFill = (fill) => {
 async function exportAgreementExcel({ config, payload, outputPath }) {
   if (!config || !config.path) throw new Error('템플릿 설정이 올바르지 않습니다.');
   if (!payload) throw new Error('엑셀 내보내기 데이터가 없습니다.');
-  const { header = {}, groups = [], context = {} } = payload;
-  const ownerKeyUpper = String(context.ownerId || '').toUpperCase();
-  const partialScoreFill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FFFFC000' },
-    bgColor: { indexed: 64 },
-  };
+  const { header = {}, groups = [] } = payload;
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(config.path);
@@ -64,11 +57,6 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   const qualityColumns = Array.isArray(config.qualityColumns) ? config.qualityColumns : [];
   const rowStep = Number(config.rowStep) > 0 ? Number(config.rowStep) : 1;
   const qualityRowOffset = Number.isFinite(config.qualityRowOffset) ? Number(config.qualityRowOffset) : 0;
-  const resolveFullScoreThreshold = (summary) => {
-    if (ownerKeyUpper === 'LH' || ownerKeyUpper === 'PPS') return 95;
-    const totalMax = summary?.totalMaxWithCred ?? summary?.totalMax ?? summary?.totalMaxBase ?? null;
-    return Number.isFinite(totalMax) ? totalMax : null;
-  };
 
   const availableRows = config.maxRows
     ? Math.floor((config.maxRows - config.startRow) / rowStep) + 1
@@ -271,14 +259,6 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       const qualityValue = toExcelNumber(summary.qualityPoints);
       if (qualityValue != null) {
         qualityCell.value = qualityValue;
-      }
-    }
-    if (summaryColumns.totalScore && summary?.totalScore != null) {
-      const totalScoreValue = toExcelNumber(summary.totalScore);
-      const threshold = resolveFullScoreThreshold(summary);
-      if (totalScoreValue != null && threshold != null && totalScoreValue < (threshold - 0.01)) {
-        const totalCell = worksheet.getCell(`${summaryColumns.totalScore}${rowIndex}`);
-        totalCell.fill = cloneFill(partialScoreFill);
       }
     }
   });

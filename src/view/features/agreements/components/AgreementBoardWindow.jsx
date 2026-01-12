@@ -3144,7 +3144,33 @@ export default function AgreementBoardWindow({
     setGroupApprovals([]);
     setGroupManagementBonus([]);
     setMemoDraft('');
-    if (typeof onUpdateBoard === 'function') onUpdateBoard({ memoHtml: '' });
+    setEditableBidAmount('');
+    setEditableEntryAmount('');
+    setBaseTouched(false);
+    setBidTouched(false);
+    if (typeof onUpdateBoard === 'function') {
+      onUpdateBoard({
+        memoHtml: '',
+        noticeNo: '',
+        noticeTitle: '',
+        noticeDate: '',
+        bidDeadline: '',
+        industryLabel: '',
+        estimatedAmount: '',
+        baseAmount: '',
+        bidAmount: '',
+        ratioBaseAmount: '',
+        bidRate: '',
+        adjustmentRate: '',
+        entryAmount: '',
+        entryMode: 'none',
+        netCostAmount: '',
+        aValue: '',
+        dutyRegions: [],
+        regionDutyRate: '',
+        participantLimit: safeGroupSize,
+      });
+    }
   };
 
   const handleShareInput = (groupIndex, slotIndex, rawValue) => {
