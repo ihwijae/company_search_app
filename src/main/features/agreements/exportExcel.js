@@ -74,11 +74,15 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
         fill: { type: 'pattern', pattern: 'none' },
       };
     }
-    clearColumns.forEach((col) => {
-      const cell = worksheet.getCell(`${col}${row}`);
-      cell.value = null;
-      if (cell.fill) cell.fill = undefined;
-    });
+    const isQualityRow = rowStep > 1 && qualityRowOffset > 0
+      && ((row - config.startRow) % rowStep) === qualityRowOffset;
+    if (!isQualityRow) {
+      clearColumns.forEach((col) => {
+        const cell = worksheet.getCell(`${col}${row}`);
+        cell.value = null;
+        if (cell.fill) cell.fill = undefined;
+      });
+    }
   }
 
   const amountForScore = (
