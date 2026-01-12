@@ -228,6 +228,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     },
     headerCells: {
       baseAmount: 'D1',
+      estimatedAmount: 'D2',
     },
     summaryColumns: {},
   },
