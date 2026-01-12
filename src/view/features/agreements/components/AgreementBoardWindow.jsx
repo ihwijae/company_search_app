@@ -1713,7 +1713,7 @@ export default function AgreementBoardWindow({
     const normalizedLastAuto = normalizeAmountToken(lastAuto);
     const normalizedAuto = normalizeAmountToken(autoFormatted);
     baseAutoRef.current = autoFormatted;
-    if (baseTouched && normalizedCurrent !== normalizedLastAuto) return;
+    if (baseTouched) return;
     if (normalizedCurrent && normalizedCurrent !== normalizedLastAuto && normalizedCurrent !== normalizedAuto) return;
     if (normalizedCurrent === normalizedAuto) return;
     if (!normalizedAuto && !normalizedCurrent) return;
