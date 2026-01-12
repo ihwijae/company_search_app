@@ -257,6 +257,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       'I', 'J', 'K', 'L', 'M',
       'P', 'Q', 'R', 'S', 'T',
       'W', 'X', 'Y', 'Z', 'AA',
+      'AD',
       'AF', 'AG',
       'AR', 'AS', 'AT', 'AU', 'AV',
     ],

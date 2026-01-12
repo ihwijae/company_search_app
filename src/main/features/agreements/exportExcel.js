@@ -269,14 +269,13 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
         bonusCell.value = bonusValue;
       }
     }
-    if (summaryColumns.qualityPoints && summary?.qualityPoints != null) {
+    if (summaryColumns.qualityPoints) {
       const qualityCell = worksheet.getCell(`${summaryColumns.qualityPoints}${rowIndex}`);
-      const qualityValue = toExcelNumber(summary.qualityPoints);
-      if (qualityValue != null) {
-        qualityCell.value = qualityValue;
-        if (qualityValue < 2) {
-          qualityCell.fill = cloneFill(ORANGE_FILL);
-        }
+      const qualityValue = summary?.qualityPoints != null ? toExcelNumber(summary.qualityPoints) : null;
+      qualityCell.value = qualityValue != null ? qualityValue : null;
+      qualityCell.fill = undefined;
+      if (qualityValue != null && qualityValue < 2) {
+        qualityCell.fill = cloneFill(ORANGE_FILL);
       }
     }
   });
