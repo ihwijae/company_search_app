@@ -470,6 +470,8 @@ const parseAmountValue = (value) => {
   return parsed === null ? null : parsed;
 };
 
+const normalizeAmountToken = (value) => String(value ?? '').replace(/[,\s]/g, '');
+
 const clampScore = (value, max = MANAGEMENT_SCORE_MAX) => {
   if (value === null || value === undefined) return null;
   const number = Number(value);
@@ -1004,7 +1006,8 @@ export default function AgreementBoardWindow({
   }, [onUpdateBoard]);
 
   const handleBaseAmountChange = React.useCallback((value) => {
-    setBaseTouched(true);
+    const nextValue = String(value ?? '');
+    setBaseTouched(Boolean(nextValue.trim()));
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ baseAmount: value });
   }, [onUpdateBoard]);
 
@@ -1550,11 +1553,14 @@ export default function AgreementBoardWindow({
     const autoFormatted = formatPlainAmount(autoValue);
     const current = baseAmount || '';
     const lastAuto = baseAutoRef.current;
+    const normalizedCurrent = normalizeAmountToken(current);
+    const normalizedLastAuto = normalizeAmountToken(lastAuto);
+    const normalizedAuto = normalizeAmountToken(autoFormatted);
     baseAutoRef.current = autoFormatted;
-    if (baseTouched && current !== lastAuto) return;
-    if (current && current !== lastAuto && current !== autoFormatted) return;
-    if (current === (autoFormatted || '')) return;
-    if (!autoFormatted && current === '') return;
+    if (baseTouched && normalizedCurrent !== normalizedLastAuto) return;
+    if (normalizedCurrent && normalizedCurrent !== normalizedLastAuto && normalizedCurrent !== normalizedAuto) return;
+    if (normalizedCurrent === normalizedAuto) return;
+    if (!normalizedAuto && !normalizedCurrent) return;
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ baseAmount: autoFormatted });
   }, [ownerKeyUpper, estimatedAmount, baseAmount, baseTouched, onUpdateBoard]);
 
@@ -3029,6 +3035,8 @@ export default function AgreementBoardWindow({
     setGroupCredibility([]);
     setGroupApprovals([]);
     setGroupManagementBonus([]);
+    setMemoDraft('');
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ memoHtml: '' });
   };
 
   const handleShareInput = (groupIndex, slotIndex, rawValue) => {
