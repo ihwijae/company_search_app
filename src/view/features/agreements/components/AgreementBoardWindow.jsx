@@ -24,6 +24,7 @@ const LH_QUALITY_DEFAULT_UNDER_100B = 85;
 const LH_QUALITY_DEFAULT_OVER_100B = 88;
 const LH_UNDER_50_KEY = 'lh-under50';
 const LH_50_TO_100_KEY = 'lh-50to100';
+const PPS_UNDER_50_KEY = 'pps-under50';
 const KOREAN_UNIT = 100000000;
 const BOARD_COPY_SLOT_COUNT = 5;
 const BOARD_COPY_ACTIONS = [
@@ -141,6 +142,7 @@ const resolveTemplateKey = (ownerId, rangeId) => {
   const ownerKey = String(ownerId || '').toUpperCase();
   const rangeKey = String(rangeId || '').toLowerCase();
   if (ownerKey === 'MOIS' && rangeKey === 'mois-under30') return 'mois-under30';
+  if (ownerKey === 'PPS' && rangeKey === PPS_UNDER_50_KEY) return 'pps-under50';
   return null;
 };
 
@@ -471,6 +473,15 @@ const parseAmountValue = (value) => {
 };
 
 const normalizeAmountToken = (value) => String(value ?? '').replace(/[,\s]/g, '');
+
+const formatShareForName = (value) => {
+  if (value === null || value === undefined || value === '') return '';
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return '';
+  const normalized = numeric > 0 && numeric < 1 ? numeric * 100 : numeric;
+  const fixed = normalized.toFixed(2);
+  return fixed.replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+};
 
 const clampScore = (value, max = MANAGEMENT_SCORE_MAX) => {
   if (value === null || value === undefined) return null;
@@ -1062,11 +1073,15 @@ export default function AgreementBoardWindow({
   }, []);
 
   const handleAdjustmentRateChange = React.useCallback((event) => {
-    if (typeof onUpdateBoard === 'function') onUpdateBoard({ adjustmentRate: event.target.value });
+    const nextValue = event.target.value;
+    setAdjustmentRateTouched(Boolean(String(nextValue || '').trim()));
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ adjustmentRate: nextValue });
   }, [onUpdateBoard]);
 
   const handleBidRateChange = React.useCallback((event) => {
-    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidRate: event.target.value });
+    const nextValue = event.target.value;
+    setBidRateTouched(Boolean(String(nextValue || '').trim()));
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidRate: nextValue });
   }, [onUpdateBoard]);
 
   const handleRegionDutyRateChange = React.useCallback((event) => {
@@ -1180,6 +1195,8 @@ export default function AgreementBoardWindow({
   const [copyingKind, setCopyingKind] = React.useState(null);
   const [baseTouched, setBaseTouched] = React.useState(false);
   const [bidTouched, setBidTouched] = React.useState(false);
+  const [bidRateTouched, setBidRateTouched] = React.useState(false);
+  const [adjustmentRateTouched, setAdjustmentRateTouched] = React.useState(false);
   const baseAutoRef = React.useRef('');
   const bidAutoRef = React.useRef('');
   const { notify, confirm } = useFeedback();
@@ -1545,6 +1562,29 @@ export default function AgreementBoardWindow({
     baseAutoRef.current = '';
     bidAutoRef.current = '';
   }, [ownerKeyUpper]);
+
+  React.useEffect(() => {
+    if (ownerKeyUpper !== 'PPS') return;
+    if (selectedRangeOption?.key !== PPS_UNDER_50_KEY) return;
+    const defaultBidRate = '86.745';
+    const defaultAdjustmentRate = '101.6';
+    const currentBidRate = String(bidRate || '').trim();
+    const currentAdjustmentRate = String(adjustmentRate || '').trim();
+    if (!currentBidRate && !bidRateTouched) {
+      if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidRate: defaultBidRate });
+    }
+    if (!currentAdjustmentRate && !adjustmentRateTouched) {
+      if (typeof onUpdateBoard === 'function') onUpdateBoard({ adjustmentRate: defaultAdjustmentRate });
+    }
+  }, [
+    ownerKeyUpper,
+    selectedRangeOption?.key,
+    bidRate,
+    adjustmentRate,
+    bidRateTouched,
+    adjustmentRateTouched,
+    onUpdateBoard,
+  ]);
 
   React.useEffect(() => {
     if (ownerKeyUpper !== 'PPS') return;
@@ -2233,7 +2273,11 @@ export default function AgreementBoardWindow({
           const isRegionMember = entry.type === 'region' || isDutyRegionCompany(candidate);
           const companyName = sanitizeCompanyName(getCompanyName(candidate));
           const managerName = getCandidateManagerName(candidate);
-          const displayName = managerName ? `${companyName}\n${managerName}` : companyName;
+          const shareLabel = (ownerKeyUpper === 'PPS' && rangeId === PPS_UNDER_50_KEY)
+            ? formatShareForName(sharePercent)
+            : '';
+          const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
+          const displayName = managerName ? `${nameLine}\n${managerName}` : nameLine;
           return {
             slotIndex,
             role: slotIndex === 0 ? 'representative' : 'member',
@@ -2288,6 +2332,7 @@ export default function AgreementBoardWindow({
           industryLabel: industryLabel || '',
           baseAmount: baseValue ?? null,
           estimatedAmount: estimatedValue ?? null,
+          bidAmount: parseAmountValue(bidAmount) ?? null,
           amountForScore,
           bidDeadline: formattedDeadline,
           rawBidDeadline: bidDeadline || '',
@@ -3513,7 +3558,7 @@ export default function AgreementBoardWindow({
     });
   };
 
-  const renderQualityRow = (group, groupIndex, slotMetas, qualityTotal) => {
+  const renderQualityRow = (group, groupIndex, slotMetas, qualityTotal, entryFailed) => {
     if (!isLHOwner) return null;
     const qualityGuide = (selectedRangeOption?.key === 'lh-50to100')
       ? '90점이상:5점/88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점'
@@ -3530,7 +3575,7 @@ export default function AgreementBoardWindow({
       ? formatScore(resolvedQualityTotal, 2)
       : '-';
     return (
-      <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
+      <tr key={`${group.id}-quality`} className={`excel-board-row quality-row${entryFailed ? ' entry-failed' : ''}`}>
         <td className="excel-cell order-cell quality-label">품질</td>
         <td className="excel-cell quality-guide" colSpan={guideSpan}>
           {qualityGuide}
@@ -3628,9 +3673,13 @@ export default function AgreementBoardWindow({
       ? (summaryInfo.performanceScore >= ((summaryInfo.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper)) - 0.01) ? 'ok' : 'warn')
       : '';
 
+    const entryFailed = summaryInfo?.entryLimit != null
+      && summaryInfo.entryMode !== 'none'
+      && summaryInfo.entrySatisfied === false;
+
     return (
       <React.Fragment key={group.id}>
-        <tr className="excel-board-row">
+        <tr className={`excel-board-row${entryFailed ? ' entry-failed' : ''}`}>
         <td className={`excel-cell order-cell${scoreState ? ` score-${scoreState}` : ''}`}>{group.id}</td>
         <td className="excel-cell approval-cell">
           <input
@@ -3639,9 +3688,6 @@ export default function AgreementBoardWindow({
             placeholder=""
             onChange={(event) => handleApprovalChange(groupIndex, event.target.value)}
           />
-          {summaryInfo?.entryLimit != null && summaryInfo.entryMode !== 'none' && (
-            <small>기준 {formatAmount(summaryInfo.entryLimit)}</small>
-          )}
         </td>
         {slotMetasWithLimit.map((meta) => renderNameCell(meta))}
         {slotMetasWithLimit.map(renderShareCell)}
@@ -3674,7 +3720,7 @@ export default function AgreementBoardWindow({
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
         <td className={`excel-cell total-cell total-score${scoreState ? ` score-${scoreState}` : ''}`} rowSpan={rightRowSpan}>{totalScoreDisplay}</td>
         </tr>
-        {renderQualityRow(group, groupIndex, slotMetas, qualityTotal)}
+        {renderQualityRow(group, groupIndex, slotMetas, qualityTotal, entryFailed)}
       </React.Fragment>
     );
   };
@@ -3767,6 +3813,9 @@ export default function AgreementBoardWindow({
                 </div>
                 <div className="excel-field-block size-lg">
                   <span className="field-label">기초금액</span>
+                  {ownerKeyUpper === 'PPS' && (
+                    <span className="field-label sub">(추정가격 × 1.1배)</span>
+                  )}
                   <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />
                 </div>
                 {isLH && (

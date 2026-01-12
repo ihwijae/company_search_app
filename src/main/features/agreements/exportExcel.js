@@ -80,16 +80,41 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
     ?? toExcelNumber(header.estimatedAmount)
     ?? toExcelNumber(header.baseAmount)
   );
-  const d2Cell = worksheet.getCell('D2');
-  d2Cell.value = amountForScore != null ? amountForScore : null;
+  const headerCells = config.headerCells || {};
+  const amountForScoreCell = headerCells.amountForScore
+    || (Object.keys(headerCells).length > 0 ? null : 'D2');
+  const estimatedAmountCell = headerCells.estimatedAmount || null;
+  const baseAmountCell = headerCells.baseAmount || null;
+  const bidAmountCell = headerCells.bidAmount || null;
+
+  const estimatedValue = toExcelNumber(header.estimatedAmount);
+  const baseValue = toExcelNumber(header.baseAmount);
+  const bidValue = toExcelNumber(header.bidAmount);
+
+  if (amountForScoreCell) {
+    worksheet.getCell(amountForScoreCell).value = amountForScore != null ? amountForScore : null;
+  }
+  if (estimatedAmountCell && estimatedAmountCell !== baseAmountCell) {
+    worksheet.getCell(estimatedAmountCell).value = estimatedValue != null ? estimatedValue : null;
+  }
+  if (baseAmountCell) {
+    const targetValue = baseValue != null ? baseValue : (estimatedAmountCell === baseAmountCell ? estimatedValue : null);
+    worksheet.getCell(baseAmountCell).value = targetValue != null ? targetValue : null;
+  }
+  if (bidAmountCell) {
+    worksheet.getCell(bidAmountCell).value = bidValue != null ? bidValue : null;
+  }
   const compositeTitle = [header.noticeNo, header.noticeTitle]
     .map((part) => (part ? String(part).trim() : ''))
     .filter(Boolean)
     .join(' ');
-  worksheet.getCell('M1').value = compositeTitle;
+  const noticeCell = headerCells.noticeTitle || 'M1';
+  worksheet.getCell(noticeCell).value = compositeTitle;
   const deadlineText = header.bidDeadline || header.rawBidDeadline || '';
-  worksheet.getCell('P2').value = deadlineText ? String(deadlineText) : '';
-  worksheet.getCell('W2').value = header.dutySummary || '';
+  const deadlineCell = headerCells.bidDeadline || 'P2';
+  const dutyCell = headerCells.dutySummary || 'W2';
+  worksheet.getCell(deadlineCell).value = deadlineText ? String(deadlineText) : '';
+  worksheet.getCell(dutyCell).value = header.dutySummary || '';
 
   const regionCells = [];
   const nonRegionCells = [];
