@@ -33,6 +33,12 @@ const YELLOW_FILL = {
   fgColor: { argb: 'FFFFFF00' },
   bgColor: { indexed: 64 },
 };
+const RED_FILL = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FFFF0000' },
+  bgColor: { indexed: 64 },
+};
 const CLEAR_FILL = { type: 'pattern', pattern: 'none' };
 
 async function exportAgreementExcel({ config, payload, outputPath }) {
@@ -173,6 +179,13 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       const approvalCell = worksheet.getCell(`${approvalColumn}${rowIndex}`);
       const approvalValue = group?.approval ? String(group.approval) : '';
       approvalCell.value = approvalValue || null;
+      if (approvalValue === '취소') {
+        const baseStyle = approvalCell.style ? { ...approvalCell.style } : {};
+        approvalCell.style = {
+          ...baseStyle,
+          fill: cloneFill(RED_FILL),
+        };
+      }
     }
     if (managementBonusColumn) {
       const bonusCell = worksheet.getCell(`${managementBonusColumn}${rowIndex}`);
