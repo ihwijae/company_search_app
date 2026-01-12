@@ -51,7 +51,7 @@ const industryToFileType = (label) => {
 const COLUMN_WIDTHS = {
   select: 32,
   order: 40,
-  approval: 70,
+  approval: 90,
   name: 100,
   share: 65,
   status: 45,
@@ -3853,7 +3853,7 @@ export default function AgreementBoardWindow({
           />
         </td>
         <td className={`excel-cell order-cell${scoreState ? ` score-${scoreState}` : ''}`}>{group.id}</td>
-        <td className="excel-cell approval-cell">
+        <td className={`excel-cell approval-cell${approvalValue === '취소' ? ' approval-cancel' : ''}`}>
           <select
             value={approvalValue}
             onChange={(event) => handleApprovalChange(groupIndex, event.target.value)}

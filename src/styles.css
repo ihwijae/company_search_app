@@ -920,6 +920,15 @@ button.primary:hover { background: var(--accent-2); }
   width: 16px;
   height: 16px;
 }
+.excel-cell.approval-cell.approval-cancel {
+  background: #ff0000;
+  color: #ffffff;
+}
+.excel-cell.approval-cell.approval-cancel select {
+  background: #ff0000;
+  color: #ffffff;
+  border-color: #b91c1c;
+}
 .excel-cell.entry-disabled {
   background: #e2e8f0;
   color: #64748b;
@@ -1013,7 +1022,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 .col-order { width: 40px; }
 .col-select { width: 32px; }
-.col-approval { width: 70px; }
+.col-approval { width: 90px; }
 .col-name { width: 100px; }
 .col-share { width: 65px; }
 .col-credibility-slot { width: 45px; }
