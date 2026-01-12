@@ -1025,6 +1025,21 @@ button.primary:hover { background: var(--accent-2); }
   flex-direction: column;
   gap: 8px;
 }
+.datetime-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.datetime-inputs .input[type='text'] {
+  width: 44px;
+  text-align: center;
+}
+.datetime-inputs .input[type='date'] {
+  min-width: 150px;
+}
+.datetime-sep {
+  color: #64748b;
+}
 .col-order { width: 40px; }
 .col-select { width: 32px; }
 .col-approval { width: 90px; }

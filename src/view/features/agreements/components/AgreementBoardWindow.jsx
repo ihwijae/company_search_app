@@ -187,6 +187,37 @@ const formatNoticeDate = (value) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
+const parseBidDeadlineParts = (value) => {
+  if (!value) {
+    return { date: '', period: 'AM', hour: '', minute: '' };
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return { date: '', period: 'AM', hour: '', minute: '' };
+  }
+  const pad = (num) => String(num).padStart(2, '0');
+  const hour24 = parsed.getHours();
+  const minute = parsed.getMinutes();
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 || 12;
+  const date = `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
+  return { date, period, hour: pad(hour12), minute: pad(minute) };
+};
+
+const buildBidDeadline = (date, period, hour, minute) => {
+  if (!date) return '';
+  if (hour === '' || minute === '') return '';
+  const hourNum = Number(hour);
+  const minuteNum = Number(minute);
+  if (!Number.isFinite(hourNum) || !Number.isFinite(minuteNum)) return null;
+  if (hourNum < 1 || hourNum > 12 || minuteNum < 0 || minuteNum > 59) return null;
+  const hour24 = period === 'PM'
+    ? (hourNum % 12) + 12
+    : (hourNum % 12);
+  const pad = (num) => String(num).padStart(2, '0');
+  return `${date}T${pad(hour24)}:${pad(minuteNum)}`;
+};
+
 const parseKoreanAmount = (text) => {
   if (!text) return 0;
   const label = String(text);
@@ -1024,9 +1055,35 @@ export default function AgreementBoardWindow({
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ noticeDate: event.target.value });
   }, [onUpdateBoard]);
 
-  const handleBidDeadlineChange = React.useCallback((event) => {
-    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: event.target.value });
+  const updateBidDeadlineFromParts = React.useCallback((date, period, hour, minute) => {
+    const nextValue = buildBidDeadline(date, period, hour, minute);
+    if (nextValue === null) return;
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: nextValue });
   }, [onUpdateBoard]);
+
+  const handleBidDatePartChange = React.useCallback((event) => {
+    const nextDate = event.target.value;
+    setBidDatePart(nextDate);
+    updateBidDeadlineFromParts(nextDate, bidTimePeriod, bidHourInput, bidMinuteInput);
+  }, [bidTimePeriod, bidHourInput, bidMinuteInput, updateBidDeadlineFromParts]);
+
+  const handleBidPeriodChange = React.useCallback((event) => {
+    const nextPeriod = event.target.value === 'PM' ? 'PM' : 'AM';
+    setBidTimePeriod(nextPeriod);
+    updateBidDeadlineFromParts(bidDatePart, nextPeriod, bidHourInput, bidMinuteInput);
+  }, [bidDatePart, bidHourInput, bidMinuteInput, updateBidDeadlineFromParts]);
+
+  const handleBidHourChange = React.useCallback((event) => {
+    const nextHour = String(event.target.value || '').replace(/\D/g, '').slice(0, 2);
+    setBidHourInput(nextHour);
+    updateBidDeadlineFromParts(bidDatePart, bidTimePeriod, nextHour, bidMinuteInput);
+  }, [bidDatePart, bidTimePeriod, bidMinuteInput, updateBidDeadlineFromParts]);
+
+  const handleBidMinuteChange = React.useCallback((event) => {
+    const nextMinute = String(event.target.value || '').replace(/\D/g, '').slice(0, 2);
+    setBidMinuteInput(nextMinute);
+    updateBidDeadlineFromParts(bidDatePart, bidTimePeriod, bidHourInput, nextMinute);
+  }, [bidDatePart, bidTimePeriod, bidHourInput, updateBidDeadlineFromParts]);
 
   const handleBaseAmountChange = React.useCallback((value) => {
     const nextValue = String(value ?? '');
@@ -1217,6 +1274,10 @@ export default function AgreementBoardWindow({
   const [bidTouched, setBidTouched] = React.useState(false);
   const [bidRateTouched, setBidRateTouched] = React.useState(false);
   const [adjustmentRateTouched, setAdjustmentRateTouched] = React.useState(false);
+  const [bidDatePart, setBidDatePart] = React.useState('');
+  const [bidTimePeriod, setBidTimePeriod] = React.useState('AM');
+  const [bidHourInput, setBidHourInput] = React.useState('');
+  const [bidMinuteInput, setBidMinuteInput] = React.useState('');
   const baseAutoRef = React.useRef('');
   const bidAutoRef = React.useRef('');
   const { notify, confirm } = useFeedback();
@@ -1576,6 +1637,15 @@ export default function AgreementBoardWindow({
       setEditableEntryAmount(entryAmount);
     }
   }, [bidAmount, entryAmount, open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const parts = parseBidDeadlineParts(bidDeadline);
+    setBidDatePart(parts.date);
+    setBidTimePeriod(parts.period);
+    setBidHourInput(parts.hour);
+    setBidMinuteInput(parts.minute);
+  }, [open, bidDeadline]);
 
   React.useEffect(() => {
     if (!memoOpen) return;
@@ -4121,7 +4191,41 @@ export default function AgreementBoardWindow({
                 </div>
                 <div className="excel-field-block size-md">
                   <span className="field-label">개찰일</span>
-                  <input className="input" type="datetime-local" value={bidDeadline || ''} onChange={handleBidDeadlineChange} />
+                  <div className="datetime-inputs">
+                    <input
+                      className="input"
+                      type="date"
+                      value={bidDatePart}
+                      onChange={handleBidDatePartChange}
+                    />
+                    <select
+                      className="input"
+                      value={bidTimePeriod}
+                      onChange={handleBidPeriodChange}
+                    >
+                      <option value="AM">오전</option>
+                      <option value="PM">오후</option>
+                    </select>
+                    <input
+                      className="input"
+                      type="text"
+                      inputMode="numeric"
+                      value={bidHourInput}
+                      onChange={handleBidHourChange}
+                      placeholder="시"
+                      aria-label="개찰 시"
+                    />
+                    <span className="datetime-sep">:</span>
+                    <input
+                      className="input"
+                      type="text"
+                      inputMode="numeric"
+                      value={bidMinuteInput}
+                      onChange={handleBidMinuteChange}
+                      placeholder="분"
+                      aria-label="개찰 분"
+                    />
+                  </div>
                 </div>
               </div>
 
