@@ -36,6 +36,7 @@ const initialState = {
   entryMode: 'ratio',
   netCostAmount: '',
   aValue: '',
+  memoHtml: '',
 };
 
 const normalizeRuleEntry = (item = {}) => ({
@@ -424,6 +425,7 @@ export function AgreementBoardProvider({ children }) {
           participantLimit={boardState.participantLimit || DEFAULT_GROUP_SIZE}
           netCostAmount={boardState.netCostAmount || ''}
           aValue={boardState.aValue || ''}
+          memoHtml={boardState.memoHtml || ''}
         />
       )}
     </AgreementBoardContext.Provider>

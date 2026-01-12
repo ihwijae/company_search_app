@@ -4,11 +4,13 @@ import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import AgreementLoadModal from './AgreementLoadModal.jsx';
 import useAgreementBoardStorage from '../hooks/useAgreementBoardStorage.js';
 import AmountInput from '../../../../components/AmountInput.jsx';
+import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
 import { isWomenOwnedCompany, getQualityBadgeText, extractManagerNames } from '../../../../utils/companyIndicators.js';
 import { generateMany } from '../../../../shared/agreements/generator.js';
 import { AGREEMENT_GROUPS } from '../../../../shared/navigation.js';
+import { sanitizeHtml } from '../../../../shared/sanitizeHtml.js';
 
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
@@ -926,6 +928,7 @@ export default function AgreementBoardWindow({
   participantLimit = DEFAULT_GROUP_SIZE,
   netCostAmount = '',
   aValue = '',
+  memoHtml = '',
   inlineMode = false,
 }) {
   const rangeId = _rangeId;
@@ -942,6 +945,9 @@ export default function AgreementBoardWindow({
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState([]);
   const [formulasDoc, setFormulasDoc] = React.useState(null);
+  const [memoOpen, setMemoOpen] = React.useState(false);
+  const [memoDraft, setMemoDraft] = React.useState('');
+  const memoEditorRef = React.useRef(null);
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
   const isLHOwner = ownerKeyUpper === 'LH';
   const selectedGroup = React.useMemo(
@@ -1017,6 +1023,40 @@ export default function AgreementBoardWindow({
   const handleAValueChange = React.useCallback((value) => {
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ aValue: value });
   }, [onUpdateBoard]);
+
+  const sanitizedMemoHtml = React.useMemo(() => sanitizeHtml(memoHtml || ''), [memoHtml]);
+  const memoHasContent = React.useMemo(() => {
+    const text = sanitizedMemoHtml.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    return Boolean(text);
+  }, [sanitizedMemoHtml]);
+
+  const openMemoModal = React.useCallback(() => {
+    setMemoDraft(sanitizedMemoHtml || '');
+    setMemoOpen(true);
+  }, [sanitizedMemoHtml]);
+
+  const closeMemoModal = React.useCallback(() => {
+    setMemoOpen(false);
+  }, []);
+
+  const handleMemoSave = React.useCallback(() => {
+    const cleaned = sanitizeHtml(memoDraft || '');
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ memoHtml: cleaned });
+  }, [memoDraft, onUpdateBoard]);
+
+  const handleMemoInput = React.useCallback((event) => {
+    setMemoDraft(event.currentTarget.innerHTML);
+  }, []);
+
+  const applyMemoCommand = React.useCallback((command, value) => {
+    if (!memoEditorRef.current) return;
+    memoEditorRef.current.focus();
+    try {
+      document.execCommand('styleWithCSS', false, true);
+    } catch {}
+    document.execCommand(command, false, value);
+    setMemoDraft(memoEditorRef.current.innerHTML);
+  }, []);
 
   const handleAdjustmentRateChange = React.useCallback((event) => {
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ adjustmentRate: event.target.value });
@@ -1401,6 +1441,7 @@ export default function AgreementBoardWindow({
     fileType,
     netCostAmount,
     aValue,
+    memoHtml,
     candidates,
     pinned,
     excluded,
@@ -1487,6 +1528,13 @@ export default function AgreementBoardWindow({
       setEditableEntryAmount(entryAmount);
     }
   }, [bidAmount, entryAmount, open]);
+
+  React.useEffect(() => {
+    if (!memoOpen) return;
+    if (memoEditorRef.current) {
+      memoEditorRef.current.innerHTML = memoDraft || '';
+    }
+  }, [memoOpen]);
 
   React.useEffect(() => {
     setBaseTouched(false);
@@ -3873,6 +3921,11 @@ export default function AgreementBoardWindow({
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
                 <button type="button" className="excel-btn" onClick={handleSaveAgreement}>저장</button>
                 <button type="button" className="excel-btn" onClick={openLoadModal}>불러오기</button>
+                <button
+                  type="button"
+                  className={`excel-btn memo-btn${memoHasContent ? ' active' : ''}`}
+                  onClick={openMemoModal}
+                >메모</button>
                 {!inlineMode && (
                   <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
                 )}
@@ -3985,6 +4038,64 @@ export default function AgreementBoardWindow({
           fileType={fileType || 'all'}
         />
       )}
+      <Modal
+        open={memoOpen}
+        title="메모"
+        onClose={closeMemoModal}
+        onCancel={closeMemoModal}
+        onSave={handleMemoSave}
+        closeOnSave
+        size="lg"
+        boxClassName="memo-modal"
+        initialFocusRef={memoEditorRef}
+      >
+        <div className="memo-editor">
+          <div className="memo-editor-toolbar">
+            <button
+              type="button"
+              className="memo-toolbar-btn"
+              onClick={() => applyMemoCommand('bold')}
+            >볼드</button>
+            <div className="memo-toolbar-group">
+              <label className="memo-toolbar-label" htmlFor="memo-font-size">글자크기</label>
+              <select
+                id="memo-font-size"
+                className="memo-toolbar-select"
+                onChange={(event) => {
+                  const next = event.target.value;
+                  if (next) applyMemoCommand('fontSize', next);
+                }}
+              >
+                <option value="">선택</option>
+                <option value="2">12px</option>
+                <option value="3">14px</option>
+                <option value="4">16px</option>
+                <option value="5">18px</option>
+                <option value="6">20px</option>
+              </select>
+            </div>
+            <div className="memo-toolbar-group">
+              <label className="memo-toolbar-label" htmlFor="memo-color">글자색</label>
+              <input
+                id="memo-color"
+                className="memo-toolbar-color"
+                type="color"
+                onChange={(event) => applyMemoCommand('foreColor', event.target.value)}
+              />
+            </div>
+          </div>
+          <div
+            className="memo-editor-canvas"
+            ref={memoEditorRef}
+            contentEditable
+            tabIndex={0}
+            suppressContentEditableWarning
+            onInput={handleMemoInput}
+            data-placeholder="메모를 입력하세요."
+          />
+          <div className="memo-editor-hint">저장하면 협정 저장 데이터에 포함됩니다.</div>
+        </div>
+      </Modal>
       <AgreementLoadModal
         open={loadModalOpen}
         onClose={closeLoadModal}

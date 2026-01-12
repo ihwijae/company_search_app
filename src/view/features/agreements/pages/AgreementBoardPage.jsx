@@ -109,6 +109,7 @@ export default function AgreementBoardPage() {
             participantLimit={boardState.participantLimit}
             netCostAmount={boardState.netCostAmount}
             aValue={boardState.aValue}
+            memoHtml={boardState.memoHtml}
           />
         </div>
       </div>

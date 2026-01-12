@@ -915,6 +915,86 @@ button.primary:hover { background: var(--accent-2); }
 .excel-board-table textarea {
   text-align: center;
 }
+.memo-btn.active {
+  background: #ecfeff;
+  border-color: #67e8f9;
+  color: #0e7490;
+}
+.memo-modal {
+  padding-top: 20px;
+}
+.memo-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.memo-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: flex-start;
+}
+.memo-toolbar-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5f5;
+  background: #eef2ff;
+  color: #312e81;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.memo-toolbar-btn:hover {
+  background: #e0e7ff;
+}
+.memo-toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.memo-toolbar-label {
+  font-size: 12px;
+  color: #475569;
+}
+.memo-toolbar-select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+.memo-toolbar-color {
+  width: 34px;
+  height: 28px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0;
+  background: #ffffff;
+  cursor: pointer;
+}
+.memo-editor-canvas {
+  min-height: 260px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  background: #ffffff;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: left;
+}
+.memo-editor-canvas:focus {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+.memo-editor-canvas:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+}
+.memo-editor-hint {
+  font-size: 12px;
+  color: #64748b;
+  text-align: left;
+}
 .col-order { width: 40px; }
 .col-approval { width: 40px; }
 .col-name { width: 100px; }
