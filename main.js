@@ -278,6 +278,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       netCostBonus: 'AG',
       qualityPoints: 'AD',
     },
+    managementBonusColumn: 'O',
     regionFill: {
       type: 'pattern',
       pattern: 'solid',

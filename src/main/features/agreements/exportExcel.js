@@ -27,6 +27,12 @@ const ORANGE_FILL = {
   fgColor: { argb: 'FFFFC000' },
   bgColor: { indexed: 64 },
 };
+const YELLOW_FILL = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FFFFFF00' },
+  bgColor: { indexed: 64 },
+};
 const CLEAR_FILL = { type: 'pattern', pattern: 'none' };
 
 async function exportAgreementExcel({ config, payload, outputPath }) {
@@ -67,6 +73,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   const rowStep = Number(config.rowStep) > 0 ? Number(config.rowStep) : 1;
   const qualityRowOffset = Number.isFinite(config.qualityRowOffset) ? Number(config.qualityRowOffset) : 0;
   const approvalColumn = config.approvalColumn || null;
+  const managementBonusColumn = config.managementBonusColumn || null;
 
   const availableRows = config.maxRows
     ? Math.floor((config.maxRows - config.startRow) / rowStep) + 1
@@ -166,6 +173,18 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       const approvalCell = worksheet.getCell(`${approvalColumn}${rowIndex}`);
       const approvalValue = group?.approval ? String(group.approval) : '';
       approvalCell.value = approvalValue || null;
+    }
+    if (managementBonusColumn) {
+      const bonusCell = worksheet.getCell(`${managementBonusColumn}${rowIndex}`);
+      const bonusValue = group?.summary?.managementBonusApplied ? 1.1 : null;
+      if (bonusValue != null) {
+        bonusCell.value = bonusValue;
+        const baseStyle = bonusCell.style ? { ...bonusCell.style } : {};
+        bonusCell.style = {
+          ...baseStyle,
+          fill: cloneFill(YELLOW_FILL),
+        };
+      }
     }
     const indexValue = Number(group.index);
     if (Number.isFinite(indexValue)) {

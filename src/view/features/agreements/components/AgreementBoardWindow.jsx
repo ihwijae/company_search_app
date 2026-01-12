@@ -2364,6 +2364,7 @@ export default function AgreementBoardWindow({
             totalMax: summaryEntry.totalMaxBase ?? null,
             netCostBonusScore: summaryEntry.netCostBonusScore ?? null,
             qualityPoints,
+            managementBonusApplied: Boolean(groupManagementBonus[groupIndex]),
           } : null,
         };
         exportIndex += 1;
@@ -2436,6 +2437,7 @@ export default function AgreementBoardWindow({
     isLHOwner,
     resolveQualityPoints,
     selectedRangeOption?.key,
+    groupManagementBonus,
   ]);
 
   const handleGenerateText = React.useCallback(async () => {
