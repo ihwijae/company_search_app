@@ -216,9 +216,16 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       if (managementCell) {
         const managementValue = toExcelNumber(member.managementScore);
         managementCell.value = managementValue;
-        managementCell.fill = cloneFill(CLEAR_FILL);
+        const baseStyle = managementCell.style ? { ...managementCell.style } : {};
+        managementCell.style = {
+          ...baseStyle,
+          fill: cloneFill(CLEAR_FILL),
+        };
         if (managementValue != null && managementValue < MANAGEMENT_SCORE_MAX) {
-          managementCell.fill = cloneFill(ORANGE_FILL);
+          managementCell.style = {
+            ...baseStyle,
+            fill: cloneFill(ORANGE_FILL),
+          };
         }
       }
       if (performanceCell) { performanceCell.value = toExcelNumber(member.performanceAmount); performanceCell.fill = undefined; }
@@ -275,7 +282,17 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       const qualityValue = summary?.qualityPoints != null ? toExcelNumber(summary.qualityPoints) : null;
       qualityCell.value = qualityValue != null ? qualityValue : null;
       const shouldWarn = qualityValue != null && Number.isFinite(qualityValue) && qualityValue < 2;
-      qualityCell.fill = shouldWarn ? cloneFill(ORANGE_FILL) : null;
+      const baseStyle = qualityCell.style ? { ...qualityCell.style } : {};
+      qualityCell.style = {
+        ...baseStyle,
+        fill: cloneFill(CLEAR_FILL),
+      };
+      if (shouldWarn) {
+        qualityCell.style = {
+          ...baseStyle,
+          fill: cloneFill(ORANGE_FILL),
+        };
+      }
     }
   });
 
