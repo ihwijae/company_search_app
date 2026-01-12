@@ -235,6 +235,49 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       bgColor: { indexed: 64 },
     },
   },
+  'lh-under50': {
+    label: 'LH 50억 미만',
+    path: path.join(__dirname, '템플릿', 'LH50억미만.xlsx'),
+    sheetName: '양식',
+    startRow: 5,
+    maxRows: 68,
+    rowStep: 2,
+    qualityRowOffset: 1,
+    slotColumns: {
+      name: ['C', 'D', 'E', 'F', 'G'],
+      share: ['I', 'J', 'K', 'L', 'M'],
+      management: ['P', 'Q', 'R', 'S', 'T'],
+      performance: ['W', 'X', 'Y', 'Z', 'AA'],
+      ability: ['AR', 'AS', 'AT', 'AU', 'AV'],
+    },
+    qualityColumns: ['I', 'J', 'K', 'L', 'M'],
+    clearColumns: [
+      'B', 'C', 'D', 'E', 'F', 'G', 'H',
+      'I', 'J', 'K', 'L', 'M',
+      'O', 'P', 'Q', 'R', 'S', 'T',
+      'W', 'X', 'Y', 'Z', 'AA',
+      'AN', 'AO', 'AP', 'AQ',
+      'AR', 'AS', 'AT', 'AU', 'AV',
+      'AW', 'AX',
+    ],
+    headerCells: {
+      ratioBaseAmount: 'I1',
+      entryAmount: 'AI1',
+      noticeTitle: 'K1',
+      bidDeadline: 'M2',
+      dutySummary: 'Q2',
+    },
+    summaryColumns: {
+      credibility: 'AF',
+      netCostBonus: 'AG',
+    },
+    regionFill: {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFFF00' },
+      bgColor: { indexed: 64 },
+    },
+  },
 };
 
 const { sanitizeFileName, exportAgreementExcel } = require('./src/main/features/agreements/exportExcel.js');

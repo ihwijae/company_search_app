@@ -145,6 +145,7 @@ const resolveTemplateKey = (ownerId, rangeId) => {
   const rangeKey = String(rangeId || '').toLowerCase();
   if (ownerKey === 'MOIS' && rangeKey === 'mois-under30') return 'mois-under30';
   if (ownerKey === 'PPS' && rangeKey === PPS_UNDER_50_KEY) return 'pps-under50';
+  if (ownerKey === 'LH' && rangeKey === LH_UNDER_50_KEY) return 'lh-under50';
   return null;
 };
 
@@ -2233,14 +2234,25 @@ export default function AgreementBoardWindow({
     try {
       const estimatedValue = parseAmountValue(estimatedAmount);
       const baseValue = parseAmountValue(baseAmount);
+      const ratioBaseValue = parseAmountValue(ratioBaseAmount);
+      const entryAmountValue = parseAmountValue(entryAmount);
+      const bidAmountValue = parseAmountValue(bidAmount);
       const amountForScore = (estimatedValue != null && estimatedValue > 0)
         ? estimatedValue
         : (baseValue != null && baseValue > 0 ? baseValue : null);
+      const possibleShareBase = ownerKeyUpper === 'LH'
+        ? ratioBaseValue
+        : (bidAmountValue != null ? bidAmountValue : null);
+      const includePossibleShare = (ownerKeyUpper === 'PPS' && rangeId === PPS_UNDER_50_KEY)
+        || (ownerKeyUpper === 'LH' && rangeId === LH_UNDER_50_KEY);
       const dutyRateNumber = parseNumeric(regionDutyRate);
       const dutySummaryText = buildDutySummary(dutyRegions, dutyRateNumber, safeParticipantLimit);
       const formattedDeadline = formatBidDeadline(bidDeadline);
 
-      const groupPayloads = groupAssignments.map((memberIds, groupIndex) => {
+      let exportIndex = 1;
+      const groupPayloads = groupAssignments.flatMap((memberIds, groupIndex) => {
+        const hasMembers = Array.isArray(memberIds) && memberIds.some((uid) => Boolean(uid));
+        if (!hasMembers) return [];
         const summaryEntry = summaryByGroup.get(groupIndex) || null;
         const members = memberIds.map((uid, slotIndex) => {
           if (!uid) {
@@ -2277,10 +2289,18 @@ export default function AgreementBoardWindow({
           const isRegionMember = entry.type === 'region' || isDutyRegionCompany(candidate);
           const companyName = sanitizeCompanyName(getCompanyName(candidate));
           const managerName = getCandidateManagerName(candidate);
-          const shareLabel = (ownerKeyUpper === 'PPS' && rangeId === PPS_UNDER_50_KEY)
-            ? formatShareForName(sharePercent)
+          const possibleShareRatio = (includePossibleShare && possibleShareBase && sipyung && sipyung > 0)
+            ? (sipyung / possibleShareBase) * 100
+            : null;
+          const shareLabel = (includePossibleShare && possibleShareRatio != null)
+            ? formatShareForName(possibleShareRatio)
             : '';
           const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
+          const qualityText = isLHOwner ? getQualityBadgeText(candidate) : null;
+          const qualityNumeric = isLHOwner ? toNumber(qualityText) : null;
+          const qualityScore = isLHOwner
+            ? (qualityNumeric != null ? qualityNumeric : lhQualityDefault)
+            : null;
           const displayName = managerName ? `${nameLine}\n${managerName}` : nameLine;
           return {
             slotIndex,
@@ -2296,10 +2316,11 @@ export default function AgreementBoardWindow({
             performanceAmount: performanceAmount != null ? Number(performanceAmount) : null,
             sipyung,
             credibilityBonus: credibilityBonus != null ? Number(credibilityBonus) : null,
+            qualityScore: qualityScore != null ? Number(qualityScore) : null,
           };
         });
-        return {
-          index: groupIndex + 1,
+        const payload = {
+          index: exportIndex,
           members,
           summary: summaryEntry ? {
             shareSum: summaryEntry.shareSum ?? null,
@@ -2320,8 +2341,11 @@ export default function AgreementBoardWindow({
             totalMaxBase: summaryEntry.totalMaxBase ?? null,
             totalMaxWithCred: summaryEntry.totalMaxWithCred ?? null,
             totalMax: summaryEntry.totalMaxBase ?? null,
+            netCostBonusScore: summaryEntry.netCostBonusScore ?? null,
           } : null,
         };
+        exportIndex += 1;
+        return payload;
       });
 
       const payload = {
@@ -2336,7 +2360,9 @@ export default function AgreementBoardWindow({
           industryLabel: industryLabel || '',
           baseAmount: baseValue ?? null,
           estimatedAmount: estimatedValue ?? null,
-          bidAmount: parseAmountValue(bidAmount) ?? null,
+          bidAmount: bidAmountValue ?? null,
+          ratioBaseAmount: ratioBaseValue ?? null,
+          entryAmount: entryAmountValue ?? null,
           amountForScore,
           bidDeadline: formattedDeadline,
           rawBidDeadline: bidDeadline || '',
@@ -2364,9 +2390,13 @@ export default function AgreementBoardWindow({
   }, [
     exporting,
     ownerId,
+    ownerKeyUpper,
     rangeId,
     baseAmount,
     estimatedAmount,
+    ratioBaseAmount,
+    entryAmount,
+    bidAmount,
     bidDeadline,
     regionDutyRate,
     noticeNo,

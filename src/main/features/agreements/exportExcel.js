@@ -54,13 +54,18 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   const nameColumns = Array.isArray(slotColumns.name) ? slotColumns.name : [];
   const slotCount = nameColumns.length;
   const summaryColumns = config.summaryColumns || {};
+  const qualityColumns = Array.isArray(config.qualityColumns) ? config.qualityColumns : [];
+  const rowStep = Number(config.rowStep) > 0 ? Number(config.rowStep) : 1;
+  const qualityRowOffset = Number.isFinite(config.qualityRowOffset) ? Number(config.qualityRowOffset) : 0;
 
-  const availableRows = config.maxRows ? (config.maxRows - config.startRow + 1) : Infinity;
+  const availableRows = config.maxRows
+    ? Math.floor((config.maxRows - config.startRow) / rowStep) + 1
+    : Infinity;
   if (groups.length > availableRows) {
     throw new Error(`템플릿이 지원하는 최대 협정 수(${availableRows}개)를 초과했습니다.`);
   }
   const clearColumns = Array.isArray(config.clearColumns) ? config.clearColumns : [];
-  const endRow = config.maxRows || (config.startRow + availableRows - 1);
+  const endRow = config.maxRows || (config.startRow + (availableRows - 1) * rowStep);
   for (let row = config.startRow; row <= endRow; row += 1) {
     const rowObj = worksheet.getRow(row);
     if (rowObj && rowObj.style) {
@@ -87,10 +92,14 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   const estimatedAmountCell = headerCells.estimatedAmount || null;
   const baseAmountCell = headerCells.baseAmount || null;
   const bidAmountCell = headerCells.bidAmount || null;
+  const ratioBaseAmountCell = headerCells.ratioBaseAmount || null;
+  const entryAmountCell = headerCells.entryAmount || null;
 
   const estimatedValue = toExcelNumber(header.estimatedAmount);
   const baseValue = toExcelNumber(header.baseAmount);
   const bidValue = toExcelNumber(header.bidAmount);
+  const ratioBaseValue = toExcelNumber(header.ratioBaseAmount);
+  const entryAmountValue = toExcelNumber(header.entryAmount);
 
   if (amountForScoreCell) {
     worksheet.getCell(amountForScoreCell).value = amountForScore != null ? amountForScore : null;
@@ -104,6 +113,12 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   }
   if (bidAmountCell) {
     worksheet.getCell(bidAmountCell).value = bidValue != null ? bidValue : null;
+  }
+  if (ratioBaseAmountCell) {
+    worksheet.getCell(ratioBaseAmountCell).value = ratioBaseValue != null ? ratioBaseValue : null;
+  }
+  if (entryAmountCell) {
+    worksheet.getCell(entryAmountCell).value = entryAmountValue != null ? entryAmountValue : null;
   }
   const compositeTitle = [header.noticeNo, header.noticeTitle]
     .map((part) => (part ? String(part).trim() : ''))
@@ -121,7 +136,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   const nonRegionCells = [];
 
   groups.forEach((group, index) => {
-    const rowNumber = config.startRow + index;
+    const rowNumber = config.startRow + (index * rowStep);
     const members = Array.isArray(group.members) ? group.members : [];
     const slotData = Array(slotCount).fill(null);
     members.forEach((member) => {
@@ -188,6 +203,15 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       if (managementCell) { managementCell.value = toExcelNumber(member.managementScore); managementCell.fill = undefined; }
       if (performanceCell) { performanceCell.value = toExcelNumber(member.performanceAmount); performanceCell.fill = undefined; }
       if (abilityCell) { abilityCell.value = toExcelNumber(member.sipyung); abilityCell.fill = undefined; }
+      if (qualityColumns.length > 0 && member.qualityScore != null) {
+        const qualityColumn = qualityColumns[slotIndex];
+        if (qualityColumn) {
+          const qualityRowIndex = rowIndex + qualityRowOffset;
+          const qualityCell = worksheet.getCell(`${qualityColumn}${qualityRowIndex}`);
+          const qualityValue = toExcelNumber(member.qualityScore);
+          if (qualityValue != null) qualityCell.value = qualityValue;
+        }
+      }
 
       if (member.isRegion && regionFillTemplate) {
         regionCells.push({ column: nameColumn, row: rowIndex });
@@ -217,6 +241,13 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       const credValue = toExcelNumber(summary.credibilityScore);
       if (credValue != null) {
         credCell.value = credValue;
+      }
+    }
+    if (summaryColumns.netCostBonus && summary?.netCostBonusScore != null) {
+      const bonusCell = worksheet.getCell(`${summaryColumns.netCostBonus}${rowIndex}`);
+      const bonusValue = toExcelNumber(summary.netCostBonusScore);
+      if (bonusValue != null) {
+        bonusCell.value = bonusValue;
       }
     }
   });
