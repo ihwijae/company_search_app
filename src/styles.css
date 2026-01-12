@@ -917,12 +917,12 @@ button.primary:hover { background: var(--accent-2); }
   text-align: center;
 }
 .excel-cell.entry-disabled {
-  background: #f8fafc;
-  color: #94a3b8;
+  background: #e2e8f0;
+  color: #64748b;
 }
 .excel-cell.entry-disabled .perf-value,
 .excel-cell.entry-disabled .perf-label {
-  color: #94a3b8;
+  color: #64748b;
 }
 .excel-board-row.entry-failed td {
   background: #fee2e2 !important;
