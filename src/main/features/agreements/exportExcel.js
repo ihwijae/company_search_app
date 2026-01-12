@@ -274,10 +274,8 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       const qualityCell = worksheet.getCell(`${summaryColumns.qualityPoints}${rowIndex}`);
       const qualityValue = summary?.qualityPoints != null ? toExcelNumber(summary.qualityPoints) : null;
       qualityCell.value = qualityValue != null ? qualityValue : null;
-      qualityCell.fill = cloneFill(CLEAR_FILL);
-      if (qualityValue != null && qualityValue < 2) {
-        qualityCell.fill = cloneFill(ORANGE_FILL);
-      }
+      const shouldWarn = qualityValue != null && Number.isFinite(qualityValue) && qualityValue < 2;
+      qualityCell.fill = shouldWarn ? cloneFill(ORANGE_FILL) : null;
     }
   });
 
