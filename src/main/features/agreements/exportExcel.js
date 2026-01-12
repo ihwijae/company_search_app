@@ -20,6 +20,14 @@ const cloneFill = (fill) => {
   try { return JSON.parse(JSON.stringify(fill)); } catch { return fill; }
 };
 
+const MANAGEMENT_SCORE_MAX = 15;
+const ORANGE_FILL = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FFFFC000' },
+  bgColor: { indexed: 64 },
+};
+
 async function exportAgreementExcel({ config, payload, outputPath }) {
   if (!config || !config.path) throw new Error('템플릿 설정이 올바르지 않습니다.');
   if (!payload) throw new Error('엑셀 내보내기 데이터가 없습니다.');
@@ -204,7 +212,14 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
         }
         shareCell.fill = undefined;
       }
-      if (managementCell) { managementCell.value = toExcelNumber(member.managementScore); managementCell.fill = undefined; }
+      if (managementCell) {
+        const managementValue = toExcelNumber(member.managementScore);
+        managementCell.value = managementValue;
+        managementCell.fill = undefined;
+        if (managementValue != null && managementValue < MANAGEMENT_SCORE_MAX) {
+          managementCell.fill = cloneFill(ORANGE_FILL);
+        }
+      }
       if (performanceCell) { performanceCell.value = toExcelNumber(member.performanceAmount); performanceCell.fill = undefined; }
       if (abilityCell) { abilityCell.value = toExcelNumber(member.sipyung); abilityCell.fill = undefined; }
       if (qualityColumns.length > 0 && member.qualityScore != null) {
@@ -259,6 +274,9 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       const qualityValue = toExcelNumber(summary.qualityPoints);
       if (qualityValue != null) {
         qualityCell.value = qualityValue;
+        if (qualityValue < 2) {
+          qualityCell.fill = cloneFill(ORANGE_FILL);
+        }
       }
     }
   });
