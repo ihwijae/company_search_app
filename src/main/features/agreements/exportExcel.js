@@ -53,6 +53,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   const slotColumns = config.slotColumns || {};
   const nameColumns = Array.isArray(slotColumns.name) ? slotColumns.name : [];
   const slotCount = nameColumns.length;
+  const summaryColumns = config.summaryColumns || {};
 
   const availableRows = config.maxRows ? (config.maxRows - config.startRow + 1) : Infinity;
   if (groups.length > availableRows) {
@@ -131,6 +132,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
     });
 
     const rowIndex = rowNumber;
+    const summary = group?.summary || null;
     const indexValue = Number(group.index);
     if (Number.isFinite(indexValue)) {
       worksheet.getCell(`A${rowIndex}`).value = indexValue;
@@ -207,6 +209,14 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
         if (process.env.DEBUG_AGREEMENT_EXPORT === '1') {
           console.log('[exportExcel] set non-region fill', nameColumn, rowIndex, nameCell.fill);
         }
+      }
+    }
+
+    if (summaryColumns.credibility && summary?.credibilityScore != null) {
+      const credCell = worksheet.getCell(`${summaryColumns.credibility}${rowIndex}`);
+      const credValue = toExcelNumber(summary.credibilityScore);
+      if (credValue != null) {
+        credCell.value = credValue;
       }
     }
   });

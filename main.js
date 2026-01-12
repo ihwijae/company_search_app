@@ -225,6 +225,9 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       bidDeadline: 'P2',
       dutySummary: 'W2',
     },
+    summaryColumns: {
+      credibility: 'AD',
+    },
     regionFill: {
       type: 'pattern',
       pattern: 'solid',
