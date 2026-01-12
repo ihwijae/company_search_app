@@ -148,6 +148,7 @@ const resolveTemplateKey = (ownerId, rangeId) => {
   const ownerKey = String(ownerId || '').toUpperCase();
   const rangeKey = String(rangeId || '').toLowerCase();
   if (ownerKey === 'MOIS' && rangeKey === 'mois-under30') return 'mois-under30';
+  if (ownerKey === 'MOIS' && rangeKey === MOIS_30_TO_50_KEY) return 'mois-30to50';
   if (ownerKey === 'PPS' && rangeKey === PPS_UNDER_50_KEY) return 'pps-under50';
   if (ownerKey === 'LH' && rangeKey === LH_UNDER_50_KEY) return 'lh-under50';
   return null;
@@ -2355,7 +2356,8 @@ export default function AgreementBoardWindow({
         ? ratioBaseValue
         : (bidAmountValue != null ? bidAmountValue : null);
       const includePossibleShare = (ownerKeyUpper === 'PPS' && rangeId === PPS_UNDER_50_KEY)
-        || (ownerKeyUpper === 'LH' && rangeId === LH_UNDER_50_KEY);
+        || (ownerKeyUpper === 'LH' && rangeId === LH_UNDER_50_KEY)
+        || (ownerKeyUpper === 'MOIS' && rangeId === MOIS_30_TO_50_KEY);
       const dutyRateNumber = parseNumeric(regionDutyRate);
       const dutySummaryText = buildDutySummary(dutyRegions, dutyRateNumber, safeParticipantLimit);
       const formattedDeadline = formatBidDeadline(bidDeadline);
