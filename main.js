@@ -196,6 +196,9 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       fgColor: { argb: 'FFFFFF00' },
       bgColor: { indexed: 64 },
     },
+    summaryColumns: {
+      totalScore: 'AH',
+    },
   },
   'pps-under50': {
     label: '조달청 50억 미만',
@@ -227,6 +230,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     },
     summaryColumns: {
       credibility: 'AD',
+      totalScore: 'AH',
     },
     regionFill: {
       type: 'pattern',
@@ -271,6 +275,8 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     summaryColumns: {
       credibility: 'AF',
       netCostBonus: 'AG',
+      qualityPoints: 'AD',
+      totalScore: 'AK',
     },
     regionFill: {
       type: 'pattern',

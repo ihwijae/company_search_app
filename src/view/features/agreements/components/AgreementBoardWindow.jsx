@@ -2319,6 +2319,21 @@ export default function AgreementBoardWindow({
             qualityScore: qualityScore != null ? Number(qualityScore) : null,
           };
         });
+        let qualityPoints = null;
+        if (isLHOwner) {
+          let qualityTotal = 0;
+          let hasQuality = false;
+          members.forEach((member) => {
+            const shareValue = Number(member.sharePercent);
+            const scoreValue = Number(member.qualityScore);
+            if (!Number.isFinite(shareValue) || !Number.isFinite(scoreValue)) return;
+            qualityTotal += scoreValue * (shareValue / 100);
+            hasQuality = true;
+          });
+          if (hasQuality) {
+            qualityPoints = resolveQualityPoints(qualityTotal, selectedRangeOption?.key);
+          }
+        }
         const payload = {
           index: exportIndex,
           members,
@@ -2342,6 +2357,7 @@ export default function AgreementBoardWindow({
             totalMaxWithCred: summaryEntry.totalMaxWithCred ?? null,
             totalMax: summaryEntry.totalMaxBase ?? null,
             netCostBonusScore: summaryEntry.netCostBonusScore ?? null,
+            qualityPoints,
           } : null,
         };
         exportIndex += 1;
@@ -2410,6 +2426,9 @@ export default function AgreementBoardWindow({
     summaryByGroup,
     summary,
     safeGroupSize,
+    isLHOwner,
+    resolveQualityPoints,
+    selectedRangeOption?.key,
   ]);
 
   const handleGenerateText = React.useCallback(async () => {
