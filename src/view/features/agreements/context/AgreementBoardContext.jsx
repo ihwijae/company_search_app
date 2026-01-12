@@ -33,7 +33,7 @@ const initialState = {
   bidRate: '',
   adjustmentRate: '',
   entryAmount: '',
-  entryMode: 'ratio',
+  entryMode: 'none',
   netCostAmount: '',
   aValue: '',
   memoHtml: '',

@@ -916,6 +916,14 @@ button.primary:hover { background: var(--accent-2); }
 .excel-board-table textarea {
   text-align: center;
 }
+.excel-cell.entry-disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+.excel-cell.entry-disabled .perf-value,
+.excel-cell.entry-disabled .perf-label {
+  color: #94a3b8;
+}
 .excel-board-row.entry-failed td {
   background: #fee2e2 !important;
 }
@@ -1015,6 +1023,8 @@ button.primary:hover { background: var(--accent-2); }
 .col-bid { width: 55px; }
 .col-total { width: 55px; }
 .col-quality-points { width: 55px; }
+.col-sipyung { width: 90px; }
+.col-sipyung-summary { width: 60px; }
 
 .excel-cell {
   min-width: 0;

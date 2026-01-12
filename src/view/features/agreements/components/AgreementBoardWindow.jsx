@@ -65,6 +65,8 @@ const COLUMN_WIDTHS = {
   bid: 55,
   netCostBonus: 55,
   total: 55,
+  sipyungCell: 90,
+  sipyungSummary: 60,
 };
 const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
 const BOARD_COPY_BUTTON_STYLE_MAP = {
@@ -1512,6 +1514,7 @@ export default function AgreementBoardWindow({
       : 0;
     const statusWidth = slotLabels.length * COLUMN_WIDTHS.status;
     const perfCellsWidth = slotLabels.length * COLUMN_WIDTHS.performanceCell;
+    const sipyungCellsWidth = slotLabels.length * COLUMN_WIDTHS.sipyungCell;
     const base = COLUMN_WIDTHS.order
       + COLUMN_WIDTHS.approval
       + COLUMN_WIDTHS.management
@@ -1522,8 +1525,9 @@ export default function AgreementBoardWindow({
       + COLUMN_WIDTHS.performanceSummary
       + COLUMN_WIDTHS.bid
       + COLUMN_WIDTHS.netCostBonus
-      + COLUMN_WIDTHS.total;
-    const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth + perfCellsWidth;
+      + COLUMN_WIDTHS.total
+      + COLUMN_WIDTHS.sipyungSummary;
+    const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth + perfCellsWidth + sipyungCellsWidth;
     return Math.max(1200, total);
   }, [slotLabels.length, credibilityEnabled, isLHOwner]);
 
@@ -3355,8 +3359,8 @@ export default function AgreementBoardWindow({
   }, [groups]);
 
   const tableColumnCount = React.useMemo(() => {
-    const perSlotCols = credibilityEnabled ? 5 : 4;
-    const baseColumns = 10 + (credibilityEnabled ? 1 : 0) + (isLHOwner ? 1 : 0);
+    const perSlotCols = credibilityEnabled ? 6 : 5;
+    const baseColumns = 11 + (credibilityEnabled ? 1 : 0) + (isLHOwner ? 1 : 0);
     return baseColumns + (slotLabels.length * perSlotCols);
   }, [credibilityEnabled, isLHOwner, slotLabels.length]);
 
@@ -3547,8 +3551,28 @@ export default function AgreementBoardWindow({
     </td>
   );
 
+  const renderSipyungCell = (meta, rowSpan, entryDisabled) => (
+    <td
+      key={`sipyung-${meta.groupIndex}-${meta.slotIndex}`}
+      className={`excel-cell excel-sipyung-cell${entryDisabled ? ' entry-disabled' : ''}`}
+      rowSpan={rowSpan}
+    >
+      {meta.empty ? null : (
+        <div className="excel-performance">
+          <span className="perf-label">시평액</span>
+          <strong className="perf-value">{meta.sipyungDisplay}</strong>
+        </div>
+      )}
+    </td>
+  );
+
   const managementHeaderMax = derivedMaxScores.managementMax ?? MANAGEMENT_SCORE_MAX;
   const performanceHeaderMax = derivedMaxScores.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper);
+  const sipyungSummaryLabel = React.useMemo(() => {
+    if (entryModeResolved === 'sum') return '시평액 합(단순합산)';
+    if (entryModeResolved === 'ratio') return '시평액 합(비율제)';
+    return '시평액 합';
+  }, [entryModeResolved]);
 
   const handleManagementBonusToggle = (groupIndex) => {
     setGroupManagementBonus((prev) => {
@@ -3662,6 +3686,11 @@ export default function AgreementBoardWindow({
       ? formatScore(summaryInfo.netCostBonusScore, 2)
       : '0';
     const totalScoreDisplay = totalScore != null ? formatScore(totalScore) : '-';
+    const entryDisabled = entryModeResolved === 'none';
+    const sipyungValue = entryModeResolved === 'sum'
+      ? summaryInfo?.sipyungSum
+      : (entryModeResolved === 'ratio' ? summaryInfo?.sipyungWeighted : null);
+    const sipyungSummaryDisplay = sipyungValue != null ? formatAmount(sipyungValue) : '-';
     const approvalValue = groupApprovals[groupIndex] || '';
     const rightRowSpan = isLHOwner ? 2 : undefined;
     const bonusChecked = Boolean(groupManagementBonus[groupIndex]);
@@ -3719,6 +3748,10 @@ export default function AgreementBoardWindow({
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
         <td className={`excel-cell total-cell total-score${scoreState ? ` score-${scoreState}` : ''}`} rowSpan={rightRowSpan}>{totalScoreDisplay}</td>
+        {slotMetas.map((meta) => renderSipyungCell(meta, rightRowSpan, entryDisabled))}
+        <td className={`excel-cell total-cell${entryDisabled ? ' entry-disabled' : ''}`} rowSpan={rightRowSpan}>
+          {entryDisabled ? '-' : sipyungSummaryDisplay}
+        </td>
         </tr>
         {renderQualityRow(group, groupIndex, slotMetas, qualityTotal, entryFailed)}
       </React.Fragment>
@@ -4016,20 +4049,24 @@ export default function AgreementBoardWindow({
                   <col className="col-management" />
                   <col className="col-management-bonus" />
                   {slotLabels.map((_, index) => (
-                    <col key={`col-performance-${index}`} className="col-performance" />
-                  ))}
-                  <col className="col-performance-summary" />
-                  {isLHOwner && <col className="col-quality-points" />}
-                  <col className="col-bid" />
-                  <col className="col-netcost-bonus" />
-                  <col className="col-total" />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th rowSpan="2">연번</th>
-                    <th rowSpan="2">승인</th>
-                    <th colSpan={slotLabels.length}>업체명</th>
-                    <th colSpan={slotLabels.length}>지분(%)</th>
+                <col key={`col-performance-${index}`} className="col-performance" />
+              ))}
+              <col className="col-performance-summary" />
+              {isLHOwner && <col className="col-quality-points" />}
+              <col className="col-bid" />
+              <col className="col-netcost-bonus" />
+              <col className="col-total" />
+              {slotLabels.map((_, index) => (
+                <col key={`col-sipyung-${index}`} className="col-sipyung" />
+              ))}
+              <col className="col-sipyung-summary" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th rowSpan="2">연번</th>
+                <th rowSpan="2">승인</th>
+                <th colSpan={slotLabels.length}>업체명</th>
+                <th colSpan={slotLabels.length}>지분(%)</th>
                   <th rowSpan="2">
                     {isLHOwner ? (
                       <div className="share-total-header">
@@ -4044,34 +4081,39 @@ export default function AgreementBoardWindow({
                   {credibilityEnabled && (
                     <th rowSpan="2">신인도 합({formatScore(ownerCredibilityMax, 1)}점)</th>
                   )}
-                    <th colSpan={slotLabels.length}>경영상태</th>
-                    <th rowSpan="2">경영({formatScore(managementHeaderMax, 0)}점)</th>
-                    <th rowSpan="2">가점</th>
-                    <th colSpan={slotLabels.length}>시공실적</th>
-                    <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
-                    {isLHOwner && <th rowSpan="2">품질점수</th>}
-                    <th rowSpan="2">입찰점수</th>
-                    <th rowSpan="2">순공사원가가점</th>
-                    <th rowSpan="2">예상점수</th>
-                  </tr>
-                  <tr>
-                    {slotLabels.map((label, index) => (
-                      <th key={`name-head-${index}`}>{label}</th>
-                    ))}
-                    {slotLabels.map((label, index) => (
-                      <th key={`share-head-${index}`}>{label}</th>
-                    ))}
-                    {credibilityEnabled && slotLabels.map((label, index) => (
-                      <th key={`credibility-head-${index}`}>{label}</th>
-                    ))}
-                    {slotLabels.map((label, index) => (
-                      <th key={`status-head-${index}`}>{label}</th>
-                    ))}
-                    {slotLabels.map((label, index) => (
-                      <th key={`perf-head-${index}`}>{label}</th>
-                    ))}
-                  </tr>
-                </thead>
+                <th colSpan={slotLabels.length}>경영상태</th>
+                <th rowSpan="2">경영({formatScore(managementHeaderMax, 0)}점)</th>
+                <th rowSpan="2">가점</th>
+                <th colSpan={slotLabels.length}>시공실적</th>
+                <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
+                {isLHOwner && <th rowSpan="2">품질점수</th>}
+                <th rowSpan="2">입찰점수</th>
+                <th rowSpan="2">순공사원가가점</th>
+                <th rowSpan="2">예상점수</th>
+                <th colSpan={slotLabels.length}>시평액</th>
+                <th rowSpan="2">{sipyungSummaryLabel}</th>
+              </tr>
+              <tr>
+                {slotLabels.map((label, index) => (
+                  <th key={`name-head-${index}`}>{label}</th>
+                ))}
+                {slotLabels.map((label, index) => (
+                  <th key={`share-head-${index}`}>{label}</th>
+                ))}
+                {credibilityEnabled && slotLabels.map((label, index) => (
+                  <th key={`credibility-head-${index}`}>{label}</th>
+                ))}
+                {slotLabels.map((label, index) => (
+                  <th key={`status-head-${index}`}>{label}</th>
+                ))}
+                {slotLabels.map((label, index) => (
+                  <th key={`perf-head-${index}`}>{label}</th>
+                ))}
+                {slotLabels.map((label, index) => (
+                  <th key={`sipyung-head-${index}`}>{label}</th>
+                ))}
+              </tr>
+            </thead>
                 <tbody>
                   {groups.length === 0 ? (
                     <tr className="excel-board-row empty">
