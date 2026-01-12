@@ -1024,7 +1024,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-total { width: 55px; }
 .col-quality-points { width: 55px; }
 .col-sipyung { width: 90px; }
-.col-sipyung-summary { width: 60px; }
+.col-sipyung-summary { width: 90px; }
 
 .excel-cell {
   min-width: 0;
