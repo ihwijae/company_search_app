@@ -171,7 +171,9 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
     if (Number.isFinite(indexValue)) {
       worksheet.getCell(`A${rowIndex}`).value = indexValue;
     }
-    worksheet.getCell(`B${rowIndex}`).value = '';
+    if (approvalColumn !== 'B') {
+      worksheet.getCell(`B${rowIndex}`).value = '';
+    }
 
     for (let slotIndex = 0; slotIndex < slotCount; slotIndex += 1) {
       const member = slotData[slotIndex];
