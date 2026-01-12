@@ -260,6 +260,8 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       'AR', 'AS', 'AT', 'AU', 'AV',
     ],
     headerCells: {
+      estimatedAmount: 'D1',
+      baseAmount: 'D2',
       ratioBaseAmount: 'I1',
       entryAmount: 'AI1',
       noticeTitle: 'K1',

@@ -2292,7 +2292,7 @@ export default function AgreementBoardWindow({
           const possibleShareRatio = (includePossibleShare && possibleShareBase && sipyung && sipyung > 0)
             ? (sipyung / possibleShareBase) * 100
             : null;
-          const shareLabel = (includePossibleShare && possibleShareRatio != null)
+          const shareLabel = (includePossibleShare && possibleShareRatio != null && possibleShareRatio < 100)
             ? formatShareForName(possibleShareRatio)
             : '';
           const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
@@ -2413,6 +2413,12 @@ export default function AgreementBoardWindow({
   ]);
 
   const handleGenerateText = React.useCallback(async () => {
+    const soloExclusionSet = new Set([
+      '아람이엔테크㈜',
+      '㈜우진일렉트',
+      '에코엠이엔씨㈜',
+      '㈜지음쏠라테크',
+    ]);
     const items = groupAssignments
       .map((memberIds, groupIndex) => {
         const members = memberIds.map((uid) => (uid ? participantMap.get(uid) : null)).filter(Boolean);
@@ -2420,6 +2426,10 @@ export default function AgreementBoardWindow({
 
         const leaderEntry = members[0];
         const memberEntries = members.slice(1);
+        const leaderName = String(getCompanyName(leaderEntry.candidate) || '').trim();
+        if (members.length === 1 && soloExclusionSet.has(leaderName)) {
+          return null;
+        }
 
         return {
           owner: ownerId,
@@ -3261,7 +3271,10 @@ export default function AgreementBoardWindow({
       if (possibleShareDisplay) {
         lines.push(possibleShareDisplay);
       } else if (!(possibleShareRatio != null && possibleShareRatio >= 100) && shareDisplay) {
-        lines.push(shareDisplay);
+        const shareNumeric = toNumber(shareDisplay);
+        if (!(shareNumeric != null && shareNumeric >= 100)) {
+          lines.push(shareDisplay);
+        }
       }
       if (managerName) lines.push(managerName);
       return lines.filter(Boolean).join('\n');
@@ -3423,7 +3436,7 @@ export default function AgreementBoardWindow({
     if (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount && sipyungAmount > 0) {
       possibleShare = (sipyungAmount / possibleShareBase) * 100;
     }
-    const possibleShareText = (possibleShare != null && possibleShare > 0)
+    const possibleShareText = (possibleShare != null && possibleShare > 0 && possibleShare < 100)
       ? `${possibleShare >= 100 ? possibleShare.toFixed(0) : possibleShare.toFixed(2)}%`
       : '';
     const tags = [];
