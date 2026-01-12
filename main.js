@@ -226,6 +226,9 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       fgColor: { argb: 'FFFFFF00' },
       bgColor: { indexed: 64 },
     },
+    headerCells: {
+      baseAmount: 'D1',
+    },
     summaryColumns: {},
   },
   'pps-under50': {

@@ -2390,10 +2390,7 @@ export default function AgreementBoardWindow({
             ? storedShare
             : getSharePercent(groupIndex, slotIndex, candidate);
           const sharePercent = parseNumeric(shareSource);
-          const managementScoreRaw = getCandidateManagementScore(candidate);
-          const managementScore = managementScoreRaw != null
-            ? toNumber(managementScoreRaw) * managementScale
-            : null;
+          const managementScore = getCandidateManagementScore(candidate);
           const performanceAmount = getCandidatePerformanceAmount(candidate);
           const sipyungValue = candidate._sipyung ?? extractAmountValue(
             candidate,
@@ -2552,7 +2549,6 @@ export default function AgreementBoardWindow({
     resolveQualityPoints,
     selectedRangeOption?.key,
     groupManagementBonus,
-    managementScale,
   ]);
 
   const handleGenerateText = React.useCallback(async () => {
@@ -2697,10 +2693,7 @@ export default function AgreementBoardWindow({
         if (!entry || !entry.candidate) return null;
         const candidate = entry.candidate;
         const sharePercent = getSharePercent(groupIndex, slotIndex, candidate);
-        const managementScoreRaw = getCandidateManagementScore(candidate);
-        const managementScore = managementScoreRaw != null
-          ? toNumber(managementScoreRaw) * managementScale
-          : null;
+        const managementScore = getCandidateManagementScore(candidate);
         const performanceAmount = getCandidatePerformanceAmount(candidate);
         const credibilityBonus = credibilityEnabled ? getCredibilityValue(groupIndex, slotIndex) : 0;
         const sipyungAmount = getCandidateSipyungAmount(candidate);
@@ -2847,12 +2840,15 @@ export default function AgreementBoardWindow({
       const results = await Promise.all(metrics.map(async (metric) => {
         const shareReady = metric.memberCount > 0 && metric.shareValid;
         const managementScoreBase = shareReady && !metric.managementMissing
-          ? clampScore(metric.managementScore, managementMax)
+          ? clampScore(metric.managementScore, MANAGEMENT_SCORE_MAX)
           : null;
         const bonusEnabled = Boolean(groupManagementBonus[metric.groupIndex]);
-        const managementScore = (managementScoreBase != null && bonusEnabled)
-          ? clampScore(managementScoreBase * 1.1, managementMax)
+        const managementWithBonus = (managementScoreBase != null && bonusEnabled)
+          ? clampScore(managementScoreBase * 1.1, MANAGEMENT_SCORE_MAX)
           : managementScoreBase;
+        const managementScore = managementWithBonus != null
+          ? clampScore(managementWithBonus * managementScale, managementMax)
+          : managementWithBonus;
 
         let performanceScore = null;
         let performanceRatio = null;
@@ -3520,10 +3516,7 @@ export default function AgreementBoardWindow({
               value = '';
             }
           } else if (kind === 'management') {
-            const managementScoreRaw = getCandidateManagementScore(candidate);
-            const managementScore = managementScoreRaw != null
-              ? toNumber(managementScoreRaw) * managementScale
-              : null;
+        const managementScore = getCandidateManagementScore(candidate);
             if (managementScore != null && managementScore !== '') {
               value = formatNumeric(managementScore);
             }
@@ -3562,7 +3555,7 @@ export default function AgreementBoardWindow({
       setCopyingKind(null);
       setExcelCopying(false);
     }
-  }, [copyToClipboard, excelCopying, groups, participantMap, groupShares, groupShareRawInputs, possibleShareBase, managementScale]);
+  }, [copyToClipboard, excelCopying, groups, participantMap, groupShares, groupShareRawInputs, possibleShareBase]);
 
 
   const copyGroupMetric = React.useCallback(async (groupIndex, metric) => {
@@ -3577,7 +3570,7 @@ export default function AgreementBoardWindow({
         label: '경영점수',
         extractor: (candidate) => {
           const scoreRaw = getCandidateManagementScore(candidate);
-          const numeric = scoreRaw != null ? toNumber(scoreRaw) * managementScale : null;
+          const numeric = scoreRaw != null ? toNumber(scoreRaw) : null;
           return numeric == null ? '' : formatScore(numeric);
         },
       },
@@ -3616,7 +3609,7 @@ export default function AgreementBoardWindow({
       console.error('[AgreementBoard] copy failed', err);
       showHeaderAlert('복사에 실패했습니다. 다시 시도해 주세요.');
     }
-  }, [groups, managementScale, showHeaderAlert]);
+  }, [groups, showHeaderAlert]);
 
   const tableColumnCount = React.useMemo(() => {
     const perSlotCols = credibilityEnabled ? 6 : 5;
@@ -3667,11 +3660,9 @@ export default function AgreementBoardWindow({
       tags.push({ key: 'female', label: '女' });
     }
     const managerName = getCandidateManagerName(candidate);
-    const managementScoreRaw = getCandidateManagementScore(candidate);
-    const managementScore = managementScoreRaw != null
-      ? toNumber(managementScoreRaw) * managementScale
-      : null;
-    const managementNumeric = clampScore(toNumber(managementScore), managementMax);
+    const managementScore = getCandidateManagementScore(candidate);
+    const perSlotMax = isMois30To50 ? MANAGEMENT_SCORE_MAX : managementMax;
+    const managementNumeric = clampScore(toNumber(managementScore), perSlotMax);
     const credibilityStored = groupCredibility[groupIndex]?.[slotIndex];
     const credibilityValue = credibilityStored != null ? String(credibilityStored) : '';
     const credibilityNumeric = parseNumeric(credibilityValue);
@@ -3696,7 +3687,7 @@ export default function AgreementBoardWindow({
       sipyungDisplay: formatAmount(sipyungAmount),
       performanceDisplay: formatAmount(performanceAmount),
       managementDisplay: formatScore(managementNumeric, 2),
-      managementAlert: managementNumeric != null && managementNumeric < (managementMax - 0.01),
+      managementAlert: managementNumeric != null && managementNumeric < (perSlotMax - 0.01),
       qualityScore,
       credibilityValue,
       credibilityProduct: credibilityProduct != null ? `${credibilityProduct.toFixed(2)}점` : '',
@@ -3965,7 +3956,7 @@ export default function AgreementBoardWindow({
     const bonusChecked = Boolean(groupManagementBonus[groupIndex]);
 
     const managementState = summaryInfo?.managementScore != null
-      ? (summaryInfo.managementScore >= ((summaryInfo.managementMax ?? MANAGEMENT_SCORE_MAX) - 0.01) ? 'ok' : 'warn')
+      ? (summaryInfo.managementScore >= ((summaryInfo.managementMax ?? managementMax) - 0.01) ? 'ok' : 'warn')
       : '';
     const performanceState = summaryInfo?.performanceScore != null
       ? (summaryInfo.performanceScore >= ((summaryInfo.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper)) - 0.01) ? 'ok' : 'warn')
