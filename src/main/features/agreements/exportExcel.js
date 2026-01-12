@@ -27,6 +27,7 @@ const ORANGE_FILL = {
   fgColor: { argb: 'FFFFC000' },
   bgColor: { indexed: 64 },
 };
+const CLEAR_FILL = { type: 'pattern', pattern: 'none' };
 
 async function exportAgreementExcel({ config, payload, outputPath }) {
   if (!config || !config.path) throw new Error('템플릿 설정이 올바르지 않습니다.');
@@ -215,7 +216,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       if (managementCell) {
         const managementValue = toExcelNumber(member.managementScore);
         managementCell.value = managementValue;
-        managementCell.fill = undefined;
+        managementCell.fill = cloneFill(CLEAR_FILL);
         if (managementValue != null && managementValue < MANAGEMENT_SCORE_MAX) {
           managementCell.fill = cloneFill(ORANGE_FILL);
         }
@@ -273,7 +274,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       const qualityCell = worksheet.getCell(`${summaryColumns.qualityPoints}${rowIndex}`);
       const qualityValue = summary?.qualityPoints != null ? toExcelNumber(summary.qualityPoints) : null;
       qualityCell.value = qualityValue != null ? qualityValue : null;
-      qualityCell.fill = undefined;
+      qualityCell.fill = cloneFill(CLEAR_FILL);
       if (qualityValue != null && qualityValue < 2) {
         qualityCell.fill = cloneFill(ORANGE_FILL);
       }
