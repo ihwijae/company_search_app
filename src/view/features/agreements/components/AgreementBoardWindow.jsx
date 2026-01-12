@@ -2327,6 +2327,7 @@ export default function AgreementBoardWindow({
             const shareValue = Number(member.sharePercent);
             const scoreValue = Number(member.qualityScore);
             if (!Number.isFinite(shareValue) || !Number.isFinite(scoreValue)) return;
+            if (shareValue <= 0) return;
             qualityTotal += scoreValue * (shareValue / 100);
             hasQuality = true;
           });
