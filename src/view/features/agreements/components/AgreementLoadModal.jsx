@@ -45,6 +45,14 @@ export default function AgreementLoadModal({
     return 'agreement-badge';
   };
 
+  const resolveOwnerBadgeClass = (label) => {
+    const value = String(label || '').toUpperCase();
+    if (value.includes('LH')) return 'agreement-badge agreement-badge--owner-lh';
+    if (value.includes('MOIS') || value.includes('행안부')) return 'agreement-badge agreement-badge--owner-mois';
+    if (value.includes('PPS') || value.includes('조달청')) return 'agreement-badge agreement-badge--owner-pps';
+    return 'agreement-badge';
+  };
+
   return (
     <div className="agreement-load-overlay" onClick={onClose}>
       <div className="agreement-load-modal" onClick={(event) => event.stopPropagation()}>
@@ -158,7 +166,9 @@ export default function AgreementLoadModal({
                   <div className="agreement-load-title">
                     <strong>{noticeTitle || meta.noticeTitle || meta.noticeNo || '협정'}</strong>
                     {(meta.ownerLabel || meta.ownerId) && (
-                      <span className="agreement-badge">{meta.ownerLabel || meta.ownerId}</span>
+                      <span className={resolveOwnerBadgeClass(meta.ownerLabel || meta.ownerId)}>
+                        {meta.ownerLabel || meta.ownerId}
+                      </span>
                     )}
                     {(meta.rangeLabel || meta.rangeId) && (
                       <span className="agreement-badge">{meta.rangeLabel || meta.rangeId}</span>
