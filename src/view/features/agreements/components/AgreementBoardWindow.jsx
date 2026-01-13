@@ -67,7 +67,7 @@ const COLUMN_WIDTHS = {
   performanceSummary: 50,
   credibilityCell: 45,
   credibility: 55,
-  bid: 55,
+  bid: 40,
   subcontract: 55,
   netCostBonus: 55,
   total: 55,
@@ -1092,21 +1092,26 @@ export default function AgreementBoardWindow({
     (value) => (isMoisUnderOr30To50 ? roundTo(value, 4) : value),
     [isMoisUnderOr30To50],
   );
+  const roundForLhTotals = React.useCallback(
+    (value) => (isLHOwner ? roundTo(value, 2) : value),
+    [isLHOwner],
+  );
   const resolveSummaryDigits = React.useCallback(
     (kind) => {
+      if (kind === 'bid') return 0;
+      if (kind === 'subcontract') return 0;
       if (isPpsUnder50) return 2;
       if (isKrailUnder50) return 2;
       if (isMoisUnderOr30To50 && kind === 'management') return 4;
       if (isMoisUnderOr30To50 && kind === 'performance') return 2;
       if (isMoisUnderOr30To50 && kind === 'total') return 4;
+      if (isLHOwner && kind === 'performance') return 2;
       if (kind === 'management') return 2;
-      if (kind === 'bid') return 0;
       if (kind === 'netCost') return 2;
-      if (kind === 'subcontract') return 0;
       if (kind === 'quality') return 2;
       return 3;
     },
-    [isKrailUnder50, isMoisUnderOr30To50, isPpsUnder50],
+    [isKrailUnder50, isLHOwner, isMoisUnderOr30To50, isPpsUnder50],
   );
   const ownerDisplayLabel = selectedGroup?.label || '발주처 미지정';
   const rangeDisplayLabel = selectedRangeOption?.label || '금액대 선택';
@@ -2943,7 +2948,7 @@ export default function AgreementBoardWindow({
           ? clampScore(managementWithBonus * managementScale, managementMax)
           : managementWithBonus;
         managementScore = roundForMoisManagement(managementScore);
-        managementScore = roundUpForPpsUnder50(roundForKrailUnder50(managementScore));
+        managementScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(managementScore)));
 
         let performanceScore = null;
         let performanceRatio = null;
@@ -2954,7 +2959,7 @@ export default function AgreementBoardWindow({
             performanceRatio = metric.performanceAmount / perfBase;
           }
         }
-        performanceScore = roundUpForPpsUnder50(roundForKrailUnder50(performanceScore));
+        performanceScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(performanceScore)));
         performanceRatio = roundForKrailUnder50(performanceRatio);
 
         const perfCapCurrent = getPerformanceCap();
@@ -3019,7 +3024,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, resolveSummaryDigits]);
+  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, resolveSummaryDigits]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
