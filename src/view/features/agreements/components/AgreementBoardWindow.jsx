@@ -1100,8 +1100,9 @@ export default function AgreementBoardWindow({
       if (isMoisUnderOr30To50 && kind === 'performance') return 2;
       if (isMoisUnderOr30To50 && kind === 'total') return 4;
       if (kind === 'management') return 2;
+      if (kind === 'bid') return 0;
       if (kind === 'netCost') return 2;
-      if (kind === 'subcontract') return 2;
+      if (kind === 'subcontract') return 0;
       if (kind === 'quality') return 2;
       return 3;
     },
