@@ -480,8 +480,34 @@ function extractExpiryDate(text) {
 
 function loadConfig() {
     try {
-        if (fs.existsSync(CONFIG_PATH)) {
-            const rawConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8')) || {};
+        const readConfigFile = (filePath) => {
+            try {
+                if (fs.existsSync(filePath)) {
+                    return JSON.parse(fs.readFileSync(filePath, 'utf-8')) || {};
+                }
+            } catch (err) {
+                console.warn('[MAIN] 설정 파일 읽기 실패:', err?.message || err);
+            }
+            return null;
+        };
+        let configSourcePath = CONFIG_PATH;
+        let rawConfig = readConfigFile(CONFIG_PATH);
+        if (!rawConfig) {
+            const fallbackPaths = [
+                defaultUserDataDir ? path.join(defaultUserDataDir, 'config.json') : null,
+                windowsUserDataDir ? path.join(windowsUserDataDir, 'config.json') : null,
+            ]
+                .filter(Boolean)
+                .filter((p) => p !== CONFIG_PATH);
+            for (const candidatePath of fallbackPaths) {
+                rawConfig = readConfigFile(candidatePath);
+                if (rawConfig) {
+                    configSourcePath = candidatePath;
+                    break;
+                }
+            }
+        }
+        if (rawConfig) {
             const filePathSource = (rawConfig && typeof rawConfig.filePaths === 'object')
                 ? rawConfig.filePaths
                 : rawConfig;
@@ -514,7 +540,10 @@ function loadConfig() {
             const snapshot = buildConfigSnapshot();
             const shouldRewrite = JSON.stringify(rawConfig) !== JSON.stringify(snapshot);
             console.log('[MAIN] 설정 파일 로드 완료 (경로만 표시):', snapshot.filePaths);
-            if (shouldRewrite) {
+            if (configSourcePath !== CONFIG_PATH || shouldRewrite) {
+                if (configSourcePath !== CONFIG_PATH) {
+                    console.log('[MAIN] 설정 파일 위치를 갱신합니다:', configSourcePath);
+                }
                 saveConfig(snapshot);
             }
         } else {
