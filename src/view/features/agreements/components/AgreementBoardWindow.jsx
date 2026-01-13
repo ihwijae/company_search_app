@@ -2967,7 +2967,7 @@ export default function AgreementBoardWindow({
         let credibilityScore = (credibilityEnabled && shareReady && metric.credibilityScore != null)
           ? clampScore(metric.credibilityScore, ownerCredibilityMax)
           : (credibilityEnabled && shareReady ? 0 : (credibilityEnabled ? null : null));
-        credibilityScore = roundUpForPpsUnder50(roundForKrailUnder50(credibilityScore));
+        credibilityScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(credibilityScore)));
         const credibilityMax = credibilityEnabled ? ownerCredibilityMax : null;
         const subcontractScore = isMois30To50 && metric.memberCount > 0 ? SUBCONTRACT_SCORE : null;
         let totalScoreBase = (managementScore != null && performanceScore != null)
