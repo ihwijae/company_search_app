@@ -1107,6 +1107,7 @@ export default function AgreementBoardWindow({
       if (isMoisUnderOr30To50 && kind === 'total') return 4;
       if (isLHOwner && kind === 'performance') return 2;
       if (isLHOwner && kind === 'credibility') return 2;
+      if (isLHOwner && kind === 'total') return 2;
       if (kind === 'management') return 2;
       if (kind === 'netCost') return 2;
       if (kind === 'quality') return 2;
