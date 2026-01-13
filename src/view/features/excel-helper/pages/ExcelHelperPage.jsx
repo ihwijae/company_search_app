@@ -945,7 +945,7 @@ export default function ExcelHelperPage() {
       ...prev,
       {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        grade: TECHNICIAN_GRADE_OPTIONS[0]?.value || 'special',
+        grade: '',
         careerCoeff: 'none',
         managementCoeff: 'none',
         count: '1',
@@ -2087,6 +2087,7 @@ export default function ExcelHelperPage() {
                           value={entry.grade}
                           onChange={(e) => updateTechnicianEntry(entry.id, 'grade', e.target.value)}
                         >
+                          <option value="">등급을 선택하세요</option>
                           {TECHNICIAN_GRADE_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
                           ))}

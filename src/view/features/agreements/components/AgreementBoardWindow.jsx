@@ -1313,7 +1313,7 @@ export default function AgreementBoardWindow({
       ...prev,
       {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        grade: TECHNICIAN_GRADE_OPTIONS[0]?.value || 'special',
+        grade: '',
         careerCoeff: 'none',
         managementCoeff: 'none',
         count: '1',
@@ -4271,7 +4271,7 @@ export default function AgreementBoardWindow({
     const technicianSummary = technicianEnabled
       ? (summaryInfo?.technicianScore != null
         ? formatScore(summaryInfo.technicianScore, resolveSummaryDigits('technician'))
-        : (technicianEditable ? '-' : '비활성'))
+        : (technicianEditable ? '-' : '평가제외'))
       : null;
     const shareSumDisplay = summaryInfo?.shareSum != null ? formatPercent(summaryInfo.shareSum) : '-';
     const shareSummaryClass = summaryInfo?.shareComplete ? 'ok' : 'warn';
@@ -4655,16 +4655,6 @@ export default function AgreementBoardWindow({
                 >{exporting ? '엑셀 생성 중…' : '엑셀로 내보내기'}</button>
                 <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
                 <button type="button" className="excel-btn" onClick={openCopyModal}>복사</button>
-                {technicianEnabled && (
-                  <button
-                    type="button"
-                    className="excel-btn"
-                    onClick={openTechnicianModal}
-                    disabled={!technicianEditable}
-                  >
-                    기술자점수 계산
-                  </button>
-                )}
                 <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="excel-btn" onClick={handleDeleteGroups}>선택 삭제</button>
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
@@ -4675,6 +4665,16 @@ export default function AgreementBoardWindow({
                   className={`excel-btn memo-btn${memoHasContent ? ' active' : ''}`}
                   onClick={openMemoModal}
                 >메모</button>
+                {technicianEnabled && (
+                  <button
+                    type="button"
+                    className="excel-btn"
+                    onClick={openTechnicianModal}
+                    disabled={!technicianEditable}
+                  >
+                    기술자점수 계산
+                  </button>
+                )}
                 {!inlineMode && (
                   <button type="button" className="excel-close-btn" onClick={onClose}>닫기</button>
                 )}
@@ -4936,7 +4936,7 @@ export default function AgreementBoardWindow({
           </div>
           {!technicianEditable && (
             <div style={{ fontSize: 12, color: '#b91c1c' }}>
-              소방 공종은 기술자점수가 비활성화되어 있습니다.
+              소방 공종은 기술자점수가 평가제외입니다.
             </div>
           )}
           {technicianEntries.length === 0 && (
@@ -4959,6 +4959,7 @@ export default function AgreementBoardWindow({
                 value={entry.grade}
                 onChange={(event) => updateTechnicianEntry(entry.id, 'grade', event.target.value)}
               >
+                <option value="">등급을 선택하세요</option>
                 {TECHNICIAN_GRADE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
