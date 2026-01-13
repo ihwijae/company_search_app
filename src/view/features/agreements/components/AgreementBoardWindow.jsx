@@ -27,6 +27,7 @@ const LH_UNDER_50_KEY = 'lh-under50';
 const LH_50_TO_100_KEY = 'lh-50to100';
 const PPS_UNDER_50_KEY = 'pps-under50';
 const MOIS_30_TO_50_KEY = 'mois-30to50';
+const KRAIL_UNDER_50_KEY = 'krail-under50';
 const KOREAN_UNIT = 100000000;
 const BOARD_COPY_SLOT_COUNT = 5;
 const BOARD_COPY_ACTIONS = [
@@ -1067,7 +1068,12 @@ export default function AgreementBoardWindow({
   ), [rangeId, rangeOptions]);
   const selectedRangeKey = selectedRangeOption?.key || '';
   const isMois30To50 = isMoisOwner && selectedRangeKey === MOIS_30_TO_50_KEY;
+  const isKrailUnder50 = ownerKeyUpper === 'KRAIL' && selectedRangeKey === KRAIL_UNDER_50_KEY;
   const managementScale = isMois30To50 ? (10 / 15) : 1;
+  const roundForKrailUnder50 = React.useCallback(
+    (value) => (isKrailUnder50 ? roundTo(value, 2) : value),
+    [isKrailUnder50],
+  );
   const ownerDisplayLabel = selectedGroup?.label || '발주처 미지정';
   const rangeDisplayLabel = selectedRangeOption?.label || '금액대 선택';
   const entryModeResolved = entryMode === 'sum' ? 'sum' : (entryMode === 'none' ? 'none' : 'ratio');
@@ -2899,9 +2905,10 @@ export default function AgreementBoardWindow({
         const managementWithBonus = (managementScoreBase != null && bonusEnabled)
           ? clampScore(managementScoreBase * 1.1, MANAGEMENT_SCORE_MAX)
           : managementScoreBase;
-        const managementScore = managementWithBonus != null
+        let managementScore = managementWithBonus != null
           ? clampScore(managementWithBonus * managementScale, managementMax)
           : managementWithBonus;
+        managementScore = roundForKrailUnder50(managementScore);
 
         let performanceScore = null;
         let performanceRatio = null;
@@ -2912,12 +2919,15 @@ export default function AgreementBoardWindow({
             performanceRatio = metric.performanceAmount / perfBase;
           }
         }
+        performanceScore = roundForKrailUnder50(performanceScore);
+        performanceRatio = roundForKrailUnder50(performanceRatio);
 
         const perfCapCurrent = getPerformanceCap();
         const performanceMax = perfCapCurrent || derivedPerformanceMax;
-        const credibilityScore = (credibilityEnabled && shareReady && metric.credibilityScore != null)
+        let credibilityScore = (credibilityEnabled && shareReady && metric.credibilityScore != null)
           ? clampScore(metric.credibilityScore, ownerCredibilityMax)
           : (credibilityEnabled && shareReady ? 0 : (credibilityEnabled ? null : null));
+        credibilityScore = roundForKrailUnder50(credibilityScore);
         const credibilityMax = credibilityEnabled ? ownerCredibilityMax : null;
         const subcontractScore = isMois30To50 && metric.memberCount > 0 ? SUBCONTRACT_SCORE : null;
         const totalScoreBase = (managementScore != null && performanceScore != null)
@@ -2972,7 +2982,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50]);
+  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isKrailUnder50]);
 
   React.useEffect(() => {
     attemptPendingPlacement();

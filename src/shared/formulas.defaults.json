@@ -204,7 +204,7 @@
                 }
               ],
               "rounding": {
-                "method": "truncate",
+                "method": "round",
                 "digits": 2
               },
               "industryAverage": {
@@ -2111,7 +2111,7 @@
               }
             },
             "performance": {
-              "formula": "(perf5y / (baseAmount * 1)) * 10",
+              "formula": "((Math.round((perf5y / (baseAmount * 1)) * 100) / 100) * 10)",
               "variables": [
                 "perf5y",
                 "baseAmount",
@@ -2119,7 +2119,7 @@
               ],
               "maxScore": 10,
               "rounding": {
-                "method": "truncate",
+                "method": "round",
                 "digits": 2
               },
               "mode": "formula",
@@ -2132,7 +2132,7 @@
                     ],
                     "estimatedAmountLt": 3000000000
                   },
-                  "formula": "(perf5y / (baseAmount * 2)) * 15",
+                  "formula": "((Math.round((perf5y / (baseAmount * 2)) * 100) / 100) * 15)",
                   "maxScore": 15
                 },
                 {
@@ -2143,7 +2143,7 @@
                     ],
                     "estimatedAmountGte": 3000000000
                   },
-                  "formula": "(perf5y / (baseAmount * 3)) * 15",
+                  "formula": "((Math.round((perf5y / (baseAmount * 3)) * 100) / 100) * 15)",
                   "maxScore": 15
                 }
               ]
