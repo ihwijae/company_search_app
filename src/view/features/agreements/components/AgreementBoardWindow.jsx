@@ -1466,10 +1466,14 @@ export default function AgreementBoardWindow({
   const credibilityEnabled = credibilityConfig.enabled;
   const ownerCredibilityMax = credibilityConfig.max;
   const ownerPerformanceFallback = React.useMemo(() => {
-    if (isKrailUnder50) return 10;
+    if (isKrailUnder50) {
+      const normalizedType = String(fileType || '').toLowerCase();
+      if (normalizedType === 'sobang') return 15;
+      return 10;
+    }
     if (isKrail50To100) return 15;
     return resolveOwnerPerformanceMax(ownerKeyUpper);
-  }, [isKrail50To100, isKrailUnder50, ownerKeyUpper]);
+  }, [fileType, isKrail50To100, isKrailUnder50, ownerKeyUpper]);
   const candidateScoreCacheRef = React.useRef(new Map());
   const performanceCapRef = React.useRef(ownerPerformanceFallback);
   const getPerformanceCap = React.useCallback(() => (
