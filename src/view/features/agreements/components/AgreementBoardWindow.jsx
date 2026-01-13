@@ -1465,19 +1465,24 @@ export default function AgreementBoardWindow({
   }, [ownerKeyUpper]);
   const credibilityEnabled = credibilityConfig.enabled;
   const ownerCredibilityMax = credibilityConfig.max;
+  const ownerPerformanceFallback = React.useMemo(() => {
+    if (isKrailUnder50) return 10;
+    if (isKrail50To100) return 15;
+    return resolveOwnerPerformanceMax(ownerKeyUpper);
+  }, [isKrail50To100, isKrailUnder50, ownerKeyUpper]);
   const candidateScoreCacheRef = React.useRef(new Map());
-  const performanceCapRef = React.useRef(resolveOwnerPerformanceMax(ownerKeyUpper));
+  const performanceCapRef = React.useRef(ownerPerformanceFallback);
   const getPerformanceCap = React.useCallback(() => (
-    resolvePerformanceCap(performanceCapRef.current, resolveOwnerPerformanceMax(ownerKeyUpper))
-  ), [ownerKeyUpper]);
+    resolvePerformanceCap(performanceCapRef.current, ownerPerformanceFallback)
+  ), [ownerPerformanceFallback]);
   const updatePerformanceCap = (value) => {
-    const resolved = resolvePerformanceCap(value, resolveOwnerPerformanceMax(ownerKeyUpper));
+    const resolved = resolvePerformanceCap(value, ownerPerformanceFallback);
     performanceCapRef.current = resolved;
     return resolved;
   };
   React.useEffect(() => {
-    performanceCapRef.current = resolveOwnerPerformanceMax(ownerKeyUpper);
-  }, [ownerKeyUpper]);
+    performanceCapRef.current = ownerPerformanceFallback;
+  }, [ownerPerformanceFallback]);
   const [candidateMetricsVersion, setCandidateMetricsVersion] = React.useState(0);
   const prevAssignmentsRef = React.useRef(groupAssignments);
   const [representativeSearchOpen, setRepresentativeSearchOpen] = React.useState(false);
@@ -2985,9 +2990,9 @@ export default function AgreementBoardWindow({
 
     const entryLimitValue = parseAmountValue(entryAmount);
     const entryModeForCalc = entryModeResolved;
-    const ownerPerformanceFallback = resolveOwnerPerformanceMax(ownerKeyUpper);
+    const performanceFallback = ownerPerformanceFallback;
     const derivedManagementMax = managementMax;
-    const derivedPerformanceMax = derivedMaxScores.performanceMax ?? ownerPerformanceFallback;
+    const derivedPerformanceMax = derivedMaxScores.performanceMax ?? performanceFallback;
 
     const metrics = groupAssignments.map((memberIds, groupIndex) => {
       const members = memberIds.map((uid, slotIndex) => {
@@ -4205,7 +4210,7 @@ export default function AgreementBoardWindow({
   );
 
   const managementHeaderMax = managementMax;
-  const performanceHeaderMax = derivedMaxScores.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper);
+    const performanceHeaderMax = derivedMaxScores.performanceMax ?? ownerPerformanceFallback;
   const sipyungSummaryLabel = React.useMemo(() => {
     if (entryModeResolved === 'sum') return '시평액 합(단순합산)';
     if (entryModeResolved === 'ratio') return '시평액 합(비율제)';
@@ -4363,7 +4368,7 @@ export default function AgreementBoardWindow({
       ? (summaryInfo.managementScore >= ((summaryInfo.managementMax ?? managementMax) - 0.01) ? 'ok' : 'warn')
       : '';
     const performanceState = summaryInfo?.performanceScore != null
-      ? (summaryInfo.performanceScore >= ((summaryInfo.performanceMax ?? resolveOwnerPerformanceMax(ownerKeyUpper)) - 0.01) ? 'ok' : 'warn')
+      ? (summaryInfo.performanceScore >= ((summaryInfo.performanceMax ?? ownerPerformanceFallback) - 0.01) ? 'ok' : 'warn')
       : '';
 
     const entryFailed = summaryInfo?.entryLimit != null
