@@ -1094,9 +1094,11 @@ export default function AgreementBoardWindow({
   );
   const resolveSummaryDigits = React.useCallback(
     (kind) => {
-      if (isPpsUnder50) return 4;
+      if (isPpsUnder50) return 2;
       if (isKrailUnder50) return 2;
       if (isMoisUnderOr30To50 && kind === 'management') return 4;
+      if (isMoisUnderOr30To50 && kind === 'performance') return 2;
+      if (isMoisUnderOr30To50 && kind === 'total') return 4;
       if (kind === 'management') return 2;
       if (kind === 'netCost') return 2;
       if (kind === 'subcontract') return 2;
