@@ -3805,7 +3805,6 @@ export default function AgreementBoardWindow({
   const renderNameCell = (meta) => {
     const isDropTarget = dropTarget && dropTarget.groupIndex === meta.groupIndex && dropTarget.slotIndex === meta.slotIndex;
     const cellClasses = ['excel-cell', 'excel-name-cell'];
-    if (meta.slotIndex === 0) cellClasses.push('sticky-col', 'sticky-col-name');
     if (!meta.empty && meta.isDutyRegion) cellClasses.push('duty-region');
     if (isDropTarget) cellClasses.push('drop-target');
     return (
@@ -3968,8 +3967,8 @@ export default function AgreementBoardWindow({
       : '-';
     return (
       <tr key={`${group.id}-quality`} className={`excel-board-row quality-row${entryFailed ? ' entry-failed' : ''}`}>
-        <td className="excel-cell quality-empty sticky-col sticky-col-select" />
-        <td className="excel-cell order-cell quality-label sticky-col sticky-col-order">품질</td>
+        <td className="excel-cell quality-empty" />
+        <td className="excel-cell order-cell quality-label">품질</td>
         <td className="excel-cell quality-guide" colSpan={guideSpan}>
           {qualityGuide}
         </td>
@@ -4084,7 +4083,7 @@ export default function AgreementBoardWindow({
     return (
       <React.Fragment key={group.id}>
         <tr className={`excel-board-row${entryFailed ? ' entry-failed' : ''}`}>
-        <td className="excel-cell select-cell sticky-col sticky-col-select">
+        <td className="excel-cell select-cell">
           <input
             type="checkbox"
             checked={selectedGroups.has(groupIndex)}
@@ -4092,8 +4091,8 @@ export default function AgreementBoardWindow({
             aria-label={`${group.id}번 협정 선택`}
           />
         </td>
-        <td className={`excel-cell order-cell sticky-col sticky-col-order${scoreState ? ` score-${scoreState}` : ''}`}>{group.id}</td>
-        <td className={`excel-cell approval-cell sticky-col sticky-col-approval${approvalValue === '취소' ? ' approval-cancel' : ''}`}>
+        <td className={`excel-cell order-cell${scoreState ? ` score-${scoreState}` : ''}`}>{group.id}</td>
+        <td className={`excel-cell approval-cell${approvalValue === '취소' ? ' approval-cancel' : ''}`}>
           <select
             value={approvalValue}
             onChange={(event) => handleApprovalChange(groupIndex, event.target.value)}
@@ -4479,9 +4478,9 @@ export default function AgreementBoardWindow({
             </colgroup>
             <thead>
               <tr>
-                <th rowSpan="2" className="sticky-col sticky-col-select">선택</th>
-                <th rowSpan="2" className="sticky-col sticky-col-order">연번</th>
-                <th rowSpan="2" className="sticky-col sticky-col-approval">승인</th>
+                <th rowSpan="2">선택</th>
+                <th rowSpan="2">연번</th>
+                <th rowSpan="2">승인</th>
                 <th colSpan={slotLabels.length}>업체명</th>
                 <th colSpan={slotLabels.length}>지분(%)</th>
                   <th rowSpan="2">
@@ -4513,12 +4512,7 @@ export default function AgreementBoardWindow({
               </tr>
               <tr>
                 {slotLabels.map((label, index) => (
-                  <th
-                    key={`name-head-${index}`}
-                    className={index === 0 ? 'sticky-col sticky-col-name' : undefined}
-                  >
-                    {label}
-                  </th>
+                  <th key={`name-head-${index}`}>{label}</th>
                 ))}
                 {slotLabels.map((label, index) => (
                   <th key={`share-head-${index}`}>{label}</th>

@@ -1064,16 +1064,10 @@ button.primary:hover { background: var(--accent-2); }
 .datetime-sep {
   color: #64748b;
 }
-.excel-board-table {
-  --col-select: 32px;
-  --col-order: 40px;
-  --col-approval: 90px;
-  --col-name: 100px;
-}
-.col-order { width: var(--col-order); }
-.col-select { width: var(--col-select); }
-.col-approval { width: var(--col-approval); }
-.col-name { width: var(--col-name); }
+.col-order { width: 40px; }
+.col-select { width: 32px; }
+.col-approval { width: 90px; }
+.col-name { width: 100px; }
 .col-share { width: 65px; }
 .col-credibility-slot { width: 45px; }
 .col-status { width: 45px; }
@@ -1106,25 +1100,6 @@ button.primary:hover { background: var(--accent-2); }
   background: #fbfbfe;
   overflow: hidden;
   white-space: normal;
-}
-.sticky-col {
-  position: sticky;
-  z-index: 3;
-  background: #fff;
-}
-.excel-name-cell.sticky-col {
-  background: #fbfbfe;
-}
-.sticky-col-select { left: 0; }
-.sticky-col-order { left: var(--col-select); }
-.sticky-col-approval { left: calc(var(--col-select) + var(--col-order)); }
-.sticky-col-name { left: calc(var(--col-select) + var(--col-order) + var(--col-approval)); }
-.excel-board-table th.sticky-col {
-  z-index: 6;
-  background: #eef2ff;
-}
-.excel-board-table td.sticky-col {
-  z-index: 4;
 }
 
 .excel-name-cell.duty-region {
