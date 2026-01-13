@@ -314,7 +314,13 @@ export default function useAgreementBoardStorage({
     const dutyFilter = String(loadFilters.dutyRegion || '').trim();
     const amountMin = parseNumeric(loadFilters.amountMin);
     const amountMax = parseNumeric(loadFilters.amountMax);
-    return (loadItems || []).filter((item) => {
+    const getNoticeDateValue = (value) => {
+      if (!value) return null;
+      const parsed = Date.parse(value);
+      if (Number.isNaN(parsed)) return null;
+      return parsed;
+    };
+    const filtered = (loadItems || []).filter((item) => {
       const meta = item?.meta || {};
       if (ownerFilter && String(meta.ownerId || '') !== ownerFilter) return false;
       if (rangeFilter && String(meta.rangeId || '') !== rangeFilter) return false;
@@ -328,6 +334,16 @@ export default function useAgreementBoardStorage({
       if (Number.isFinite(amountMax) && amount != null && amount > amountMax) return false;
       if ((Number.isFinite(amountMin) || Number.isFinite(amountMax)) && amount == null) return false;
       return true;
+    });
+    return filtered.sort((a, b) => {
+      const aTime = getNoticeDateValue(a?.meta?.noticeDate);
+      const bTime = getNoticeDateValue(b?.meta?.noticeDate);
+      if (aTime != null && bTime != null) return bTime - aTime;
+      if (aTime != null) return -1;
+      if (bTime != null) return 1;
+      const aKey = String(a?.meta?.noticeTitle || a?.meta?.noticeNo || a?.path || '');
+      const bKey = String(b?.meta?.noticeTitle || b?.meta?.noticeNo || b?.path || '');
+      return aKey.localeCompare(bKey, 'ko');
     });
   }, [loadFilters, loadItems, parseNumeric]);
 

@@ -21,6 +21,22 @@ export default function AgreementLoadModal({
 }) {
   if (!open) return null;
 
+  const pageSize = 5;
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const pagedItems = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [currentPage, items]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  React.useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   const resolveIndustryBadgeClass = (label) => {
     const value = String(label || '');
     if (value.includes('전기')) return 'agreement-badge agreement-badge--eung';
@@ -119,7 +135,7 @@ export default function AgreementLoadModal({
           {!busy && !error && items.length === 0 && (
             <div className="agreement-load-empty">조건에 맞는 협정이 없습니다.</div>
           )}
-          {!busy && !error && items.map((item) => {
+          {!busy && !error && pagedItems.map((item) => {
             const meta = item.meta || {};
             const noticeTitle = [meta.noticeNo, meta.noticeTitle].filter(Boolean).join('-');
             const dutyRegions = Array.isArray(meta.dutyRegions) ? meta.dutyRegions.filter(Boolean) : [];
@@ -159,6 +175,47 @@ export default function AgreementLoadModal({
             );
           })}
         </div>
+        {!busy && !error && items.length > 0 && (
+          <div className="agreement-load-pagination">
+            <div className="agreement-load-pagination__info">
+              총 {items.length}건 · {currentPage} / {totalPages} 페이지
+            </div>
+            <div className="agreement-load-pagination__actions">
+              <button
+                type="button"
+                className="excel-btn"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage <= 1}
+              >
+                처음
+              </button>
+              <button
+                type="button"
+                className="excel-btn"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage <= 1}
+              >
+                이전
+              </button>
+              <button
+                type="button"
+                className="excel-btn"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage >= totalPages}
+              >
+                다음
+              </button>
+              <button
+                type="button"
+                className="excel-btn"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage >= totalPages}
+              >
+                끝
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

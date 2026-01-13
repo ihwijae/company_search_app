@@ -788,6 +788,23 @@ button.primary:hover { background: var(--accent-2); }
   color: #b91c1c;
   font-size: 13px;
 }
+.agreement-load-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}
+.agreement-load-pagination__info {
+  font-size: 12px;
+  color: #64748b;
+}
+.agreement-load-pagination__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .region-modal-search { display: flex; flex-direction: column; gap: 8px; }
 .region-modal-search .input { border-radius: 10px; }
 .region-modal-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
