@@ -7,6 +7,7 @@ const DEFAULT_FILTERS = {
   dutyRegion: '',
   amountMin: '',
   amountMax: '',
+  sortOrder: 'noticeDateDesc',
 };
 
 export default function useAgreementBoardStorage({
@@ -335,12 +336,15 @@ export default function useAgreementBoardStorage({
       if ((Number.isFinite(amountMin) || Number.isFinite(amountMax)) && amount == null) return false;
       return true;
     });
+    const sortOrder = loadFilters.sortOrder === 'noticeDateAsc' ? 'noticeDateAsc' : 'noticeDateDesc';
     return filtered.sort((a, b) => {
       const aTime = getNoticeDateValue(a?.meta?.noticeDate);
       const bTime = getNoticeDateValue(b?.meta?.noticeDate);
-      if (aTime != null && bTime != null) return bTime - aTime;
-      if (aTime != null) return -1;
-      if (bTime != null) return 1;
+      if (aTime != null && bTime != null) {
+        return sortOrder === 'noticeDateAsc' ? (aTime - bTime) : (bTime - aTime);
+      }
+      if (aTime != null) return sortOrder === 'noticeDateAsc' ? 1 : -1;
+      if (bTime != null) return sortOrder === 'noticeDateAsc' ? -1 : 1;
       const aKey = String(a?.meta?.noticeTitle || a?.meta?.noticeNo || a?.path || '');
       const bKey = String(b?.meta?.noticeTitle || b?.meta?.noticeNo || b?.path || '');
       return aKey.localeCompare(bKey, 'ko');

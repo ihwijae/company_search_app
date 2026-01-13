@@ -720,6 +720,7 @@ button.primary:hover { background: var(--accent-2); }
   gap: 10px;
   overflow-y: auto;
   padding-right: 6px;
+  min-height: 360px;
 }
 
 .agreement-load-item {

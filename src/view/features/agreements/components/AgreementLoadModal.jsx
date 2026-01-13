@@ -127,6 +127,16 @@ export default function AgreementLoadModal({
               placeholder="예: 10000000000"
             />
           </label>
+          <label>
+            <span>정렬</span>
+            <select
+              value={filters.sortOrder || 'noticeDateDesc'}
+              onChange={(event) => setFilters((prev) => ({ ...prev, sortOrder: event.target.value }))}
+            >
+              <option value="noticeDateDesc">개찰일 최신순</option>
+              <option value="noticeDateAsc">개찰일 오래된순</option>
+            </select>
+          </label>
           <button type="button" className="excel-btn" onClick={onResetFilters}>필터 초기화</button>
         </div>
         <div className="agreement-load-list">
