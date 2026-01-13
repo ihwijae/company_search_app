@@ -975,6 +975,15 @@ button.primary:hover { background: var(--accent-2); }
   box-sizing: border-box;
   min-width: 0;
 }
+.excel-cell.technician-warn {
+  background: #ffedd5;
+  color: #b91c1c;
+  font-weight: 700;
+}
+.excel-cell.technician-good {
+  color: #15803d;
+  font-weight: 700;
+}
 .excel-board-row.entry-failed td {
   background: #fee2e2 !important;
 }

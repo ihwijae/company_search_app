@@ -4299,6 +4299,13 @@ export default function AgreementBoardWindow({
     const performanceSummary = summaryInfo?.performanceScore != null
       ? formatScore(summaryInfo.performanceScore, resolveSummaryDigits('performance'))
       : '-';
+    const technicianScoreThreshold = isKrailUnder50 ? 2 : (isKrail50To100 ? 3 : null);
+    const technicianScoreWarn = technicianScoreThreshold != null
+      && summaryInfo?.technicianScore != null
+      && summaryInfo.technicianScore < technicianScoreThreshold;
+    const technicianScoreGood = technicianScoreThreshold != null
+      && summaryInfo?.technicianScore != null
+      && summaryInfo.technicianScore >= technicianScoreThreshold;
     const technicianSummary = technicianEnabled
       ? (summaryInfo?.technicianScore != null
         ? formatScore(summaryInfo.technicianScore, resolveSummaryDigits('technician'))
@@ -4397,10 +4404,24 @@ export default function AgreementBoardWindow({
         <td className={`excel-cell total-cell ${performanceState}`} rowSpan={rightRowSpan}>{performanceSummary}</td>
         {technicianEnabled && slotMetas.map((meta) => renderTechnicianCell(meta, rightRowSpan))}
         {technicianEnabled && (
-          <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{technicianSummary}</td>
+          <td
+            className={`excel-cell total-cell${
+              technicianScoreWarn ? ' technician-warn' : (technicianScoreGood ? ' technician-good' : '')
+            }`}
+            rowSpan={rightRowSpan}
+          >
+            {technicianSummary}
+          </td>
         )}
         {technicianEnabled && (
-          <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{technicianAbilitySummary}</td>
+          <td
+            className={`excel-cell total-cell${
+              technicianScoreWarn ? ' technician-warn' : (technicianScoreGood ? ' technician-good' : '')
+            }`}
+            rowSpan={rightRowSpan}
+          >
+            {technicianAbilitySummary}
+          </td>
         )}
         {isLHOwner && (
           <td className={`excel-cell total-cell ${qualityPointsState}`} rowSpan={rightRowSpan}>{qualityPointsDisplay}</td>
