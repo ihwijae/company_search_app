@@ -132,6 +132,26 @@ const resolvePerformanceRules = (performanceRules, { fileType, estimatedAmount }
   if (!variants.length) return performanceRules;
   const normalizedType = String(fileType || '').trim().toLowerCase();
   const estimatedValue = toNumber(estimatedAmount);
+  if (!Number.isFinite(estimatedValue) && normalizedType) {
+    const matching = variants.filter((variant) => {
+      const when = variant?.when || {};
+      if (!Array.isArray(when.fileTypes) || when.fileTypes.length === 0) return false;
+      const allowed = when.fileTypes.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
+      return allowed.includes(normalizedType);
+    });
+    if (matching.length) {
+      const best = matching.reduce((acc, variant) => {
+        const score = toNumber(variant?.maxScore);
+        if (score == null) return acc;
+        if (!acc || (toNumber(acc?.maxScore) || 0) < score) return variant;
+        return acc;
+      }, null);
+      if (best) {
+        const { when: _when, ...variantConfig } = best;
+        return { ...performanceRules, ...variantConfig };
+      }
+    }
+  }
   for (const variant of variants) {
     if (!variant || typeof variant !== 'object') continue;
     const when = variant.when || {};
