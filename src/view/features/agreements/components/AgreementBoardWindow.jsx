@@ -26,6 +26,7 @@ const LH_QUALITY_DEFAULT_OVER_100B = 88;
 const LH_UNDER_50_KEY = 'lh-under50';
 const LH_50_TO_100_KEY = 'lh-50to100';
 const PPS_UNDER_50_KEY = 'pps-under50';
+const MOIS_UNDER_30_KEY = 'mois-under30';
 const MOIS_30_TO_50_KEY = 'mois-30to50';
 const KRAIL_UNDER_50_KEY = 'krail-under50';
 const KOREAN_UNIT = 100000000;
@@ -1068,11 +1069,41 @@ export default function AgreementBoardWindow({
   ), [rangeId, rangeOptions]);
   const selectedRangeKey = selectedRangeOption?.key || '';
   const isMois30To50 = isMoisOwner && selectedRangeKey === MOIS_30_TO_50_KEY;
+  const isMoisUnderOr30To50 = isMoisOwner && (selectedRangeKey === MOIS_UNDER_30_KEY || selectedRangeKey === MOIS_30_TO_50_KEY);
+  const isPpsUnder50 = ownerKeyUpper === 'PPS' && selectedRangeKey === PPS_UNDER_50_KEY;
   const isKrailUnder50 = ownerKeyUpper === 'KRAIL' && selectedRangeKey === KRAIL_UNDER_50_KEY;
   const managementScale = isMois30To50 ? (10 / 15) : 1;
   const roundForKrailUnder50 = React.useCallback(
     (value) => (isKrailUnder50 ? roundTo(value, 2) : value),
     [isKrailUnder50],
+  );
+  const roundUpForPpsUnder50 = React.useCallback(
+    (value) => {
+      if (!isPpsUnder50) return value;
+      if (value == null) return value;
+      const numeric = toNumber(value);
+      if (!Number.isFinite(numeric)) return value;
+      const factor = 100;
+      return Math.ceil(numeric * factor) / factor;
+    },
+    [isPpsUnder50],
+  );
+  const roundForMoisManagement = React.useCallback(
+    (value) => (isMoisUnderOr30To50 ? roundTo(value, 4) : value),
+    [isMoisUnderOr30To50],
+  );
+  const resolveSummaryDigits = React.useCallback(
+    (kind) => {
+      if (isPpsUnder50) return 4;
+      if (isKrailUnder50) return 2;
+      if (isMoisUnderOr30To50 && kind === 'management') return 4;
+      if (kind === 'management') return 2;
+      if (kind === 'netCost') return 2;
+      if (kind === 'subcontract') return 2;
+      if (kind === 'quality') return 2;
+      return 3;
+    },
+    [isKrailUnder50, isMoisUnderOr30To50, isPpsUnder50],
   );
   const ownerDisplayLabel = selectedGroup?.label || '발주처 미지정';
   const rangeDisplayLabel = selectedRangeOption?.label || '금액대 선택';
@@ -2908,7 +2939,8 @@ export default function AgreementBoardWindow({
         let managementScore = managementWithBonus != null
           ? clampScore(managementWithBonus * managementScale, managementMax)
           : managementWithBonus;
-        managementScore = roundForKrailUnder50(managementScore);
+        managementScore = roundForMoisManagement(managementScore);
+        managementScore = roundUpForPpsUnder50(roundForKrailUnder50(managementScore));
 
         let performanceScore = null;
         let performanceRatio = null;
@@ -2919,7 +2951,7 @@ export default function AgreementBoardWindow({
             performanceRatio = metric.performanceAmount / perfBase;
           }
         }
-        performanceScore = roundForKrailUnder50(performanceScore);
+        performanceScore = roundUpForPpsUnder50(roundForKrailUnder50(performanceScore));
         performanceRatio = roundForKrailUnder50(performanceRatio);
 
         const perfCapCurrent = getPerformanceCap();
@@ -2927,15 +2959,17 @@ export default function AgreementBoardWindow({
         let credibilityScore = (credibilityEnabled && shareReady && metric.credibilityScore != null)
           ? clampScore(metric.credibilityScore, ownerCredibilityMax)
           : (credibilityEnabled && shareReady ? 0 : (credibilityEnabled ? null : null));
-        credibilityScore = roundForKrailUnder50(credibilityScore);
+        credibilityScore = roundUpForPpsUnder50(roundForKrailUnder50(credibilityScore));
         const credibilityMax = credibilityEnabled ? ownerCredibilityMax : null;
         const subcontractScore = isMois30To50 && metric.memberCount > 0 ? SUBCONTRACT_SCORE : null;
-        const totalScoreBase = (managementScore != null && performanceScore != null)
+        let totalScoreBase = (managementScore != null && performanceScore != null)
           ? managementScore + performanceScore + BID_SCORE + netCostBonusScore + (subcontractScore || 0)
           : null;
-        const totalScoreWithCred = (totalScoreBase != null)
+        let totalScoreWithCred = (totalScoreBase != null)
           ? totalScoreBase + (credibilityScore != null ? credibilityScore : 0)
           : null;
+        totalScoreBase = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreBase));
+        totalScoreWithCred = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreWithCred));
         const totalMaxBase = managementMax + performanceMax + BID_SCORE + netCostBonusScore
           + (isMois30To50 ? SUBCONTRACT_SCORE : 0);
         const totalMaxWithCred = credibilityEnabled ? totalMaxBase + (credibilityMax || 0) : totalMaxBase;
@@ -2982,7 +3016,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isKrailUnder50]);
+  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, resolveSummaryDigits]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -3986,30 +4020,30 @@ export default function AgreementBoardWindow({
       scoreState = totalScore >= (threshold - 0.01) ? 'full' : 'partial';
     }
     const managementSummary = summaryInfo?.managementScore != null
-      ? formatScore(summaryInfo.managementScore, 2)
+      ? formatScore(summaryInfo.managementScore, resolveSummaryDigits('management'))
       : '-';
     const performanceSummary = summaryInfo?.performanceScore != null
-      ? formatScore(summaryInfo.performanceScore)
+      ? formatScore(summaryInfo.performanceScore, resolveSummaryDigits('performance'))
       : '-';
     const shareSumDisplay = summaryInfo?.shareSum != null ? formatPercent(summaryInfo.shareSum) : '-';
     const shareSummaryClass = summaryInfo?.shareComplete ? 'ok' : 'warn';
     const credibilitySummary = credibilityEnabled
       ? (summaryInfo?.credibilityScore != null
-        ? formatScore(summaryInfo.credibilityScore)
+        ? formatScore(summaryInfo.credibilityScore, resolveSummaryDigits('credibility'))
         : '-')
       : null;
     const qualityPointsDisplay = isLHOwner
-      ? (qualityPoints != null ? formatScore(qualityPoints, 2) : '-')
+      ? (qualityPoints != null ? formatScore(qualityPoints, resolveSummaryDigits('quality')) : '-')
       : null;
     const qualityPointsState = (isLHOwner && qualityPoints != null && qualityPoints < 2) ? 'warn' : '';
     const subcontractDisplay = isMois30To50
-      ? (summaryInfo?.subcontractScore != null ? formatScore(summaryInfo.subcontractScore, 2) : '-')
+      ? (summaryInfo?.subcontractScore != null ? formatScore(summaryInfo.subcontractScore, resolveSummaryDigits('subcontract')) : '-')
       : null;
-    const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore) : '-';
+    const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore, resolveSummaryDigits('bid')) : '-';
     const netCostBonusDisplay = summaryInfo?.netCostBonusScore != null
-      ? formatScore(summaryInfo.netCostBonusScore, 2)
+      ? formatScore(summaryInfo.netCostBonusScore, resolveSummaryDigits('netCost'))
       : '0';
-    const totalScoreDisplay = totalScore != null ? formatScore(totalScore) : '-';
+    const totalScoreDisplay = totalScore != null ? formatScore(totalScore, resolveSummaryDigits('total')) : '-';
     const entryDisabled = entryModeResolved === 'none';
     const sipyungValue = entryModeResolved === 'sum'
       ? summaryInfo?.sipyungSum
