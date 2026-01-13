@@ -67,7 +67,7 @@ const COLUMN_WIDTHS = {
   performanceSummary: 50,
   credibilityCell: 45,
   credibility: 55,
-  bid: 40,
+  bid: 32,
   subcontract: 55,
   netCostBonus: 55,
   total: 55,
@@ -3951,6 +3951,8 @@ export default function AgreementBoardWindow({
       ? '90점이상:5점/88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점'
       : '품질 88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점';
     const guideSpan = 1 + slotMetas.length;
+    const usedColumns = 4 + (slotMetas.length * 2);
+    const fillerSpan = Math.max(tableColumnCount - usedColumns, 0);
     const resolvedQualityTotal = qualityTotal ?? slotMetas.reduce((acc, meta) => {
       if (meta.empty) return acc;
       const share = toNumber(meta.shareForCalc);
@@ -3963,6 +3965,7 @@ export default function AgreementBoardWindow({
       : '-';
     return (
       <tr key={`${group.id}-quality`} className={`excel-board-row quality-row${entryFailed ? ' entry-failed' : ''}`}>
+        <td className="excel-cell quality-empty" />
         <td className="excel-cell order-cell quality-label">품질</td>
         <td className="excel-cell quality-guide" colSpan={guideSpan}>
           {qualityGuide}
@@ -3976,6 +3979,9 @@ export default function AgreementBoardWindow({
           </td>
         ))}
         <td className="excel-cell total-cell quality-total">{qualityTotalDisplay}</td>
+        {fillerSpan > 0 && (
+          <td className="excel-cell quality-empty" colSpan={fillerSpan} />
+        )}
       </tr>
     );
   };
