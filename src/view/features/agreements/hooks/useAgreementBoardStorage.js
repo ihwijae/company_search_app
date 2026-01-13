@@ -43,12 +43,14 @@ export default function useAgreementBoardStorage({
   groupShares,
   groupShareRawInputs,
   groupCredibility,
+  groupTechnicianScores,
   groupApprovals,
   groupManagementBonus,
   setGroupAssignments,
   setGroupShares,
   setGroupShareRawInputs,
   setGroupCredibility,
+  setGroupTechnicianScores,
   setGroupApprovals,
   setGroupManagementBonus,
   markSkipAssignmentSync,
@@ -109,6 +111,7 @@ export default function useAgreementBoardStorage({
       groupShares: Array.isArray(groupShares) ? groupShares : [],
       groupShareRawInputs: Array.isArray(groupShareRawInputs) ? groupShareRawInputs : [],
       groupCredibility: Array.isArray(groupCredibility) ? groupCredibility : [],
+      groupTechnicianScores: Array.isArray(groupTechnicianScores) ? groupTechnicianScores : [],
       groupApprovals: Array.isArray(groupApprovals) ? groupApprovals : [],
       groupManagementBonus: Array.isArray(groupManagementBonus) ? groupManagementBonus : [],
     },
@@ -146,6 +149,7 @@ export default function useAgreementBoardStorage({
     groupShares,
     groupShareRawInputs,
     groupCredibility,
+    groupTechnicianScores,
     groupApprovals,
     groupManagementBonus,
     parseNumeric,
@@ -233,6 +237,7 @@ export default function useAgreementBoardStorage({
     if (Array.isArray(snapshot.groupShares)) setGroupShares(snapshot.groupShares);
     if (Array.isArray(snapshot.groupShareRawInputs)) setGroupShareRawInputs(snapshot.groupShareRawInputs);
     if (Array.isArray(snapshot.groupCredibility)) setGroupCredibility(snapshot.groupCredibility);
+    if (Array.isArray(snapshot.groupTechnicianScores)) setGroupTechnicianScores(snapshot.groupTechnicianScores);
     if (Array.isArray(snapshot.groupApprovals)) setGroupApprovals(snapshot.groupApprovals);
     if (Array.isArray(snapshot.groupManagementBonus)) setGroupManagementBonus(snapshot.groupManagementBonus);
   }, [
@@ -245,6 +250,7 @@ export default function useAgreementBoardStorage({
     setGroupShares,
     setGroupShareRawInputs,
     setGroupCredibility,
+    setGroupTechnicianScores,
     setGroupApprovals,
     setGroupManagementBonus,
     markSkipAssignmentSync,

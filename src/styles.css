@@ -961,6 +961,15 @@ button.primary:hover { background: var(--accent-2); }
 .excel-cell.entry-disabled .perf-label {
   color: #64748b;
 }
+.excel-technician-cell.technician-disabled {
+  background: #e2e8f0;
+  color: #64748b;
+}
+.excel-technician-cell.technician-disabled input {
+  background: #e2e8f0;
+  color: #64748b;
+  border-color: #cbd5f5;
+}
 .excel-board-row.entry-failed td {
   background: #fee2e2 !important;
 }
@@ -1075,6 +1084,8 @@ button.primary:hover { background: var(--accent-2); }
 .col-management-bonus { width: 50px; }
 .col-share-total { width: 60px; }
 .col-performance { width: 90px; }
+.col-technician { width: 90px; }
+.col-technician-summary { width: 55px; }
 .col-netcost-bonus { width: 55px; }
 .col-performance-summary { width: 50px; }
 .col-credibility { width: 55px; }

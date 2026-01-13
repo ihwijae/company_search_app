@@ -17,6 +17,7 @@ const MIN_GROUPS = 4;
 const BID_SCORE = 65;
 const SUBCONTRACT_SCORE = 5;
 const MANAGEMENT_SCORE_MAX = 15;
+const KRAIL_TECHNICIAN_MAX_UNDER_50 = 5;
 const PERFORMANCE_DEFAULT_MAX = 13;
 const PERFORMANCE_MOIS_DEFAULT_MAX = 15;
 const PERFORMANCE_CAP_VERSION = 2;
@@ -45,6 +46,46 @@ const BOARD_COPY_LOOKUP = BOARD_COPY_ACTIONS.reduce((acc, action) => {
 const LH_FULL_SCORE = 95;
 const PPS_FULL_SCORE = 95;
 const INDUSTRY_OPTIONS = ['전기', '통신', '소방'];
+const TECHNICIAN_GRADE_OPTIONS = [
+  { value: 'special', label: '특급', points: 1.0 },
+  { value: 'advanced', label: '고급', points: 0.75 },
+  { value: 'intermediate', label: '중급', points: 0.5 },
+  { value: 'entry', label: '초급', points: 0.25 },
+];
+const TECHNICIAN_CAREER_OPTIONS = [
+  { value: 'none', label: '없음', multiplier: 1.0 },
+  { value: '5plus', label: '5년 이상', multiplier: 1.1 },
+  { value: '9plus', label: '9년 이상', multiplier: 1.15 },
+  { value: '12plus', label: '12년 이상', multiplier: 1.2 },
+];
+const TECHNICIAN_MANAGEMENT_OPTIONS = [
+  { value: 'none', label: '없음', multiplier: 1.0 },
+  { value: '3plus', label: '3년 이상', multiplier: 1.1 },
+  { value: '6plus', label: '6년 이상', multiplier: 1.15 },
+  { value: '9plus', label: '9년 이상', multiplier: 1.2 },
+];
+const getTechnicianGradePoints = (value) => {
+  const target = TECHNICIAN_GRADE_OPTIONS.find((option) => option.value === value);
+  return target ? Number(target.points) : 0;
+};
+const getTechnicianMultiplier = (value, options) => {
+  const target = options.find((option) => option.value === value);
+  return target ? Number(target.multiplier) : 1;
+};
+const getTechnicianCount = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 1) return 1;
+  return Math.floor(num);
+};
+const computeTechnicianScore = (entry) => {
+  if (!entry) return 0;
+  const base = getTechnicianGradePoints(entry.grade);
+  if (base <= 0) return 0;
+  const career = getTechnicianMultiplier(entry.careerCoeff, TECHNICIAN_CAREER_OPTIONS);
+  const management = getTechnicianMultiplier(entry.managementCoeff, TECHNICIAN_MANAGEMENT_OPTIONS);
+  const count = getTechnicianCount(entry.count);
+  return base * career * management * count;
+};
 const industryToFileType = (label) => {
   const normalized = String(label || '').trim();
   if (normalized === '전기') return 'eung';
@@ -65,6 +106,8 @@ const COLUMN_WIDTHS = {
   qualityPoints: 55,
   performanceCell: 90,
   performanceSummary: 50,
+  technicianCell: 90,
+  technicianSummary: 55,
   credibilityCell: 45,
   credibility: 55,
   bid: 32,
@@ -1046,17 +1089,22 @@ export default function AgreementBoardWindow({
   const [selectedGroups, setSelectedGroups] = React.useState(() => new Set());
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState([]);
+  const [groupTechnicianScores, setGroupTechnicianScores] = React.useState([]);
   const [formulasDoc, setFormulasDoc] = React.useState(null);
   const [memoOpen, setMemoOpen] = React.useState(false);
   const [memoDraft, setMemoDraft] = React.useState('');
   const memoEditorRef = React.useRef(null);
   const [copyModalOpen, setCopyModalOpen] = React.useState(false);
+  const [technicianModalOpen, setTechnicianModalOpen] = React.useState(false);
+  const [technicianEntries, setTechnicianEntries] = React.useState([]);
+  const [technicianTarget, setTechnicianTarget] = React.useState({ groupIndex: 0, slotIndex: 0 });
   const [bidDatePart, setBidDatePart] = React.useState('');
   const [bidTimePeriod, setBidTimePeriod] = React.useState('AM');
   const [bidHourInput, setBidHourInput] = React.useState('');
   const [bidMinuteInput, setBidMinuteInput] = React.useState('');
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
   const isLHOwner = ownerKeyUpper === 'LH';
+  const isKrailOwner = ownerKeyUpper === 'KRAIL';
   const isMoisOwner = ownerKeyUpper === 'MOIS';
   const selectedGroup = React.useMemo(
     () => AGREEMENT_GROUPS.find((group) => String(group.ownerId || '').toUpperCase() === ownerKeyUpper) || AGREEMENT_GROUPS[0],
@@ -1072,6 +1120,9 @@ export default function AgreementBoardWindow({
   const isMoisUnderOr30To50 = isMoisOwner && (selectedRangeKey === MOIS_UNDER_30_KEY || selectedRangeKey === MOIS_30_TO_50_KEY);
   const isPpsUnder50 = ownerKeyUpper === 'PPS' && selectedRangeKey === PPS_UNDER_50_KEY;
   const isKrailUnder50 = ownerKeyUpper === 'KRAIL' && selectedRangeKey === KRAIL_UNDER_50_KEY;
+  const technicianEnabled = isKrailOwner;
+  const technicianEditable = technicianEnabled && String(fileType || '').toLowerCase() !== 'sobang';
+  const technicianMax = isKrailUnder50 ? KRAIL_TECHNICIAN_MAX_UNDER_50 : null;
   const managementScale = isMois30To50 ? (10 / 15) : 1;
   const roundForKrailUnder50 = React.useCallback(
     (value) => (isKrailUnder50 ? roundTo(value, 2) : value),
@@ -1098,6 +1149,7 @@ export default function AgreementBoardWindow({
   );
   const resolveSummaryDigits = React.useCallback(
     (kind) => {
+      if (kind === 'technician') return technicianEnabled ? 2 : 3;
       if (kind === 'bid') return 0;
       if (kind === 'subcontract') return 0;
       if (isPpsUnder50) return 2;
@@ -1113,7 +1165,7 @@ export default function AgreementBoardWindow({
       if (kind === 'quality') return 2;
       return 3;
     },
-    [isKrailUnder50, isLHOwner, isMoisUnderOr30To50, isPpsUnder50],
+    [isKrailUnder50, isLHOwner, isMoisUnderOr30To50, isPpsUnder50, technicianEnabled],
   );
   const ownerDisplayLabel = selectedGroup?.label || '발주처 미지정';
   const rangeDisplayLabel = selectedRangeOption?.label || '금액대 선택';
@@ -1229,6 +1281,14 @@ export default function AgreementBoardWindow({
     setCopyModalOpen(false);
   }, []);
 
+  const openTechnicianModal = React.useCallback(() => {
+    setTechnicianModalOpen(true);
+  }, []);
+
+  const closeTechnicianModal = React.useCallback(() => {
+    setTechnicianModalOpen(false);
+  }, []);
+
   const handleMemoSave = React.useCallback(() => {
     const cleaned = sanitizeHtml(memoDraft || '');
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ memoHtml: cleaned });
@@ -1247,6 +1307,48 @@ export default function AgreementBoardWindow({
     document.execCommand(command, false, value);
     setMemoDraft(memoEditorRef.current.innerHTML);
   }, []);
+
+  const addTechnicianEntry = React.useCallback(() => {
+    setTechnicianEntries((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        grade: TECHNICIAN_GRADE_OPTIONS[0]?.value || 'special',
+        careerCoeff: 'none',
+        managementCoeff: 'none',
+        count: '1',
+      },
+    ]);
+  }, []);
+
+  const updateTechnicianEntry = React.useCallback((id, field, value) => {
+    setTechnicianEntries((prev) => prev.map((entry) => (
+      entry.id === id ? { ...entry, [field]: value } : entry
+    )));
+  }, []);
+
+  const removeTechnicianEntry = React.useCallback((id) => {
+    setTechnicianEntries((prev) => prev.filter((entry) => entry.id !== id));
+  }, []);
+
+  const technicianScoreTotal = React.useMemo(() => (
+    technicianEntries.reduce((sum, entry) => sum + computeTechnicianScore(entry), 0)
+  ), [technicianEntries]);
+
+  const applyTechnicianScoreToTarget = React.useCallback(() => {
+    if (!technicianEditable) return;
+    if (!technicianTargetOptions.length) return;
+    const resolved = roundTo(technicianScoreTotal, 2);
+    if (resolved == null) return;
+    setGroupTechnicianScores((prev) => {
+      const next = prev.map((row) => row.slice());
+      const { groupIndex, slotIndex } = technicianTarget;
+      while (next.length <= groupIndex) next.push([]);
+      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
+      next[groupIndex][slotIndex] = String(resolved);
+      return next;
+    });
+  }, [technicianEditable, technicianScoreTotal, technicianTarget, technicianTargetOptions.length]);
 
   const handleAdjustmentRateChange = React.useCallback((event) => {
     const nextValue = event.target.value;
@@ -1655,12 +1757,14 @@ export default function AgreementBoardWindow({
     groupShares,
     groupShareRawInputs,
     groupCredibility,
+    groupTechnicianScores,
     groupApprovals,
     groupManagementBonus,
     setGroupAssignments,
     setGroupShares,
     setGroupShareRawInputs,
     setGroupCredibility,
+    setGroupTechnicianScores,
     setGroupApprovals,
     setGroupManagementBonus,
     markSkipAssignmentSync,
@@ -1689,6 +1793,34 @@ export default function AgreementBoardWindow({
     Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))
   ), [safeGroupSize]);
 
+  const technicianTargetOptions = React.useMemo(() => {
+    return groupAssignments.flatMap((row, groupIndex) => (
+      slotLabels.map((label, slotIndex) => {
+        const uid = row?.[slotIndex];
+        const entry = uid ? participantMap.get(uid) : null;
+        const name = entry?.candidate ? getCompanyName(entry.candidate) : '';
+        const suffix = name ? ` - ${name}` : '';
+        return {
+          key: `${groupIndex}:${slotIndex}`,
+          groupIndex,
+          slotIndex,
+          label: `${groupIndex + 1}번 ${label}${suffix}`,
+        };
+      })
+    ));
+  }, [groupAssignments, participantMap, slotLabels]);
+
+  React.useEffect(() => {
+    if (!technicianTargetOptions.length) return;
+    const exists = technicianTargetOptions.some(
+      (option) => option.groupIndex === technicianTarget.groupIndex && option.slotIndex === technicianTarget.slotIndex,
+    );
+    if (!exists) {
+      const first = technicianTargetOptions[0];
+      setTechnicianTarget({ groupIndex: first.groupIndex, slotIndex: first.slotIndex });
+    }
+  }, [technicianTargetOptions, technicianTarget.groupIndex, technicianTarget.slotIndex]);
+
   const tableMinWidth = React.useMemo(() => {
     const nameWidth = slotLabels.length * COLUMN_WIDTHS.name;
     const shareWidth = slotLabels.length * COLUMN_WIDTHS.share;
@@ -1697,6 +1829,9 @@ export default function AgreementBoardWindow({
       : 0;
     const statusWidth = slotLabels.length * COLUMN_WIDTHS.status;
     const perfCellsWidth = slotLabels.length * COLUMN_WIDTHS.performanceCell;
+    const technicianCellsWidth = technicianEnabled
+      ? slotLabels.length * COLUMN_WIDTHS.technicianCell
+      : 0;
     const sipyungCellsWidth = slotLabels.length * COLUMN_WIDTHS.sipyungCell;
     const base = COLUMN_WIDTHS.order
       + COLUMN_WIDTHS.select
@@ -1707,14 +1842,16 @@ export default function AgreementBoardWindow({
       + (isLHOwner ? COLUMN_WIDTHS.qualityPoints : 0)
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
+      + (technicianEnabled ? COLUMN_WIDTHS.technicianSummary : 0)
       + (isMois30To50 ? COLUMN_WIDTHS.subcontract : 0)
       + COLUMN_WIDTHS.bid
       + COLUMN_WIDTHS.netCostBonus
       + COLUMN_WIDTHS.total
       + COLUMN_WIDTHS.sipyungSummary;
-    const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth + perfCellsWidth + sipyungCellsWidth;
+    const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth
+      + perfCellsWidth + technicianCellsWidth + sipyungCellsWidth;
     return Math.max(1200, total);
-  }, [slotLabels.length, credibilityEnabled, isLHOwner, isMois30To50]);
+  }, [slotLabels.length, credibilityEnabled, isLHOwner, isMois30To50, technicianEnabled]);
 
   const derivedMaxScores = React.useMemo(() => {
     if (!formulasDoc) return { managementMax: null, performanceMax: null };
@@ -1886,6 +2023,13 @@ export default function AgreementBoardWindow({
     return Number.isFinite(parsed) ? parsed : 0;
   }, [groupCredibility]);
 
+  const getTechnicianValue = React.useCallback((groupIndex, slotIndex) => {
+    const stored = groupTechnicianScores[groupIndex]?.[slotIndex];
+    if (stored === undefined || stored === null || stored === '') return null;
+    const parsed = Number(stored);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [groupTechnicianScores]);
+
   const openRepresentativeSearch = React.useCallback((target = null) => {
     if (!String(industryLabel || '').trim()) {
       showHeaderAlert('공종을 먼저 선택해 주세요.');
@@ -1935,6 +2079,13 @@ export default function AgreementBoardWindow({
       while (next.length <= groupIndex) next.push([]);
       while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
       next[groupIndex][slotIndex] = '';
+      return next;
+    });
+    setGroupTechnicianScores((prev) => {
+      const next = prev.map((row) => row.slice());
+      while (next.length <= groupIndex) next.push([]);
+      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
+      if (next[groupIndex][slotIndex] == null) next[groupIndex][slotIndex] = '';
       return next;
     });
   }, [safeGroupSize]);
@@ -2759,6 +2910,20 @@ export default function AgreementBoardWindow({
         group.map((id) => (id ? (credMap.get(id) ?? '') : ''))
       ));
     });
+    setGroupTechnicianScores((prevTech) => {
+      const techMap = new Map();
+      prevAssignments.forEach((group, gIdx) => {
+        group.forEach((id, idx) => {
+          if (id) {
+            const value = prevTech[gIdx]?.[idx] ?? '';
+            techMap.set(id, value);
+          }
+        });
+      });
+      return groupAssignments.map((group) => (
+        group.map((id) => (id ? (techMap.get(id) ?? '') : ''))
+      ));
+    });
     prevAssignmentsRef.current = groupAssignments;
   }, [groupAssignments]);
 
@@ -2793,12 +2958,14 @@ export default function AgreementBoardWindow({
         const sharePercent = getSharePercent(groupIndex, slotIndex, candidate);
         const managementScore = getCandidateManagementScore(candidate);
         const performanceAmount = getCandidatePerformanceAmount(candidate);
+        const technicianScore = technicianEditable ? getTechnicianValue(groupIndex, slotIndex) : null;
         const credibilityBonus = credibilityEnabled ? getCredibilityValue(groupIndex, slotIndex) : 0;
         const sipyungAmount = getCandidateSipyungAmount(candidate);
         return {
           sharePercent,
           managementScore,
           performanceAmount,
+          technicianScore,
           credibility: credibilityBonus,
           sipyungAmount,
         };
@@ -2823,6 +2990,9 @@ export default function AgreementBoardWindow({
 
       const managementMissing = normalizedMembers.some((member) => member.managementScore == null);
       const performanceMissing = normalizedMembers.some((member) => member.performanceAmount == null);
+      const technicianMissing = technicianEditable
+        ? normalizedMembers.some((member) => member.technicianScore == null)
+        : false;
       const sipyungMissing = normalizedMembers.some((member) => member.sipyungAmount == null);
       const aggregatedCredibility = credibilityEnabled
         ? (shareValid
@@ -2836,6 +3006,9 @@ export default function AgreementBoardWindow({
 
       const aggregatedPerformanceAmount = (!performanceMissing && shareValid)
         ? normalizedMembers.reduce((acc, member) => acc + (member.performanceAmount || 0) * member.weight, 0)
+        : null;
+      const aggregatedTechnicianScore = (technicianEditable && !technicianMissing && shareValid)
+        ? normalizedMembers.reduce((acc, member) => acc + (member.technicianScore || 0) * member.weight, 0)
         : null;
 
       let sipyungSum = null;
@@ -2882,6 +3055,8 @@ export default function AgreementBoardWindow({
         managementMissing,
         performanceAmount: aggregatedPerformanceAmount,
         performanceMissing,
+        technicianScore: aggregatedTechnicianScore,
+        technicianMissing,
         credibilityScore: aggregatedCredibility,
         sipyungSum,
         sipyungWeighted,
@@ -2954,6 +3129,7 @@ export default function AgreementBoardWindow({
 
         let performanceScore = null;
         let performanceRatio = null;
+        let technicianScore = null;
 
         if (shareReady && !metric.performanceMissing && metric.performanceAmount != null && performanceBaseReady) {
           performanceScore = await evaluatePerformanceScore(metric.performanceAmount);
@@ -2964,6 +3140,10 @@ export default function AgreementBoardWindow({
         performanceScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(performanceScore)));
         performanceRatio = roundForKrailUnder50(performanceRatio);
 
+        if (shareReady && !metric.technicianMissing && metric.technicianScore != null) {
+          technicianScore = roundForKrailUnder50(metric.technicianScore);
+        }
+
         const perfCapCurrent = getPerformanceCap();
         const performanceMax = perfCapCurrent || derivedPerformanceMax;
         let credibilityScore = (credibilityEnabled && shareReady && metric.credibilityScore != null)
@@ -2972,8 +3152,11 @@ export default function AgreementBoardWindow({
         credibilityScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(credibilityScore)));
         const credibilityMax = credibilityEnabled ? ownerCredibilityMax : null;
         const subcontractScore = isMois30To50 && metric.memberCount > 0 ? SUBCONTRACT_SCORE : null;
-        let totalScoreBase = (managementScore != null && performanceScore != null)
-          ? managementScore + performanceScore + BID_SCORE + netCostBonusScore + (subcontractScore || 0)
+        const technicianScoreForTotal = (technicianEnabled && technicianScore != null) ? technicianScore : null;
+        const technicianRequired = technicianEnabled && technicianEditable;
+        const technicianReady = !technicianRequired || technicianScoreForTotal != null;
+        let totalScoreBase = (managementScore != null && performanceScore != null && technicianReady)
+          ? managementScore + performanceScore + (technicianScoreForTotal || 0) + BID_SCORE + netCostBonusScore + (subcontractScore || 0)
           : null;
         let totalScoreWithCred = (totalScoreBase != null)
           ? totalScoreBase + (credibilityScore != null ? credibilityScore : 0)
@@ -2981,7 +3164,8 @@ export default function AgreementBoardWindow({
         totalScoreBase = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreBase));
         totalScoreWithCred = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreWithCred));
         const totalMaxBase = managementMax + performanceMax + BID_SCORE + netCostBonusScore
-          + (isMois30To50 ? SUBCONTRACT_SCORE : 0);
+          + (isMois30To50 ? SUBCONTRACT_SCORE : 0)
+          + (technicianRequired && technicianMax ? technicianMax : 0);
         const totalMaxWithCred = credibilityEnabled ? totalMaxBase + (credibilityMax || 0) : totalMaxBase;
 
       return {
@@ -2995,8 +3179,11 @@ export default function AgreementBoardWindow({
         performanceRatio,
         performanceBase: perfBase,
         performanceBaseReady,
+        technicianMissing: metric.technicianMissing,
         credibilityScore,
         credibilityMax,
+        technicianScore,
+        technicianMax,
         totalScoreBase,
         totalScoreWithCred,
         totalMaxBase,
@@ -3026,7 +3213,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, resolveSummaryDigits]);
+  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianMax]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -3371,6 +3558,7 @@ export default function AgreementBoardWindow({
 
   const handleAddGroup = () => {
     setGroupAssignments((prev) => [...prev, Array(safeGroupSize).fill(null)]);
+    setGroupTechnicianScores((prev) => [...prev, Array(safeGroupSize).fill('')]);
   };
 
   const handleResetGroups = () => {
@@ -3379,6 +3567,7 @@ export default function AgreementBoardWindow({
     setGroupShares([]);
     setGroupShareRawInputs([]);
     setGroupCredibility([]);
+    setGroupTechnicianScores([]);
     setGroupApprovals([]);
     setGroupManagementBonus([]);
     setMemoDraft('');
@@ -3440,6 +3629,7 @@ export default function AgreementBoardWindow({
     setGroupShares((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setGroupShareRawInputs((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setGroupCredibility((prev) => prev.filter((_, idx) => !selected.has(idx)));
+    setGroupTechnicianScores((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setGroupApprovals((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setGroupManagementBonus((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setDropTarget(null);
@@ -3462,6 +3652,19 @@ export default function AgreementBoardWindow({
       while (next.length <= groupIndex) next.push([]);
       while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
       next[groupIndex][slotIndex] = original;
+      return next;
+    });
+  };
+
+  const handleTechnicianInput = (groupIndex, slotIndex, rawValue) => {
+    const original = rawValue ?? '';
+    const sanitized = original.replace(/[^0-9.]/g, '');
+    if ((sanitized.match(/\./g) || []).length > 1) return;
+    setGroupTechnicianScores((prev) => {
+      const next = prev.map((row) => row.slice());
+      while (next.length <= groupIndex) next.push([]);
+      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
+      next[groupIndex][slotIndex] = sanitized;
       return next;
     });
   };
@@ -3720,13 +3923,14 @@ export default function AgreementBoardWindow({
   }, [groups, showHeaderAlert]);
 
   const tableColumnCount = React.useMemo(() => {
-    const perSlotCols = credibilityEnabled ? 6 : 5;
+    const perSlotCols = (credibilityEnabled ? 6 : 5) + (technicianEnabled ? 1 : 0);
     const baseColumns = 12
       + (credibilityEnabled ? 1 : 0)
+      + (technicianEnabled ? 1 : 0)
       + (isLHOwner ? 1 : 0)
       + (isMois30To50 ? 1 : 0);
     return baseColumns + (slotLabels.length * perSlotCols);
-  }, [credibilityEnabled, isLHOwner, isMois30To50, slotLabels.length]);
+  }, [credibilityEnabled, isLHOwner, isMois30To50, slotLabels.length, technicianEnabled]);
 
   const buildSlotMeta = (group, groupIndex, slotIndex, label) => {
     const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
@@ -3777,6 +3981,9 @@ export default function AgreementBoardWindow({
     const credibilityProduct = (credibilityNumeric != null && shareForCalc != null)
       ? credibilityNumeric * (shareForCalc / 100)
       : null;
+    const technicianStored = groupTechnicianScores[groupIndex]?.[slotIndex];
+    const technicianValue = technicianStored != null ? String(technicianStored) : '';
+    const technicianNumeric = parseNumeric(technicianValue);
 
     return {
       empty: false,
@@ -3799,6 +4006,8 @@ export default function AgreementBoardWindow({
       qualityScore,
       credibilityValue,
       credibilityProduct: credibilityProduct != null ? `${credibilityProduct.toFixed(2)}점` : '',
+      technicianValue,
+      technicianNumeric,
     };
   };
 
@@ -3891,6 +4100,24 @@ export default function AgreementBoardWindow({
             <div className="excel-hint">반영 {meta.credibilityProduct}</div>
           )}
         </>
+      )}
+    </td>
+  );
+
+  const renderTechnicianCell = (meta, rowSpan) => (
+    <td
+      key={`tech-${meta.groupIndex}-${meta.slotIndex}`}
+      className={`excel-cell excel-technician-cell${technicianEditable ? '' : ' technician-disabled'}`}
+      rowSpan={rowSpan}
+    >
+      {meta.empty ? null : (
+        <input
+          type="text"
+          value={meta.technicianValue || ''}
+          onChange={(event) => handleTechnicianInput(meta.groupIndex, meta.slotIndex, event.target.value)}
+          placeholder="0"
+          disabled={!technicianEditable}
+        />
       )}
     </td>
   );
@@ -4041,6 +4268,11 @@ export default function AgreementBoardWindow({
     const performanceSummary = summaryInfo?.performanceScore != null
       ? formatScore(summaryInfo.performanceScore, resolveSummaryDigits('performance'))
       : '-';
+    const technicianSummary = technicianEnabled
+      ? (summaryInfo?.technicianScore != null
+        ? formatScore(summaryInfo.technicianScore, resolveSummaryDigits('technician'))
+        : (technicianEditable ? '-' : '비활성'))
+      : null;
     const shareSumDisplay = summaryInfo?.shareSum != null ? formatPercent(summaryInfo.shareSum) : '-';
     const shareSummaryClass = summaryInfo?.shareComplete ? 'ok' : 'warn';
     const credibilitySummary = credibilityEnabled
@@ -4127,6 +4359,10 @@ export default function AgreementBoardWindow({
         </td>
         {slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
         <td className={`excel-cell total-cell ${performanceState}`} rowSpan={rightRowSpan}>{performanceSummary}</td>
+        {technicianEnabled && slotMetas.map((meta) => renderTechnicianCell(meta, rightRowSpan))}
+        {technicianEnabled && (
+          <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{technicianSummary}</td>
+        )}
         {isLHOwner && (
           <td className={`excel-cell total-cell ${qualityPointsState}`} rowSpan={rightRowSpan}>{qualityPointsDisplay}</td>
         )}
@@ -4419,6 +4655,16 @@ export default function AgreementBoardWindow({
                 >{exporting ? '엑셀 생성 중…' : '엑셀로 내보내기'}</button>
                 <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
                 <button type="button" className="excel-btn" onClick={openCopyModal}>복사</button>
+                {technicianEnabled && (
+                  <button
+                    type="button"
+                    className="excel-btn"
+                    onClick={openTechnicianModal}
+                    disabled={!technicianEditable}
+                  >
+                    기술자점수 계산
+                  </button>
+                )}
                 <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="excel-btn" onClick={handleDeleteGroups}>선택 삭제</button>
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
@@ -4466,6 +4712,10 @@ export default function AgreementBoardWindow({
                 <col key={`col-performance-${index}`} className="col-performance" />
               ))}
               <col className="col-performance-summary" />
+              {technicianEnabled && slotLabels.map((_, index) => (
+                <col key={`col-technician-${index}`} className="col-technician" />
+              ))}
+              {technicianEnabled && <col className="col-technician-summary" />}
               {isLHOwner && <col className="col-quality-points" />}
               {isMois30To50 && <col className="col-subcontract" />}
               <col className="col-bid" />
@@ -4502,6 +4752,12 @@ export default function AgreementBoardWindow({
                 <th rowSpan="2">가점</th>
                 <th colSpan={slotLabels.length}>시공실적</th>
                 <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
+                {technicianEnabled && <th colSpan={slotLabels.length}>기술자점수</th>}
+                {technicianEnabled && (
+                  <th rowSpan="2">
+                    {technicianMax != null ? `기술자(${formatScore(technicianMax, 0)}점)` : '기술자점수'}
+                  </th>
+                )}
                 {isLHOwner && <th rowSpan="2">품질점수</th>}
                 {isMois30To50 && <th rowSpan="2">하도급</th>}
                 <th rowSpan="2">입찰점수</th>
@@ -4525,6 +4781,9 @@ export default function AgreementBoardWindow({
                 ))}
                 {slotLabels.map((label, index) => (
                   <th key={`perf-head-${index}`}>{label}</th>
+                ))}
+                {technicianEnabled && slotLabels.map((label, index) => (
+                  <th key={`tech-head-${index}`}>{label}</th>
                 ))}
                 {slotLabels.map((label, index) => (
                   <th key={`sipyung-head-${index}`}>{label}</th>
@@ -4633,6 +4892,106 @@ export default function AgreementBoardWindow({
             >
               {excelCopying && copyingKind === action.kind ? '복사 중…' : action.label}
             </button>
+          ))}
+        </div>
+      </Modal>
+      <Modal
+        open={technicianModalOpen}
+        title="기술자점수 계산"
+        onClose={closeTechnicianModal}
+        onCancel={closeTechnicianModal}
+        onSave={applyTechnicianScoreToTarget}
+        closeOnSave={false}
+        size="lg"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 12, color: '#475569' }}>적용 대상</span>
+              <select
+                className="filter-input"
+                value={`${technicianTarget.groupIndex}:${technicianTarget.slotIndex}`}
+                onChange={(event) => {
+                  const [groupIndex, slotIndex] = event.target.value.split(':').map((v) => Number(v));
+                  setTechnicianTarget({ groupIndex, slotIndex });
+                }}
+              >
+                {technicianTargetOptions.map((option) => (
+                  <option key={option.key} value={option.key}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 12, color: '#475569' }}>총점</span>
+              <strong style={{ fontSize: 18, color: '#0f172a' }}>{roundTo(technicianScoreTotal, 2).toFixed(2)}점</strong>
+            </div>
+            <button
+              type="button"
+              className="excel-btn"
+              onClick={addTechnicianEntry}
+              disabled={!technicianEditable}
+            >
+              기술자 추가
+            </button>
+          </div>
+          {!technicianEditable && (
+            <div style={{ fontSize: 12, color: '#b91c1c' }}>
+              소방 공종은 기술자점수가 비활성화되어 있습니다.
+            </div>
+          )}
+          {technicianEntries.length === 0 && (
+            <div style={{ padding: 12, border: '1px dashed #cbd5f5', borderRadius: 10, color: '#64748b' }}>
+              추가된 기술자가 없습니다. "기술자 추가" 버튼을 눌러 입력을 시작하세요.
+            </div>
+          )}
+          {technicianEntries.map((entry) => (
+            <div
+              key={entry.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '120px 120px 120px 80px 1fr auto',
+                gap: 10,
+                alignItems: 'center',
+              }}
+            >
+              <select
+                className="filter-input"
+                value={entry.grade}
+                onChange={(event) => updateTechnicianEntry(entry.id, 'grade', event.target.value)}
+              >
+                {TECHNICIAN_GRADE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <select
+                className="filter-input"
+                value={entry.careerCoeff}
+                onChange={(event) => updateTechnicianEntry(entry.id, 'careerCoeff', event.target.value)}
+              >
+                {TECHNICIAN_CAREER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <select
+                className="filter-input"
+                value={entry.managementCoeff}
+                onChange={(event) => updateTechnicianEntry(entry.id, 'managementCoeff', event.target.value)}
+              >
+                {TECHNICIAN_MANAGEMENT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <input
+                className="filter-input"
+                value={entry.count}
+                onChange={(event) => updateTechnicianEntry(entry.id, 'count', event.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="인원"
+              />
+              <div style={{ fontSize: 13, color: '#0f172a' }}>
+                점수 {computeTechnicianScore(entry).toFixed(2)}
+              </div>
+              <button type="button" className="excel-btn" onClick={() => removeTechnicianEntry(entry.id)}>삭제</button>
+            </div>
           ))}
         </div>
       </Modal>
