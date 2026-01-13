@@ -140,10 +140,51 @@ function evalManagement(inputs, rules, industryAvg) {
   return { ...result, meta: { maxScore: resolvedMax, isPerfect } };
 }
 
+function resolvePerformanceVariant(perf, inputs = {}) {
+  if (!perf || typeof perf !== 'object') return perf;
+  const variants = Array.isArray(perf.variants) ? perf.variants : [];
+  if (!variants.length) return perf;
+  const fileType = String(inputs.fileType || inputs.industryLabel || '').trim().toLowerCase();
+  const estimatedRaw = inputs.estimatedAmount;
+  const estimatedAmount = (estimatedRaw === null || estimatedRaw === undefined || estimatedRaw === '')
+    ? null
+    : toNumber(estimatedRaw);
+  for (const variant of variants) {
+    if (!variant || typeof variant !== 'object') continue;
+    const when = variant.when || {};
+    if (Array.isArray(when.fileTypes) && when.fileTypes.length > 0) {
+      const allowed = when.fileTypes.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
+      if (!fileType || !allowed.includes(fileType)) continue;
+    }
+    const lt = Number(when.estimatedAmountLt);
+    if (Number.isFinite(lt) && Number.isFinite(estimatedAmount) && !(estimatedAmount < lt)) continue;
+    if (Number.isFinite(lt) && !Number.isFinite(estimatedAmount)) continue;
+    const gte = Number(when.estimatedAmountGte);
+    if (Number.isFinite(gte) && Number.isFinite(estimatedAmount) && !(estimatedAmount >= gte)) continue;
+    if (Number.isFinite(gte) && !Number.isFinite(estimatedAmount)) continue;
+    const { when: _when, ...variantConfig } = variant;
+    return { ...perf, ...variantConfig };
+  }
+  return perf;
+}
+
+function evalPerformanceFormula(formula, context) {
+  if (!formula || typeof formula !== 'string') return null;
+  try {
+    const fn = new Function('perf5y', 'baseAmount', 'estimatedAmount', `return (${formula});`);
+    const value = fn(context.perf5y, context.baseAmount, context.estimatedAmount);
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  } catch {
+    return null;
+  }
+}
+
 function evalPerformance(inputs, rules) {
-  const perf = rules.performance || {};
+  const perf = resolvePerformanceVariant(rules.performance || {}, inputs);
   const perf5y = toNumber(inputs.perf5y);
   const base = toNumber(inputs.baseAmount);
+  const estimatedAmount = toNumber(inputs.estimatedAmount);
   const configMaxScoreRaw = Number(perf.maxScore);
   const configMaxScore = Number.isFinite(configMaxScoreRaw) ? configMaxScoreRaw : null;
 
@@ -196,7 +237,8 @@ function evalPerformance(inputs, rules) {
     return { score, raw: usable, capped: clamped, mode: 'ratio-bands', ratio, maxScore };
   }
 
-  const raw = base > 0 ? ratio * maxScore : 0;
+  const formulaScore = evalPerformanceFormula(perf.formula, { perf5y, baseAmount: base, estimatedAmount });
+  const raw = formulaScore != null ? formulaScore : (base > 0 ? ratio * maxScore : 0);
   const capped = maxScore != null ? Math.min(raw, maxScore) : raw;
   const score = applyRounding(capped, perf.rounding);
   return { score, raw, capped, mode: 'formula', ratio, maxScore };

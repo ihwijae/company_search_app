@@ -13,6 +13,8 @@ const OWNER_ID_MAP = new Map([
   ['pps', 'pps'],
   ['조달청', 'pps'],
   ['public procurement service', 'pps'],
+  ['krail', 'krail'],
+  ['국가철도공단', 'krail'],
 ]);
 
 const PERFORMANCE_OVERRIDES = {

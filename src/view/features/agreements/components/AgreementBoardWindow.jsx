@@ -126,6 +126,33 @@ const derivePerformanceMax = (performanceRules) => {
   return thresholdMax > 0 ? thresholdMax : null;
 };
 
+const resolvePerformanceRules = (performanceRules, { fileType, estimatedAmount }) => {
+  if (!performanceRules || typeof performanceRules !== 'object') return performanceRules;
+  const variants = Array.isArray(performanceRules.variants) ? performanceRules.variants : [];
+  if (!variants.length) return performanceRules;
+  const normalizedType = String(fileType || '').trim().toLowerCase();
+  const estimatedValue = toNumber(estimatedAmount);
+  for (const variant of variants) {
+    if (!variant || typeof variant !== 'object') continue;
+    const when = variant.when || {};
+    if (Array.isArray(when.fileTypes) && when.fileTypes.length > 0) {
+      const allowed = when.fileTypes.map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
+      if (!normalizedType || !allowed.includes(normalizedType)) continue;
+    }
+    const lt = Number(when.estimatedAmountLt);
+    if (Number.isFinite(lt)) {
+      if (!Number.isFinite(estimatedValue) || !(estimatedValue < lt)) continue;
+    }
+    const gte = Number(when.estimatedAmountGte);
+    if (Number.isFinite(gte)) {
+      if (!Number.isFinite(estimatedValue) || !(estimatedValue >= gte)) continue;
+    }
+    const { when: _when, ...variantConfig } = variant;
+    return { ...performanceRules, ...variantConfig };
+  }
+  return performanceRules;
+};
+
 const deriveManagementMax = (managementRules) => {
   const methods = Array.isArray(managementRules?.methods) ? managementRules.methods : [];
   const methodMaxes = methods
@@ -1631,11 +1658,15 @@ export default function AgreementBoardWindow({
     const amountHint = parseRangeAmountHint(ownerKeyUpper, selectedRangeOption?.label);
     const tier = selectTierByAmount(agency.tiers || [], amountHint);
     if (!tier) return { managementMax: null, performanceMax: null };
+    const resolvedPerformanceRules = resolvePerformanceRules(tier.rules?.performance, {
+      fileType,
+      estimatedAmount,
+    });
     return {
       managementMax: deriveManagementMax(tier.rules?.management),
-      performanceMax: derivePerformanceMax(tier.rules?.performance),
+      performanceMax: derivePerformanceMax(resolvedPerformanceRules),
     };
-  }, [formulasDoc, ownerId, ownerKeyUpper, selectedRangeOption?.label]);
+  }, [formulasDoc, ownerId, ownerKeyUpper, selectedRangeOption?.label, fileType, estimatedAmount]);
 
   const managementMax = React.useMemo(() => (
     isMois30To50 ? 10 : (derivedMaxScores.managementMax ?? MANAGEMENT_SCORE_MAX)
@@ -2806,6 +2837,8 @@ export default function AgreementBoardWindow({
         inputs: {
           perf5y: perfAmount,
           baseAmount: perfBase,
+          estimatedAmount: estimatedValue,
+          fileType,
         },
       };
       if (typeof window !== 'undefined' && window.electronAPI?.formulasEvaluate) {
@@ -3076,12 +3109,11 @@ export default function AgreementBoardWindow({
             qualityEval,
             perf5y: candidatePerfAmount,
             baseAmount: perfBase,
+            estimatedAmount: estimatedValue,
+            fileType,
             creditGrade,
           },
         };
-        if (fileType) {
-          payload.fileType = fileType;
-        }
 
         if (!Number.isFinite(payload.inputs.debtRatio)) delete payload.inputs.debtRatio;
         if (!Number.isFinite(payload.inputs.currentRatio)) delete payload.inputs.currentRatio;
@@ -3089,6 +3121,8 @@ export default function AgreementBoardWindow({
         if (!Number.isFinite(payload.inputs.qualityEval)) delete payload.inputs.qualityEval;
         if (!Number.isFinite(payload.inputs.perf5y)) delete payload.inputs.perf5y;
         if (!Number.isFinite(payload.inputs.baseAmount)) delete payload.inputs.baseAmount;
+        if (!Number.isFinite(payload.inputs.estimatedAmount)) delete payload.inputs.estimatedAmount;
+        if (!payload.inputs.fileType) delete payload.inputs.fileType;
         if (!payload.inputs.creditGrade) delete payload.inputs.creditGrade;
 
         try {

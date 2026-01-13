@@ -20,6 +20,17 @@ export const AGREEMENT_GROUPS = [
     ],
   },
   {
+    id: 'krail',
+    ownerId: 'KRAIL',
+    label: '국가철도공단',
+    name: '국가철도공단',
+    hashPrefix: '#/krail/',
+    items: [
+      { key: 'krail-under50', hash: '#/krail/under50', label: '50억 미만', rangeLabel: '50억 미만' },
+      { key: 'krail-50to100', hash: '#/krail/50to100', label: '50억~100억', rangeLabel: '50억~100억' },
+    ],
+  },
+  {
     id: 'pps',
     ownerId: 'PPS',
     label: '조달청',
