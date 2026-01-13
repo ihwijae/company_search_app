@@ -238,13 +238,18 @@ const resolvePerformanceCap = (value, fallback = PERFORMANCE_DEFAULT_MAX) => {
   return fallback;
 };
 
-const resolveTemplateKey = (ownerId, rangeId) => {
+const resolveTemplateKey = (ownerId, rangeId, fileType) => {
   const ownerKey = String(ownerId || '').toUpperCase();
   const rangeKey = String(rangeId || '').toLowerCase();
+  const normalizedType = String(fileType || '').toLowerCase();
   if (ownerKey === 'MOIS' && rangeKey === 'mois-under30') return 'mois-under30';
   if (ownerKey === 'MOIS' && rangeKey === MOIS_30_TO_50_KEY) return 'mois-30to50';
   if (ownerKey === 'PPS' && rangeKey === PPS_UNDER_50_KEY) return 'pps-under50';
   if (ownerKey === 'LH' && rangeKey === LH_UNDER_50_KEY) return 'lh-under50';
+  if (ownerKey === 'KRAIL' && rangeKey === KRAIL_UNDER_50_KEY) {
+    if (normalizedType === 'eung' || normalizedType === 'tongsin') return 'krail-under50';
+    return null;
+  }
   return null;
 };
 
@@ -2610,7 +2615,7 @@ export default function AgreementBoardWindow({
       showHeaderAlert('엑셀 내보내기 채널이 준비되지 않았습니다. 데스크탑 앱에서만 실행 가능합니다.');
       return;
     }
-    const templateKey = resolveTemplateKey(ownerId, rangeId);
+    const templateKey = resolveTemplateKey(ownerId, rangeId, fileType);
     if (!templateKey) {
       showHeaderAlert('현재 선택한 발주처/구간은 엑셀 템플릿이 아직 준비되지 않았습니다.');
       return;
@@ -2626,6 +2631,9 @@ export default function AgreementBoardWindow({
       const amountForScore = (estimatedValue != null && estimatedValue > 0)
         ? estimatedValue
         : (baseValue != null && baseValue > 0 ? baseValue : null);
+      const amountForScoreResolved = ownerKeyUpper === 'KRAIL'
+        ? (baseValue != null && baseValue > 0 ? baseValue : null)
+        : amountForScore;
       const possibleShareBase = ownerKeyUpper === 'LH'
         ? ratioBaseValue
         : (bidAmountValue != null ? bidAmountValue : null);
@@ -2666,6 +2674,9 @@ export default function AgreementBoardWindow({
           const sharePercent = parseNumeric(shareSource);
           const managementScore = getCandidateManagementScore(candidate);
           const performanceAmount = getCandidatePerformanceAmount(candidate);
+          const technicianValue = technicianEnabled
+            ? getTechnicianValue(groupIndex, slotIndex)
+            : null;
           const sipyungValue = candidate._sipyung ?? extractAmountValue(
             candidate,
             ['_sipyung', 'sipyung', '시평', '시평액', '시평액(원)', '시평금액', '기초금액', '기초금액(원)'],
@@ -2702,6 +2713,7 @@ export default function AgreementBoardWindow({
             sharePercent,
             managementScore: managementScore != null ? Number(managementScore) : null,
             performanceAmount: performanceAmount != null ? Number(performanceAmount) : null,
+            technicianScore: technicianValue != null ? Number(technicianValue) : null,
             sipyung,
             credibilityBonus: credibilityBonus != null ? Number(credibilityBonus) : null,
             qualityScore: qualityScore != null ? Number(qualityScore) : null,
@@ -2771,7 +2783,7 @@ export default function AgreementBoardWindow({
           bidAmount: bidAmountValue ?? null,
           ratioBaseAmount: ratioBaseValue ?? null,
           entryAmount: entryAmountValue ?? null,
-          amountForScore,
+          amountForScore: amountForScoreResolved,
           bidDeadline: formattedDeadline,
           rawBidDeadline: bidDeadline || '',
           dutyRegions: Array.isArray(dutyRegions) ? dutyRegions : [],
@@ -2800,6 +2812,7 @@ export default function AgreementBoardWindow({
     ownerId,
     ownerKeyUpper,
     rangeId,
+    fileType,
     baseAmount,
     estimatedAmount,
     ratioBaseAmount,
@@ -2814,12 +2827,14 @@ export default function AgreementBoardWindow({
     groupAssignments,
     groupShares,
     getSharePercent,
+    getTechnicianValue,
     groupApprovals,
     participantMap,
     summaryByGroup,
     summary,
     safeGroupSize,
     isLHOwner,
+    technicianEnabled,
     resolveQualityPoints,
     selectedRangeOption?.key,
     groupManagementBonus,

@@ -214,12 +214,14 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       const managementColumn = slotColumns.management?.[slotIndex];
       const performanceColumn = slotColumns.performance?.[slotIndex];
       const abilityColumn = slotColumns.ability?.[slotIndex];
+      const technicianColumn = slotColumns.technician?.[slotIndex];
 
       const nameCell = worksheet.getCell(`${nameColumn}${rowIndex}`);
       const shareCell = shareColumn ? worksheet.getCell(`${shareColumn}${rowIndex}`) : null;
       const managementCell = managementColumn ? worksheet.getCell(`${managementColumn}${rowIndex}`) : null;
       const performanceCell = performanceColumn ? worksheet.getCell(`${performanceColumn}${rowIndex}`) : null;
       const abilityCell = abilityColumn ? worksheet.getCell(`${abilityColumn}${rowIndex}`) : null;
+      const technicianCell = technicianColumn ? worksheet.getCell(`${technicianColumn}${rowIndex}`) : null;
 
       if (!member || member.empty) {
         nameCell.value = '';
@@ -228,6 +230,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
         if (managementCell) { managementCell.value = null; managementCell.fill = undefined; }
         if (performanceCell) { performanceCell.value = null; performanceCell.fill = undefined; }
         if (abilityCell) { abilityCell.value = null; abilityCell.fill = undefined; }
+        if (technicianCell) { technicianCell.value = null; technicianCell.fill = undefined; }
         continue;
       }
 
@@ -270,6 +273,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
       }
       if (performanceCell) { performanceCell.value = toExcelNumber(member.performanceAmount); performanceCell.fill = undefined; }
       if (abilityCell) { abilityCell.value = toExcelNumber(member.sipyung); abilityCell.fill = undefined; }
+      if (technicianCell) { technicianCell.value = toExcelNumber(member.technicianScore); technicianCell.fill = undefined; }
       if (qualityColumns.length > 0 && member.qualityScore != null) {
         const qualityColumn = qualityColumns[slotIndex];
         if (qualityColumn) {

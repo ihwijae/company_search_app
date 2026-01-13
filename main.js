@@ -319,6 +319,44 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       bgColor: { indexed: 64 },
     },
   },
+  'krail-under50': {
+    label: '국가철도공단 50억 미만',
+    path: path.join(__dirname, '템플릿', '국가철도50억미만.xlsx'),
+    sheetName: '양식',
+    startRow: 5,
+    maxRows: 68,
+    slotColumns: {
+      name: ['C', 'D', 'E', 'F', 'G'],
+      share: ['I', 'J', 'K', 'L', 'M'],
+      management: ['P', 'Q', 'R', 'S', 'T'],
+      performance: ['W', 'X', 'Y', 'Z', 'AA'],
+      technician: ['AD', 'AE'],
+      ability: ['AV', 'AW'],
+    },
+    clearColumns: [
+      'B', 'C', 'D', 'E', 'F', 'G', 'H',
+      'I', 'J', 'K', 'L', 'M',
+      'O', 'P', 'Q', 'R', 'S', 'T',
+      'W', 'X', 'Y', 'Z', 'AA',
+      'AD', 'AE',
+      'AV', 'AW',
+    ],
+    headerCells: {
+      baseAmount: 'D2',
+      amountForScore: 'I1',
+      noticeTitle: 'N1',
+      bidDeadline: 'P2',
+      dutySummary: 'U2',
+    },
+    approvalColumn: 'B',
+    summaryColumns: {},
+    regionFill: {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFFF00' },
+      bgColor: { indexed: 64 },
+    },
+  },
 };
 
 const { sanitizeFileName, exportAgreementExcel } = require('./src/main/features/agreements/exportExcel.js');
