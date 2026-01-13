@@ -3125,6 +3125,7 @@ export default function AgreementBoardWindow({
       if (!performanceBaseReady || perfAmount == null) return null;
       const payload = {
         agencyId: ownerKey,
+        fileType,
         amount: evaluationAmount != null ? evaluationAmount : (perfBase != null ? perfBase : 0),
         inputs: {
           perf5y: perfAmount,
@@ -3415,6 +3416,7 @@ export default function AgreementBoardWindow({
 
         const payload = {
           agencyId: ownerKey,
+          fileType,
           amount: Number.isFinite(evaluationAmount) && evaluationAmount > 0
             ? evaluationAmount
             : (Number.isFinite(perfBase) && perfBase > 0 ? perfBase : 0),
