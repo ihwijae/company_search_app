@@ -1091,6 +1091,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-performance { width: 90px; }
 .col-technician { width: 90px; }
 .col-technician-summary { width: 55px; }
+.col-technician-ability-summary { width: 55px; }
 .col-netcost-bonus { width: 55px; }
 .col-performance-summary { width: 50px; }
 .col-credibility { width: 55px; }

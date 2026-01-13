@@ -2148,6 +2148,29 @@
                 }
               ]
             },
+            "technician": {
+              "mode": "sumThreshold",
+              "maxScore": 5,
+              "thresholds": [
+                {
+                  "gte": 2,
+                  "score": 5
+                },
+                {
+                  "gte": 1.5,
+                  "score": 4
+                },
+                {
+                  "gte": 0.75,
+                  "score": 3
+                },
+                {
+                  "lt": 0.75,
+                  "score": 0
+                }
+              ],
+              "notes": "국가철도공단 50억 미만 기술자 합산 기준"
+            },
             "notes": "국가철도공단 50억 미만 기본값",
             "effectiveFrom": null,
             "effectiveTo": null
@@ -2405,6 +2428,29 @@
                   "score": 1
                 }
               ]
+            },
+            "technician": {
+              "mode": "sumThreshold",
+              "maxScore": 5,
+              "thresholds": [
+                {
+                  "gte": 3,
+                  "score": 5
+                },
+                {
+                  "gte": 2,
+                  "score": 4
+                },
+                {
+                  "gte": 1,
+                  "score": 3
+                },
+                {
+                  "lt": 1,
+                  "score": 0
+                }
+              ],
+              "notes": "국가철도공단 50억~100억 기술자 합산 기준"
             },
             "notes": "국가철도공단 50억~100억 기본값",
             "effectiveFrom": null,

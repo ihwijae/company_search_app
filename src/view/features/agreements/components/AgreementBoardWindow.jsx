@@ -17,7 +17,7 @@ const MIN_GROUPS = 4;
 const BID_SCORE = 65;
 const SUBCONTRACT_SCORE = 5;
 const MANAGEMENT_SCORE_MAX = 15;
-const KRAIL_TECHNICIAN_MAX_UNDER_50 = 5;
+const KRAIL_TECHNICIAN_ABILITY_MAX = 5;
 const PERFORMANCE_DEFAULT_MAX = 13;
 const PERFORMANCE_MOIS_DEFAULT_MAX = 15;
 const PERFORMANCE_CAP_VERSION = 2;
@@ -30,6 +30,7 @@ const PPS_UNDER_50_KEY = 'pps-under50';
 const MOIS_UNDER_30_KEY = 'mois-under30';
 const MOIS_30_TO_50_KEY = 'mois-30to50';
 const KRAIL_UNDER_50_KEY = 'krail-under50';
+const KRAIL_50_TO_100_KEY = 'krail-50to100';
 const KOREAN_UNIT = 100000000;
 const BOARD_COPY_SLOT_COUNT = 5;
 const BOARD_COPY_ACTIONS = [
@@ -108,6 +109,7 @@ const COLUMN_WIDTHS = {
   performanceSummary: 50,
   technicianCell: 90,
   technicianSummary: 55,
+  technicianAbilitySummary: 55,
   credibilityCell: 45,
   credibility: 55,
   bid: 32,
@@ -1120,9 +1122,10 @@ export default function AgreementBoardWindow({
   const isMoisUnderOr30To50 = isMoisOwner && (selectedRangeKey === MOIS_UNDER_30_KEY || selectedRangeKey === MOIS_30_TO_50_KEY);
   const isPpsUnder50 = ownerKeyUpper === 'PPS' && selectedRangeKey === PPS_UNDER_50_KEY;
   const isKrailUnder50 = ownerKeyUpper === 'KRAIL' && selectedRangeKey === KRAIL_UNDER_50_KEY;
+  const isKrail50To100 = ownerKeyUpper === 'KRAIL' && selectedRangeKey === KRAIL_50_TO_100_KEY;
   const technicianEnabled = isKrailOwner;
   const technicianEditable = technicianEnabled && String(fileType || '').toLowerCase() !== 'sobang';
-  const technicianMax = isKrailUnder50 ? KRAIL_TECHNICIAN_MAX_UNDER_50 : null;
+  const technicianAbilityMax = technicianEnabled ? KRAIL_TECHNICIAN_ABILITY_MAX : null;
   const managementScale = isMois30To50 ? (10 / 15) : 1;
   const roundForKrailUnder50 = React.useCallback(
     (value) => (isKrailUnder50 ? roundTo(value, 2) : value),
@@ -1147,8 +1150,30 @@ export default function AgreementBoardWindow({
     (value) => (isLHOwner ? roundTo(value, 2) : value),
     [isLHOwner],
   );
+  const resolveKrailTechnicianAbilityScore = React.useCallback(
+    (value) => {
+      if (!technicianEnabled) return null;
+      const numeric = toNumber(value);
+      if (!Number.isFinite(numeric)) return null;
+      if (isKrailUnder50) {
+        if (numeric >= 2) return 5;
+        if (numeric >= 1.5) return 4;
+        if (numeric >= 0.75) return 3;
+        return 0;
+      }
+      if (isKrail50To100) {
+        if (numeric >= 3) return 5;
+        if (numeric >= 2) return 4;
+        if (numeric >= 1) return 3;
+        return 0;
+      }
+      return null;
+    },
+    [isKrail50To100, isKrailUnder50, technicianEnabled],
+  );
   const resolveSummaryDigits = React.useCallback(
     (kind) => {
+      if (kind === 'technicianAbility') return 0;
       if (kind === 'technician') return technicianEnabled ? 2 : 3;
       if (kind === 'bid') return 0;
       if (kind === 'subcontract') return 0;
@@ -1799,7 +1824,7 @@ export default function AgreementBoardWindow({
       + (isLHOwner ? COLUMN_WIDTHS.qualityPoints : 0)
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
-      + (technicianEnabled ? COLUMN_WIDTHS.technicianSummary : 0)
+      + (technicianEnabled ? COLUMN_WIDTHS.technicianSummary + COLUMN_WIDTHS.technicianAbilitySummary : 0)
       + (isMois30To50 ? COLUMN_WIDTHS.subcontract : 0)
       + COLUMN_WIDTHS.bid
       + COLUMN_WIDTHS.netCostBonus
@@ -2990,9 +3015,10 @@ export default function AgreementBoardWindow({
 
       const managementMissing = normalizedMembers.some((member) => member.managementScore == null);
       const performanceMissing = normalizedMembers.some((member) => member.performanceAmount == null);
-      const technicianMissing = technicianEditable
-        ? normalizedMembers.some((member) => member.technicianScore == null)
+      const technicianProvided = technicianEditable
+        ? normalizedMembers.some((member) => member.technicianScore != null)
         : false;
+      const technicianMissing = technicianEditable ? !technicianProvided : false;
       const sipyungMissing = normalizedMembers.some((member) => member.sipyungAmount == null);
       const aggregatedCredibility = credibilityEnabled
         ? (shareValid
@@ -3007,7 +3033,7 @@ export default function AgreementBoardWindow({
       const aggregatedPerformanceAmount = (!performanceMissing && shareValid)
         ? normalizedMembers.reduce((acc, member) => acc + (member.performanceAmount || 0) * member.weight, 0)
         : null;
-      const aggregatedTechnicianScore = (technicianEditable && !technicianMissing && shareValid)
+      const aggregatedTechnicianScore = (technicianEditable && technicianProvided && shareValid)
         ? normalizedMembers.reduce((acc, member) => acc + (member.technicianScore || 0) * member.weight, 0)
         : null;
 
@@ -3130,6 +3156,7 @@ export default function AgreementBoardWindow({
         let performanceScore = null;
         let performanceRatio = null;
         let technicianScore = null;
+        let technicianAbilityScore = null;
 
         if (shareReady && !metric.performanceMissing && metric.performanceAmount != null && performanceBaseReady) {
           performanceScore = await evaluatePerformanceScore(metric.performanceAmount);
@@ -3142,6 +3169,7 @@ export default function AgreementBoardWindow({
 
         if (shareReady && !metric.technicianMissing && metric.technicianScore != null) {
           technicianScore = roundForKrailUnder50(metric.technicianScore);
+          technicianAbilityScore = resolveKrailTechnicianAbilityScore(technicianScore);
         }
 
         const perfCapCurrent = getPerformanceCap();
@@ -3152,7 +3180,9 @@ export default function AgreementBoardWindow({
         credibilityScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(credibilityScore)));
         const credibilityMax = credibilityEnabled ? ownerCredibilityMax : null;
         const subcontractScore = isMois30To50 && metric.memberCount > 0 ? SUBCONTRACT_SCORE : null;
-        const technicianScoreForTotal = (technicianEnabled && technicianScore != null) ? technicianScore : null;
+        const technicianScoreForTotal = (technicianEnabled && technicianAbilityScore != null)
+          ? technicianAbilityScore
+          : null;
         const technicianRequired = technicianEnabled && technicianEditable;
         const technicianReady = !technicianRequired || technicianScoreForTotal != null;
         let totalScoreBase = (managementScore != null && performanceScore != null && technicianReady)
@@ -3165,7 +3195,7 @@ export default function AgreementBoardWindow({
         totalScoreWithCred = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreWithCred));
         const totalMaxBase = managementMax + performanceMax + BID_SCORE + netCostBonusScore
           + (isMois30To50 ? SUBCONTRACT_SCORE : 0)
-          + (technicianRequired && technicianMax ? technicianMax : 0);
+          + (technicianRequired && technicianAbilityMax ? technicianAbilityMax : 0);
         const totalMaxWithCred = credibilityEnabled ? totalMaxBase + (credibilityMax || 0) : totalMaxBase;
 
       return {
@@ -3183,7 +3213,8 @@ export default function AgreementBoardWindow({
         credibilityScore,
         credibilityMax,
         technicianScore,
-        technicianMax,
+        technicianAbilityScore,
+        technicianAbilityMax,
         totalScoreBase,
         totalScoreWithCred,
         totalMaxBase,
@@ -3213,7 +3244,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianMax]);
+  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -3926,7 +3957,7 @@ export default function AgreementBoardWindow({
     const perSlotCols = (credibilityEnabled ? 6 : 5) + (technicianEnabled ? 1 : 0);
     const baseColumns = 12
       + (credibilityEnabled ? 1 : 0)
-      + (technicianEnabled ? 1 : 0)
+      + (technicianEnabled ? 2 : 0)
       + (isLHOwner ? 1 : 0)
       + (isMois30To50 ? 1 : 0);
     return baseColumns + (slotLabels.length * perSlotCols);
@@ -4273,6 +4304,11 @@ export default function AgreementBoardWindow({
         ? formatScore(summaryInfo.technicianScore, resolveSummaryDigits('technician'))
         : (technicianEditable ? '-' : '평가제외'))
       : null;
+    const technicianAbilitySummary = technicianEnabled
+      ? (summaryInfo?.technicianAbilityScore != null
+        ? formatScore(summaryInfo.technicianAbilityScore, resolveSummaryDigits('technicianAbility'))
+        : (technicianEditable ? '-' : '평가제외'))
+      : null;
     const shareSumDisplay = summaryInfo?.shareSum != null ? formatPercent(summaryInfo.shareSum) : '-';
     const shareSummaryClass = summaryInfo?.shareComplete ? 'ok' : 'warn';
     const credibilitySummary = credibilityEnabled
@@ -4362,6 +4398,9 @@ export default function AgreementBoardWindow({
         {technicianEnabled && slotMetas.map((meta) => renderTechnicianCell(meta, rightRowSpan))}
         {technicianEnabled && (
           <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{technicianSummary}</td>
+        )}
+        {technicianEnabled && (
+          <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{technicianAbilitySummary}</td>
         )}
         {isLHOwner && (
           <td className={`excel-cell total-cell ${qualityPointsState}`} rowSpan={rightRowSpan}>{qualityPointsDisplay}</td>
@@ -4716,6 +4755,7 @@ export default function AgreementBoardWindow({
                 <col key={`col-technician-${index}`} className="col-technician" />
               ))}
               {technicianEnabled && <col className="col-technician-summary" />}
+              {technicianEnabled && <col className="col-technician-ability-summary" />}
               {isLHOwner && <col className="col-quality-points" />}
               {isMois30To50 && <col className="col-subcontract" />}
               <col className="col-bid" />
@@ -4753,9 +4793,10 @@ export default function AgreementBoardWindow({
                 <th colSpan={slotLabels.length}>시공실적</th>
                 <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
                 {technicianEnabled && <th colSpan={slotLabels.length}>기술자점수</th>}
+                {technicianEnabled && <th rowSpan="2">기술자합산</th>}
                 {technicianEnabled && (
                   <th rowSpan="2">
-                    {technicianMax != null ? `기술자(${formatScore(technicianMax, 0)}점)` : '기술자점수'}
+                    {technicianAbilityMax != null ? `기술능력(${formatScore(technicianAbilityMax, 0)}점)` : '기술능력'}
                   </th>
                 )}
                 {isLHOwner && <th rowSpan="2">품질점수</th>}
