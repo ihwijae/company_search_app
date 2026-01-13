@@ -1335,53 +1335,6 @@ export default function AgreementBoardWindow({
     technicianEntries.reduce((sum, entry) => sum + computeTechnicianScore(entry), 0)
   ), [technicianEntries]);
 
-  const slotLabels = React.useMemo(() => (
-    Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))
-  ), [safeGroupSize]);
-
-  const technicianTargetOptions = React.useMemo(() => (
-    groupAssignments.flatMap((row, groupIndex) => (
-      slotLabels.map((label, slotIndex) => {
-        const uid = row?.[slotIndex];
-        const entry = uid ? participantMap.get(uid) : null;
-        const name = entry?.candidate ? getCompanyName(entry.candidate) : '';
-        const suffix = name ? ` - ${name}` : '';
-        return {
-          key: `${groupIndex}:${slotIndex}`,
-          groupIndex,
-          slotIndex,
-          label: `${groupIndex + 1}번 ${label}${suffix}`,
-        };
-      })
-    ))
-  ), [groupAssignments, participantMap, slotLabels]);
-
-  React.useEffect(() => {
-    if (!technicianTargetOptions.length) return;
-    const exists = technicianTargetOptions.some(
-      (option) => option.groupIndex === technicianTarget.groupIndex && option.slotIndex === technicianTarget.slotIndex,
-    );
-    if (!exists) {
-      const first = technicianTargetOptions[0];
-      setTechnicianTarget({ groupIndex: first.groupIndex, slotIndex: first.slotIndex });
-    }
-  }, [technicianTargetOptions, technicianTarget.groupIndex, technicianTarget.slotIndex]);
-
-  const applyTechnicianScoreToTarget = React.useCallback(() => {
-    if (!technicianEditable) return;
-    if (!technicianTargetOptions.length) return;
-    const resolved = roundTo(technicianScoreTotal, 2);
-    if (resolved == null) return;
-    setGroupTechnicianScores((prev) => {
-      const next = prev.map((row) => row.slice());
-      const { groupIndex, slotIndex } = technicianTarget;
-      while (next.length <= groupIndex) next.push([]);
-      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
-      next[groupIndex][slotIndex] = String(resolved);
-      return next;
-    });
-  }, [technicianEditable, technicianScoreTotal, technicianTarget, technicianTargetOptions.length]);
-
   const handleAdjustmentRateChange = React.useCallback((event) => {
     const nextValue = event.target.value;
     setAdjustmentRateTouched(Boolean(String(nextValue || '').trim()));
@@ -1739,6 +1692,10 @@ export default function AgreementBoardWindow({
     const clamped = Math.min(Math.max(Math.floor(parsed), 2), Math.min(5, safeGroupSize));
     return clamped;
   }, [participantLimit, safeGroupSize]);
+
+  const slotLabels = React.useMemo(() => (
+    Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))
+  ), [safeGroupSize]);
 
   const {
     loadModalOpen,
@@ -2417,6 +2374,49 @@ export default function AgreementBoardWindow({
     }
     return map;
   }, [representativeEntries, regionEntries]);
+
+  const technicianTargetOptions = React.useMemo(() => (
+    groupAssignments.flatMap((row, groupIndex) => (
+      slotLabels.map((label, slotIndex) => {
+        const uid = row?.[slotIndex];
+        const entry = uid ? participantMap.get(uid) : null;
+        const name = entry?.candidate ? getCompanyName(entry.candidate) : '';
+        const suffix = name ? ` - ${name}` : '';
+        return {
+          key: `${groupIndex}:${slotIndex}`,
+          groupIndex,
+          slotIndex,
+          label: `${groupIndex + 1}번 ${label}${suffix}`,
+        };
+      })
+    ))
+  ), [groupAssignments, participantMap, slotLabels]);
+
+  React.useEffect(() => {
+    if (!technicianTargetOptions.length) return;
+    const exists = technicianTargetOptions.some(
+      (option) => option.groupIndex === technicianTarget.groupIndex && option.slotIndex === technicianTarget.slotIndex,
+    );
+    if (!exists) {
+      const first = technicianTargetOptions[0];
+      setTechnicianTarget({ groupIndex: first.groupIndex, slotIndex: first.slotIndex });
+    }
+  }, [technicianTargetOptions, technicianTarget.groupIndex, technicianTarget.slotIndex]);
+
+  const applyTechnicianScoreToTarget = React.useCallback(() => {
+    if (!technicianEditable) return;
+    if (!technicianTargetOptions.length) return;
+    const resolved = roundTo(technicianScoreTotal, 2);
+    if (resolved == null) return;
+    setGroupTechnicianScores((prev) => {
+      const next = prev.map((row) => row.slice());
+      const { groupIndex, slotIndex } = technicianTarget;
+      while (next.length <= groupIndex) next.push([]);
+      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
+      next[groupIndex][slotIndex] = String(resolved);
+      return next;
+    });
+  }, [technicianEditable, technicianScoreTotal, technicianTarget, technicianTargetOptions.length]);
 
   const attemptPendingPlacement = React.useCallback(() => {
     const pending = pendingPlacementRef.current;
