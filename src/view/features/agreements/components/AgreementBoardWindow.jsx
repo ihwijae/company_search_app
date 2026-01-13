@@ -1335,6 +1335,38 @@ export default function AgreementBoardWindow({
     technicianEntries.reduce((sum, entry) => sum + computeTechnicianScore(entry), 0)
   ), [technicianEntries]);
 
+  const slotLabels = React.useMemo(() => (
+    Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))
+  ), [safeGroupSize]);
+
+  const technicianTargetOptions = React.useMemo(() => (
+    groupAssignments.flatMap((row, groupIndex) => (
+      slotLabels.map((label, slotIndex) => {
+        const uid = row?.[slotIndex];
+        const entry = uid ? participantMap.get(uid) : null;
+        const name = entry?.candidate ? getCompanyName(entry.candidate) : '';
+        const suffix = name ? ` - ${name}` : '';
+        return {
+          key: `${groupIndex}:${slotIndex}`,
+          groupIndex,
+          slotIndex,
+          label: `${groupIndex + 1}번 ${label}${suffix}`,
+        };
+      })
+    ))
+  ), [groupAssignments, participantMap, slotLabels]);
+
+  React.useEffect(() => {
+    if (!technicianTargetOptions.length) return;
+    const exists = technicianTargetOptions.some(
+      (option) => option.groupIndex === technicianTarget.groupIndex && option.slotIndex === technicianTarget.slotIndex,
+    );
+    if (!exists) {
+      const first = technicianTargetOptions[0];
+      setTechnicianTarget({ groupIndex: first.groupIndex, slotIndex: first.slotIndex });
+    }
+  }, [technicianTargetOptions, technicianTarget.groupIndex, technicianTarget.slotIndex]);
+
   const applyTechnicianScoreToTarget = React.useCallback(() => {
     if (!technicianEditable) return;
     if (!technicianTargetOptions.length) return;
@@ -1788,38 +1820,6 @@ export default function AgreementBoardWindow({
     });
     return Array.from(map.values());
   }, [loadFilters.ownerId]);
-
-  const slotLabels = React.useMemo(() => (
-    Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))
-  ), [safeGroupSize]);
-
-  const technicianTargetOptions = React.useMemo(() => {
-    return groupAssignments.flatMap((row, groupIndex) => (
-      slotLabels.map((label, slotIndex) => {
-        const uid = row?.[slotIndex];
-        const entry = uid ? participantMap.get(uid) : null;
-        const name = entry?.candidate ? getCompanyName(entry.candidate) : '';
-        const suffix = name ? ` - ${name}` : '';
-        return {
-          key: `${groupIndex}:${slotIndex}`,
-          groupIndex,
-          slotIndex,
-          label: `${groupIndex + 1}번 ${label}${suffix}`,
-        };
-      })
-    ));
-  }, [groupAssignments, participantMap, slotLabels]);
-
-  React.useEffect(() => {
-    if (!technicianTargetOptions.length) return;
-    const exists = technicianTargetOptions.some(
-      (option) => option.groupIndex === technicianTarget.groupIndex && option.slotIndex === technicianTarget.slotIndex,
-    );
-    if (!exists) {
-      const first = technicianTargetOptions[0];
-      setTechnicianTarget({ groupIndex: first.groupIndex, slotIndex: first.slotIndex });
-    }
-  }, [technicianTargetOptions, technicianTarget.groupIndex, technicianTarget.slotIndex]);
 
   const tableMinWidth = React.useMemo(() => {
     const nameWidth = slotLabels.length * COLUMN_WIDTHS.name;
