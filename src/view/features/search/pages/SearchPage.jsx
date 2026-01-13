@@ -1446,7 +1446,7 @@ function App() {
                                 const num = parsePercentNumber(value);
                                 if (!isNaN(num)) {
                                   const ratio = (num / avg.debtRatio) * 100;
-                                  ratioBadgeText = `${Math.round(ratio)}%`;
+                                  ratioBadgeText = `${ratio.toFixed(2)}%`;
                                   if (num >= avg.debtRatio * debtFactor) extraClass = 'ratio-bad';
                                   ratioBadgeClass = extraClass ? 'ratio-badge bad' : 'ratio-badge';
                                 }
@@ -1454,7 +1454,7 @@ function App() {
                                 const num = parsePercentNumber(value);
                                 if (!isNaN(num)) {
                                   const ratio = (num / avg.currentRatio) * 100;
-                                  ratioBadgeText = `${Math.round(ratio)}%`;
+                                  ratioBadgeText = `${ratio.toFixed(2)}%`;
                                   if (!isNaN(num) && num <= avg.currentRatio * currentFactor) extraClass = 'ratio-bad';
                                   ratioBadgeClass = extraClass ? 'ratio-badge bad' : 'ratio-badge';
                                 }
