@@ -4901,7 +4901,7 @@ export default function AgreementBoardWindow({
         onClose={closeTechnicianModal}
         onCancel={closeTechnicianModal}
         onSave={applyTechnicianScoreToTarget}
-        closeOnSave={false}
+        closeOnSave
         size="lg"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

@@ -970,6 +970,11 @@ button.primary:hover { background: var(--accent-2); }
   color: #64748b;
   border-color: #cbd5f5;
 }
+.excel-technician-cell input {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
 .excel-board-row.entry-failed td {
   background: #fee2e2 !important;
 }
