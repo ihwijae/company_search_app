@@ -549,6 +549,7 @@ function MailAutomationPageInner() {
         const workerMap = {};
         const vendorEntries = [];
         let emptyStreak = 0;
+        let lastWorkerName = '';
         for (let row = 8; row < 1000; row += 1) {
           const vendor = getText(`C${row}`);
           const amountCell = getCell(`D${row}`);
@@ -560,11 +561,15 @@ function MailAutomationPageInner() {
             continue;
           }
           emptyStreak = 0;
+          const effectiveWorker = worker || lastWorkerName;
+          if (worker) {
+            lastWorkerName = worker;
+          }
           const formattedAmount = formatAmount(amountCell);
           const normalized = normalizeVendorName(vendor);
           if (normalized) {
             amountMap[normalized] = formattedAmount;
-            workerMap[normalized] = worker;
+            workerMap[normalized] = effectiveWorker;
           }
           if (vendor) {
             const resolvedContact = resolveContactForVendor(vendor);
@@ -574,7 +579,7 @@ function MailAutomationPageInner() {
               contactName: resolvedContact?.contactName || '',
               email: resolvedContact?.email || '',
               tenderAmount: formattedAmount,
-              workerName: worker,
+              workerName: effectiveWorker,
               attachments: [],
               status: '대기',
             });
