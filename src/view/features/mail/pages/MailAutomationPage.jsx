@@ -582,6 +582,9 @@ function MailAutomationPageInner() {
       showStatusMessage('엑셀 파일을 읽는 중 오류가 발생했습니다.', { type: 'error' });
     };
     reader.readAsArrayBuffer(file);
+    if (event.target) {
+      event.target.value = '';
+    }
   };
 
   const handleRecipientFieldChange = (id, field, value) => {
@@ -760,9 +763,9 @@ function MailAutomationPageInner() {
         contactName: contact.contactName || contact.vendorName || item.contactName || '',
         email: contact.email || item.email || '',
       };
-      const normalized = normalizeVendorName(contact.vendorName);
-      if (normalized && vendorAmounts[normalized]) {
-        updated.tenderAmount = vendorAmounts[normalized];
+      const normalizedVendor = normalizeVendorName(updated.vendorName);
+      if (!item.tenderAmount && normalizedVendor && vendorAmounts[normalizedVendor]) {
+        updated.tenderAmount = vendorAmounts[normalizedVendor];
       }
       return updated;
     }));

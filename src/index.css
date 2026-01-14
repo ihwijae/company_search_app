@@ -2116,7 +2116,8 @@ body {
 .mail-addressbook-modal {
   background: #ffffff;
   width: min(760px, 90vw);
-  max-height: 90vh;
+  height: min(90vh, 720px);
+  min-height: 520px;
   border-radius: 18px;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
   display: flex;
