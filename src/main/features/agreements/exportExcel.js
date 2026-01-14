@@ -529,6 +529,7 @@ async function exportAgreementExcel({
       targetSheet.properties.tabColor = { argb: sheetColor };
     }
     copyWorksheet(worksheet, targetSheet);
+    clearHoverArtifacts(targetSheet);
     await targetWorkbook.xlsx.writeFile(appendToPath);
     return { path: appendToPath, sheetName: resolvedName };
   }
