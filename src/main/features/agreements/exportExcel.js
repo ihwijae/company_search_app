@@ -73,7 +73,6 @@ const copyWorksheet = (source, target) => {
       targetCell.font = cloneCellStyle(cell.font);
       targetCell.fill = cloneCellStyle(cell.fill);
       targetCell.protection = cloneCellStyle(cell.protection);
-      targetCell.note = cell.note;
       targetCell.dataValidation = cell.dataValidation;
     });
   });

@@ -19,8 +19,6 @@ export default function AgreementLoadModal({
   onResetFilters,
   formatAmount,
 }) {
-  if (!open) return null;
-
   const pageSize = 5;
   const [currentPage, setCurrentPage] = React.useState(1);
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
@@ -30,12 +28,16 @@ export default function AgreementLoadModal({
   }, [currentPage, items]);
 
   React.useEffect(() => {
+    if (!open) return;
     setCurrentPage(1);
-  }, [filters]);
+  }, [filters, open]);
 
   React.useEffect(() => {
+    if (!open) return;
     if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages, open]);
+
+  if (!open) return null;
 
   const resolveIndustryBadgeClass = (label) => {
     const value = String(label || '');
