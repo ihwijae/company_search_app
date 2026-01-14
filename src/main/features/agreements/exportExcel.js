@@ -101,9 +101,11 @@ const clearHoverArtifacts = (sheet) => {
   sheet.eachRow({ includeEmpty: true }, (row) => {
     row.eachCell({ includeEmpty: true }, (cell) => {
       if (cell.note) cell.note = undefined;
+      if (cell._comment) cell._comment = undefined;
       if (cell.dataValidation) cell.dataValidation = undefined;
       if (cell.model && cell.model.dataValidation) delete cell.model.dataValidation;
       if (cell.model && cell.model.note) delete cell.model.note;
+      if (cell.model && cell.model.comment) delete cell.model.comment;
     });
   });
   if (sheet.dataValidations && sheet.dataValidations.model) {
