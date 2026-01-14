@@ -1776,7 +1776,7 @@ body {
 .mail-recipients-header,
 .mail-recipients-row {
   display: grid;
-  grid-template-columns: 48px 1.2fr 1fr 1.2fr 1fr 1.4fr 90px 90px;
+  grid-template-columns: 48px 1.2fr 1fr 1.2fr 1fr minmax(0, 1fr) 90px 90px;
   align-items: center;
   padding: 10px 12px;
   gap: 12px;
@@ -1805,14 +1805,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .mail-recipient-attachments__list {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 4px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  max-width: 100%;
+  align-items: flex-start;
   padding-bottom: 2px;
   scrollbar-gutter: stable;
 }
@@ -1823,7 +1824,8 @@ body {
   border-radius: 999px;
   padding: 3px 8px;
   font-size: 12px;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .mail-recipient-attachment-empty {
