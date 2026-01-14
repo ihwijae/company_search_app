@@ -97,6 +97,19 @@ const copyWorksheet = (source, target) => {
   merges.forEach((range) => target.mergeCells(range));
 };
 
+const clearHoverArtifacts = (sheet) => {
+  sheet.eachRow({ includeEmpty: true }, (row) => {
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      if (cell.note) cell.note = undefined;
+      if (cell.dataValidation) cell.dataValidation = undefined;
+      if (cell.model && cell.model.dataValidation) delete cell.model.dataValidation;
+    });
+  });
+  if (sheet.dataValidations && sheet.dataValidations.model) {
+    sheet.dataValidations.model = {};
+  }
+};
+
 const cloneFill = (fill) => {
   if (!fill) return null;
   try { return JSON.parse(JSON.stringify(fill)); } catch { return fill; }
@@ -497,6 +510,8 @@ async function exportAgreementExcel({
       console.log('[exportExcel] final cell state', col, cell.fill);
     });
   }
+
+  clearHoverArtifacts(worksheet);
 
   if (appendToPath) {
     const targetWorkbook = new ExcelJS.Workbook();

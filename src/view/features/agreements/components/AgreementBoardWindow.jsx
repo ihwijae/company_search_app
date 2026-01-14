@@ -1576,7 +1576,7 @@ export default function AgreementBoardWindow({
   const [adjustmentRateTouched, setAdjustmentRateTouched] = React.useState(false);
   const baseAutoRef = React.useRef('');
   const bidAutoRef = React.useRef('');
-  const { notify, confirm } = useFeedback();
+  const { notify, confirm, showLoading, hideLoading } = useFeedback();
   const searchTargetRef = React.useRef(null);
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
@@ -2741,6 +2741,7 @@ export default function AgreementBoardWindow({
     }
 
     setExporting(true);
+    showLoading({ title: '엑셀 내보내기', message: '엑셀 시트를 생성하는 중입니다...' });
     try {
       const estimatedValue = parseAmountValue(estimatedAmount);
       const baseValue = parseAmountValue(baseAmount);
@@ -2928,9 +2929,12 @@ export default function AgreementBoardWindow({
       return false;
     } finally {
       setExporting(false);
+      hideLoading();
     }
   }, [
     exporting,
+    showLoading,
+    hideLoading,
     ownerId,
     ownerKeyUpper,
     rangeId,
@@ -5344,17 +5348,6 @@ export default function AgreementBoardWindow({
           ))}
         </div>
       </Modal>
-      {exporting && (
-        <div className="mail-progress-overlay" role="presentation">
-          <div className="mail-progress-modal" role="dialog" aria-modal="true">
-            <h3>엑셀 내보내기</h3>
-            <p>엑셀 시트를 생성하는 중입니다...</p>
-            <div className="mail-progress-bar">
-              <div className="mail-progress-bar__value" style={{ width: '70%' }} />
-            </div>
-          </div>
-        </div>
-      )}
       <AgreementLoadModal
         open={loadModalOpen}
         onClose={closeLoadModal}

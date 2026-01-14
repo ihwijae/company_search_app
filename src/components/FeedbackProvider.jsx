@@ -3,6 +3,8 @@ import React from 'react';
 const FeedbackContext = React.createContext({
   notify: () => null,
   confirm: async () => false,
+  showLoading: () => null,
+  hideLoading: () => null,
 });
 
 const generateId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -14,6 +16,7 @@ export function useFeedback() {
 export default function FeedbackProvider({ children }) {
   const [toasts, setToasts] = React.useState([]);
   const [confirmState, setConfirmState] = React.useState(null);
+  const [loadingState, setLoadingState] = React.useState(null);
 
   const removeToast = React.useCallback((id) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
@@ -44,7 +47,22 @@ export default function FeedbackProvider({ children }) {
     });
   }), []);
 
-  const contextValue = React.useMemo(() => ({ notify, confirm }), [notify, confirm]);
+  const showLoading = React.useCallback((options = {}) => {
+    const title = options.title || '처리 중입니다';
+    const message = options.message || '';
+    setLoadingState({ title, message });
+  }, []);
+
+  const hideLoading = React.useCallback(() => {
+    setLoadingState(null);
+  }, []);
+
+  const contextValue = React.useMemo(() => ({
+    notify,
+    confirm,
+    showLoading,
+    hideLoading,
+  }), [notify, confirm, showLoading, hideLoading]);
 
   return (
     <FeedbackContext.Provider value={contextValue}>
@@ -81,6 +99,17 @@ export default function FeedbackProvider({ children }) {
               <button type="button" className="btn-primary" onClick={() => confirmState.onResolve(true)}>
                 {confirmState.confirmText}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {loadingState && (
+        <div className="feedback-loading-overlay" role="presentation">
+          <div className="feedback-loading-modal" role="dialog" aria-modal="true">
+            <h3>{loadingState.title}</h3>
+            {loadingState.message && <p>{loadingState.message}</p>}
+            <div className="feedback-loading-bar">
+              <div className="feedback-loading-bar__value" style={{ width: '70%' }} />
             </div>
           </div>
         </div>
