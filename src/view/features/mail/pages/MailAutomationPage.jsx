@@ -84,6 +84,7 @@ const sanitizeRecipientDraftList = (list = []) => {
       contactName: item.contactName || '',
       email: item.email || '',
       tenderAmount: item.tenderAmount || '',
+      workerName: item.workerName || '',
       attachments: normalizeAttachmentList(item.attachments),
       status: item.status || '대기',
     };
@@ -99,6 +100,7 @@ const serializeRecipientsForPersist = (recipients = []) => {
       contactName: item.contactName || '',
       email: item.email || '',
       tenderAmount: item.tenderAmount || '',
+      workerName: item.workerName || '',
       attachments: normalizeAttachmentList(item.attachments),
       status: item.status || '대기',
     };
@@ -148,6 +150,7 @@ const EMPTY_MAIL_STATE = {
   projectInfo: { ...DEFAULT_PROJECT_INFO },
   recipients: [],
   vendorAmounts: {},
+  vendorWorkers: {},
   subjectTemplate: '{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}',
   bodyTemplate: DEFAULT_BODY_TEMPLATE,
   smtpProfile: 'naver',
@@ -202,6 +205,9 @@ function MailAutomationPageInner() {
   const [vendorAmounts, setVendorAmounts] = React.useState(() => (
     isPlainObject(initialDraft.vendorAmounts) ? { ...initialDraft.vendorAmounts } : {}
   ));
+  const [vendorWorkers, setVendorWorkers] = React.useState(() => (
+    isPlainObject(initialDraft.vendorWorkers) ? { ...initialDraft.vendorWorkers } : {}
+  ));
   const [subjectTemplate, setSubjectTemplate] = React.useState(() => initialDraft.subjectTemplate || '{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}');
   const [bodyTemplate, setBodyTemplate] = React.useState(() => initialDraft.bodyTemplate || DEFAULT_BODY_TEMPLATE);
   const [smtpProfile, setSmtpProfile] = React.useState(() => initialDraft.smtpProfile || 'naver');
@@ -211,6 +217,7 @@ function MailAutomationPageInner() {
   const [smtpProfileName, setSmtpProfileName] = React.useState(() => initialDraft.smtpProfileName || '');
   const [gmailPassword, setGmailPassword] = React.useState('');
   const [naverPassword, setNaverPassword] = React.useState('');
+  const [loadedSmtpProfileId, setLoadedSmtpProfileId] = React.useState('');
   const [customProfile, setCustomProfile] = React.useState(() => {
     if (isPlainObject(initialDraft.customProfile)) {
       return { ...DEFAULT_CUSTOM_PROFILE, ...initialDraft.customProfile, password: '' };
@@ -327,6 +334,7 @@ function MailAutomationPageInner() {
       sendDelay,
       includeGlobalRecipients,
       vendorAmounts,
+      vendorWorkers,
       smtpProfile,
       senderName,
       senderEmail,
@@ -348,6 +356,7 @@ function MailAutomationPageInner() {
     sendDelay,
     includeGlobalRecipients,
     vendorAmounts,
+    vendorWorkers,
     smtpProfile,
     senderName,
     senderEmail,
@@ -537,11 +546,13 @@ function MailAutomationPageInner() {
         };
 
         const amountMap = {};
+        const workerMap = {};
         const vendorEntries = [];
         let emptyStreak = 0;
         for (let row = 8; row < 1000; row += 1) {
           const vendor = getText(`C${row}`);
           const amountCell = getCell(`D${row}`);
+          const worker = getText(`H${row}`);
           const hasContent = Boolean(vendor || (amountCell && amountCell.v));
           if (!hasContent) {
             emptyStreak += 1;
@@ -553,6 +564,7 @@ function MailAutomationPageInner() {
           const normalized = normalizeVendorName(vendor);
           if (normalized) {
             amountMap[normalized] = formattedAmount;
+            workerMap[normalized] = worker;
           }
           if (vendor) {
             const resolvedContact = resolveContactForVendor(vendor);
@@ -562,6 +574,7 @@ function MailAutomationPageInner() {
               contactName: resolvedContact?.contactName || '',
               email: resolvedContact?.email || '',
               tenderAmount: formattedAmount,
+              workerName: worker,
               attachments: [],
               status: '대기',
             });
@@ -569,6 +582,7 @@ function MailAutomationPageInner() {
         }
 
         setVendorAmounts(amountMap);
+        setVendorWorkers(workerMap);
         if (vendorEntries.length > 0) {
           setRecipients(vendorEntries);
           recipientIdRef.current = vendorEntries.length + 1;
@@ -578,15 +592,20 @@ function MailAutomationPageInner() {
           const nextRecipients = recipients.map((item) => {
             const normalized = normalizeVendorName(item.vendorName);
             const amount = normalized ? amountMap[normalized] : '';
+            const workerName = normalized ? workerMap[normalized] : '';
             if (amount) {
               matched += 1;
               const resolvedContact = resolveContactForVendor(item.vendorName);
               return {
                 ...item,
                 tenderAmount: amount,
+                workerName: item.workerName || workerName || '',
                 contactName: item.contactName || resolvedContact?.contactName || '',
                 email: item.email || resolvedContact?.email || '',
               };
+            }
+            if (workerName) {
+              return { ...item, workerName };
             }
             return item;
           });
@@ -623,6 +642,8 @@ function MailAutomationPageInner() {
         const updated = { ...item, vendorName: value };
         const match = vendorAmounts[normalizeVendorName(value)];
         if (match) updated.tenderAmount = match;
+        const workerMatch = vendorWorkers[normalizeVendorName(value)];
+        if (workerMatch) updated.workerName = workerMatch;
         const resolvedContact = resolveContactForVendor(value);
         if (resolvedContact) {
           if (!updated.contactName && resolvedContact.contactName) {
@@ -762,15 +783,16 @@ function MailAutomationPageInner() {
       recipientIdRef.current += 1;
       const normalized = normalizeVendorName(contact.vendorName);
       const tenderAmount = normalized ? (vendorAmounts[normalized] || '') : '';
-      const nextRecipient = {
-        id: nextId,
-        vendorName: contact.vendorName || '',
-        contactName: contact.contactName || '',
-        email: contact.email || '',
-        tenderAmount,
-        attachments: [],
-        status: '대기',
-      };
+    const nextRecipient = {
+      id: nextId,
+      vendorName: contact.vendorName || '',
+      contactName: contact.contactName || '',
+      email: contact.email || '',
+      tenderAmount,
+      workerName: '',
+      attachments: [],
+      status: '대기',
+    };
       const nextList = [...prev, nextRecipient];
       showStatusMessage(`주소록에서 '${contact.vendorName || '업체'}'를 수신자 목록에 추가했습니다.`);
       return nextList;
@@ -813,6 +835,7 @@ function MailAutomationPageInner() {
       contactName: '',
       email: '',
       tenderAmount: '',
+      workerName: '',
       attachments: [],
       status: '대기',
     };
@@ -873,6 +896,7 @@ function MailAutomationPageInner() {
     setNaverPassword(profile.naverPassword || '');
     setCustomProfile({ ...DEFAULT_CUSTOM_PROFILE, ...profile.customProfile });
     setSmtpProfileName(profile.name || '');
+    setLoadedSmtpProfileId(profile.id);
     showStatusMessage(`SMTP 프로필 '${profile.name}'을 불러왔습니다.`);
   }, [selectedSmtpProfileId, smtpProfiles, showStatusMessage, notify]);
 
@@ -895,6 +919,7 @@ function MailAutomationPageInner() {
     if (!confirmed) return;
     setSmtpProfiles((prev) => prev.filter((item) => item.id !== profile.id));
     setSelectedSmtpProfileId('');
+    setLoadedSmtpProfileId((prev) => (prev === profile.id ? '' : prev));
     showStatusMessage(`SMTP 프로필 '${profile.name}'을 삭제했습니다.`);
   }, [selectedSmtpProfileId, smtpProfiles, confirm, notify, showStatusMessage]);
 
@@ -910,6 +935,7 @@ function MailAutomationPageInner() {
     setProjectInfo({ ...DEFAULT_PROJECT_INFO });
     setRecipients([]);
     setVendorAmounts({});
+    setVendorWorkers({});
     setSubjectTemplate(EMPTY_MAIL_STATE.subjectTemplate);
     setBodyTemplate(EMPTY_MAIL_STATE.bodyTemplate);
     setSendDelay(EMPTY_MAIL_STATE.sendDelay);
@@ -923,6 +949,7 @@ function MailAutomationPageInner() {
     setNaverPassword('');
     setCustomProfile({ ...EMPTY_MAIL_STATE.customProfile });
     setSelectedSmtpProfileId('');
+    setLoadedSmtpProfileId('');
     showStatusMessage('메일 작성 내용을 초기화했습니다.');
   }, [confirm, showStatusMessage]);
 
@@ -933,6 +960,46 @@ function MailAutomationPageInner() {
       return next;
     });
   }, [showStatusMessage]);
+
+  const handleKeepAssignedRecipients = React.useCallback(() => {
+    if (!loadedSmtpProfileId) {
+      showStatusMessage('먼저 SMTP 프로필을 불러오세요.', { type: 'warning' });
+      return;
+    }
+    if (selectedSmtpProfileId && selectedSmtpProfileId !== loadedSmtpProfileId) {
+      showStatusMessage('선택한 SMTP 프로필을 먼저 불러오세요.', { type: 'warning' });
+      return;
+    }
+    const profile = smtpProfiles.find((item) => item.id === loadedSmtpProfileId);
+    if (!profile) {
+      showStatusMessage('불러온 SMTP 프로필을 찾을 수 없습니다.', { type: 'warning' });
+      return;
+    }
+    const rawName = trimValue(profile.name);
+    if (!rawName) {
+      showStatusMessage('SMTP 프로필 이름이 비어 있습니다.', { type: 'warning' });
+      return;
+    }
+    const normalizedName = rawName.replace(/\s+/g, '');
+    const surname = normalizedName.slice(0, 1);
+    const tokens = [normalizedName];
+    if (surname && surname !== normalizedName) {
+      tokens.push(surname);
+    }
+    const total = recipients.length;
+    const nextList = recipients.filter((item) => {
+      const normalizedVendor = normalizeVendorName(item.vendorName);
+      const worker = (item.workerName || vendorWorkers[normalizedVendor] || '').replace(/\s+/g, '');
+      if (!worker) return false;
+      return tokens.some((token) => token && worker.includes(token));
+    });
+    if (!nextList.length) {
+      showStatusMessage(`'${rawName}' 담당 업체를 찾지 못했습니다.`, { type: 'warning' });
+      return;
+    }
+    setRecipients(nextList);
+    showStatusMessage(`'${rawName}' 담당 업체만 남겼습니다. (${nextList.length}/${total}건)`);
+  }, [loadedSmtpProfileId, selectedSmtpProfileId, smtpProfiles, recipients, vendorWorkers, showStatusMessage]);
 
   const buildRecipientContext = React.useCallback((recipient) => ({
     announcementNumber: projectInfo.announcementNumber || '',
@@ -1387,6 +1454,7 @@ function MailAutomationPageInner() {
                     {includeGlobalRecipients ? '팀장님 포함 중' : '받는사람에 팀장님 추가'}
                   </button>
                   <button type="button" className="btn-soft" onClick={handleAddRecipient}>업체 추가</button>
+                  <button type="button" className="btn-soft" onClick={handleKeepAssignedRecipients}>작업할업체만남기기</button>
                   <button type="button" className="btn-primary" onClick={handleSendAll} disabled={sending}>{sending ? '발송 중...' : '전체 발송'}</button>
                 </div>
               </header>
