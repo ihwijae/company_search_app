@@ -1805,8 +1805,12 @@ body {
 
 .mail-recipient-attachments__list {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-gutter: stable;
 }
 
 .mail-recipient-attachment-chip {
@@ -1815,6 +1819,7 @@ body {
   border-radius: 999px;
   padding: 3px 8px;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .mail-recipient-attachment-empty {
