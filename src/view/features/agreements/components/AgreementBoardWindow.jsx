@@ -1196,6 +1196,11 @@ export default function AgreementBoardWindow({
     (value) => ((isExUnder50 || isEx50To100) ? roundTo(value, 2) : value),
     [isExUnder50, isEx50To100],
   );
+  const krailCredibilityScale = React.useMemo(() => {
+    if (isKrailUnder50) return 0.5 / 3;
+    if (isKrail50To100) return 0.9 / 3;
+    return 1;
+  }, [isKrailUnder50, isKrail50To100]);
   const resolveKrailTechnicianAbilityScore = React.useCallback(
     (value) => {
       if (!technicianEnabled) return null;
@@ -1500,9 +1505,11 @@ export default function AgreementBoardWindow({
 
 
   const credibilityConfig = React.useMemo(() => {
-    if (ownerKeyUpper === 'LH') return { enabled: true, max: 1.5 };
-    if (ownerKeyUpper === 'PPS') return { enabled: true, max: 3 };
-    return { enabled: false, max: 0 };
+    if (ownerKeyUpper === 'LH') return { enabled: true, max: null };
+    if (ownerKeyUpper === 'PPS') return { enabled: true, max: null };
+    if (ownerKeyUpper === 'KRAIL') return { enabled: true, max: null };
+    if (ownerKeyUpper === 'EX') return { enabled: true, max: null };
+    return { enabled: false, max: null };
   }, [ownerKeyUpper]);
   const credibilityEnabled = credibilityConfig.enabled;
   const ownerCredibilityMax = credibilityConfig.max;
@@ -3121,11 +3128,14 @@ export default function AgreementBoardWindow({
         : false;
       const technicianMissing = technicianEditable ? !technicianProvided : false;
       const sipyungMissing = normalizedMembers.some((member) => member.sipyungAmount == null);
-      const aggregatedCredibility = credibilityEnabled
+      let aggregatedCredibility = credibilityEnabled
         ? (shareValid
           ? normalizedMembers.reduce((acc, member) => acc + (member.credibility || 0) * member.weight, 0)
           : null)
         : null;
+      if (aggregatedCredibility != null && isKrailOwner) {
+        aggregatedCredibility *= krailCredibilityScale;
+      }
 
       const aggregatedManagement = (!managementMissing && shareValid)
         ? normalizedMembers.reduce((acc, member) => acc + (member.managementScore || 0) * member.weight, 0)
@@ -3278,11 +3288,21 @@ export default function AgreementBoardWindow({
 
         const perfCapCurrent = getPerformanceCap();
         const performanceMax = perfCapCurrent || derivedPerformanceMax;
-        let credibilityScore = (credibilityEnabled && shareReady && metric.credibilityScore != null)
-          ? clampScore(metric.credibilityScore, ownerCredibilityMax)
-          : (credibilityEnabled && shareReady ? 0 : (credibilityEnabled ? null : null));
+        let credibilityScore = null;
+        if (credibilityEnabled && shareReady) {
+          if (metric.credibilityScore != null) {
+            const rawCredibility = Number(metric.credibilityScore);
+            if (Number.isFinite(rawCredibility)) {
+              credibilityScore = Number.isFinite(ownerCredibilityMax)
+                ? clampScore(rawCredibility, ownerCredibilityMax)
+                : rawCredibility;
+            }
+          } else {
+            credibilityScore = 0;
+          }
+        }
         credibilityScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(credibilityScore)));
-        const credibilityMax = credibilityEnabled ? ownerCredibilityMax : null;
+        const credibilityMax = (credibilityEnabled && Number.isFinite(ownerCredibilityMax)) ? ownerCredibilityMax : null;
         const subcontractScore = isMois30To50 && metric.memberCount > 0 ? SUBCONTRACT_SCORE : null;
         const technicianScoreForTotal = (technicianEnabled && technicianAbilityScore != null)
           ? technicianAbilityScore
@@ -4122,8 +4142,11 @@ export default function AgreementBoardWindow({
     const credibilityStored = groupCredibility[groupIndex]?.[slotIndex];
     const credibilityValue = credibilityStored != null ? String(credibilityStored) : '';
     const credibilityNumeric = parseNumeric(credibilityValue);
-    const credibilityProduct = (credibilityNumeric != null && shareForCalc != null)
+    const credibilityProductRaw = (credibilityNumeric != null && shareForCalc != null)
       ? credibilityNumeric * (shareForCalc / 100)
+      : null;
+    const credibilityProduct = credibilityProductRaw != null
+      ? credibilityProductRaw * krailCredibilityScale
       : null;
     const technicianStored = groupTechnicianScores[groupIndex]?.[slotIndex];
     const technicianValue = technicianStored != null ? String(technicianStored) : '';
@@ -4941,7 +4964,11 @@ export default function AgreementBoardWindow({
                   </th>
                     {credibilityEnabled && <th colSpan={slotLabels.length}>신인도</th>}
                   {credibilityEnabled && (
-                    <th rowSpan="2">신인도 합({formatScore(ownerCredibilityMax, 1)}점)</th>
+                    <th rowSpan="2">
+                      {Number.isFinite(ownerCredibilityMax)
+                        ? `신인도 합(${formatScore(ownerCredibilityMax, 1)}점)`
+                        : '신인도 합'}
+                    </th>
                   )}
                 <th colSpan={slotLabels.length}>경영상태</th>
                 <th rowSpan="2">경영({formatScore(managementHeaderMax, 0)}점)</th>
