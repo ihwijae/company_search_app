@@ -52,6 +52,27 @@ const normalizeAttachmentList = (list = []) => {
   if (!Array.isArray(list) || !list.length) return [];
   return list.map(buildAttachmentDescriptor).filter(Boolean);
 };
+const sanitizeContactsList = (list = []) => {
+  if (!Array.isArray(list) || !list.length) return [];
+  const seen = new Set();
+  let nextId = 1;
+  return list.map((item) => {
+    if (!item || typeof item !== 'object') return null;
+    let id = Number(item.id);
+    if (!Number.isFinite(id) || id <= 0 || seen.has(id)) {
+      while (seen.has(nextId)) nextId += 1;
+      id = nextId;
+      nextId += 1;
+    }
+    seen.add(id);
+    return {
+      id,
+      vendorName: item.vendorName || '',
+      contactName: item.contactName || '',
+      email: item.email || '',
+    };
+  }).filter(Boolean);
+};
 const sanitizeRecipientDraftList = (list = []) => {
   if (!Array.isArray(list) || !list.length) return [];
   return list.map((item, index) => {
@@ -174,7 +195,9 @@ function MailAutomationPageInner() {
   const [recipients, setRecipients] = React.useState(() => (
     sanitizeRecipientDraftList(initialDraft.recipients) || SEED_RECIPIENTS
   ));
-  const persistedContacts = React.useMemo(() => loadPersisted('mail:addressBook', SEED_CONTACTS), []);
+  const persistedContacts = React.useMemo(() => (
+    sanitizeContactsList(loadPersisted('mail:addressBook', SEED_CONTACTS))
+  ), []);
   const [contacts, setContacts] = React.useState(persistedContacts);
   const [vendorAmounts, setVendorAmounts] = React.useState(() => (
     isPlainObject(initialDraft.vendorAmounts) ? { ...initialDraft.vendorAmounts } : {}
@@ -285,7 +308,8 @@ function MailAutomationPageInner() {
 
   React.useEffect(() => {
     savePersisted('mail:addressBook', contacts);
-    contactIdRef.current = contacts.length + 1;
+    const nextId = contacts.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1;
+    contactIdRef.current = Math.max(nextId, 1);
   }, [contacts]);
   const contactIndexRef = React.useRef(new Map());
 
