@@ -14,7 +14,9 @@ import { sanitizeHtml } from '../../../../shared/sanitizeHtml.js';
 
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
-const BID_SCORE = 65;
+const BID_SCORE_DEFAULT = 65;
+const EX_50_TO_100_BID_SCORE = 45;
+const EX_50_TO_100_SUBCONTRACT_SCORE = 20;
 const SUBCONTRACT_SCORE = 5;
 const MANAGEMENT_SCORE_MAX = 15;
 const KRAIL_TECHNICIAN_ABILITY_MAX = 5;
@@ -1913,7 +1915,7 @@ export default function AgreementBoardWindow({
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
       + (technicianEnabled ? COLUMN_WIDTHS.technicianSummary + COLUMN_WIDTHS.technicianAbilitySummary : 0)
-      + (isMois30To50 ? COLUMN_WIDTHS.subcontract : 0)
+      + ((isMois30To50 || isEx50To100) ? COLUMN_WIDTHS.subcontract : 0)
       + COLUMN_WIDTHS.bid
       + COLUMN_WIDTHS.netCostBonus
       + COLUMN_WIDTHS.total
@@ -3303,22 +3305,28 @@ export default function AgreementBoardWindow({
         }
         credibilityScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(credibilityScore)));
         const credibilityMax = (credibilityEnabled && Number.isFinite(ownerCredibilityMax)) ? ownerCredibilityMax : null;
-        const subcontractScore = isMois30To50 && metric.memberCount > 0 ? SUBCONTRACT_SCORE : null;
+        const hasMembers = metric.memberCount > 0;
+        const subcontractScore = hasMembers
+          ? (isMois30To50 ? SUBCONTRACT_SCORE : (isEx50To100 ? EX_50_TO_100_SUBCONTRACT_SCORE : null))
+          : null;
+        const bidScoreValue = hasMembers
+          ? (isEx50To100 ? EX_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT)
+          : null;
         const technicianScoreForTotal = (technicianEnabled && technicianAbilityScore != null)
           ? technicianAbilityScore
           : null;
         const technicianRequired = technicianEnabled && technicianEditable;
         const technicianReady = !technicianRequired || technicianScoreForTotal != null;
         let totalScoreBase = (managementScore != null && performanceScore != null && technicianReady)
-          ? managementScore + performanceScore + (technicianScoreForTotal || 0) + BID_SCORE + netCostBonusScore + (subcontractScore || 0)
+          ? managementScore + performanceScore + (technicianScoreForTotal || 0) + (bidScoreValue || 0) + netCostBonusScore + (subcontractScore || 0)
           : null;
         let totalScoreWithCred = (totalScoreBase != null)
           ? totalScoreBase + (credibilityScore != null ? credibilityScore : 0)
           : null;
         totalScoreBase = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreBase));
         totalScoreWithCred = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreWithCred));
-        const totalMaxBase = managementMax + performanceMax + BID_SCORE + netCostBonusScore
-          + (isMois30To50 ? SUBCONTRACT_SCORE : 0)
+        const totalMaxBase = managementMax + performanceMax + (isEx50To100 ? EX_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT) + netCostBonusScore
+          + (isMois30To50 ? SUBCONTRACT_SCORE : (isEx50To100 ? EX_50_TO_100_SUBCONTRACT_SCORE : 0))
           + (technicianRequired && technicianAbilityMax ? technicianAbilityMax : 0);
         const totalMaxWithCred = credibilityEnabled ? totalMaxBase + (credibilityMax || 0) : totalMaxBase;
 
@@ -3344,7 +3352,7 @@ export default function AgreementBoardWindow({
         totalMaxBase,
         totalMaxWithCred,
         totalScore: totalScoreWithCred,
-        bidScore: metric.memberCount > 0 ? BID_SCORE : null,
+        bidScore: bidScoreValue,
         netCostBonusScore,
         subcontractScore,
         managementMax,
@@ -4093,9 +4101,9 @@ export default function AgreementBoardWindow({
       + (credibilityEnabled ? 1 : 0)
       + (technicianEnabled ? 2 : 0)
       + (isLHOwner ? 1 : 0)
-      + (isMois30To50 ? 1 : 0);
+      + ((isMois30To50 || isEx50To100) ? 1 : 0);
     return baseColumns + (slotLabels.length * perSlotCols);
-  }, [credibilityEnabled, isLHOwner, isMois30To50, slotLabels.length, technicianEnabled]);
+  }, [credibilityEnabled, isLHOwner, isMois30To50, isEx50To100, slotLabels.length, technicianEnabled]);
 
   const buildSlotMeta = (group, groupIndex, slotIndex, label) => {
     const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
@@ -4485,7 +4493,7 @@ export default function AgreementBoardWindow({
       ? (qualityPoints != null ? formatScore(qualityPoints, resolveSummaryDigits('quality')) : '-')
       : null;
     const qualityPointsState = (isLHOwner && qualityPoints != null && qualityPoints < 2) ? 'warn' : '';
-    const subcontractDisplay = isMois30To50
+        const subcontractDisplay = (isMois30To50 || isEx50To100)
       ? (summaryInfo?.subcontractScore != null ? formatScore(summaryInfo.subcontractScore, resolveSummaryDigits('subcontract')) : '-')
       : null;
     const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore, resolveSummaryDigits('bid')) : '-';
@@ -4584,7 +4592,7 @@ export default function AgreementBoardWindow({
         {isLHOwner && (
           <td className={`excel-cell total-cell ${qualityPointsState}`} rowSpan={rightRowSpan}>{qualityPointsDisplay}</td>
         )}
-        {isMois30To50 && (
+        {(isMois30To50 || isEx50To100) && (
           <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{subcontractDisplay}</td>
         )}
         <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
@@ -4936,7 +4944,7 @@ export default function AgreementBoardWindow({
               {technicianEnabled && <col className="col-technician-summary" />}
               {technicianEnabled && <col className="col-technician-ability-summary" />}
               {isLHOwner && <col className="col-quality-points" />}
-              {isMois30To50 && <col className="col-subcontract" />}
+              {(isMois30To50 || isEx50To100) && <col className="col-subcontract" />}
               <col className="col-bid" />
               <col className="col-netcost-bonus" />
               <col className="col-total" />
@@ -4984,6 +4992,7 @@ export default function AgreementBoardWindow({
                 )}
                 {isLHOwner && <th rowSpan="2">품질점수</th>}
                 {isMois30To50 && <th rowSpan="2">하도급</th>}
+                {isEx50To100 && <th rowSpan="2">하도급및자재</th>}
                 <th rowSpan="2">입찰점수</th>
                 <th rowSpan="2">순공사원가가점</th>
                 <th rowSpan="2">예상점수</th>
