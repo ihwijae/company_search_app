@@ -46,6 +46,7 @@ export default function useAgreementBoardStorage({
   groupTechnicianScores,
   groupApprovals,
   groupManagementBonus,
+  groupQualityScores,
   setGroupAssignments,
   setGroupShares,
   setGroupShareRawInputs,
@@ -53,6 +54,7 @@ export default function useAgreementBoardStorage({
   setGroupTechnicianScores,
   setGroupApprovals,
   setGroupManagementBonus,
+  setGroupQualityScores,
   markSkipAssignmentSync,
   onUpdateBoard,
   showHeaderAlert,
@@ -114,6 +116,7 @@ export default function useAgreementBoardStorage({
       groupTechnicianScores: Array.isArray(groupTechnicianScores) ? groupTechnicianScores : [],
       groupApprovals: Array.isArray(groupApprovals) ? groupApprovals : [],
       groupManagementBonus: Array.isArray(groupManagementBonus) ? groupManagementBonus : [],
+      groupQualityScores: Array.isArray(groupQualityScores) ? groupQualityScores : [],
     },
   }), [
     ownerId,
@@ -152,6 +155,7 @@ export default function useAgreementBoardStorage({
     groupTechnicianScores,
     groupApprovals,
     groupManagementBonus,
+    groupQualityScores,
     parseNumeric,
   ]);
 
@@ -240,6 +244,7 @@ export default function useAgreementBoardStorage({
     if (Array.isArray(snapshot.groupTechnicianScores)) setGroupTechnicianScores(snapshot.groupTechnicianScores);
     if (Array.isArray(snapshot.groupApprovals)) setGroupApprovals(snapshot.groupApprovals);
     if (Array.isArray(snapshot.groupManagementBonus)) setGroupManagementBonus(snapshot.groupManagementBonus);
+    if (Array.isArray(snapshot.groupQualityScores)) setGroupQualityScores(snapshot.groupQualityScores);
   }, [
     entryModeResolved,
     fileType,
@@ -250,9 +255,11 @@ export default function useAgreementBoardStorage({
     setGroupShares,
     setGroupShareRawInputs,
     setGroupCredibility,
-    setGroupTechnicianScores,
-    setGroupApprovals,
-    setGroupManagementBonus,
+  setGroupTechnicianScores,
+  setGroupApprovals,
+  setGroupManagementBonus,
+  setGroupQualityScores,
+    setGroupQualityScores,
     markSkipAssignmentSync,
   ]);
 

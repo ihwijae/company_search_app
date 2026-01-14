@@ -22,6 +22,7 @@ const initialState = {
   groupTechnicianScores: [],
   groupApprovals: [],
   groupManagementBonus: [],
+  groupQualityScores: [],
   dutyRegions: [],
   groupSize: DEFAULT_GROUP_SIZE,
   title: '협정보드',
@@ -181,6 +182,7 @@ const buildPersistedBoardState = (state) => ({
   groupTechnicianScores: Array.isArray(state?.groupTechnicianScores) ? state.groupTechnicianScores : [],
   groupApprovals: Array.isArray(state?.groupApprovals) ? state.groupApprovals : [],
   groupManagementBonus: Array.isArray(state?.groupManagementBonus) ? state.groupManagementBonus : [],
+  groupQualityScores: Array.isArray(state?.groupQualityScores) ? state.groupQualityScores : [],
   dutyRegions: Array.isArray(state?.dutyRegions) ? state.dutyRegions : [],
   alwaysInclude: Array.isArray(state?.alwaysInclude) ? state.alwaysInclude : [],
 });
@@ -462,6 +464,7 @@ export function AgreementBoardProvider({ children }) {
           groupTechnicianScores={boardState.groupTechnicianScores || []}
           groupApprovals={boardState.groupApprovals || []}
           groupManagementBonus={boardState.groupManagementBonus || []}
+          groupQualityScores={boardState.groupQualityScores || []}
           dutyRegions={boardState.dutyRegions || []}
           groupSize={boardState.groupSize || DEFAULT_GROUP_SIZE}
           title={boardState.title || '협정보드'}

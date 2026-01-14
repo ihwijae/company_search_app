@@ -137,6 +137,9 @@ const resolveOwnerPerformanceMax = (ownerId) => {
 const resolveLhQualityDefaultByRange = (rangeLabel, rangeKey) => {
   const label = String(rangeLabel || '').trim();
   const key = String(rangeKey || '').trim().toLowerCase();
+  if (key === LH_50_TO_100_KEY) {
+    return LH_QUALITY_DEFAULT_UNDER_100B;
+  }
   if (label.includes('100억') || key.includes('over100') || key.includes('above100')) {
     return LH_QUALITY_DEFAULT_OVER_100B;
   }
@@ -1059,6 +1062,7 @@ export default function AgreementBoardWindow({
   groupTechnicianScores: initialGroupTechnicianScores = [],
   groupApprovals: initialGroupApprovals = [],
   groupManagementBonus: initialGroupManagementBonus = [],
+  groupQualityScores: initialGroupQualityScores = [],
   dutyRegions = [],
   groupSize = DEFAULT_GROUP_SIZE,
   title = '협정보드',
@@ -1117,6 +1121,9 @@ export default function AgreementBoardWindow({
   ));
   const [groupTechnicianScores, setGroupTechnicianScores] = React.useState(() => (
     Array.isArray(initialGroupTechnicianScores) ? initialGroupTechnicianScores.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
+  ));
+  const [groupQualityScores, setGroupQualityScores] = React.useState(() => (
+    Array.isArray(initialGroupQualityScores) ? initialGroupQualityScores.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
   ));
   const [formulasDoc, setFormulasDoc] = React.useState(null);
   const [memoOpen, setMemoOpen] = React.useState(false);
@@ -1763,6 +1770,7 @@ export default function AgreementBoardWindow({
       groupTechnicianScores,
       groupApprovals,
       groupManagementBonus,
+      groupQualityScores,
     });
   }, [
     groupAssignments,
@@ -1772,6 +1780,7 @@ export default function AgreementBoardWindow({
     groupTechnicianScores,
     groupApprovals,
     groupManagementBonus,
+    groupQualityScores,
     onUpdateBoard,
   ]);
 
@@ -1831,6 +1840,7 @@ export default function AgreementBoardWindow({
     groupTechnicianScores,
     groupApprovals,
     groupManagementBonus,
+    groupQualityScores,
     setGroupAssignments,
     setGroupShares,
     setGroupShareRawInputs,
@@ -1838,6 +1848,7 @@ export default function AgreementBoardWindow({
     setGroupTechnicianScores,
     setGroupApprovals,
     setGroupManagementBonus,
+    setGroupQualityScores,
     markSkipAssignmentSync,
     onUpdateBoard,
     showHeaderAlert,
@@ -2068,6 +2079,15 @@ export default function AgreementBoardWindow({
     const parsed = Number(stored);
     return Number.isFinite(parsed) ? parsed : null;
   }, [groupTechnicianScores]);
+
+  const getQualityScoreValue = React.useCallback((groupIndex, slotIndex, candidate) => {
+    const stored = groupQualityScores[groupIndex]?.[slotIndex];
+    const storedNumeric = parseNumeric(stored);
+    if (storedNumeric != null) return storedNumeric;
+    const qualityText = isLHOwner ? getQualityBadgeText(candidate) : null;
+    const qualityNumeric = isLHOwner ? toNumber(qualityText) : null;
+    return qualityNumeric != null ? qualityNumeric : lhQualityDefault;
+  }, [groupQualityScores, isLHOwner, lhQualityDefault, parseNumeric]);
 
   const openRepresentativeSearch = React.useCallback((target = null) => {
     if (!String(industryLabel || '').trim()) {
@@ -2747,10 +2767,8 @@ export default function AgreementBoardWindow({
             ? formatShareForName(possibleShareRatio)
             : '';
           const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
-          const qualityText = isLHOwner ? getQualityBadgeText(candidate) : null;
-          const qualityNumeric = isLHOwner ? toNumber(qualityText) : null;
           const qualityScore = isLHOwner
-            ? (qualityNumeric != null ? qualityNumeric : lhQualityDefault)
+            ? getQualityScoreValue(groupIndex, slotIndex, candidate)
             : null;
           const displayName = managerName ? `${nameLine}\n${managerName}` : nameLine;
           return {
@@ -3678,6 +3696,7 @@ export default function AgreementBoardWindow({
     setGroupTechnicianScores([]);
     setGroupApprovals([]);
     setGroupManagementBonus([]);
+    setGroupQualityScores([]);
     setMemoDraft('');
     setEditableBidAmount('');
     setEditableEntryAmount('');
@@ -4052,10 +4071,9 @@ export default function AgreementBoardWindow({
     }
     const candidate = entry.candidate;
     const isDutyRegion = entry.type === 'region' || isDutyRegionCompany(candidate);
-    const qualityText = isLHOwner ? getQualityBadgeText(candidate) : null;
-    const qualityNumeric = isLHOwner ? toNumber(qualityText) : null;
+    const qualityInputRaw = groupQualityScores[groupIndex]?.[slotIndex];
     const qualityScore = isLHOwner
-      ? (qualityNumeric != null ? qualityNumeric : lhQualityDefault)
+      ? getQualityScoreValue(groupIndex, slotIndex, candidate)
       : null;
     const shareRaw = groupShareRawInputs[groupIndex]?.[slotIndex];
     const storedShare = groupShares[groupIndex]?.[slotIndex];
@@ -4112,6 +4130,7 @@ export default function AgreementBoardWindow({
       managementDisplay: formatScore(managementNumeric, 2),
       managementAlert: managementNumeric != null && managementNumeric < (perSlotMax - 0.01),
       qualityScore,
+      qualityInput: qualityInputRaw,
       credibilityValue,
       credibilityProduct: credibilityProduct != null ? `${credibilityProduct.toFixed(2)}점` : '',
       technicianValue,
@@ -4282,6 +4301,16 @@ export default function AgreementBoardWindow({
     });
   };
 
+  const handleQualityScoreChange = (groupIndex, slotIndex, value) => {
+    setGroupQualityScores((prev) => {
+      const next = prev.map((row) => (Array.isArray(row) ? row.slice() : []));
+      while (next.length <= groupIndex) next.push([]);
+      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
+      next[groupIndex][slotIndex] = value;
+      return next;
+    });
+  };
+
   const renderQualityRow = (group, groupIndex, slotMetas, qualityTotal, entryFailed) => {
     if (!isLHOwner) return null;
     const qualityGuide = (selectedRangeOption?.key === 'lh-50to100')
@@ -4312,7 +4341,18 @@ export default function AgreementBoardWindow({
             key={`quality-share-${groupIndex}-${meta.slotIndex}`}
             className="excel-cell excel-share-cell quality-score"
           >
-            {meta.empty ? '' : formatScore(meta.qualityScore, 2)}
+            {meta.empty ? '' : (
+              <input
+                type="text"
+                inputMode="decimal"
+                className="quality-score-input"
+                value={meta.qualityInput !== undefined && meta.qualityInput !== null
+                  ? String(meta.qualityInput)
+                  : (meta.qualityScore != null ? String(meta.qualityScore) : '')}
+                onChange={(event) => handleQualityScoreChange(groupIndex, meta.slotIndex, event.target.value)}
+                placeholder={meta.qualityScore != null ? String(meta.qualityScore) : ''}
+              />
+            )}
           </td>
         ))}
         <td className="excel-cell total-cell quality-total">{qualityTotalDisplay}</td>
