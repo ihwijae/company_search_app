@@ -31,6 +31,8 @@ const MOIS_UNDER_30_KEY = 'mois-under30';
 const MOIS_30_TO_50_KEY = 'mois-30to50';
 const KRAIL_UNDER_50_KEY = 'krail-under50';
 const KRAIL_50_TO_100_KEY = 'krail-50to100';
+const EX_UNDER_50_KEY = 'ex-under50';
+const EX_50_TO_100_KEY = 'ex-50to100';
 const KOREAN_UNIT = 100000000;
 const BOARD_COPY_SLOT_COUNT = 5;
 const BOARD_COPY_ACTIONS = [
@@ -1141,6 +1143,7 @@ export default function AgreementBoardWindow({
   const isLHOwner = ownerKeyUpper === 'LH';
   const isKrailOwner = ownerKeyUpper === 'KRAIL';
   const isMoisOwner = ownerKeyUpper === 'MOIS';
+  const isExOwner = ownerKeyUpper === 'EX';
   const selectedGroup = React.useMemo(
     () => AGREEMENT_GROUPS.find((group) => String(group.ownerId || '').toUpperCase() === ownerKeyUpper) || AGREEMENT_GROUPS[0],
     [ownerKeyUpper],
@@ -1156,6 +1159,8 @@ export default function AgreementBoardWindow({
   const isPpsUnder50 = ownerKeyUpper === 'PPS' && selectedRangeKey === PPS_UNDER_50_KEY;
   const isKrailUnder50 = ownerKeyUpper === 'KRAIL' && selectedRangeKey === KRAIL_UNDER_50_KEY;
   const isKrail50To100 = ownerKeyUpper === 'KRAIL' && selectedRangeKey === KRAIL_50_TO_100_KEY;
+  const isExUnder50 = isExOwner && selectedRangeKey === EX_UNDER_50_KEY;
+  const isEx50To100 = isExOwner && selectedRangeKey === EX_50_TO_100_KEY;
   const technicianEnabled = isKrailOwner;
   const technicianEditable = technicianEnabled && String(fileType || '').toLowerCase() !== 'sobang';
   const technicianAbilityMax = technicianEnabled ? KRAIL_TECHNICIAN_ABILITY_MAX : null;
@@ -1182,6 +1187,14 @@ export default function AgreementBoardWindow({
   const roundForLhTotals = React.useCallback(
     (value) => (isLHOwner ? roundTo(value, 2) : value),
     [isLHOwner],
+  );
+  const roundForPerformanceTotals = React.useCallback(
+    (value) => (isExOwner ? roundTo(value, 2) : value),
+    [isExOwner],
+  );
+  const roundForExManagement = React.useCallback(
+    (value) => ((isExUnder50 || isEx50To100) ? roundTo(value, 2) : value),
+    [isExUnder50, isEx50To100],
   );
   const resolveKrailTechnicianAbilityScore = React.useCallback(
     (value) => {
@@ -3046,9 +3059,11 @@ export default function AgreementBoardWindow({
 
     const baseValue = parseAmountValue(baseAmount);
     const estimatedValue = parseAmountValue(estimatedAmount);
-    const perfBase = (estimatedValue != null && estimatedValue > 0)
-      ? estimatedValue
-      : (baseValue != null && baseValue > 0 ? baseValue : null);
+    const perfBase = ownerKeyUpper === 'EX'
+      ? (baseValue != null && baseValue > 0 ? baseValue : (estimatedValue != null && estimatedValue > 0 ? estimatedValue : null))
+      : ((estimatedValue != null && estimatedValue > 0)
+        ? estimatedValue
+        : (baseValue != null && baseValue > 0 ? baseValue : null));
     const rangeAmountHint = parseRangeAmountHint(ownerKeyUpper, selectedRangeOption?.label);
     const evaluationAmount = rangeAmountHint > 0 ? rangeAmountHint : 0;
     const ownerKey = String(ownerId || 'lh').toLowerCase();
@@ -3239,6 +3254,7 @@ export default function AgreementBoardWindow({
           : managementWithBonus;
         managementScore = roundForMoisManagement(managementScore);
         managementScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(managementScore)));
+        managementScore = roundForExManagement(managementScore);
 
         let performanceScore = null;
         let performanceRatio = null;
@@ -3252,6 +3268,7 @@ export default function AgreementBoardWindow({
           }
         }
         performanceScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(performanceScore)));
+        performanceScore = roundForPerformanceTotals(performanceScore);
         performanceRatio = roundForKrailUnder50(performanceRatio);
 
         if (shareReady && !metric.technicianMissing && metric.technicianScore != null) {
@@ -3331,7 +3348,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax]);
+  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax]);
 
   React.useEffect(() => {
     attemptPendingPlacement();

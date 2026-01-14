@@ -432,10 +432,6 @@
                   "note": "환산식 예: base * (15/35). 공고의 유효기간/기관 기준 충족자료만 인정"
                 }
               ],
-              "rounding": {
-                "method": "truncate",
-                "digits": 2
-              },
               "industryAverage": {
                 "source": "default",
                 "override": null
@@ -667,10 +663,6 @@
                   "note": "조달청 신용평가 기본값"
                 }
               ],
-              "rounding": {
-                "method": "truncate",
-                "digits": 2
-              },
               "industryAverage": {
                 "source": "default",
                 "override": null
@@ -1192,43 +1184,113 @@
             },
             "performance": {
               "maxScore": 15,
-              "mode": "ratio-bands",
-              "thresholds": [
-                {
-                  "minRatio": 1.0,
-                  "score": 15
-                },
-                {
-                  "minRatio": 0.8,
-                  "score": 13
-                },
-                {
-                  "minRatio": 0.6,
-                  "score": 11
-                },
-                {
-                  "minRatio": 0.5,
-                  "score": 9
-                },
-                {
-                  "minRatio": 0.4,
-                  "score": 7
-                },
-                {
-                  "minRatio": 0.3,
-                  "score": 5
-                },
-                {
-                  "minRatio": 0.2,
-                  "score": 3
-                },
-                {
-                  "minRatio": 0.0,
-                  "score": 1
-                }
-              ]
+              "mode": "formula",
+              "formula": "(baseAmount > 0 ? (perf5y / (baseAmount * 1)) * 15 : 0)"
             },
             "notes": "한국도로공사 50억 미만 기본값",
+            "effectiveFrom": null,
+            "effectiveTo": null
+          }
+        },
+        {
+          "minAmount": 5000000000,
+          "maxAmount": 10000000000,
+          "rules": {
+            "management": {
+              "methodSelection": "max",
+              "methods": [
+                {
+                  "id": "composite",
+                  "label": "요소합산",
+                  "maxScore": 15,
+                  "components": {
+                    "debtRatio": {
+                      "against": "industryAverage",
+                      "scale": "lowerIsBetter",
+                      "thresholds": [
+                        {
+                          "lt": 0.5,
+                          "score": 7.333
+                        },
+                        {
+                          "lt": 0.75,
+                          "score": 6.567
+                        },
+                        {
+                          "lt": 1.0,
+                          "score": 5.833
+                        },
+                        {
+                          "lt": 1.25,
+                          "score": 5.067
+                        },
+                        {
+                          "gte": 1.25,
+                          "score": 4.333
+                        }
+                      ]
+                    },
+                    "currentRatio": {
+                      "against": "industryAverage",
+                      "scale": "higherIsBetter",
+                      "thresholds": [
+                        {
+                          "gte": 1.5,
+                          "score": 7.0
+                        },
+                        {
+                          "gte": 1.2,
+                          "score": 6.233
+                        },
+                        {
+                          "gte": 1.0,
+                          "score": 5.5
+                        },
+                        {
+                          "gte": 0.7,
+                          "score": 4.733
+                        },
+                        {
+                          "lt": 0.7,
+                          "score": 4.0
+                        }
+                      ]
+                    },
+                    "bizYears": {
+                      "scale": "higherIsBetter",
+                      "thresholds": [
+                        {
+                          "gteYears": 5,
+                          "score": 0.667
+                        },
+                        {
+                          "gteYears": 3,
+                          "score": 0.6
+                        },
+                        {
+                          "ltYears": 3,
+                          "score": 0.5
+                        }
+                      ]
+                    }
+                  }
+                }
+              ],
+              "rounding": {
+                "method": "truncate",
+                "digits": 2
+              },
+              "industryAverage": {
+                "source": "default",
+                "override": null
+              }
+            },
+            "performance": {
+              "maxScore": 15,
+              "mode": "formula",
+              "formula": "(baseAmount > 0 ? (perf5y / (baseAmount * 2)) * 15 : 0)"
+            },
+            "notes": "한국도로공사 50억~100억 기본값",
             "effectiveFrom": null,
             "effectiveTo": null
           }

@@ -31,6 +31,17 @@ export const AGREEMENT_GROUPS = [
     ],
   },
   {
+    id: 'ex',
+    ownerId: 'EX',
+    label: '도로공사',
+    name: '한국도로공사',
+    hashPrefix: '#/ex/',
+    items: [
+      { key: 'ex-under50', hash: '#/ex/under50', label: '50억 미만', rangeLabel: '50억 미만' },
+      { key: 'ex-50to100', hash: '#/ex/50to100', label: '50억~100억', rangeLabel: '50억~100억' },
+    ],
+  },
+  {
     id: 'pps',
     ownerId: 'PPS',
     label: '조달청',
