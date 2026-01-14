@@ -1593,6 +1593,8 @@ body {
 
 .mail-panel--recipients {
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .mail-panel__header {
@@ -1767,7 +1769,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: min(60vh, 520px);
+  min-height: 0;
   overflow-y: auto;
 }
 
