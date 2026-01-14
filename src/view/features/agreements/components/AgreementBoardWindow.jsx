@@ -2861,6 +2861,7 @@ export default function AgreementBoardWindow({
           dutySummary: dutySummaryText,
           teamSize: safeGroupSize,
           summary,
+          memoHtml,
         },
         groups: groupPayloads,
       };

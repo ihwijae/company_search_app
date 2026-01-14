@@ -347,6 +347,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       noticeTitle: 'N1',
       bidDeadline: 'P2',
       dutySummary: 'U2',
+      memo: 'AD1',
     },
     approvalColumn: 'B',
     summaryColumns: {},

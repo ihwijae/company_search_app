@@ -15,6 +15,16 @@ const toExcelNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const toPlainText = (value) => {
+  if (!value) return '';
+  return String(value)
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+    .replace(/<\s*\/p\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+};
+
 const cloneFill = (fill) => {
   if (!fill) return null;
   try { return JSON.parse(JSON.stringify(fill)); } catch { return fill; }
@@ -121,6 +131,7 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   const bidAmountCell = headerCells.bidAmount || null;
   const ratioBaseAmountCell = headerCells.ratioBaseAmount || null;
   const entryAmountCell = headerCells.entryAmount || null;
+  const memoCell = headerCells.memo || null;
 
   const estimatedValue = toExcelNumber(header.estimatedAmount);
   const baseValue = toExcelNumber(header.baseAmount);
@@ -158,6 +169,12 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
   const dutyCell = headerCells.dutySummary || 'W2';
   worksheet.getCell(deadlineCell).value = deadlineText ? String(deadlineText) : '';
   worksheet.getCell(dutyCell).value = header.dutySummary || '';
+  if (memoCell) {
+    const memoText = header.memoText
+      ? String(header.memoText).trim()
+      : toPlainText(header.memoHtml || '');
+    worksheet.getCell(memoCell).value = memoText || '';
+  }
 
   const regionCells = [];
   const nonRegionCells = [];
