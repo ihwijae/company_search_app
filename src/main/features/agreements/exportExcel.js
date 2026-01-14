@@ -103,10 +103,17 @@ const clearHoverArtifacts = (sheet) => {
       if (cell.note) cell.note = undefined;
       if (cell.dataValidation) cell.dataValidation = undefined;
       if (cell.model && cell.model.dataValidation) delete cell.model.dataValidation;
+      if (cell.model && cell.model.note) delete cell.model.note;
     });
   });
   if (sheet.dataValidations && sheet.dataValidations.model) {
     sheet.dataValidations.model = {};
+  }
+  if (sheet.model && Array.isArray(sheet.model.comments)) {
+    sheet.model.comments = [];
+  }
+  if (sheet._comments) {
+    sheet._comments = [];
   }
 };
 
