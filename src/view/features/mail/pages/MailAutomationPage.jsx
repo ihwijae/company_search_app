@@ -21,7 +21,6 @@ const GLOBAL_RECIPIENTS = Object.freeze([
 ]);
 const MAIL_DRAFT_STORAGE_KEY = 'mail:draft';
 
-const ITEMS_PER_PAGE = 10;
 const normalizeVendorName = (name = '') => name
   .replace(/[\s]/g, '')
   .replace(/^[㈜\(주\)\(합\)\(유\)\(재\)]+/gi, '')
@@ -199,7 +198,6 @@ function MailAutomationPageInner() {
     const saved = Number(initialDraft.sendDelay);
     return Number.isFinite(saved) && saved >= 0 ? saved : 1;
   });
-  const [currentPage, setCurrentPageState] = React.useState(1);
   const [addressBookOpen, setAddressBookOpen] = React.useState(false);
   const [addressBookTargetId, setAddressBookTargetId] = React.useState(null);
   const [sending, setSending] = React.useState(false);
@@ -550,7 +548,6 @@ function MailAutomationPageInner() {
         if (vendorEntries.length > 0) {
           setRecipients(vendorEntries);
           recipientIdRef.current = vendorEntries.length + 1;
-          setCurrentPageState(1);
           showStatusMessage(`엑셀에서 공고 정보를 불러왔습니다. (공고번호: ${extracted.announcementNumber}, 업체 ${vendorEntries.length}건)`);
         } else {
           let matched = 0;
@@ -748,8 +745,6 @@ function MailAutomationPageInner() {
         status: '대기',
       };
       const nextList = [...prev, nextRecipient];
-      const lastPage = Math.max(1, Math.ceil(nextList.length / ITEMS_PER_PAGE));
-      setCurrentPageState(lastPage);
       showStatusMessage(`주소록에서 '${contact.vendorName || '업체'}'를 수신자 목록에 추가했습니다.`);
       return nextList;
     });
@@ -778,8 +773,6 @@ function MailAutomationPageInner() {
   const handleRemoveRecipient = (id) => {
     setRecipients((prev) => {
       const nextList = prev.filter((item) => item.id !== id);
-      const totalPages = Math.max(1, Math.ceil((nextList.length || 0) / ITEMS_PER_PAGE));
-      setCurrentPageState((prevPage) => Math.min(prevPage, totalPages));
       return nextList;
     });
   };
@@ -796,12 +789,7 @@ function MailAutomationPageInner() {
       attachments: [],
       status: '대기',
     };
-    setRecipients((prev) => {
-      const nextList = [...prev, newRecipient];
-      const lastPage = Math.max(1, Math.ceil(nextList.length / ITEMS_PER_PAGE));
-      setCurrentPageState(lastPage);
-      return nextList;
-    });
+    setRecipients((prev) => [...prev, newRecipient]);
     showStatusMessage('새 수신자를 추가했습니다. 업체명과 이메일을 입력해 주세요.');
   };
 
@@ -909,7 +897,6 @@ function MailAutomationPageInner() {
     setCustomProfile({ ...EMPTY_MAIL_STATE.customProfile });
     setSelectedSmtpProfileId('');
     showStatusMessage('메일 작성 내용을 초기화했습니다.');
-    setCurrentPageState(1);
   }, [confirm, showStatusMessage]);
 
   const handleApplyGlobalRecipient = React.useCallback(() => {
@@ -1173,27 +1160,6 @@ function MailAutomationPageInner() {
     setPreviewOpen(true);
   }, [recipients, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText]);
 
-  const totalPages = React.useMemo(() => (
-    recipients.length ? Math.max(1, Math.ceil(recipients.length / ITEMS_PER_PAGE)) : 1
-  ), [recipients]);
-
-  const paginatedRecipients = React.useMemo(() => {
-    const page = Math.min(currentPage, totalPages);
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    return recipients.slice(start, start + ITEMS_PER_PAGE);
-  }, [recipients, currentPage, totalPages]);
-
-  React.useEffect(() => {
-    setCurrentPageState((prev) => Math.min(prev, totalPages));
-  }, [totalPages]);
-
-  const setCurrentPage = React.useCallback((page) => {
-    setCurrentPageState((prev) => {
-      const next = Math.min(Math.max(page, 1), totalPages);
-      return next === prev ? prev : next;
-    });
-  }, [totalPages]);
-
   return (
     <div className="app-shell">
       <Sidebar active={activeMenu} onSelect={handleMenuSelect} collapsed={true} />
@@ -1413,7 +1379,7 @@ function MailAutomationPageInner() {
                     <span>상태</span>
                     <span>작업</span>
                   </div>
-                  {paginatedRecipients.length ? paginatedRecipients.map((recipient) => (
+                  {recipients.length ? recipients.map((recipient) => (
                     <div key={recipient.id} className="mail-recipients-row">
                       <span>{recipient.id}</span>
                       <span>
@@ -1482,35 +1448,6 @@ function MailAutomationPageInner() {
                 )) : (
                   <div className="mail-recipients-empty">업체가 없습니다. 엑셀을 불러오거나 직접 추가하세요.</div>
                 )}
-              </div>
-
-              <div className="mail-pagination">
-                <button
-                  type="button"
-                  className="mail-pagination__nav"
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  이전
-                </button>
-                {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                  <button
-                    key={page}
-                    type="button"
-                    className={`mail-pagination__page ${currentPage === page ? 'is-active' : ''}`}
-                    onClick={() => setCurrentPage(page)}
-                  >
-                    {page}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className="mail-pagination__nav"
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                >
-                  다음
-                </button>
               </div>
 
             </section>

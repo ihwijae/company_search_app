@@ -1767,6 +1767,8 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
 }
 
 .mail-recipients-header,
