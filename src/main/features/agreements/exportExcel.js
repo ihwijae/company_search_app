@@ -57,7 +57,15 @@ const copyWorksheet = (source, target) => {
     tabColor: target.properties?.tabColor || source.properties?.tabColor,
   };
   target.pageSetup = cloneCellStyle(source.pageSetup);
-  target.views = cloneCellStyle(source.views) || [{ state: 'normal', zoomScale: 100 }];
+  const sourceViews = cloneCellStyle(source.views);
+  if (Array.isArray(sourceViews) && sourceViews.length > 0) {
+    target.views = sourceViews.map((view) => ({
+      ...view,
+      zoomScale: view.zoomScale || 100,
+    }));
+  } else {
+    target.views = [{ state: 'normal', zoomScale: 100 }];
+  }
   target.autoFilter = cloneCellStyle(source.autoFilter);
   source.columns.forEach((column, index) => {
     const targetColumn = target.getColumn(index + 1);
@@ -80,7 +88,8 @@ const copyWorksheet = (source, target) => {
       targetCell.font = cloneCellStyle(cell.font);
       targetCell.fill = cloneCellStyle(cell.fill);
       targetCell.protection = cloneCellStyle(cell.protection);
-      targetCell.dataValidation = cell.dataValidation;
+      // Skip data validation to avoid Excel showing hover prompts on every cell.
+      targetCell.note = undefined;
     });
   });
 
