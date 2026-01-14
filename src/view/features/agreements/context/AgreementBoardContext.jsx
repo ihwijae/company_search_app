@@ -1,9 +1,11 @@
 import React from 'react';
+import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 import AgreementBoardWindow from '../components/AgreementBoardWindow.jsx';
 
 const DEFAULT_GROUP_SIZE = 5;
 const DEFAULT_OWNER_ID = 'LH';
 const DEFAULT_FILE_TYPE = 'eung';
+const AGREEMENT_BOARD_DRAFT_KEY = 'agreementBoard:draft';
 
 const AgreementBoardContext = React.createContext(null);
 
@@ -13,6 +15,13 @@ const initialState = {
   candidates: [],
   pinned: [],
   excluded: [],
+  groupAssignments: [],
+  groupShares: [],
+  groupShareRawInputs: [],
+  groupCredibility: [],
+  groupTechnicianScores: [],
+  groupApprovals: [],
+  groupManagementBonus: [],
   dutyRegions: [],
   groupSize: DEFAULT_GROUP_SIZE,
   title: '협정보드',
@@ -157,6 +166,25 @@ const sanitizeCandidatesList = (list) => (
     : list
 );
 
+const buildPersistedBoardState = (state) => ({
+  ...initialState,
+  ...state,
+  open: false,
+  inlineMode: false,
+  candidates: sanitizeCandidatesList(state?.candidates || []),
+  pinned: Array.isArray(state?.pinned) ? state.pinned : [],
+  excluded: Array.isArray(state?.excluded) ? state.excluded : [],
+  groupAssignments: Array.isArray(state?.groupAssignments) ? state.groupAssignments : [],
+  groupShares: Array.isArray(state?.groupShares) ? state.groupShares : [],
+  groupShareRawInputs: Array.isArray(state?.groupShareRawInputs) ? state.groupShareRawInputs : [],
+  groupCredibility: Array.isArray(state?.groupCredibility) ? state.groupCredibility : [],
+  groupTechnicianScores: Array.isArray(state?.groupTechnicianScores) ? state.groupTechnicianScores : [],
+  groupApprovals: Array.isArray(state?.groupApprovals) ? state.groupApprovals : [],
+  groupManagementBonus: Array.isArray(state?.groupManagementBonus) ? state.groupManagementBonus : [],
+  dutyRegions: Array.isArray(state?.dutyRegions) ? state.dutyRegions : [],
+  alwaysInclude: Array.isArray(state?.alwaysInclude) ? state.alwaysInclude : [],
+});
+
 const equalRuleLists = (a, b) => {
   if (a === b) return true;
   if (!Array.isArray(a) || !Array.isArray(b)) return false;
@@ -175,7 +203,17 @@ const equalRuleLists = (a, b) => {
 };
 
 export function AgreementBoardProvider({ children }) {
-  const [boardState, setBoardState] = React.useState(initialState);
+  const draftRef = React.useRef(null);
+  if (draftRef.current === null) {
+    draftRef.current = loadPersisted(AGREEMENT_BOARD_DRAFT_KEY, null);
+  }
+  const initialBoardState = React.useMemo(() => {
+    if (!draftRef.current || typeof draftRef.current !== 'object') return initialState;
+    return buildPersistedBoardState(draftRef.current);
+  }, []);
+  const [boardState, setBoardState] = React.useState(initialBoardState);
+  const persistTimerRef = React.useRef(null);
+  const persistReadyRef = React.useRef(false);
 
   const fetchAlwaysInclude = React.useCallback(async (
     ownerId = DEFAULT_OWNER_ID,
@@ -349,6 +387,25 @@ export function AgreementBoardProvider({ children }) {
   }, []);
 
   React.useEffect(() => {
+    if (!persistReadyRef.current) {
+      persistReadyRef.current = true;
+      return;
+    }
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+    }
+    const payload = buildPersistedBoardState(boardState);
+    persistTimerRef.current = setTimeout(() => {
+      savePersisted(AGREEMENT_BOARD_DRAFT_KEY, payload);
+    }, 400);
+    return () => {
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+      }
+    };
+  }, [boardState]);
+
+  React.useEffect(() => {
     if (!boardState.open) return;
     const owner = String(boardState.ownerId || DEFAULT_OWNER_ID).toUpperCase();
     const fileType = boardState.fileType || DEFAULT_FILE_TYPE;
@@ -398,6 +455,13 @@ export function AgreementBoardProvider({ children }) {
           candidates={boardState.candidates || []}
           pinned={boardState.pinned || []}
           excluded={boardState.excluded || []}
+          groupAssignments={boardState.groupAssignments || []}
+          groupShares={boardState.groupShares || []}
+          groupShareRawInputs={boardState.groupShareRawInputs || []}
+          groupCredibility={boardState.groupCredibility || []}
+          groupTechnicianScores={boardState.groupTechnicianScores || []}
+          groupApprovals={boardState.groupApprovals || []}
+          groupManagementBonus={boardState.groupManagementBonus || []}
           dutyRegions={boardState.dutyRegions || []}
           groupSize={boardState.groupSize || DEFAULT_GROUP_SIZE}
           title={boardState.title || '협정보드'}

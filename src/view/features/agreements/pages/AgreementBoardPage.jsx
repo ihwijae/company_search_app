@@ -82,6 +82,13 @@ export default function AgreementBoardPage() {
             candidates={boardState.candidates || []}
             pinned={boardState.pinned || []}
             excluded={boardState.excluded || []}
+            groupAssignments={boardState.groupAssignments || []}
+            groupShares={boardState.groupShares || []}
+            groupShareRawInputs={boardState.groupShareRawInputs || []}
+            groupCredibility={boardState.groupCredibility || []}
+            groupTechnicianScores={boardState.groupTechnicianScores || []}
+            groupApprovals={boardState.groupApprovals || []}
+            groupManagementBonus={boardState.groupManagementBonus || []}
             dutyRegions={boardState.dutyRegions || []}
             groupSize={boardState.groupSize}
             title={boardState.title || '협정보드'}

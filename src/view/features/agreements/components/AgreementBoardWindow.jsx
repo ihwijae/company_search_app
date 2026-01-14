@@ -1052,6 +1052,13 @@ export default function AgreementBoardWindow({
   candidates = [],
   pinned = [],
   excluded = [],
+  groupAssignments: initialGroupAssignments = [],
+  groupShares: initialGroupShares = [],
+  groupShareRawInputs: initialGroupShareRawInputs = [],
+  groupCredibility: initialGroupCredibility = [],
+  groupTechnicianScores: initialGroupTechnicianScores = [],
+  groupApprovals: initialGroupApprovals = [],
+  groupManagementBonus: initialGroupManagementBonus = [],
   dutyRegions = [],
   groupSize = DEFAULT_GROUP_SIZE,
   title = '협정보드',
@@ -1085,18 +1092,32 @@ export default function AgreementBoardWindow({
   const rangeId = _rangeId;
   const boardWindowRef = React.useRef(null);
   const [portalContainer, setPortalContainer] = React.useState(null);
-  const [groupAssignments, setGroupAssignments] = React.useState([]);
+  const [groupAssignments, setGroupAssignments] = React.useState(() => (
+    Array.isArray(initialGroupAssignments) ? initialGroupAssignments.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
+  ));
   const [draggingId, setDraggingId] = React.useState(null);
   const [dropTarget, setDropTarget] = React.useState(null);
   const [dragSource, setDragSource] = React.useState(null);
-  const [groupShares, setGroupShares] = React.useState([]);
-  const [groupShareRawInputs, setGroupShareRawInputs] = React.useState([]);
-  const [groupApprovals, setGroupApprovals] = React.useState([]);
-  const [groupManagementBonus, setGroupManagementBonus] = React.useState([]);
+  const [groupShares, setGroupShares] = React.useState(() => (
+    Array.isArray(initialGroupShares) ? initialGroupShares.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
+  ));
+  const [groupShareRawInputs, setGroupShareRawInputs] = React.useState(() => (
+    Array.isArray(initialGroupShareRawInputs) ? initialGroupShareRawInputs.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
+  ));
+  const [groupApprovals, setGroupApprovals] = React.useState(() => (
+    Array.isArray(initialGroupApprovals) ? initialGroupApprovals.slice() : []
+  ));
+  const [groupManagementBonus, setGroupManagementBonus] = React.useState(() => (
+    Array.isArray(initialGroupManagementBonus) ? initialGroupManagementBonus.slice() : []
+  ));
   const [selectedGroups, setSelectedGroups] = React.useState(() => new Set());
   const [groupSummaries, setGroupSummaries] = React.useState([]);
-  const [groupCredibility, setGroupCredibility] = React.useState([]);
-  const [groupTechnicianScores, setGroupTechnicianScores] = React.useState([]);
+  const [groupCredibility, setGroupCredibility] = React.useState(() => (
+    Array.isArray(initialGroupCredibility) ? initialGroupCredibility.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
+  ));
+  const [groupTechnicianScores, setGroupTechnicianScores] = React.useState(() => (
+    Array.isArray(initialGroupTechnicianScores) ? initialGroupTechnicianScores.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
+  ));
   const [formulasDoc, setFormulasDoc] = React.useState(null);
   const [memoOpen, setMemoOpen] = React.useState(false);
   const [memoDraft, setMemoDraft] = React.useState('');
@@ -1731,6 +1752,28 @@ export default function AgreementBoardWindow({
     const clamped = Math.min(Math.max(Math.floor(parsed), 2), Math.min(5, safeGroupSize));
     return clamped;
   }, [participantLimit, safeGroupSize]);
+
+  React.useEffect(() => {
+    if (typeof onUpdateBoard !== 'function') return;
+    onUpdateBoard({
+      groupAssignments,
+      groupShares,
+      groupShareRawInputs,
+      groupCredibility,
+      groupTechnicianScores,
+      groupApprovals,
+      groupManagementBonus,
+    });
+  }, [
+    groupAssignments,
+    groupShares,
+    groupShareRawInputs,
+    groupCredibility,
+    groupTechnicianScores,
+    groupApprovals,
+    groupManagementBonus,
+    onUpdateBoard,
+  ]);
 
   const slotLabels = React.useMemo(() => (
     Array.from({ length: safeGroupSize }, (_, index) => (index === 0 ? '대표사' : `구성원${index}`))

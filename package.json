@@ -59,7 +59,8 @@
       "src/shared/**",
       "utils/**",
       "config.js",
-      "template/**"
+      "template/**",
+      "템플릿/**"
     ],
     "asar": true,
     "win": {
