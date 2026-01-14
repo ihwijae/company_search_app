@@ -3661,7 +3661,15 @@ export default function AgreementBoardWindow({
     setGroupTechnicianScores((prev) => [...prev, Array(safeGroupSize).fill('')]);
   };
 
-  const handleResetGroups = () => {
+  const handleResetGroups = async () => {
+    const ok = await confirm({
+      title: '초기화 하시겠습니까?',
+      message: '현재 입력한 협정 내용이 모두 초기화됩니다.',
+      confirmText: '예',
+      cancelText: '아니오',
+      tone: 'warning',
+    });
+    if (!ok) return;
     setGroupAssignments(buildInitialAssignments());
     setDropTarget(null);
     setGroupShares([]);
