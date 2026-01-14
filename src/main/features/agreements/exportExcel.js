@@ -52,6 +52,13 @@ const cloneCellStyle = (style) => {
 };
 
 const copyWorksheet = (source, target) => {
+  target.properties = {
+    ...cloneCellStyle(source.properties),
+    tabColor: target.properties?.tabColor || source.properties?.tabColor,
+  };
+  target.pageSetup = cloneCellStyle(source.pageSetup);
+  target.views = cloneCellStyle(source.views) || [{ state: 'normal', zoomScale: 100 }];
+  target.autoFilter = cloneCellStyle(source.autoFilter);
   source.columns.forEach((column, index) => {
     const targetColumn = target.getColumn(index + 1);
     targetColumn.width = column.width;
