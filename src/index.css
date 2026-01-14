@@ -2224,6 +2224,50 @@ body {
   color: #0f172a;
 }
 
+.export-sheet-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.export-sheet-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.export-sheet-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.export-sheet-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.export-sheet-file__name {
+  font-size: 13px;
+  color: #475569;
+}
+
+.export-sheet-field input[type="text"] {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.export-sheet-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
 .records-pagination {
   margin: 16px 0 0;
   display: flex;

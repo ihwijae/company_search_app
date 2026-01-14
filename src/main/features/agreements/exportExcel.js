@@ -25,6 +25,63 @@ const toPlainText = (value) => {
     .trim();
 };
 
+const sanitizeSheetName = (value, fallback = '협정보드') => {
+  const cleaned = String(value || '')
+    .replace(/[\\/:*?\[\]]/g, '')
+    .trim();
+  const truncated = cleaned.slice(0, 31);
+  return truncated || fallback;
+};
+
+const ensureUniqueSheetName = (workbook, name) => {
+  const existing = new Set(workbook.worksheets.map((sheet) => sheet.name));
+  if (!existing.has(name)) return name;
+  const base = name.replace(/\(\d+\)$/, '').trim();
+  for (let i = 2; i < 1000; i += 1) {
+    const suffix = `(${i})`;
+    const candidateBase = base.slice(0, Math.max(0, 31 - suffix.length));
+    const candidate = `${candidateBase}${suffix}`;
+    if (!existing.has(candidate)) return candidate;
+  }
+  return sanitizeSheetName(`${name}-${Date.now()}`);
+};
+
+const cloneCellStyle = (style) => {
+  if (!style) return style;
+  try { return JSON.parse(JSON.stringify(style)); } catch { return style; }
+};
+
+const copyWorksheet = (source, target) => {
+  source.columns.forEach((column, index) => {
+    const targetColumn = target.getColumn(index + 1);
+    targetColumn.width = column.width;
+    targetColumn.hidden = column.hidden;
+    targetColumn.style = cloneCellStyle(column.style);
+  });
+
+  source.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+    const targetRow = target.getRow(rowNumber);
+    targetRow.height = row.height;
+    targetRow.hidden = row.hidden;
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      const targetCell = targetRow.getCell(colNumber);
+      targetCell.value = cell.value;
+      targetCell.style = cloneCellStyle(cell.style);
+      targetCell.numFmt = cell.numFmt;
+      targetCell.alignment = cloneCellStyle(cell.alignment);
+      targetCell.border = cloneCellStyle(cell.border);
+      targetCell.font = cloneCellStyle(cell.font);
+      targetCell.fill = cloneCellStyle(cell.fill);
+      targetCell.protection = cloneCellStyle(cell.protection);
+      targetCell.note = cell.note;
+      targetCell.dataValidation = cell.dataValidation;
+    });
+  });
+
+  const merges = source.model?.merges || [];
+  merges.forEach((range) => target.mergeCells(range));
+};
+
 const cloneFill = (fill) => {
   if (!fill) return null;
   try { return JSON.parse(JSON.stringify(fill)); } catch { return fill; }
@@ -51,7 +108,14 @@ const RED_FILL = {
 };
 const CLEAR_FILL = { type: 'pattern', pattern: 'none' };
 
-async function exportAgreementExcel({ config, payload, outputPath }) {
+async function exportAgreementExcel({
+  config,
+  payload,
+  outputPath,
+  appendToPath = '',
+  sheetName = '',
+  sheetColor = 'FF00B050',
+}) {
   if (!config || !config.path) throw new Error('템플릿 설정이 올바르지 않습니다.');
   if (!payload) throw new Error('엑셀 내보내기 데이터가 없습니다.');
   const { header = {}, groups = [] } = payload;
@@ -63,6 +127,12 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
     : workbook.worksheets[0];
   if (!worksheet) {
     throw new Error('엑셀 템플릿 시트를 찾을 수 없습니다.');
+  }
+  if (sheetName) {
+    worksheet.name = sanitizeSheetName(sheetName, worksheet.name);
+  }
+  if (sheetColor) {
+    worksheet.properties.tabColor = { argb: sheetColor };
   }
   if (!workbook.calcProperties) workbook.calcProperties = {};
   workbook.calcProperties.fullCalcOnLoad = true;
@@ -413,8 +483,21 @@ async function exportAgreementExcel({ config, payload, outputPath }) {
     });
   }
 
+  if (appendToPath) {
+    const targetWorkbook = new ExcelJS.Workbook();
+    await targetWorkbook.xlsx.readFile(appendToPath);
+    const resolvedName = ensureUniqueSheetName(targetWorkbook, worksheet.name);
+    const targetSheet = targetWorkbook.addWorksheet(resolvedName);
+    if (sheetColor) {
+      targetSheet.properties.tabColor = { argb: sheetColor };
+    }
+    copyWorksheet(worksheet, targetSheet);
+    await targetWorkbook.xlsx.writeFile(appendToPath);
+    return { path: appendToPath, sheetName: resolvedName };
+  }
+
   await workbook.xlsx.writeFile(outputPath);
-  return { path: outputPath };
+  return { path: outputPath, sheetName: worksheet.name };
 }
 
 module.exports = {

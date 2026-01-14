@@ -577,6 +577,26 @@ const formatScore = (score, digits = 3) => {
   return value.toFixed(digits);
 };
 
+const normalizeSheetNameToken = (value) => String(value || '')
+  .replace(/[\\/:*?\[\]]/g, '')
+  .trim();
+
+const buildDefaultSheetName = (title = '') => {
+  const trimmed = String(title || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!trimmed) return '';
+  const tokens = trimmed.split(' ').filter(Boolean);
+  const picked = tokens.slice(0, 4).join('');
+  return normalizeSheetNameToken(picked || tokens.join(''));
+};
+
+const ensureSheetNameSuffix = (name, fileType) => {
+  const base = normalizeSheetNameToken(name);
+  if (!base) return base;
+  if (fileType === 'tongsin' && !base.includes('통신')) return `${base}(통신)`;
+  if (fileType === 'sobang' && !base.includes('소방')) return `${base}(소방)`;
+  return base;
+};
+
 const formatPlainAmount = (value) => {
   const number = toNumber(value);
   if (number === null) return '';
@@ -1134,6 +1154,11 @@ export default function AgreementBoardWindow({
   const [memoDraft, setMemoDraft] = React.useState('');
   const memoEditorRef = React.useRef(null);
   const [copyModalOpen, setCopyModalOpen] = React.useState(false);
+  const [exportModalOpen, setExportModalOpen] = React.useState(false);
+  const [exportTargetPath, setExportTargetPath] = React.useState('');
+  const [exportTargetName, setExportTargetName] = React.useState('');
+  const [exportSheetName, setExportSheetName] = React.useState('');
+  const exportFileInputRef = React.useRef(null);
   const [technicianModalOpen, setTechnicianModalOpen] = React.useState(false);
   const [technicianEntries, setTechnicianEntries] = React.useState([]);
   const [technicianTarget, setTechnicianTarget] = React.useState({ groupIndex: 0, slotIndex: 0 });
@@ -2702,7 +2727,7 @@ export default function AgreementBoardWindow({
 
   const bidDeadlineLabel = React.useMemo(() => formatBidDeadline(bidDeadline), [bidDeadline]);
 
-  const handleExportExcel = React.useCallback(async () => {
+  const handleExportExcel = React.useCallback(async (options = {}) => {
     if (exporting) return;
     const api = typeof window !== 'undefined' ? window.electronAPI : null;
     if (!api?.agreementsExportExcel) {
@@ -2862,6 +2887,8 @@ export default function AgreementBoardWindow({
 
       const payload = {
         templateKey,
+        appendTargetPath: options.appendTargetPath || '',
+        sheetName: options.sheetName || '',
         context: {
           ownerId,
           rangeId,
@@ -2891,12 +2918,14 @@ export default function AgreementBoardWindow({
       const response = await api.agreementsExportExcel(payload);
       if (response?.success) {
         showHeaderAlert('엑셀 파일을 저장했습니다.');
-      } else {
-        showHeaderAlert(response?.message || '엑셀 내보내기에 실패했습니다.');
+        return true;
       }
+      showHeaderAlert(response?.message || '엑셀 내보내기에 실패했습니다.');
+      return false;
     } catch (error) {
       console.error('[AgreementBoard] Excel export failed:', error);
       showHeaderAlert('엑셀 내보내기 중 오류가 발생했습니다.');
+      return false;
     } finally {
       setExporting(false);
     }
@@ -4350,6 +4379,32 @@ export default function AgreementBoardWindow({
     });
   };
 
+  const resolveSheetName = React.useCallback((rawName) => {
+    const normalized = normalizeSheetNameToken(rawName);
+    if (!normalized) return '';
+    return ensureSheetNameSuffix(normalized, String(fileType || '').toLowerCase());
+  }, [fileType]);
+
+  const handleOpenExportModal = React.useCallback(() => {
+    const baseName = buildDefaultSheetName(noticeTitle || noticeNo || '') || '협정';
+    const nextName = resolveSheetName(baseName);
+    setExportSheetName(nextName);
+    setExportModalOpen(true);
+  }, [noticeTitle, noticeNo, resolveSheetName]);
+
+  const handleExportFilePick = React.useCallback((event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    setExportTargetPath(file.path || '');
+    setExportTargetName(file.name || '');
+    if (event.target) event.target.value = '';
+  }, []);
+
+  const handleClearExportFile = React.useCallback(() => {
+    setExportTargetPath('');
+    setExportTargetName('');
+  }, []);
+
   const handleQualityScoreChange = (groupIndex, slotIndex, value) => {
     setGroupQualityScores((prev) => {
       const next = prev.map((row) => (Array.isArray(row) ? row.slice() : []));
@@ -4875,10 +4930,10 @@ export default function AgreementBoardWindow({
               <div className="excel-toolbar-actions">
                 <button
                   type="button"
-                  onClick={handleExportExcel}
+                  onClick={handleOpenExportModal}
                   className="excel-btn"
                   disabled={exporting}
-                >{exporting ? '엑셀 생성 중…' : '엑셀로 내보내기'}</button>
+                >엑셀로 내보내기</button>
                 <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
                 <button type="button" className="excel-btn" onClick={openCopyModal}>복사</button>
                 <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
@@ -5102,6 +5157,66 @@ export default function AgreementBoardWindow({
             data-placeholder="메모를 입력하세요."
           />
           <div className="memo-editor-hint">저장하면 협정 저장 데이터에 포함됩니다.</div>
+        </div>
+      </Modal>
+      <Modal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        title="엑셀 내보내기"
+        closeOnSave={false}
+        confirmLabel="실행"
+        cancelLabel="취소"
+        onSave={async () => {
+          const resolvedSheetName = resolveSheetName(exportSheetName);
+          if (!resolvedSheetName) {
+            showHeaderAlert('시트명을 입력해 주세요.');
+            return;
+          }
+          const ok = await handleExportExcel({
+            appendTargetPath: exportTargetPath || '',
+            sheetName: resolvedSheetName,
+          });
+          if (ok) {
+            setExportModalOpen(false);
+          }
+        }}
+        size="sm"
+      >
+        <div className="export-sheet-modal">
+          <div className="export-sheet-field">
+            <span className="export-sheet-label">대상 파일</span>
+            <div className="export-sheet-file">
+              <button type="button" className="excel-btn" onClick={() => exportFileInputRef.current?.click()}>
+                파일 선택
+              </button>
+              <span className="export-sheet-file__name">
+                {exportTargetName || '선택 안 함 (새 파일 생성)'}
+              </span>
+              {exportTargetName && (
+                <button type="button" className="excel-btn" onClick={handleClearExportFile}>
+                  선택 해제
+                </button>
+              )}
+            </div>
+            <input
+              ref={exportFileInputRef}
+              type="file"
+              accept=".xlsx"
+              style={{ display: 'none' }}
+              onChange={handleExportFilePick}
+            />
+            <p className="export-sheet-hint">파일을 선택하지 않으면 새 파일로 저장됩니다.</p>
+          </div>
+          <div className="export-sheet-field">
+            <span className="export-sheet-label">시트명</span>
+            <input
+              type="text"
+              value={exportSheetName}
+              onChange={(event) => setExportSheetName(event.target.value)}
+              placeholder="예: 2026년익산청교통정체잦은곳"
+            />
+            <p className="export-sheet-hint">통신/소방 공고는 자동으로 (통신)/(소방)이 붙습니다.</p>
+          </div>
         </div>
       </Modal>
       <Modal

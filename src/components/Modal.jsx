@@ -31,6 +31,8 @@ export default function Modal({
   onSave,
   onCancel,
   onClose,
+  confirmLabel = '저장',
+  cancelLabel = '취소',
   closeOnSave = true,
   disableEscClose = true,
   disableBackdropClose = true,
@@ -135,8 +137,8 @@ export default function Modal({
           {children}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #e5e7eb', paddingTop: 12, marginTop: 12, background: '#ffffff' }}>
-          <button onClick={doCancel} style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}>취소</button>
-          <button onClick={doSave} style={{ backgroundColor: '#2563eb', border: '1px solid #2563eb', color: '#ffffff' }}>저장</button>
+          <button onClick={doCancel} style={{ backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' }}>{cancelLabel}</button>
+          <button onClick={doSave} style={{ backgroundColor: '#2563eb', border: '1px solid #2563eb', color: '#ffffff' }}>{confirmLabel}</button>
         </div>
       </div>
     </div>

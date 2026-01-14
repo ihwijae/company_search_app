@@ -2424,29 +2424,46 @@ try {
       }
 
       const header = payload.header || {};
+      const appendTargetPath = payload.appendTargetPath ? String(payload.appendTargetPath) : '';
+      const sheetName = payload.sheetName ? String(payload.sheetName) : '';
       const baseFileSegments = [];
       if (header.noticeNo) baseFileSegments.push(sanitizeFileName(header.noticeNo));
       if (config.label) baseFileSegments.push(sanitizeFileName(config.label));
       baseFileSegments.push('협정보드');
       const defaultFileName = sanitizeFileName(baseFileSegments.filter(Boolean).join('_')) || '협정보드';
 
-      const targetWindow = BrowserWindow.getFocusedWindow();
-      const saveDialogResult = await dialog.showSaveDialog(targetWindow, {
-        title: '협정보드 엑셀 내보내기',
-        defaultPath: `${defaultFileName}.xlsx`,
-        filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }],
-      });
-      if (saveDialogResult.canceled || !saveDialogResult.filePath) {
-        return { success: false, message: '사용자 취소' };
+      let outputPath = '';
+      if (appendTargetPath) {
+        if (!appendTargetPath.toLowerCase().endsWith('.xlsx')) {
+          throw new Error('xlsx 파일만 선택할 수 있습니다.');
+        }
+        if (!fs.existsSync(appendTargetPath)) {
+          throw new Error('선택한 엑셀 파일을 찾을 수 없습니다.');
+        }
+        outputPath = appendTargetPath;
+      } else {
+        const targetWindow = BrowserWindow.getFocusedWindow();
+        const saveDialogResult = await dialog.showSaveDialog(targetWindow, {
+          title: '협정보드 엑셀 내보내기',
+          defaultPath: `${defaultFileName}.xlsx`,
+          filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }],
+        });
+        if (saveDialogResult.canceled || !saveDialogResult.filePath) {
+          return { success: false, message: '사용자 취소' };
+        }
+        outputPath = saveDialogResult.filePath;
       }
 
-      await exportAgreementExcel({
+      const result = await exportAgreementExcel({
         config,
         payload,
-        outputPath: saveDialogResult.filePath,
+        outputPath,
+        appendToPath: appendTargetPath,
+        sheetName,
+        sheetColor: 'FF00B050',
       });
 
-      return { success: true, path: saveDialogResult.filePath };
+      return { success: true, path: result?.path || outputPath, sheetName: result?.sheetName || sheetName };
     } catch (error) {
       console.error('[MAIN] agreements-export-excel failed:', error);
       return { success: false, message: error?.message || '엑셀 내보내기에 실패했습니다.' };
