@@ -358,6 +358,43 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       bgColor: { indexed: 64 },
     },
   },
+  'ex-under50': {
+    label: '한국도로공사 50억 미만',
+    path: path.join(__dirname, '템플릿', '한국도로공사 50억미만.xlsx'),
+    sheetName: '양식',
+    startRow: 5,
+    maxRows: 68,
+    slotColumns: {
+      name: ['C', 'D', 'E', 'F', 'G'],
+      share: ['I', 'J', 'K', 'L', 'M'],
+      management: ['P', 'Q', 'R', 'S', 'T'],
+      performance: ['W', 'X', 'Y', 'Z', 'AA'],
+      ability: ['AO', 'AP', 'AQ', 'AR', 'AS'],
+    },
+    clearColumns: [
+      'B', 'C', 'D', 'E', 'F', 'G', 'H',
+      'I', 'J', 'K', 'L', 'M',
+      'O', 'P', 'Q', 'R', 'S', 'T',
+      'W', 'X', 'Y', 'Z', 'AA',
+      'AN', 'AO', 'AP', 'AQ', 'AR', 'AS', 'AT',
+    ],
+    headerCells: {
+      estimatedAmount: 'D1',
+      baseAmount: 'D2',
+      noticeTitle: 'M1',
+      bidDeadline: 'P2',
+      dutySummary: 'AH1',
+      memo: 'W2',
+    },
+    approvalColumn: 'B',
+    summaryColumns: {},
+    regionFill: {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFFF00' },
+      bgColor: { indexed: 64 },
+    },
+  },
 };
 
 const { sanitizeFileName, exportAgreementExcel } = require('./src/main/features/agreements/exportExcel.js');

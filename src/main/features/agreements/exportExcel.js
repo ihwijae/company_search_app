@@ -159,6 +159,10 @@ async function exportAgreementExcel({
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(config.path);
+  workbook.calcProperties = {
+    ...workbook.calcProperties,
+    fullCalcOnLoad: true,
+  };
   const worksheet = config.sheetName
     ? workbook.getWorksheet(config.sheetName)
     : workbook.worksheets[0];
@@ -525,6 +529,10 @@ async function exportAgreementExcel({
   if (appendToPath) {
     const targetWorkbook = new ExcelJS.Workbook();
     await targetWorkbook.xlsx.readFile(appendToPath);
+    targetWorkbook.calcProperties = {
+      ...targetWorkbook.calcProperties,
+      fullCalcOnLoad: true,
+    };
     const resolvedName = ensureUniqueSheetName(targetWorkbook, worksheet.name);
     const targetSheet = targetWorkbook.addWorksheet(resolvedName);
     if (sheetColor) {
