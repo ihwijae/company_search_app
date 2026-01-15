@@ -12,6 +12,7 @@ const industryAverages = require('./src/shared/industryAverages.json');
 const { ExcelAutomationService } = require('./src/main/features/excel/excelAutomation.js');
 const { formatUploadedWorkbook } = require('./src/main/features/excel/formatUploadedWorkbook.js');
 const { applyAgreementToTemplate } = require('./src/main/features/bid-result/applyAgreement.js');
+const { applyOrderingResult } = require('./src/main/features/bid-result/applyOrderingResult.js');
 const { sendTestMail, sendBulkMail } = require('./src/main/features/mail/smtpService.js');
 const os = require('os');
 const { execSync } = require('child_process');
@@ -1238,6 +1239,31 @@ try {
     } catch (e) {
       console.error('[MAIN] bid-result:apply-agreement failed:', e);
       return { success: false, message: e?.message || '협정파일 처리에 실패했습니다.' };
+    }
+  });
+
+  if (ipcMain.removeHandler) ipcMain.removeHandler('bid-result:apply-ordering');
+  ipcMain.handle('bid-result:apply-ordering', async (_event, payload = {}) => {
+    try {
+      const templatePath = payload?.templatePath ? String(payload.templatePath) : '';
+      const orderingPath = payload?.orderingPath ? String(payload.orderingPath) : '';
+      if (!templatePath) throw new Error('개찰결과파일을 먼저 선택하세요.');
+      if (!orderingPath) throw new Error('발주처결과 파일을 먼저 선택하세요.');
+      if (!templatePath.toLowerCase().endsWith('.xlsx') || !orderingPath.toLowerCase().endsWith('.xlsx')) {
+        throw new Error('xlsx 파일만 선택할 수 있습니다.');
+      }
+      if (!fs.existsSync(templatePath)) throw new Error('개찰결과 파일을 찾을 수 없습니다.');
+      if (!fs.existsSync(orderingPath)) throw new Error('발주처결과 파일을 찾을 수 없습니다.');
+
+      const result = await applyOrderingResult({ templatePath, orderingPath });
+      return {
+        success: true,
+        path: result?.path || templatePath,
+        invalidCount: result?.invalidCount,
+      };
+    } catch (e) {
+      console.error('[MAIN] bid-result:apply-ordering failed:', e);
+      return { success: false, message: e?.message || '발주처결과 처리에 실패했습니다.' };
     }
   });
 } catch (e) {
