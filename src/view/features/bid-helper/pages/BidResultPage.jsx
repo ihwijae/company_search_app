@@ -537,8 +537,12 @@ export default function BidResultPage() {
       const invalidCount = Number.isFinite(response?.invalidCount) ? response.invalidCount : null;
       const summary = invalidCount !== null ? ` (무효 ${invalidCount}건)` : '';
       const winnerInfo = response?.winnerInfo;
-      const winnerSummary = winnerInfo?.rank && winnerInfo?.companyName
-        ? ` 실제낙찰사: 균형근접 ${winnerInfo.rank}순위 ${winnerInfo.companyName}`
+      const winnerList = Array.isArray(winnerInfo) ? winnerInfo : (winnerInfo ? [winnerInfo] : []);
+      const winnerParts = winnerList
+        .filter((info) => info?.rank && info?.companyName)
+        .map((info) => `${info.rank}순위 ${info.companyName}`);
+      const winnerSummary = winnerParts.length > 0
+        ? ` 실제낙찰사: 균형근접 ${winnerParts.join(', ')}`
         : '';
       notify({ type: 'success', message: `발주처결과 처리 완료: 무효 업체가 표시되었습니다.${summary}${winnerSummary}` });
     } catch (err) {

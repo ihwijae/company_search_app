@@ -287,32 +287,30 @@ const isYellowBold = (cell, styleMap) => {
   return fontBold && normalized === 'FFFF00';
 };
 
-const findWinnerRowByXml = (sheetXml, styleMap) => {
-  if (!sheetXml || !styleMap) return null;
-  let winnerRow = null;
+const findWinnerRowsByXml = (sheetXml, styleMap) => {
+  if (!sheetXml || !styleMap) return [];
+  const rows = new Set();
   const cellRegex = /<c[^>]*r=['"]A(\d+)['"][^>]*s=['"](\d+)['"][^>]*>/gi;
   let match = cellRegex.exec(sheetXml);
   while (match) {
     const row = Number(match[1]);
     const styleId = Number(match[2]);
     if (!Number.isNaN(row) && isYellowBoldStyleId(styleId, styleMap)) {
-      winnerRow = row;
-      break;
+      rows.add(row);
     }
     match = cellRegex.exec(sheetXml);
   }
-  if (winnerRow) return winnerRow;
   const rowRegex = /<row[^>]*r=['"](\d+)['"][^>]*s=['"](\d+)['"][^>]*>/gi;
   match = rowRegex.exec(sheetXml);
   while (match) {
     const row = Number(match[1]);
     const styleId = Number(match[2]);
     if (!Number.isNaN(row) && isYellowBoldStyleId(styleId, styleMap)) {
-      return row;
+      rows.add(row);
     }
     match = rowRegex.exec(sheetXml);
   }
-  return null;
+  return Array.from(rows.values());
 };
 
 const getCellStyleId = (sheetXml, cellRef) => {
@@ -382,14 +380,16 @@ const updateInvalidSummary = (sheetXml, { b4StyleId, invalidCount }) => {
   return sheetXml.replace(/<row[^>]*r="5"[^>]*>/, (match) => `<row r="4">${cellMarkup}</row>${match}`);
 };
 
-const clearOColumnMarks = (sheetXml, { lastRow, keepRow }) => {
+const clearOColumnMarks = (sheetXml, { lastRow, keepRow, keepRows }) => {
   if (!sheetXml) return sheetXml;
+  const keepSet = keepRows instanceof Set ? keepRows : new Set();
   return sheetXml.replace(
     /<c[^>]*r=['"]O(\d+)['"][^>]*>([\s\S]*?)<\/c>|<c[^>]*r=['"]O(\d+)['"][^>]*\/>/gi,
     (match, rowA, _content, rowB) => {
       const row = Number(rowA || rowB);
       if (Number.isNaN(row) || row < 14 || row > lastRow) return match;
       if (keepRow && row === keepRow) return match;
+      if (keepSet.has(row)) return match;
       return '';
     },
   );
@@ -413,7 +413,7 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
   if (!orderingSheet) throw new Error('발주처결과 파일에서 "입찰금액점수" 시트를 찾을 수 없습니다.');
 
   let styleMap = null;
-  let winnerRowFromXml = null;
+  let winnerRowsFromXml = [];
   if (orderingReadPath.toLowerCase().endsWith('.xlsx')) {
     try {
       const orderingZip = new AdmZip(orderingReadPath);
@@ -421,33 +421,34 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
       const orderingSheetPath = resolveSheetPath(orderingZip, orderingSheetName) || fallbackSheetPath(orderingZip);
       if (orderingSheetPath) {
         const orderingSheetXml = readXml(orderingZip, orderingSheetPath);
-        winnerRowFromXml = findWinnerRowByXml(orderingSheetXml, styleMap);
+        winnerRowsFromXml = findWinnerRowsByXml(orderingSheetXml, styleMap);
       }
     } catch (e) {
       styleMap = null;
     }
   }
   console.log('[bid-result] ordering styles:', styleMap ? 'xlsx-style' : 'none/xls');
-  if (winnerRowFromXml) {
-    console.log('[bid-result] winner row from xml:', winnerRowFromXml);
+  if (winnerRowsFromXml.length > 0) {
+    console.log('[bid-result] winner rows from xml:', winnerRowsFromXml);
   }
 
   const validNumbers = new Set();
-  let winnerInfo = null;
-  if (winnerRowFromXml) {
-    const seqCell = orderingSheet[XLSX.utils.encode_cell({ r: winnerRowFromXml - 1, c: 0 })];
-    const bizCell = orderingSheet[XLSX.utils.encode_cell({ r: winnerRowFromXml - 1, c: 2 })];
-    const nameCell = orderingSheet[XLSX.utils.encode_cell({ r: winnerRowFromXml - 1, c: 3 })];
+  const winnerInfos = [];
+  const appendWinnerInfo = (row) => {
+    const seqCell = orderingSheet[XLSX.utils.encode_cell({ r: row - 1, c: 0 })];
+    const bizCell = orderingSheet[XLSX.utils.encode_cell({ r: row - 1, c: 2 })];
+    const nameCell = orderingSheet[XLSX.utils.encode_cell({ r: row - 1, c: 3 })];
     const seqRaw = seqCell ? XLSX.utils.format_cell(seqCell) : '';
     const bizRaw = bizCell ? XLSX.utils.format_cell(bizCell) : '';
     const nameRaw = nameCell ? XLSX.utils.format_cell(nameCell) : '';
     const bizNo = normalizeBizNumber(bizRaw);
     const rank = normalizeSequence(seqRaw);
     const companyName = String(nameRaw || '').trim();
-    if (bizNo) {
-      winnerInfo = { bizNo, rank, companyName };
-    }
-  }
+    if (!bizNo) return;
+    if (winnerInfos.some((info) => info.bizNo === bizNo)) return;
+    winnerInfos.push({ bizNo, rank, companyName, sourceRow: row });
+  };
+  winnerRowsFromXml.forEach((row) => appendWinnerInfo(row));
   let started = false;
   let emptyStreak = 0;
   for (let row = 5; row <= 5000; row += 1) {
@@ -455,7 +456,7 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
     const cell = orderingSheet[cellAddress];
     const raw = cell ? XLSX.utils.format_cell(cell) : '';
     const seq = normalizeSequence(raw);
-    if (!winnerInfo && isYellowBold(cell, styleMap)) {
+    if (isYellowBold(cell, styleMap)) {
       const bizAddress = XLSX.utils.encode_cell({ r: row - 1, c: 2 });
       const nameAddress = XLSX.utils.encode_cell({ r: row - 1, c: 3 });
       const bizCell = orderingSheet[bizAddress];
@@ -466,12 +467,10 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
       const companyName = String(nameRaw || '').trim();
       const rank = seq || normalizeSequence(raw) || null;
       if (bizNo) {
-        winnerInfo = {
-          bizNo,
-          rank,
-          companyName,
-        };
-        console.log('[bid-result] winner found:', { row, rank, bizNo, companyName });
+        if (!winnerInfos.some((info) => info.bizNo === bizNo)) {
+          winnerInfos.push({ bizNo, rank, companyName, sourceRow: row });
+          console.log('[bid-result] winner found:', { row, rank, bizNo, companyName });
+        }
       }
     }
     if (seq) {
@@ -499,28 +498,35 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
     if (!validNumbers.has(seq)) invalidRows.add(row);
   }
 
-  let winnerRow = null;
-  if (winnerInfo?.bizNo) {
-    for (let row = 14; row <= lastRow; row += 1) {
-      const rawBiz = getCellText(templateSheet.getCell(row, 3));
-      const normalizedBiz = normalizeBizNumber(rawBiz);
-      if (normalizedBiz && normalizedBiz === winnerInfo.bizNo) {
-        winnerRow = row;
-        break;
+  const winnerRows = new Map();
+  if (winnerInfos.length > 0) {
+    for (const info of winnerInfos) {
+      if (!info?.bizNo) continue;
+      let matchedRow = null;
+      for (let row = 14; row <= lastRow; row += 1) {
+        const rawBiz = getCellText(templateSheet.getCell(row, 3));
+        const normalizedBiz = normalizeBizNumber(rawBiz);
+        if (normalizedBiz && normalizedBiz === info.bizNo) {
+          matchedRow = row;
+          break;
+        }
       }
+      if (matchedRow) winnerRows.set(info.bizNo, matchedRow);
     }
-    console.log('[bid-result] winner match row:', winnerRow || 'not-found');
+    console.log('[bid-result] winner match rows:', Array.from(winnerRows.values()));
   } else {
     console.log('[bid-result] winner not found in ordering file');
   }
-  if (winnerRow) {
-    const templateName = getCellText(templateSheet.getCell(winnerRow, 4)).trim();
-    if (templateName) winnerInfo.companyName = templateName;
-    if (!winnerInfo.rank) {
-      const templateRank = normalizeSequence(getCellText(templateSheet.getCell(winnerRow, 2)));
-      if (templateRank) winnerInfo.rank = templateRank;
+  winnerInfos.forEach((info) => {
+    const matchedRow = winnerRows.get(info.bizNo);
+    if (!matchedRow) return;
+    const templateName = getCellText(templateSheet.getCell(matchedRow, 4)).trim();
+    if (templateName) info.companyName = templateName;
+    if (!info.rank) {
+      const templateRank = normalizeSequence(getCellText(templateSheet.getCell(matchedRow, 2)));
+      if (templateRank) info.rank = templateRank;
     }
-  }
+  });
 
   const zip = new AdmZip(templatePath);
   const sheetPath = readXml(zip, 'xl/worksheets/sheet1.xml')
@@ -548,15 +554,19 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
     nextSheetXml = updated.xml;
   }
   nextSheetXml = updateInvalidSummary(nextSheetXml, { b4StyleId: redFontResult.styleId, invalidCount: invalidRows.size });
-  nextSheetXml = clearOColumnMarks(nextSheetXml, { lastRow, keepRow: winnerRow });
+  const keepRows = new Set(winnerRows.values());
+  nextSheetXml = clearOColumnMarks(nextSheetXml, { lastRow, keepRow: null, keepRows });
 
-  if (winnerRow) {
-    const oStyleId = getCellStyleId(nextSheetXml, `O${winnerRow}`);
-    nextSheetXml = upsertInlineStringCell(nextSheetXml, `O${winnerRow}`, 'Y', oStyleId);
-  }
+  keepRows.forEach((row) => {
+    const oStyleId = getCellStyleId(nextSheetXml, `O${row}`);
+    nextSheetXml = upsertInlineStringCell(nextSheetXml, `O${row}`, 'Y', oStyleId);
+  });
 
-  if (winnerInfo?.rank && winnerInfo?.companyName) {
-    const summary = `실제낙찰사: 균형근접 ${winnerInfo.rank}순위 ${winnerInfo.companyName}`;
+  const summaryParts = winnerInfos
+    .filter((info) => info.rank && info.companyName)
+    .map((info) => `${info.rank}순위 ${info.companyName}`);
+  if (summaryParts.length > 0) {
+    const summary = `실제낙찰사: 균형근접 ${summaryParts.join(', ')}`;
     const summaryRef = resolveMergedAnchor(nextSheetXml, 'K4');
     const k3Ref = resolveMergedAnchor(nextSheetXml, 'K3');
     const k3StyleId = getCellStyleId(nextSheetXml, k3Ref);
@@ -570,8 +580,8 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
   return {
     path: templatePath,
     invalidCount: invalidRows.size,
-    winnerRow,
-    winnerInfo,
+    winnerRow: keepRows.size > 0 ? Array.from(keepRows.values()) : null,
+    winnerInfo: winnerInfos,
   };
 };
 
