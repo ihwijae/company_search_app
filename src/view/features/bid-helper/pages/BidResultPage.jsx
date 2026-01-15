@@ -536,7 +536,11 @@ export default function BidResultPage() {
       if (!response?.success) throw new Error(response?.message || '발주처결과 처리에 실패했습니다.');
       const invalidCount = Number.isFinite(response?.invalidCount) ? response.invalidCount : null;
       const summary = invalidCount !== null ? ` (무효 ${invalidCount}건)` : '';
-      notify({ type: 'success', message: `발주처결과 처리 완료: 무효 업체가 표시되었습니다.${summary}` });
+      const winnerInfo = response?.winnerInfo;
+      const winnerSummary = winnerInfo?.rank && winnerInfo?.companyName
+        ? ` 실제낙찰사: 균형근접 ${winnerInfo.rank}순위 ${winnerInfo.companyName}`
+        : '';
+      notify({ type: 'success', message: `발주처결과 처리 완료: 무효 업체가 표시되었습니다.${summary}${winnerSummary}` });
     } catch (err) {
       notify({ type: 'error', message: err?.message || '발주처결과 처리에 실패했습니다.' });
     } finally {

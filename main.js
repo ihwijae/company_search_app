@@ -1264,6 +1264,8 @@ try {
         success: true,
         path: result?.path || templatePath,
         invalidCount: result?.invalidCount,
+        winnerInfo: result?.winnerInfo || null,
+        winnerRow: result?.winnerRow || null,
       };
     } catch (e) {
       console.error('[MAIN] bid-result:apply-ordering failed:', e);
