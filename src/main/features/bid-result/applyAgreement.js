@@ -122,15 +122,13 @@ const buildStyleIds = (stylesXml, baseStyleId) => {
   };
 };
 
-const updateSheetStyles = (sheetXml, { blueStyleId, clearStyleId, greenStyleId, lastRow, specialRows, matchedRows }) => {
+const updateSheetStyles = (sheetXml, { blueStyleId, greenStyleId, lastRow, specialRows, matchedRows }) => {
   let updatedCount = 0;
   const nextXml = sheetXml.replace(/<c[^>]*r=['"]B(\d+)['"][^>]*>/gi, (match, rowStr) => {
     const row = Number(rowStr);
     if (Number.isNaN(row) || row < 14 || row > lastRow) return match;
-    let targetStyle = clearStyleId;
-    if (matchedRows.has(row)) {
-      targetStyle = specialRows.has(row) ? greenStyleId : blueStyleId;
-    }
+    if (!matchedRows.has(row)) return match;
+    const targetStyle = specialRows.has(row) ? greenStyleId : blueStyleId;
     let updated = match;
     if (match.includes(' s="') || match.includes(" s='")) {
       updated = match.replace(/ s=['"]\d+['"]/, ` s="${targetStyle}"`);
@@ -307,10 +305,12 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   const sheetXml = readXml(zip, sheetPath);
   if (!sheetXml) throw new Error('시트 XML을 찾을 수 없습니다.');
   const stylesXml = readXml(zip, 'xl/styles.xml');
-  const { stylesXml: nextStyles, clearStyleId, blueStyleId, greenStyleId } = buildStyleIds(stylesXml, 0);
+  const b14Tag = sheetXml.match(/<c[^>]*r=['"]B14['"][^>]*>/i);
+  const b14StyleMatch = b14Tag ? b14Tag[0].match(/s=['"](\d+)['"]/) : null;
+  const baseStyleId = b14StyleMatch ? Number(b14StyleMatch[1]) : 0;
+  const { stylesXml: nextStyles, blueStyleId, greenStyleId } = buildStyleIds(stylesXml, baseStyleId);
   const { xml: nextSheetXml, updatedCount } = updateSheetStyles(sheetXml, {
     blueStyleId,
-    clearStyleId,
     greenStyleId,
     lastRow,
     specialRows,
