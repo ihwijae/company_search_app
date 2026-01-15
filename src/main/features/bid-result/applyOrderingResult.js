@@ -88,6 +88,53 @@ const escapeXml = (value) => String(value || '')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&apos;');
 
+const columnToNumber = (letters = '') => {
+  let num = 0;
+  for (let i = 0; i < letters.length; i += 1) {
+    const code = letters.toUpperCase().charCodeAt(i) - 64;
+    if (code < 1 || code > 26) continue;
+    num = num * 26 + code;
+  }
+  return num;
+};
+
+const parseCell = (ref = '') => {
+  const match = /^([A-Z]+)(\d+)$/i.exec(ref.trim());
+  if (!match) return null;
+  return {
+    col: columnToNumber(match[1]),
+    row: Number(match[2]),
+    ref: `${match[1].toUpperCase()}${match[2]}`,
+  };
+};
+
+const resolveMergedAnchor = (sheetXml, cellRef) => {
+  if (!sheetXml) return cellRef;
+  const target = parseCell(cellRef);
+  if (!target) return cellRef;
+  const mergeRegex = /<mergeCell[^>]*ref="([^"]+)"/gi;
+  let match = mergeRegex.exec(sheetXml);
+  while (match) {
+    const ref = match[1];
+    const parts = ref.split(':');
+    if (parts.length === 2) {
+      const start = parseCell(parts[0]);
+      const end = parseCell(parts[1]);
+      if (start && end) {
+        const minCol = Math.min(start.col, end.col);
+        const maxCol = Math.max(start.col, end.col);
+        const minRow = Math.min(start.row, end.row);
+        const maxRow = Math.max(start.row, end.row);
+        if (target.col >= minCol && target.col <= maxCol && target.row >= minRow && target.row <= maxRow) {
+          return start.ref;
+        }
+      }
+    }
+    match = mergeRegex.exec(sheetXml);
+  }
+  return cellRef;
+};
+
 const buildFillStyle = (stylesXml, baseStyleId, fillRgb) => {
   const xfMatches = stylesXml.match(/<cellXfs[^>]*>[\s\S]*?<\/cellXfs>/);
   if (!xfMatches) throw new Error('스타일 정보를 찾을 수 없습니다.');
@@ -512,8 +559,9 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
 
   if (winnerInfo?.rank && winnerInfo?.companyName) {
     const summary = `실제낙찰사: 균형근접 ${winnerInfo.rank}순위 ${winnerInfo.companyName}`;
-    const k5StyleId = getCellStyleId(nextSheetXml, 'K5');
-    nextSheetXml = upsertInlineStringCell(nextSheetXml, 'K5', summary, k5StyleId);
+    const summaryRef = resolveMergedAnchor(nextSheetXml, 'K5');
+    const k5StyleId = getCellStyleId(nextSheetXml, summaryRef);
+    nextSheetXml = upsertInlineStringCell(nextSheetXml, summaryRef, summary, k5StyleId);
   }
 
   writeXml(zip, 'xl/styles.xml', stylesXml);
