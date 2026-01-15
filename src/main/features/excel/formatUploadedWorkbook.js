@@ -13,7 +13,9 @@ const setFontSize = (cell, size) => {
   if (!cell) return;
   const target = cell.isMerged && cell.master ? cell.master : cell;
   if (!target) return;
-  target.font = { ...(target.font || {}), size };
+  const nextFont = { ...(target.font || {}), size };
+  target.font = nextFont;
+  target.style = { ...(target.style || {}), font: { ...(target.style?.font || {}), size } };
   if (target.value && Array.isArray(target.value.richText)) {
     target.value = {
       ...target.value,
