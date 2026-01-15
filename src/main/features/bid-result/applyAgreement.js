@@ -70,7 +70,8 @@ const resolveSheetPath = (zip, sheetName) => {
 
 const fallbackSheetPath = (zip) => {
   const entries = zip.getEntries().map((entry) => entry.entryName);
-  const sheet = entries.find((name) => /^xl\\/worksheets\\/sheet\\d+\\.xml$/i.test(name));
+  const sheetRe = new RegExp('^xl/worksheets/sheet\\d+\\.xml$', 'i');
+  const sheet = entries.find((name) => sheetRe.test(name));
   return sheet || '';
 };
 
