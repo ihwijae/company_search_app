@@ -1249,8 +1249,12 @@ try {
       const orderingPath = payload?.orderingPath ? String(payload.orderingPath) : '';
       if (!templatePath) throw new Error('개찰결과파일을 먼저 선택하세요.');
       if (!orderingPath) throw new Error('발주처결과 파일을 먼저 선택하세요.');
-      if (!templatePath.toLowerCase().endsWith('.xlsx') || !orderingPath.toLowerCase().endsWith('.xlsx')) {
-        throw new Error('xlsx 파일만 선택할 수 있습니다.');
+      if (!templatePath.toLowerCase().endsWith('.xlsx')) {
+        throw new Error('개찰결과 파일은 xlsx만 선택할 수 있습니다.');
+      }
+      const orderingLower = orderingPath.toLowerCase();
+      if (!orderingLower.endsWith('.xlsx') && !orderingLower.endsWith('.xls')) {
+        throw new Error('발주처결과 파일은 xlsx 또는 xls만 선택할 수 있습니다.');
       }
       if (!fs.existsSync(templatePath)) throw new Error('개찰결과 파일을 찾을 수 없습니다.');
       if (!fs.existsSync(orderingPath)) throw new Error('발주처결과 파일을 찾을 수 없습니다.');

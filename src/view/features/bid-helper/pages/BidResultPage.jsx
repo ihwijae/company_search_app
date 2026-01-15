@@ -750,7 +750,7 @@ export default function BidResultPage() {
                     <input
                       type="file"
                       className="input"
-                      accept=".xlsx"
+                      accept=".xlsx,.xls"
                       ref={orderingFileInputRef}
                       onChange={handleOrderingResultUpload}
                       onClick={(e) => { e.target.value = ''; }}

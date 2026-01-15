@@ -1,5 +1,6 @@
 const ExcelJS = require('exceljs');
 const AdmZip = require('adm-zip');
+const XLSX = require('xlsx');
 const { sanitizeXlsx } = require('../../../../utils/sanitizeXlsx');
 
 const readXml = (zip, name) => {
@@ -201,17 +202,26 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
   if (!templatePath) throw new Error('개찰결과파일을 먼저 선택하세요.');
   if (!orderingPath) throw new Error('발주처결과 파일을 먼저 선택하세요.');
 
-  const { sanitizedPath: orderingSanitized } = sanitizeXlsx(orderingPath);
-  const orderingWorkbook = new ExcelJS.Workbook();
-  await orderingWorkbook.xlsx.readFile(orderingSanitized);
-  const orderingSheet = orderingWorkbook.worksheets.find((sheet) => sheet.name.replace(/\s+/g, '') === '입찰금액점수');
+  let orderingReadPath = orderingPath;
+  if (orderingPath.toLowerCase().endsWith('.xlsx')) {
+    const { sanitizedPath: orderingSanitized } = sanitizeXlsx(orderingPath);
+    orderingReadPath = orderingSanitized;
+  }
+  const orderingWorkbook = XLSX.readFile(orderingReadPath);
+  const orderingSheetName = (orderingWorkbook.SheetNames || []).find(
+    (name) => name.replace(/\s+/g, '') === '입찰금액점수',
+  );
+  if (!orderingSheetName) throw new Error('발주처결과 파일에서 "입찰금액점수" 시트를 찾을 수 없습니다.');
+  const orderingSheet = orderingWorkbook.Sheets[orderingSheetName];
   if (!orderingSheet) throw new Error('발주처결과 파일에서 "입찰금액점수" 시트를 찾을 수 없습니다.');
 
   const validNumbers = new Set();
   let started = false;
   let emptyStreak = 0;
   for (let row = 5; row <= 5000; row += 1) {
-    const raw = getCellText(orderingSheet.getCell(row, 1));
+    const cellAddress = XLSX.utils.encode_cell({ r: row - 1, c: 0 });
+    const cell = orderingSheet[cellAddress];
+    const raw = cell ? XLSX.utils.format_cell(cell) : '';
     const seq = normalizeSequence(raw);
     if (seq) {
       validNumbers.add(seq);
