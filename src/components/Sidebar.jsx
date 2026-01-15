@@ -76,6 +76,17 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
       ),
     },
     { key: 'region-search', label: '지역사 찾기', icon: '📍' },
+    {
+      key: 'bid-result',
+      label: '개찰결과',
+      icon: (
+        <img
+          src={exchangeIcon}
+          alt="개찰결과"
+          style={{ width: 22, height: 22, objectFit: 'contain' }}
+        />
+      ),
+    },
     { key: 'upload', label: '업로드', icon: '📂' },
     { key: 'settings', label: '설정', icon: '⚙️' },
   ];

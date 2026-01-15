@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 
 export default function BidResultPage() {
   const { notify } = useFeedback();
+  const [ownerId, setOwnerId] = React.useState('LH');
   const [formatFile, setFormatFile] = React.useState(null);
   const [isFormatting, setIsFormatting] = React.useState(false);
   const [templatePath, setTemplatePath] = React.useState('');
@@ -211,6 +212,26 @@ export default function BidResultPage() {
               <section className="excel-helper-section">
                 <h2>엑셀 서식 변환</h2>
                 <p className="section-help">업로드한 엑셀 파일의 서식/수식을 자동으로 정리합니다. (B열 순번 기준으로 마지막 행까지 적용)</p>
+                <div style={{ marginBottom: '16px' }}>
+                  <label className="field-label" style={strongLabelStyle}>발주처</label>
+                  <select
+                    className="input"
+                    value={ownerId}
+                    onChange={(e) => setOwnerId(e.target.value)}
+                  >
+                    <option value="LH">LH</option>
+                    <option value="MOIS">행안부</option>
+                    <option value="PPS">조달청</option>
+                    <option value="EX">한국도로공사</option>
+                    <option value="KRAIL">국가철도공단</option>
+                  </select>
+                </div>
+                {ownerId !== 'LH' && (
+                  <div className="excel-inline-alert">
+                    선택한 발주처 양식은 아직 준비 중입니다. 현재는 LH만 지원합니다.
+                  </div>
+                )}
+                {ownerId === 'LH' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div>
                     <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
@@ -245,7 +266,7 @@ export default function BidResultPage() {
                       disabled={isFormatting}
                       style={{ width: '100%' }}
                     >
-                      {isFormatting ? '변환 중...' : '엑셀 서식 변환 실행'}
+                      {isFormatting ? '변환 중...' : '서식 변환'}
                     </button>
                   </div>
                 </div>
@@ -333,7 +354,7 @@ export default function BidResultPage() {
                       disabled={isAgreementProcessing}
                       style={{ width: '100%' }}
                     >
-                      {isAgreementProcessing ? '처리 중...' : '협정파일 실행'}
+                      {isAgreementProcessing ? '처리 중...' : '협정 실행'}
                     </button>
                   </div>
                 </div>
@@ -399,10 +420,11 @@ export default function BidResultPage() {
                       disabled={isOrderingProcessing}
                       style={{ width: '100%' }}
                     >
-                      {isOrderingProcessing ? '처리 중...' : '발주처결과 실행'}
+                      {isOrderingProcessing ? '처리 중...' : '결과 실행'}
                     </button>
                   </div>
                 </div>
+                )}
               </section>
             </div>
           </div>
