@@ -11,7 +11,9 @@ const isEmptyCell = (cell) => {
 
 const setFontSize = (cell, size) => {
   if (!cell) return;
-  cell.font = { ...(cell.font || {}), size };
+  const target = cell.isMerged && cell.master ? cell.master : cell;
+  if (!target) return;
+  target.font = { ...(target.font || {}), size };
 };
 
 const cloneFont = (font) => {
