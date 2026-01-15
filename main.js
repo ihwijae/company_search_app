@@ -1057,6 +1057,7 @@ try {
   ipcMain.handle('search-companies', (_event, { criteria, file_type, options }) => {
     try {
       const normalizedType = normalizeFileType(file_type, { fallback: null });
+      console.log('[MAIN] search-companies', { file_type, normalizedType });
       if (!normalizedType) {
         throw new Error(`지원하지 않는 검색 대상입니다: ${file_type}`);
       }

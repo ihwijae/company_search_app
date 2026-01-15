@@ -53,6 +53,7 @@ class SearchService {
     if (!logic || !logic.isLoaded || !logic.isLoaded()) {
       throw new Error(`${type} 파일이 로드되지 않았습니다`);
     }
+    console.log('[SearchService] search', { type, filePath: logic.filePath || '' });
     const results = logic.search(criteria, options || {});
     return Array.isArray(results)
       ? results.map((item) => ({ ...item, _file_type: type }))
@@ -92,6 +93,7 @@ class SearchService {
     const logic = new SearchLogic(sanitizedPath);
     await logic.load();
     this.searchLogics[fileType] = logic;
+    console.log('[SearchService] loaded', { type: fileType, sourcePath, sanitizedPath });
     try { this.notifyUpdated(fileType); } catch {}
 
     if (this.fileWatchers[fileType]) {
