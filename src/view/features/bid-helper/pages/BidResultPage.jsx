@@ -318,12 +318,25 @@ export default function BidResultPage() {
     const sheet = agreementWorkbook.Sheets?.[selectedAgreementSheet];
     if (!sheet) return [];
     const entries = [];
-    for (let row = 5; row <= 1000; row += 2) {
-      const cellAddress = XLSX.utils.encode_cell({ r: row - 1, c: 2 });
-      const cell = sheet[cellAddress];
-      const raw = cell ? XLSX.utils.format_cell(cell) : '';
+    const isLhOwner = ownerId === 'LH';
+    const maxConsecutiveEmptyRows = isLhOwner ? 2 : 1;
+    let consecutiveEmptyRows = 0;
+    for (let row = 5; row <= 1000; row += 1) {
+      const checkAddress = XLSX.utils.encode_cell({ r: row - 1, c: 0 });
+      const checkCell = sheet[checkAddress];
+      const checkValue = checkCell ? XLSX.utils.format_cell(checkCell) : '';
+      const hasCheck = String(checkValue || '').trim() !== '';
+      if (!hasCheck) {
+        consecutiveEmptyRows += 1;
+        if (!isLhOwner || consecutiveEmptyRows >= maxConsecutiveEmptyRows) break;
+        continue;
+      }
+      consecutiveEmptyRows = 0;
+      const nameAddress = XLSX.utils.encode_cell({ r: row - 1, c: 2 });
+      const nameCell = sheet[nameAddress];
+      const raw = nameCell ? XLSX.utils.format_cell(nameCell) : '';
       const rawName = String(raw || '').trim();
-      if (!rawName) break;
+      if (!rawName) continue;
       const cleaned = cleanCompanyName(rawName);
       if (!cleaned) continue;
       entries.push({
@@ -334,7 +347,7 @@ export default function BidResultPage() {
       });
     }
     return entries;
-  }, [agreementWorkbook, selectedAgreementSheet]);
+  }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
 
   const buildBizEntries = React.useCallback((entries, candidatesMap, selections) => {
     const bizEntries = [];
@@ -348,16 +361,9 @@ export default function BidResultPage() {
         picked = candidates[0];
       } else {
         const savedKey = selections?.[normalizedName];
-        if (savedKey) {
-          picked = candidates.find((candidate) => buildCompanyOptionKey(candidate) === savedKey) || null;
-        }
-        if (!picked) {
-          const exact = candidates.find((candidate) => {
-            const name = pickFirstValue(candidate, NAME_FIELDS);
-            return normalizeName(name) === normalizedName;
-          });
-          picked = exact || candidates[0];
-        }
+        if (!savedKey) return;
+        picked = candidates.find((candidate) => buildCompanyOptionKey(candidate) === savedKey) || null;
+        if (!picked) return;
       }
       const bizNo = pickFirstValue(picked, BIZ_FIELDS);
       const normalizedBiz = normalizeBizNumber(bizNo);
@@ -381,6 +387,16 @@ export default function BidResultPage() {
   const handleCompanyConflictConfirm = async () => {
     if (!pendingAgreementEntries || !pendingCandidatesMap) {
       handleCompanyConflictCancel();
+      return;
+    }
+    const missingSelections = (companyConflictModal.entries || []).filter((entry) => {
+      const savedKey = companyConflictSelections?.[entry.normalizedName];
+      if (!savedKey) return true;
+      const candidates = pendingCandidatesMap.get(entry.normalizedName) || [];
+      return !candidates.some((candidate) => buildCompanyOptionKey(candidate) === savedKey);
+    });
+    if (missingSelections.length > 0) {
+      notify({ type: 'info', message: '중복된 업체가 있습니다. 모든 항목을 선택해 주세요.' });
       return;
     }
     setCompanyConflictModal((prev) => ({ ...prev, isResolving: true }));
