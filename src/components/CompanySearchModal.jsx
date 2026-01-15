@@ -138,11 +138,13 @@ export default function CompanySearchModal({
                         style={{ minWidth: 64, whiteSpace: 'nowrap', height: 32 }}
                         onClick={() => {
                           if (!onPick) return;
+                          const effectiveType = fileType || (allowAll ? 'all' : '');
                           const snapshot = { ...c };
                           const payload = {
                             bizNo,
                             name: companyName,
                             snapshot,
+                            fileType: effectiveType,
                           };
                           onPick(payload);
                         }}

@@ -53,7 +53,10 @@ class SearchService {
     if (!logic || !logic.isLoaded || !logic.isLoaded()) {
       throw new Error(`${type} 파일이 로드되지 않았습니다`);
     }
-    return logic.search(criteria, options || {});
+    const results = logic.search(criteria, options || {});
+    return Array.isArray(results)
+      ? results.map((item) => ({ ...item, _file_type: type }))
+      : results;
   }
 
   searchAll(criteria, options = {}) {

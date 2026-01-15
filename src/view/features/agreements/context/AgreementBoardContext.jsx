@@ -59,6 +59,18 @@ const normalizeRuleEntry = (item = {}) => ({
 
 const normalizeBizNo = (value) => (value ? String(value).replace(/[^0-9]/g, '') : '');
 
+const normalizeFileTypeToken = (value) => {
+  if (value === undefined || value === null) return '';
+  const token = String(value).trim();
+  if (!token) return '';
+  const lowered = token.toLowerCase();
+  if (lowered === 'eung' || token === '전기' || token === '전기공사') return 'eung';
+  if (lowered === 'tongsin' || token === '통신' || token === '통신공사') return 'tongsin';
+  if (lowered === 'sobang' || token === '소방' || token === '소방시설') return 'sobang';
+  if (lowered === 'all' || token === '전체') return 'all';
+  return lowered;
+};
+
 const extractAmountValue = (candidate, directKeys = [], keywordGroups = []) => {
   const direct = directKeys.find((key) => {
     const value = candidate[key];
@@ -93,6 +105,10 @@ const extractAmountValue = (candidate, directKeys = [], keywordGroups = []) => {
 const buildCandidateFromSearchEntry = (entry) => {
   if (!entry) return null;
   const snapshot = entry.snapshot && typeof entry.snapshot === 'object' ? { ...entry.snapshot } : {};
+  const entryType = normalizeFileTypeToken(entry.fileType || entry._file_type || snapshot._file_type);
+  if (entryType && entryType !== 'all') {
+    snapshot._file_type = entryType;
+  }
   const rawBizNo = entry.bizNo
     || snapshot.bizNo
     || snapshot.BizNo
@@ -356,12 +372,18 @@ export function AgreementBoardProvider({ children }) {
 
   const appendCandidatesFromSearch = React.useCallback((entries = []) => {
     if (!Array.isArray(entries) || entries.length === 0) return;
+    const expectedType = normalizeFileTypeToken(boardState.fileType || DEFAULT_FILE_TYPE);
     const normalized = entries
+      .filter((entry) => {
+        const entryType = normalizeFileTypeToken(entry?.fileType || entry?._file_type || entry?.snapshot?._file_type);
+        if (!entryType || entryType === 'all') return true;
+        return entryType === expectedType;
+      })
       .map((entry) => buildCandidateFromSearchEntry(entry))
       .filter(Boolean);
     if (normalized.length === 0) return;
     appendCandidates(normalized);
-  }, [appendCandidates]);
+  }, [appendCandidates, boardState.fileType]);
 
   const removeCandidate = React.useCallback((candidateId) => {
     if (!candidateId) return;
