@@ -361,7 +361,7 @@ export default function BidResultPage() {
       }
       const bizNo = pickFirstValue(picked, BIZ_FIELDS);
       const normalizedBiz = normalizeBizNumber(bizNo);
-      if (!normalizedBiz) return;
+      if (!normalizedBiz || normalizedBiz.length !== 10) return;
       bizEntries.push({ bizNo: normalizedBiz, special: entry.special });
     });
     return bizEntries;

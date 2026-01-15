@@ -62,7 +62,7 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   const entryMap = new Map();
   entries.forEach((entry) => {
     const normalized = normalizeBizNumber(entry?.bizNo);
-    if (!normalized) return;
+    if (!normalized || normalized.length !== 10) return;
     const existing = entryMap.get(normalized);
     if (existing) {
       entryMap.set(normalized, existing || entry?.special);
@@ -76,7 +76,7 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   for (let row = 14; row <= lastRow; row += 1) {
     const rawBiz = getCellText(templateSheet.getCell(row, 3));
     const normalized = normalizeBizNumber(rawBiz);
-    if (!normalized) continue;
+    if (!normalized || normalized.length !== 10) continue;
     if (!entryMap.has(normalized)) continue;
     const targetCell = templateSheet.getCell(row, 2); // B
     targetCell.fill = entryMap.get(normalized) ? SPECIAL_FILL : DEFAULT_FILL;
