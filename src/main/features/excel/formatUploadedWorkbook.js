@@ -144,7 +144,7 @@ const formatUploadedWorkbook = async ({ sourcePath, outputPath }) => {
   }
 
   const maxAutoRow = Math.max(lastDataRow, worksheet.rowCount);
-  autoFitColumn(worksheet, 15, maxAutoRow); // O
+  worksheet.getColumn(15).width = 1.88; // O
   autoFitDiffColumn(worksheet, maxAutoRow); // P
 
   preservedFonts.forEach((font, key) => {
