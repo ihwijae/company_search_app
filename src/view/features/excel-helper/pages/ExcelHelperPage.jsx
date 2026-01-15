@@ -876,6 +876,9 @@ export default function ExcelHelperPage() {
   const [uploadedWorkbook, setUploadedWorkbook] = React.useState(null);
   const [sheetNames, setSheetNames] = React.useState([]);
   const [selectedSheet, setSelectedSheet] = React.useState('');
+  const [formatFile, setFormatFile] = React.useState(null);
+  const [formatStatus, setFormatStatus] = React.useState('');
+  const [isFormatting, setIsFormatting] = React.useState(false);
   const [pendingAgreementContext, setPendingAgreementContext] = React.useState(null);
   const [companyConflictSelections, setCompanyConflictSelections] = React.useState(() => getPersisted('companyConflictSelections', {}));
   const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
@@ -1304,6 +1307,7 @@ export default function ExcelHelperPage() {
   };
 
   const fileInputRef = React.useRef(null);
+  const formatFileInputRef = React.useRef(null);
 
   const handleClearUploadedFile = React.useCallback(() => {
     if (fileInputRef.current) {
@@ -1314,6 +1318,47 @@ export default function ExcelHelperPage() {
     setSheetNames([]);
     setSelectedSheet('');
   }, []);
+
+  const handleFormatFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setFormatFile(file);
+      setFormatStatus('');
+    } else {
+      setFormatFile(null);
+      setFormatStatus('');
+    }
+  };
+
+  const handleClearFormatFile = React.useCallback(() => {
+    if (formatFileInputRef.current) {
+      formatFileInputRef.current.value = '';
+    }
+    setFormatFile(null);
+    setFormatStatus('');
+  }, []);
+
+  const handleFormatWorkbook = async () => {
+    setFormatStatus('');
+    if (!formatFile?.path) {
+      setFormatStatus('엑셀 파일을 선택하세요.');
+      return;
+    }
+    if (!window.electronAPI?.excelHelper?.formatUploaded) {
+      setFormatStatus('엑셀 서식 변환 기능을 사용할 수 없습니다.');
+      return;
+    }
+    setIsFormatting(true);
+    try {
+      const response = await window.electronAPI.excelHelper.formatUploaded({ path: formatFile.path });
+      if (!response?.success) throw new Error(response?.message || '엑셀 서식 변환에 실패했습니다.');
+      setFormatStatus(response?.path ? `저장 완료: ${response.path}` : '저장 완료');
+    } catch (err) {
+      setFormatStatus(err.message || '엑셀 서식 변환에 실패했습니다.');
+    } finally {
+      setIsFormatting(false);
+    }
+  };
 
   // Handle sheet selection
   const handleSheetSelect = (event) => {
@@ -1942,6 +1987,50 @@ export default function ExcelHelperPage() {
                   {isGeneratingAgreement ? '생성 중...' : '협정 문자 생성'}
                 </button>
                 {isGeneratingAgreement && <span style={{ marginTop: '8px', textAlign: 'center', display: 'block' }}>잠시만 기다려주세요...</span>}
+              </div>
+            </div>
+          </section>
+
+          <section className="excel-helper-section">
+            <h2>엑셀 서식 변환</h2>
+            <p className="section-help">업로드한 엑셀 파일의 서식/수식을 자동으로 정리합니다. (B열 순번 기준으로 마지막 행까지 적용)</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
+                <input
+                  type="file"
+                  className="input"
+                  accept=".xlsx"
+                  ref={formatFileInputRef}
+                  onChange={handleFormatFileUpload}
+                  onClick={(e) => { e.target.value = ''; }}
+                />
+                <button
+                  type="button"
+                  className="btn-soft"
+                  style={{ marginTop: '8px' }}
+                  onClick={handleClearFormatFile}
+                  disabled={!formatFile}
+                >
+                  업로드 파일 지우기
+                </button>
+                {formatFile && (
+                  <p className="section-help" style={{ marginTop: 8 }}>
+                    선택된 파일: {formatFile.name}
+                  </p>
+                )}
+              </div>
+              <div className="excel-helper-actions">
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={handleFormatWorkbook}
+                  disabled={isFormatting}
+                  style={{ width: '100%' }}
+                >
+                  {isFormatting ? '변환 중...' : '엑셀 서식 변환 실행'}
+                </button>
+                {formatStatus && <span>{formatStatus}</span>}
               </div>
             </div>
           </section>

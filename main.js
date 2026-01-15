@@ -10,6 +10,7 @@ const { RecordsService } = require('./src/main/features/records/recordsService.j
 const { registerRecordsIpcHandlers } = require('./src/main/features/records/ipc.js');
 const industryAverages = require('./src/shared/industryAverages.json');
 const { ExcelAutomationService } = require('./src/main/features/excel/excelAutomation.js');
+const { formatUploadedWorkbook } = require('./src/main/features/excel/formatUploadedWorkbook.js');
 const { sendTestMail, sendBulkMail } = require('./src/main/features/mail/smtpService.js');
 const os = require('os');
 const { execSync } = require('child_process');
@@ -1189,6 +1190,33 @@ try {
   ipcMain.handle('excel-helper:apply-offsets', async (_event, payload = {}) => excelAutomation.applyOffsets(payload));
   if (ipcMain.removeHandler) ipcMain.removeHandler('excel-helper:read-offsets');
   ipcMain.handle('excel-helper:read-offsets', async (_event, payload = {}) => excelAutomation.readOffsets(payload));
+  if (ipcMain.removeHandler) ipcMain.removeHandler('excel-helper:format-uploaded');
+  ipcMain.handle('excel-helper:format-uploaded', async (_event, payload = {}) => {
+    try {
+      const sourcePath = payload?.path ? String(payload.path) : '';
+      if (!sourcePath) throw new Error('엑셀 파일을 선택하세요.');
+      if (!sourcePath.toLowerCase().endsWith('.xlsx')) throw new Error('xlsx 파일만 선택할 수 있습니다.');
+      if (!fs.existsSync(sourcePath)) throw new Error('선택한 엑셀 파일을 찾을 수 없습니다.');
+
+      const saveResult = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow(), {
+        title: '엑셀 서식 변환 저장',
+        defaultPath: sourcePath,
+        filters: [{ name: 'Excel Workbook', extensions: ['xlsx'] }],
+      });
+      if (saveResult.canceled || !saveResult.filePath) {
+        return { success: false, message: '사용자 취소' };
+      }
+
+      const result = await formatUploadedWorkbook({
+        sourcePath,
+        outputPath: saveResult.filePath,
+      });
+      return { success: true, path: result?.path || saveResult.filePath };
+    } catch (e) {
+      console.error('[MAIN] excel-helper:format-uploaded failed:', e);
+      return { success: false, message: e?.message || '엑셀 서식 변환에 실패했습니다.' };
+    }
+  });
 } catch (e) {
   console.error('[MAIN] excel-helper IPC wiring failed:', e);
 }

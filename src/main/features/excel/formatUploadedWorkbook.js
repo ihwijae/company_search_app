@@ -1,0 +1,108 @@
+const ExcelJS = require('exceljs');
+const { sanitizeXlsx } = require('../../../../utils/sanitizeXlsx');
+
+const isEmptyCell = (cell) => {
+  if (!cell) return true;
+  const value = cell.value;
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'string' && value.trim() === '') return true;
+  return false;
+};
+
+const setFontSize = (cell, size) => {
+  if (!cell) return;
+  cell.font = { ...(cell.font || {}), size };
+};
+
+const getCellText = (cell) => {
+  if (!cell) return '';
+  if (cell.text !== undefined && cell.text !== null && String(cell.text).length) {
+    return String(cell.text);
+  }
+  const value = cell.value;
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'object') {
+    if (Array.isArray(value.richText)) {
+      return value.richText.map((part) => part.text || '').join('');
+    }
+    if (value.formula) {
+      return value.result !== undefined && value.result !== null ? String(value.result) : '';
+    }
+    if (value.text) return String(value.text);
+    if (value.hyperlink) return String(value.text || value.hyperlink);
+    return '';
+  }
+  return String(value);
+};
+
+const autoFitColumn = (worksheet, columnNumber, maxRow) => {
+  let maxLen = 0;
+  for (let row = 1; row <= maxRow; row += 1) {
+    const text = getCellText(worksheet.getCell(row, columnNumber));
+    if (!text) continue;
+    const lineLen = Math.max(...text.split('\n').map((line) => line.length));
+    if (lineLen > maxLen) maxLen = lineLen;
+  }
+  const width = Math.min(60, Math.max(10, maxLen + 2));
+  worksheet.getColumn(columnNumber).width = width;
+};
+
+const findLastDataRow = (worksheet) => {
+  const maxRow = Math.max(worksheet.rowCount, 14);
+  let lastRow = 0;
+  for (let row = 14; row <= maxRow; row += 1) {
+    const cell = worksheet.getCell(row, 2); // Column B
+    if (!isEmptyCell(cell)) lastRow = row;
+  }
+  return lastRow || 13;
+};
+
+const formatUploadedWorkbook = async ({ sourcePath, outputPath }) => {
+  if (!sourcePath) throw new Error('엑셀 파일 경로가 필요합니다.');
+  if (!outputPath) throw new Error('저장할 경로가 필요합니다.');
+
+  const { sanitizedPath } = sanitizeXlsx(sourcePath);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(sanitizedPath);
+
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) throw new Error('엑셀 시트를 찾을 수 없습니다.');
+
+  const lastDataRow = findLastDataRow(worksheet);
+
+  for (let row = 5; row <= 10; row += 1) {
+    for (let col = 2; col <= 13; col += 1) {
+      setFontSize(worksheet.getCell(row, col), 11);
+    }
+  }
+
+  setFontSize(worksheet.getCell('B3'), 12);
+  setFontSize(worksheet.getCell('K3'), 12);
+
+  if (lastDataRow >= 14) {
+    for (let row = 14; row <= lastDataRow; row += 1) {
+      setFontSize(worksheet.getCell(row, 4), 12); // D
+      setFontSize(worksheet.getCell(row, 5), 12); // E
+      worksheet.getRow(row).height = 25;
+    }
+  }
+
+  worksheet.getColumn('N').hidden = true;
+  autoFitColumn(worksheet, 15, Math.max(lastDataRow, worksheet.rowCount)); // O
+
+  if (lastDataRow >= 15) {
+    for (let row = 15; row <= lastDataRow; row += 1) {
+      worksheet.getCell(row, 16).value = { formula: `E${row}-E${row - 1}` }; // P
+    }
+  }
+
+  workbook.calcProperties = {
+    ...(workbook.calcProperties || {}),
+    fullCalcOnLoad: true,
+  };
+
+  await workbook.xlsx.writeFile(outputPath);
+  return { path: outputPath };
+};
+
+module.exports = { formatUploadedWorkbook };

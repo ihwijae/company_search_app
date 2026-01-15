@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSelection: () => ipcRenderer.invoke('excel-helper:get-selection'),
     applyOffsets: (payload) => ipcRenderer.invoke('excel-helper:apply-offsets', payload),
     readOffsets: (payload) => ipcRenderer.invoke('excel-helper:read-offsets', payload),
+    formatUploaded: (payload) => ipcRenderer.invoke('excel-helper:format-uploaded', payload),
   },
 
   records: {
