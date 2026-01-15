@@ -171,6 +171,7 @@ const stripCandidateComputedFields = (candidate) => {
   const clone = { ...candidate };
   delete clone._agreementManagementScore;
   delete clone._agreementManagementScoreVersion;
+  delete clone._agreementPerformance5y;
   delete clone._agreementPerformanceScore;
   delete clone._agreementPerformanceMax;
   delete clone._agreementPerformanceCapVersion;
@@ -344,31 +345,54 @@ export function AgreementBoardProvider({ children }) {
     }));
   }, []);
 
-  const appendCandidates = React.useCallback((entries = []) => {
-    if (!Array.isArray(entries) || entries.length === 0) return;
-    setBoardState((prev) => {
-      const existing = Array.isArray(prev.candidates) ? prev.candidates : [];
-      const existingIds = new Set(existing.map((item) => item && item.id).filter(Boolean));
-      const normalized = entries
-        .map((item) => (item && typeof item === 'object' ? stripCandidateComputedFields({ ...item }) : null))
-        .filter((item) => item && (item.id || item.bizNo || item.name));
-      if (normalized.length === 0) return prev;
-      const next = [];
-      normalized.forEach((item) => {
-        if (!item.id) {
-          const base = normalizeRuleEntry(item);
-          const key = normalizeBizNo(base.bizNo) || base.name || `ad-hoc-${next.length}`;
-          item.id = `added:${key}`;
+const appendCandidates = React.useCallback((entries = []) => {
+  if (!Array.isArray(entries) || entries.length === 0) return;
+  setBoardState((prev) => {
+    const existing = Array.isArray(prev.candidates) ? prev.candidates : [];
+    const existingIds = new Set(existing.map((item) => item && item.id).filter(Boolean));
+    const existingIndex = new Map(existing.map((item, index) => [item && item.id, index]).filter(([id]) => id));
+    const normalized = entries
+      .map((item) => (item && typeof item === 'object' ? stripCandidateComputedFields({ ...item }) : null))
+      .filter((item) => item && (item.id || item.bizNo || item.name));
+    if (normalized.length === 0) return prev;
+    let next = [...existing];
+    let changed = false;
+    normalized.forEach((item) => {
+      if (!item.id) {
+        const base = normalizeRuleEntry(item);
+        const key = normalizeBizNo(base.bizNo) || base.name || `ad-hoc-${next.length}`;
+        item.id = `added:${key}`;
+      }
+      if (existingIds.has(item.id)) {
+        const replaceIndex = existingIndex.get(item.id);
+        if (replaceIndex !== undefined) {
+          const prevItem = next[replaceIndex];
+          const merged = {
+            ...prevItem,
+            ...item,
+            id: prevItem?.id || item.id,
+            snapshot: item.snapshot || prevItem?.snapshot,
+            _agreementManagementScore: undefined,
+            _agreementManagementScoreVersion: undefined,
+            _agreementPerformance5y: undefined,
+            _agreementPerformanceScore: undefined,
+            _agreementPerformanceMax: undefined,
+            _agreementPerformanceCapVersion: undefined,
+          };
+          next[replaceIndex] = merged;
+          changed = true;
         }
-        if (!existingIds.has(item.id)) {
-          existingIds.add(item.id);
-          next.push(item);
-        }
-      });
-      if (next.length === 0) return prev;
-      return { ...prev, candidates: [...existing, ...next] };
+        return;
+      }
+      existingIds.add(item.id);
+      existingIndex.set(item.id, next.length);
+      next.push(item);
+      changed = true;
     });
-  }, []);
+    if (!changed) return prev;
+    return { ...prev, candidates: next };
+  });
+}, []);
 
   const appendCandidatesFromSearch = React.useCallback((entries = []) => {
     if (!Array.isArray(entries) || entries.length === 0) return;
