@@ -95,8 +95,15 @@ const buildStyleIds = (stylesXml, baseStyleId) => {
     .replace(/count="(\d+)"/, `count="${fillList.length + 2}"`);
 
   const setFillId = (xf, fillId) => {
-    let next = xf.replace(/fillId="\\d+"/, `fillId="${fillId}"`);
-    if (!/applyFill=/.test(next)) {
+    let next = xf;
+    if (/fillId=/.test(next)) {
+      next = next.replace(/fillId="\d+"/, `fillId="${fillId}"`);
+    } else {
+      next = next.replace('<xf ', `<xf fillId="${fillId}" `);
+    }
+    if (/applyFill=/.test(next)) {
+      next = next.replace(/applyFill="\d+"/, 'applyFill="1"');
+    } else {
       next = next.replace('<xf ', '<xf applyFill="1" ');
     }
     return next;
