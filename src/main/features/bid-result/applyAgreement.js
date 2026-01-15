@@ -12,6 +12,8 @@ const DEFAULT_FILL = {
   pattern: 'solid',
   fgColor: { argb: 'FF00B0F0' },
 };
+const CLEAR_FILL = { type: 'pattern', pattern: 'none' };
+const HIGHLIGHT_ARGB = new Set(['FF00B050', 'FF00B0F0']);
 
 const getCellText = (cell) => {
   if (!cell) return '';
@@ -192,6 +194,15 @@ const applyAgreementToTemplate = async ({ templatePath, agreementPath, sheetName
   if (!agreementSheet) throw new Error('협정파일 시트를 찾을 수 없습니다.');
 
   const templateMap = buildTemplateNameMap(templateSheet);
+  const templateLastRow = findLastDataRow(templateSheet);
+  for (let row = 14; row <= templateLastRow; row += 1) {
+    const cell = templateSheet.getCell(row, 2);
+    const fill = cell.fill;
+    const argb = fill?.fgColor?.argb;
+    if (fill?.pattern === 'solid' && HIGHLIGHT_ARGB.has(argb)) {
+      cell.fill = CLEAR_FILL;
+    }
+  }
   const maxRow = agreementSheet.rowCount;
   for (let row = 5; row <= maxRow; row += 2) {
     const cell = agreementSheet.getCell(row, 3); // C
