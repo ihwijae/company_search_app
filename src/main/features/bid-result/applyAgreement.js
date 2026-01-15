@@ -11,6 +11,7 @@ const DEFAULT_FILL = {
   pattern: 'solid',
   fgColor: { argb: 'FF00B0F0' },
 };
+const CLEAR_FILL = { type: 'pattern', pattern: 'none' };
 
 const getCellText = (cell) => {
   if (!cell) return '';
@@ -76,6 +77,9 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   let templateValidCount = 0;
   let matchLogCount = 0;
   console.log('[bid-result] entries size:', entries.length, 'normalized:', entryMap.size);
+  for (let row = 14; row <= lastRow; row += 1) {
+    templateSheet.getCell(row, 2).fill = CLEAR_FILL;
+  }
   for (let row = 14; row <= lastRow; row += 1) {
     const rawBiz = getCellText(templateSheet.getCell(row, 3));
     const normalized = normalizeBizNumber(rawBiz);
