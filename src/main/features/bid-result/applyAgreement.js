@@ -313,6 +313,17 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   writeXml(zip, 'xl/styles.xml', nextStyles);
   writeXml(zip, sheetPath, nextSheetXml);
   zip.writeZip(templatePath);
+  if (matchedRows.size > 0) {
+    const firstRow = Array.from(matchedRows)[0];
+    try {
+      const verifyZip = new AdmZip(templatePath);
+      const verifyXml = readXml(verifyZip, sheetPath);
+      const match = new RegExp(`<c[^>]*r="B${firstRow}"[^>]*>`).exec(verifyXml);
+      console.log('[bid-result] verify B' + firstRow, match ? match[0] : 'missing');
+    } catch (e) {
+      console.log('[bid-result] verify failed:', e?.message || e);
+    }
+  }
   return { path: templatePath, matchedCount, scannedCount: entryMap.size };
 };
 
