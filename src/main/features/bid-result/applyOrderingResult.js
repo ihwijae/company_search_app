@@ -514,10 +514,8 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
     console.log('[bid-result] winner not found in ordering file');
   }
   if (winnerRow) {
-    if (!winnerInfo.companyName) {
-      const templateName = getCellText(templateSheet.getCell(winnerRow, 4)).trim();
-      if (templateName) winnerInfo.companyName = templateName;
-    }
+    const templateName = getCellText(templateSheet.getCell(winnerRow, 4)).trim();
+    if (templateName) winnerInfo.companyName = templateName;
     if (!winnerInfo.rank) {
       const templateRank = normalizeSequence(getCellText(templateSheet.getCell(winnerRow, 2)));
       if (templateRank) winnerInfo.rank = templateRank;
@@ -560,8 +558,9 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
   if (winnerInfo?.rank && winnerInfo?.companyName) {
     const summary = `실제낙찰사: 균형근접 ${winnerInfo.rank}순위 ${winnerInfo.companyName}`;
     const summaryRef = resolveMergedAnchor(nextSheetXml, 'K4');
-    const k5StyleId = getCellStyleId(nextSheetXml, summaryRef);
-    nextSheetXml = upsertInlineStringCell(nextSheetXml, summaryRef, summary, k5StyleId);
+    const k3Ref = resolveMergedAnchor(nextSheetXml, 'K3');
+    const k3StyleId = getCellStyleId(nextSheetXml, k3Ref);
+    nextSheetXml = upsertInlineStringCell(nextSheetXml, summaryRef, summary, k3StyleId);
   }
 
   writeXml(zip, 'xl/styles.xml', stylesXml);
