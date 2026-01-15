@@ -457,6 +457,8 @@ function MailAutomationPageInner() {
       window.location.hash = '#/auto-agreement';
     } else if (key === 'excel-helper') {
       window.location.hash = '#/excel-helper';
+    } else if (key === 'bid-result') {
+      window.location.hash = '#/bid-result';
     } else if (key === 'settings') {
       window.location.hash = '#/settings';
     } else if (key === 'mail') {

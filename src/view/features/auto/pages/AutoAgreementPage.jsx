@@ -14,6 +14,7 @@ const ROUTE_HASHES = {
   records: '#/records',
   mail: '#/mail',
   'excel-helper': '#/excel-helper',
+  'bid-result': '#/bid-result',
   settings: BASE_ROUTES.settings,
   upload: '#/upload',
 };

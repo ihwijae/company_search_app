@@ -531,6 +531,7 @@ export default function AgreementFlowPage({
     if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
     if (key === 'upload') { window.location.hash = BASE_ROUTES.agreementBoard; return; }
     if (key === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }
+    if (key === 'bid-result') { window.location.hash = '#/bid-result'; return; }
     const menu = findMenuByKey(key);
     if (menu) window.location.hash = menu.hash;
   };

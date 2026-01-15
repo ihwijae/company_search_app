@@ -17,6 +17,7 @@ import MOIS30To50Page from './view/features/agreements/pages/MOIS30To50Page.jsx'
 import MOIS50To100Page from './view/features/agreements/pages/MOIS50To100Page.jsx';
 import { AgreementBoardProvider } from './view/features/agreements/context/AgreementBoardContext.jsx';
 import ExcelHelperPage from './view/features/excel-helper/pages/ExcelHelperPage.jsx';
+import BidResultPage from './view/features/bid-helper/pages/BidResultPage.jsx';
 import RegionSearchWindowHost from './view/features/agreements/components/RegionSearchWindowHost.jsx';
 import FeedbackProvider from './components/FeedbackProvider.jsx';
 
@@ -79,6 +80,9 @@ export default function App() {
       break;
     case '/excel-helper':
       Screen = ExcelHelperPage;
+      break;
+    case '/bid-result':
+      Screen = BidResultPage;
       break;
     case '/auto-agreement':
       Screen = AutoAgreementPage;

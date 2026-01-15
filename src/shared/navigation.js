@@ -5,6 +5,7 @@ export const BASE_ROUTES = {
   regionSearch: '#/region-search',
   settings: '#/settings',
   autoAgreement: '#/auto-agreement',
+  bidResult: '#/bid-result',
 };
 
 export const AGREEMENT_GROUPS = [
