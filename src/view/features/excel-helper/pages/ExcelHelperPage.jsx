@@ -1363,6 +1363,14 @@ export default function ExcelHelperPage() {
     }
   };
 
+  const handleClearTemplateFile = () => {
+    if (templateFileInputRef.current) {
+      templateFileInputRef.current.value = '';
+    }
+    setTemplatePath('');
+    notify({ type: 'info', message: '개찰결과파일 선택이 해제되었습니다.' });
+  };
+
   const handleFormatWorkbook = async () => {
     if (!formatFile?.path) {
       notify({ type: 'info', message: '엑셀 파일을 선택하세요.' });
@@ -2153,6 +2161,15 @@ export default function ExcelHelperPage() {
                 >
                   개찰결과파일 변경
                 </button>
+                <button
+                  type="button"
+                  className="btn-soft"
+                  style={{ marginTop: '8px' }}
+                  onClick={handleClearTemplateFile}
+                  disabled={!templatePath}
+                >
+                  업로드 파일 지우기
+                </button>
               </div>
               <div>
                 <label className="field-label" style={strongLabelStyle}>협정파일 업로드</label>
@@ -2209,6 +2226,15 @@ export default function ExcelHelperPage() {
                   onClick={handlePickTemplateFile}
                 >
                   개찰결과파일 변경
+                </button>
+                <button
+                  type="button"
+                  className="btn-soft"
+                  style={{ marginTop: '8px' }}
+                  onClick={handleClearTemplateFile}
+                  disabled={!templatePath}
+                >
+                  업로드 파일 지우기
                 </button>
               </div>
               <div>
