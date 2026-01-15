@@ -1223,18 +1223,18 @@ try {
   ipcMain.handle('bid-result:apply-agreement', async (_event, payload = {}) => {
     try {
       const templatePath = payload?.templatePath ? String(payload.templatePath) : '';
-      const agreementPath = payload?.agreementPath ? String(payload.agreementPath) : '';
-      const sheetName = payload?.sheetName ? String(payload.sheetName) : '';
+      const entries = Array.isArray(payload?.entries) ? payload.entries : [];
       if (!templatePath) throw new Error('개찰결과파일을 먼저 선택하세요.');
-      if (!agreementPath) throw new Error('협정파일을 선택하세요.');
-      if (!sheetName) throw new Error('협정파일 시트를 선택하세요.');
       if (!templatePath.toLowerCase().endsWith('.xlsx')) throw new Error('xlsx 파일만 선택할 수 있습니다.');
-      if (!agreementPath.toLowerCase().endsWith('.xlsx')) throw new Error('xlsx 파일만 선택할 수 있습니다.');
       if (!fs.existsSync(templatePath)) throw new Error('개찰결과 파일을 찾을 수 없습니다.');
-      if (!fs.existsSync(agreementPath)) throw new Error('협정파일을 찾을 수 없습니다.');
 
-      const result = await applyAgreementToTemplate({ templatePath, agreementPath, sheetName });
-      return { success: true, path: result?.path || templatePath };
+      const result = await applyAgreementToTemplate({ templatePath, entries });
+      return {
+        success: true,
+        path: result?.path || templatePath,
+        matchedCount: result?.matchedCount,
+        scannedCount: result?.scannedCount,
+      };
     } catch (e) {
       console.error('[MAIN] bid-result:apply-agreement failed:', e);
       return { success: false, message: e?.message || '협정파일 처리에 실패했습니다.' };
