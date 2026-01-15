@@ -879,6 +879,10 @@ export default function ExcelHelperPage() {
   const [selectedSheet, setSelectedSheet] = React.useState('');
   const [formatFile, setFormatFile] = React.useState(null);
   const [isFormatting, setIsFormatting] = React.useState(false);
+  const [agreementFile, setAgreementFile] = React.useState(null);
+  const [orderingResultFile, setOrderingResultFile] = React.useState(null);
+  const [isAgreementProcessing, setIsAgreementProcessing] = React.useState(false);
+  const [isOrderingProcessing, setIsOrderingProcessing] = React.useState(false);
   const [pendingAgreementContext, setPendingAgreementContext] = React.useState(null);
   const [companyConflictSelections, setCompanyConflictSelections] = React.useState(() => getPersisted('companyConflictSelections', {}));
   const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
@@ -1308,6 +1312,8 @@ export default function ExcelHelperPage() {
 
   const fileInputRef = React.useRef(null);
   const formatFileInputRef = React.useRef(null);
+  const agreementFileInputRef = React.useRef(null);
+  const orderingFileInputRef = React.useRef(null);
 
   const handleClearUploadedFile = React.useCallback(() => {
     if (fileInputRef.current) {
@@ -1358,6 +1364,64 @@ export default function ExcelHelperPage() {
       notify({ type: 'error', message: err.message || '엑셀 서식 변환에 실패했습니다.' });
     } finally {
       setIsFormatting(false);
+    }
+  };
+
+  const handleAgreementFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setAgreementFile(file);
+    } else {
+      setAgreementFile(null);
+    }
+  };
+
+  const handleOrderingResultUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setOrderingResultFile(file);
+    } else {
+      setOrderingResultFile(null);
+    }
+  };
+
+  const handleClearAgreementFile = React.useCallback(() => {
+    if (agreementFileInputRef.current) {
+      agreementFileInputRef.current.value = '';
+    }
+    setAgreementFile(null);
+  }, []);
+
+  const handleClearOrderingFile = React.useCallback(() => {
+    if (orderingFileInputRef.current) {
+      orderingFileInputRef.current.value = '';
+    }
+    setOrderingResultFile(null);
+  }, []);
+
+  const handleRunAgreementProcess = async () => {
+    if (!agreementFile?.path) {
+      notify({ type: 'info', message: '협정파일을 선택하세요.' });
+      return;
+    }
+    setIsAgreementProcessing(true);
+    try {
+      notify({ type: 'info', message: '협정파일 처리는 준비 중입니다.' });
+    } finally {
+      setIsAgreementProcessing(false);
+    }
+  };
+
+  const handleRunOrderingProcess = async () => {
+    if (!orderingResultFile?.path) {
+      notify({ type: 'info', message: '발주처결과 파일을 선택하세요.' });
+      return;
+    }
+    setIsOrderingProcessing(true);
+    try {
+      notify({ type: 'info', message: '발주처결과 처리는 준비 중입니다.' });
+    } finally {
+      setIsOrderingProcessing(false);
     }
   };
 
@@ -1995,7 +2059,7 @@ export default function ExcelHelperPage() {
           <section className="excel-helper-section">
             <h2>엑셀 서식 변환</h2>
             <p className="section-help">업로드한 엑셀 파일의 서식/수식을 자동으로 정리합니다. (B열 순번 기준으로 마지막 행까지 적용)</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
                 <input
@@ -2030,6 +2094,82 @@ export default function ExcelHelperPage() {
                   style={{ width: '100%' }}
                 >
                   {isFormatting ? '변환 중...' : '엑셀 서식 변환 실행'}
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '18px' }}>
+              <div>
+                <label className="field-label" style={strongLabelStyle}>협정파일 업로드</label>
+                <input
+                  type="file"
+                  className="input"
+                  accept=".xlsx"
+                  ref={agreementFileInputRef}
+                  onChange={handleAgreementFileUpload}
+                  onClick={(e) => { e.target.value = ''; }}
+                />
+                <button
+                  type="button"
+                  className="btn-soft"
+                  style={{ marginTop: '8px' }}
+                  onClick={handleClearAgreementFile}
+                  disabled={!agreementFile}
+                >
+                  업로드 파일 지우기
+                </button>
+                {agreementFile && (
+                  <p className="section-help" style={{ marginTop: 8 }}>
+                    선택된 파일: {agreementFile.name}
+                  </p>
+                )}
+              </div>
+              <div className="excel-helper-actions">
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={handleRunAgreementProcess}
+                  disabled={isAgreementProcessing}
+                  style={{ width: '100%' }}
+                >
+                  {isAgreementProcessing ? '처리 중...' : '협정파일 실행'}
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '18px' }}>
+              <div>
+                <label className="field-label" style={strongLabelStyle}>발주처결과 업로드</label>
+                <input
+                  type="file"
+                  className="input"
+                  accept=".xlsx"
+                  ref={orderingFileInputRef}
+                  onChange={handleOrderingResultUpload}
+                  onClick={(e) => { e.target.value = ''; }}
+                />
+                <button
+                  type="button"
+                  className="btn-soft"
+                  style={{ marginTop: '8px' }}
+                  onClick={handleClearOrderingFile}
+                  disabled={!orderingResultFile}
+                >
+                  업로드 파일 지우기
+                </button>
+                {orderingResultFile && (
+                  <p className="section-help" style={{ marginTop: 8 }}>
+                    선택된 파일: {orderingResultFile.name}
+                  </p>
+                )}
+              </div>
+              <div className="excel-helper-actions">
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={handleRunOrderingProcess}
+                  disabled={isOrderingProcessing}
+                  style={{ width: '100%' }}
+                >
+                  {isOrderingProcessing ? '처리 중...' : '발주처결과 실행'}
                 </button>
               </div>
             </div>
