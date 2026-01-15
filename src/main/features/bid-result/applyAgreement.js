@@ -73,15 +73,24 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
 
   const lastRow = findLastDataRow(templateSheet);
   let matchedCount = 0;
+  let templateValidCount = 0;
+  let matchLogCount = 0;
+  console.log('[bid-result] entries size:', entries.length, 'normalized:', entryMap.size);
   for (let row = 14; row <= lastRow; row += 1) {
     const rawBiz = getCellText(templateSheet.getCell(row, 3));
     const normalized = normalizeBizNumber(rawBiz);
     if (!normalized || normalized.length !== 10) continue;
+    templateValidCount += 1;
     if (!entryMap.has(normalized)) continue;
     const targetCell = templateSheet.getCell(row, 2); // B
     targetCell.fill = entryMap.get(normalized) ? SPECIAL_FILL : DEFAULT_FILL;
     matchedCount += 1;
+    if (matchLogCount < 5) {
+      console.log('[bid-result] match', { row, biz: normalized, special: entryMap.get(normalized) });
+      matchLogCount += 1;
+    }
   }
+  console.log('[bid-result] template valid:', templateValidCount, 'matched:', matchedCount);
 
   await templateWorkbook.xlsx.writeFile(templatePath);
   return { path: templatePath, matchedCount, scannedCount: entryMap.size };

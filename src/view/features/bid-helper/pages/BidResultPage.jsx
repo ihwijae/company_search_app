@@ -476,6 +476,8 @@ export default function BidResultPage() {
       }
 
       const bizEntries = buildBizEntries(entries, candidatesMap, companyConflictSelections);
+      console.log('[bid-result] agreement entries:', entries.length);
+      console.log('[bid-result] biz entries:', bizEntries.slice(0, 5), 'total:', bizEntries.length);
       if (!bizEntries.length) throw new Error('조회된 사업자번호가 없습니다.');
 
       const response = await window.electronAPI.bidResult.applyAgreement({
