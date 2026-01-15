@@ -14,6 +14,11 @@ const setFontSize = (cell, size) => {
   cell.font = { ...(cell.font || {}), size };
 };
 
+const cloneFont = (font) => {
+  if (!font) return font;
+  try { return JSON.parse(JSON.stringify(font)); } catch { return font; }
+};
+
 const getCellText = (cell) => {
   if (!cell) return '';
   if (cell.text !== undefined && cell.text !== null && String(cell.text).length) {
@@ -69,6 +74,16 @@ const formatUploadedWorkbook = async ({ sourcePath, outputPath }) => {
   if (!worksheet) throw new Error('엑셀 시트를 찾을 수 없습니다.');
 
   const lastDataRow = findLastDataRow(worksheet);
+  const preservedFonts = new Map();
+  if (lastDataRow >= 14) {
+    for (let row = 14; row <= lastDataRow; row += 1) {
+      for (let col = 1; col <= 16; col += 1) {
+        if (col === 4 || col === 5 || col === 16) continue;
+        const font = worksheet.getCell(row, col).font;
+        if (font) preservedFonts.set(`${row}:${col}`, cloneFont(font));
+      }
+    }
+  }
 
   for (let row = 5; row <= 10; row += 1) {
     for (let col = 2; col <= 13; col += 1) {
@@ -92,9 +107,17 @@ const formatUploadedWorkbook = async ({ sourcePath, outputPath }) => {
 
   if (lastDataRow >= 15) {
     for (let row = 15; row <= lastDataRow; row += 1) {
-      worksheet.getCell(row, 16).value = { formula: `E${row}-E${row - 1}` }; // P
+      const cell = worksheet.getCell(row, 16);
+      cell.value = { formula: `E${row}-E${row - 1}` };
+      cell.numFmt = '#,##0';
+      cell.font = { ...(cell.font || {}), size: 12, bold: true };
     }
   }
+
+  preservedFonts.forEach((font, key) => {
+    const [row, col] = key.split(':').map(Number);
+    worksheet.getCell(row, col).font = font;
+  });
 
   workbook.calcProperties = {
     ...(workbook.calcProperties || {}),
