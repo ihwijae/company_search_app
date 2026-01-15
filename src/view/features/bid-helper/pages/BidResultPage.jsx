@@ -186,7 +186,12 @@ export default function BidResultPage() {
         sheetName: selectedAgreementSheet,
       });
       if (!response?.success) throw new Error(response?.message || '협정파일 처리에 실패했습니다.');
-      notify({ type: 'success', message: '협정파일 처리 완료: 개찰결과파일에 색상이 반영되었습니다.' });
+      const matched = Number.isFinite(response?.matchedCount) ? response.matchedCount : null;
+      const scanned = Number.isFinite(response?.scannedCount) ? response.scannedCount : null;
+      const summary = matched !== null && scanned !== null
+        ? ` (매칭 ${matched}/${scanned})`
+        : '';
+      notify({ type: 'success', message: `협정파일 처리 완료: 개찰결과파일에 색상이 반영되었습니다.${summary}` });
     } finally {
       setIsAgreementProcessing(false);
     }

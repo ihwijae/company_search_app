@@ -171,7 +171,16 @@ const buildTemplateNameMap = (worksheet) => {
     const cleaned = cleanCompanyName(raw);
     const normalized = normalizeName(cleaned);
     if (!normalized) continue;
-    if (!map.has(normalized)) map.set(normalized, row);
+    const entry = {
+      row,
+      cleaned,
+      compact: cleaned.replace(/\s+/g, ''),
+    };
+    if (!map.has(normalized)) {
+      map.set(normalized, [entry]);
+    } else {
+      map.get(normalized).push(entry);
+    }
   }
   return map;
 };
@@ -204,6 +213,8 @@ const applyAgreementToTemplate = async ({ templatePath, agreementPath, sheetName
     }
   }
   const maxRow = agreementSheet.rowCount;
+  let matchedCount = 0;
+  let scannedCount = 0;
   for (let row = 5; row <= maxRow; row += 2) {
     const cell = agreementSheet.getCell(row, 3); // C
     const rawName = getCellText(cell).trim();
@@ -211,23 +222,35 @@ const applyAgreementToTemplate = async ({ templatePath, agreementPath, sheetName
     const special = hasSpecialName(rawName);
     const cleaned = cleanCompanyName(rawName);
     const normalized = normalizeName(cleaned);
-    if (!normalized) continue;
+    const compact = cleaned.replace(/\s+/g, '');
+    if (!normalized || compact.length < 2) continue;
+    scannedCount += 1;
 
-    let targetRow = templateMap.get(normalized);
-    if (!targetRow) {
+    const candidates = templateMap.get(normalized);
+    let targetRow = null;
+    if (!candidates || candidates.length === 0) {
       for (const candidate of buildRerunNameCandidates(cleaned)) {
-        targetRow = templateMap.get(normalizeName(candidate));
-        if (targetRow) break;
+        const rerun = templateMap.get(normalizeName(candidate));
+        if (rerun && rerun.length) {
+          targetRow = rerun[0].row;
+          break;
+        }
       }
+    } else if (candidates.length === 1) {
+      targetRow = candidates[0].row;
+    } else {
+      const exact = candidates.find((item) => item.compact === compact);
+      targetRow = exact ? exact.row : candidates[0].row;
     }
     if (!targetRow) continue;
 
     const targetCell = templateSheet.getCell(targetRow, 2); // B
     targetCell.fill = special ? SPECIAL_FILL : DEFAULT_FILL;
+    matchedCount += 1;
   }
 
   await templateWorkbook.xlsx.writeFile(templatePath);
-  return { path: templatePath };
+  return { path: templatePath, matchedCount, scannedCount };
 };
 
 module.exports = { applyAgreementToTemplate };
