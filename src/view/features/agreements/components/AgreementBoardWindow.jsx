@@ -1306,6 +1306,11 @@ export default function AgreementBoardWindow({
     onUpdateBoard(payload);
   }, [onUpdateBoard]);
 
+  const searchFileType = React.useMemo(
+    () => industryToFileType(industryLabel),
+    [industryLabel],
+  );
+
   const handleNoticeDateChange = React.useCallback((event) => {
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ noticeDate: event.target.value });
   }, [onUpdateBoard]);
@@ -5103,7 +5108,8 @@ export default function AgreementBoardWindow({
           open={representativeSearchOpen}
           onClose={closeRepresentativeSearch}
           onPick={handleRepresentativePicked}
-          fileType={fileType || 'all'}
+          fileType={searchFileType}
+          allowAll={false}
         />
       )}
       <Modal

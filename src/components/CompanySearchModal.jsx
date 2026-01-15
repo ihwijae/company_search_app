@@ -12,7 +12,14 @@ const FILE_TYPE_LABELS = {
   sobang: '소방',
 };
 
-export default function CompanySearchModal({ open, fileType, onClose, onPick, initialQuery = '' }) {
+export default function CompanySearchModal({
+  open,
+  fileType,
+  onClose,
+  onPick,
+  initialQuery = '',
+  allowAll = true,
+}) {
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
@@ -31,7 +38,11 @@ export default function CompanySearchModal({ open, fileType, onClose, onPick, in
     try {
       const query = overrideQuery !== undefined ? String(overrideQuery) : q;
       const criteria = { name: String(query || '').trim() };
-      const r = await window.electronAPI.searchCompanies(criteria, fileType);
+      const effectiveType = fileType || (allowAll ? 'all' : '');
+      if (!effectiveType) {
+        throw new Error('공종을 먼저 선택하세요.');
+      }
+      const r = await window.electronAPI.searchCompanies(criteria, effectiveType);
       if (!r?.success) throw new Error(r?.message || '검색 실패');
       setResults(r.data || []);
     } catch (e) { setError(String(e.message || e)); }
