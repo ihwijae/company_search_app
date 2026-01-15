@@ -563,7 +563,7 @@ export default function BidResultPage() {
             <h1 className="excel-helper-title">개찰결과 도우미</h1>
             <div className="excel-helper-body">
               <section className="excel-helper-section">
-                <h2>엑셀 서식 변환</h2>
+                <h2>개찰결과 엑셀 크기 및 폰트 수정</h2>
                 <p className="section-help">업로드한 엑셀 파일의 서식/수식을 자동으로 정리합니다. (B열 순번 기준으로 마지막 행까지 적용)</p>
                 <div style={{ marginBottom: '16px' }}>
                   <label className="field-label" style={strongLabelStyle}>발주처</label>
@@ -630,12 +630,14 @@ export default function BidResultPage() {
                       className="primary"
                       onClick={handleFormatWorkbook}
                       disabled={isFormatting}
-                      style={{ width: '100%' }}
+                      style={{ minWidth: '180px' }}
                     >
                       {isFormatting ? '변환 중...' : '서식 변환'}
                     </button>
                   </div>
                 </div>
+                <div className="section-divider" style={{ margin: '18px 0' }} />
+                <h3 className="section-title">개찰결과 엑셀에 협정 업체 체크</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '18px' }}>
                   <div>
                     <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
@@ -718,12 +720,14 @@ export default function BidResultPage() {
                       className="primary"
                       onClick={handleRunAgreementProcess}
                       disabled={isAgreementProcessing}
-                      style={{ width: '100%' }}
+                      style={{ minWidth: '180px' }}
                     >
                       {isAgreementProcessing ? '처리 중...' : '협정 실행'}
                     </button>
                   </div>
                 </div>
+                <div className="section-divider" style={{ margin: '18px 0' }} />
+                <h3 className="section-title">개찰결과 엑셀에 무효표, 실제낙찰사 표시</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '18px' }}>
                   <div>
                     <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
@@ -784,7 +788,7 @@ export default function BidResultPage() {
                       className="primary"
                       onClick={handleRunOrderingProcess}
                       disabled={isOrderingProcessing}
-                      style={{ width: '100%' }}
+                      style={{ minWidth: '180px' }}
                     >
                       {isOrderingProcessing ? '처리 중...' : '결과 실행'}
                     </button>
