@@ -69,6 +69,8 @@ const normalizeSequence = (value) => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
+const normalizeBizNumber = (value) => String(value || '').replace(/[^0-9]/g, '');
+
 const findLastDataRow = (worksheet, columnIndex = 2) => {
   const maxRow = Math.max(worksheet.rowCount, 14);
   let lastRow = 0;
@@ -78,6 +80,13 @@ const findLastDataRow = (worksheet, columnIndex = 2) => {
   }
   return lastRow || 13;
 };
+
+const escapeXml = (value) => String(value || '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&apos;');
 
 const buildFillStyle = (stylesXml, baseStyleId, fillRgb) => {
   const xfMatches = stylesXml.match(/<cellXfs[^>]*>[\s\S]*?<\/cellXfs>/);
@@ -167,6 +176,94 @@ const buildRedFontStyle = (stylesXml, baseStyleId) => {
   return { stylesXml: nextStyles, styleId };
 };
 
+const parseStyleMap = (stylesXml) => {
+  if (!stylesXml) return { xfs: [], fonts: [], fills: [] };
+  const fontsBlock = stylesXml.match(/<fonts[^>]*>[\s\S]*?<\/fonts>/);
+  const fillsBlock = stylesXml.match(/<fills[^>]*>[\s\S]*?<\/fills>/);
+  const xfsBlock = stylesXml.match(/<cellXfs[^>]*>[\s\S]*?<\/cellXfs>/);
+  const fonts = fontsBlock ? (fontsBlock[0].match(/<font>[\s\S]*?<\/font>/g) || []) : [];
+  const fills = fillsBlock ? (fillsBlock[0].match(/<fill>[\s\S]*?<\/fill>/g) || []) : [];
+  const xfs = xfsBlock ? (xfsBlock[0].match(/<xf[^>]*\/>|<xf[^>]*>[\s\S]*?<\/xf>/g) || []) : [];
+
+  const fontFlags = fonts.map((font) => ({
+    bold: /<b\s*\/>/.test(font) || /<b>/.test(font),
+  }));
+  const fillColors = fills.map((fill) => {
+    const match = fill.match(/<fgColor[^>]*rgb="([^"]+)"/i);
+    return match ? match[1] : '';
+  });
+  const xfStyles = xfs.map((xf) => {
+    const fontIdMatch = xf.match(/fontId="(\d+)"/);
+    const fillIdMatch = xf.match(/fillId="(\d+)"/);
+    return {
+      fontId: fontIdMatch ? Number(fontIdMatch[1]) : null,
+      fillId: fillIdMatch ? Number(fillIdMatch[1]) : null,
+    };
+  });
+  return { fontFlags, fillColors, xfStyles };
+};
+
+const normalizeRgb = (rgb) => {
+  if (!rgb) return '';
+  const cleaned = rgb.replace(/^FF/i, '').toUpperCase();
+  return cleaned;
+};
+
+const isYellowBold = (cell, styleMap) => {
+  if (!cell) return false;
+  const style = cell.s;
+  let fontBold = false;
+  let fillRgb = '';
+  if (style && typeof style === 'object') {
+    fontBold = Boolean(style.font?.bold || style.font?.b);
+    fillRgb = style.fill?.fgColor?.rgb || style.fgColor?.rgb || '';
+  } else if (typeof style === 'number' && styleMap?.xfStyles?.length) {
+    const xf = styleMap.xfStyles[style];
+    const fontId = xf?.fontId;
+    const fillId = xf?.fillId;
+    fontBold = fontId !== null && styleMap.fontFlags?.[fontId]?.bold;
+    fillRgb = fillId !== null ? styleMap.fillColors?.[fillId] || '' : '';
+  }
+  const normalized = normalizeRgb(fillRgb);
+  return fontBold && normalized === 'FFFF00';
+};
+
+const getCellStyleId = (sheetXml, cellRef) => {
+  const cellMatch = sheetXml.match(new RegExp(`<c[^>]*r=['"]${cellRef}['"][^>]*>`, 'i'));
+  if (!cellMatch) return null;
+  const styleMatch = cellMatch[0].match(/s=['"](\d+)['"]/);
+  return styleMatch ? Number(styleMatch[1]) : null;
+};
+
+const upsertInlineStringCell = (sheetXml, cellRef, value, styleId = null) => {
+  const rowMatch = cellRef.match(/(\d+)$/);
+  if (!rowMatch) return sheetXml;
+  const row = rowMatch[1];
+  const safeValue = escapeXml(value);
+  const styleAttr = styleId !== null ? ` s="${styleId}"` : '';
+  const cellMarkup = `<c r="${cellRef}" t="inlineStr"${styleAttr}><is><t>${safeValue}</t></is></c>`;
+
+  const rowRegex = new RegExp(`<row[^>]*r="${row}"[^>]*>[\\s\\S]*?<\\/row>`);
+  if (rowRegex.test(sheetXml)) {
+    return sheetXml.replace(rowRegex, (rowBlock) => {
+      if (new RegExp(`<c[^>]*r=['"]${cellRef}['"][^>]*>`).test(rowBlock)
+        || new RegExp(`<c[^>]*r=['"]${cellRef}['"][^>]*\\/>`).test(rowBlock)) {
+        return rowBlock.replace(
+          new RegExp(`<c[^>]*r=['"]${cellRef}['"][^>]*>([\\s\\S]*?)<\\/c>|<c[^>]*r=['"]${cellRef}['"][^>]*\\/>`),
+          cellMarkup,
+        );
+      }
+      return rowBlock.replace(/<\/row>/, `${cellMarkup}</row>`);
+    });
+  }
+
+  const anchorRegex = new RegExp(`<row[^>]*r="${Number(row) + 1}"[^>]*>`);
+  if (anchorRegex.test(sheetXml)) {
+    return sheetXml.replace(anchorRegex, `<row r="${row}">${cellMarkup}</row>$&`);
+  }
+  return sheetXml.replace(/<\/sheetData>/, `<row r="${row}">${cellMarkup}</row></sheetData>`);
+};
+
 const updateInvalidRows = (sheetXml, { redStyleId, invalidRows }) => {
   let updatedCount = 0;
   const nextXml = sheetXml.replace(/<c[^>]*r=['"]B(\d+)['"][^>]*>/gi, (match, rowStr) => {
@@ -207,7 +304,7 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
     const { sanitizedPath: orderingSanitized } = sanitizeXlsx(orderingPath);
     orderingReadPath = orderingSanitized;
   }
-  const orderingWorkbook = XLSX.readFile(orderingReadPath);
+  const orderingWorkbook = XLSX.readFile(orderingReadPath, { cellStyles: true });
   const orderingSheetName = (orderingWorkbook.SheetNames || []).find(
     (name) => name.replace(/\s+/g, '') === '입찰금액점수',
   );
@@ -215,7 +312,18 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
   const orderingSheet = orderingWorkbook.Sheets[orderingSheetName];
   if (!orderingSheet) throw new Error('발주처결과 파일에서 "입찰금액점수" 시트를 찾을 수 없습니다.');
 
+  let styleMap = null;
+  if (orderingReadPath.toLowerCase().endsWith('.xlsx')) {
+    try {
+      const orderingZip = new AdmZip(orderingReadPath);
+      styleMap = parseStyleMap(readXml(orderingZip, 'xl/styles.xml'));
+    } catch (e) {
+      styleMap = null;
+    }
+  }
+
   const validNumbers = new Set();
+  let winnerInfo = null;
   let started = false;
   let emptyStreak = 0;
   for (let row = 5; row <= 5000; row += 1) {
@@ -223,6 +331,24 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
     const cell = orderingSheet[cellAddress];
     const raw = cell ? XLSX.utils.format_cell(cell) : '';
     const seq = normalizeSequence(raw);
+    if (!winnerInfo && isYellowBold(cell, styleMap)) {
+      const bizAddress = XLSX.utils.encode_cell({ r: row - 1, c: 2 });
+      const nameAddress = XLSX.utils.encode_cell({ r: row - 1, c: 3 });
+      const bizCell = orderingSheet[bizAddress];
+      const nameCell = orderingSheet[nameAddress];
+      const bizRaw = bizCell ? XLSX.utils.format_cell(bizCell) : '';
+      const nameRaw = nameCell ? XLSX.utils.format_cell(nameCell) : '';
+      const bizNo = normalizeBizNumber(bizRaw);
+      const companyName = String(nameRaw || '').trim();
+      const rank = seq || normalizeSequence(raw) || null;
+      if (bizNo) {
+        winnerInfo = {
+          bizNo,
+          rank,
+          companyName,
+        };
+      }
+    }
     if (seq) {
       validNumbers.add(seq);
       started = true;
@@ -246,6 +372,18 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
     const seq = normalizeSequence(raw);
     if (!seq) continue;
     if (!validNumbers.has(seq)) invalidRows.add(row);
+  }
+
+  let winnerRow = null;
+  if (winnerInfo?.bizNo) {
+    for (let row = 14; row <= lastRow; row += 1) {
+      const rawBiz = getCellText(templateSheet.getCell(row, 3));
+      const normalizedBiz = normalizeBizNumber(rawBiz);
+      if (normalizedBiz && normalizedBiz === winnerInfo.bizNo) {
+        winnerRow = row;
+        break;
+      }
+    }
   }
 
   const zip = new AdmZip(templatePath);
@@ -275,6 +413,17 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
   }
   nextSheetXml = updateInvalidSummary(nextSheetXml, { b4StyleId: redFontResult.styleId, invalidCount: invalidRows.size });
 
+  if (winnerRow) {
+    const oStyleId = getCellStyleId(nextSheetXml, `O${winnerRow}`);
+    nextSheetXml = upsertInlineStringCell(nextSheetXml, `O${winnerRow}`, 'Y', oStyleId);
+  }
+
+  if (winnerInfo?.rank && winnerInfo?.companyName) {
+    const summary = `실제낙찰사: 균형근접 ${winnerInfo.rank}순위 ${winnerInfo.companyName}`;
+    const k5StyleId = getCellStyleId(nextSheetXml, 'K5');
+    nextSheetXml = upsertInlineStringCell(nextSheetXml, 'K5', summary, k5StyleId);
+  }
+
   writeXml(zip, 'xl/styles.xml', stylesXml);
   writeXml(zip, sheetPath, nextSheetXml);
   zip.writeZip(templatePath);
@@ -282,6 +431,8 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
   return {
     path: templatePath,
     invalidCount: invalidRows.size,
+    winnerRow,
+    winnerInfo,
   };
 };
 
