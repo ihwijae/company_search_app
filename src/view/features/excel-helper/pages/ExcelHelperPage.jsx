@@ -1317,6 +1317,7 @@ export default function ExcelHelperPage() {
   const templateFileInputRef = React.useRef(null);
   const agreementFileInputRef = React.useRef(null);
   const orderingFileInputRef = React.useRef(null);
+  const templateFileName = templatePath ? templatePath.split(/[\\/]/).pop() : '';
 
   const handleClearUploadedFile = React.useCallback(() => {
     if (fileInputRef.current) {
@@ -1349,12 +1350,16 @@ export default function ExcelHelperPage() {
   const handleTemplateFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      setTemplateFile(file);
       setTemplatePath(file.path || '');
       notify({ type: 'info', message: '개찰결과파일이 변경되었습니다.' });
     } else {
-      setTemplateFile(null);
       setTemplatePath('');
+    }
+  };
+
+  const handlePickTemplateFile = () => {
+    if (templateFileInputRef.current) {
+      templateFileInputRef.current.click();
     }
   };
 
@@ -1371,10 +1376,7 @@ export default function ExcelHelperPage() {
     try {
       const response = await window.electronAPI.excelHelper.formatUploaded({ path: formatFile.path });
       if (!response?.success) throw new Error(response?.message || '엑셀 서식 변환에 실패했습니다.');
-      if (response?.path) {
-        setTemplatePath(response.path);
-        setTemplateFile({ name: response.path.split(/[\\/]/).pop(), path: response.path });
-      }
+      if (response?.path) setTemplatePath(response.path);
       notify({
         type: 'success',
         message: response?.path ? `변환이 완료되었습니다. (${response.path})` : '변환이 완료되었습니다.',
@@ -2088,27 +2090,6 @@ export default function ExcelHelperPage() {
             <p className="section-help">업로드한 엑셀 파일의 서식/수식을 자동으로 정리합니다. (B열 순번 기준으로 마지막 행까지 적용)</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
-                <input
-                  type="file"
-                  className="input"
-                  accept=".xlsx"
-                  ref={templateFileInputRef}
-                  onChange={handleTemplateFileUpload}
-                  onClick={(e) => { e.target.value = ''; }}
-                />
-                {templateFile && (
-                  <p className="section-help" style={{ marginTop: 8 }}>
-                    현재 선택: {templateFile.name}
-                  </p>
-                )}
-                {templatePath && (
-                  <p className="section-help" style={{ marginTop: 6 }}>
-                    경로: {templatePath}
-                  </p>
-                )}
-              </div>
-              <div>
                 <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
                 <input
                   type="file"
@@ -2147,6 +2128,33 @@ export default function ExcelHelperPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '18px' }}>
               <div>
+                <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  ref={templateFileInputRef}
+                  onChange={handleTemplateFileUpload}
+                  onClick={(e) => { e.target.value = ''; }}
+                  style={{ display: 'none' }}
+                />
+                <div className="input" style={{ fontWeight: 700 }}>
+                  {templateFileName || '템플릿을 먼저 생성하세요.'}
+                </div>
+                {templatePath && (
+                  <p className="section-help" style={{ marginTop: 6, fontWeight: 700 }}>
+                    {templatePath}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="btn-soft"
+                  style={{ marginTop: '8px' }}
+                  onClick={handlePickTemplateFile}
+                >
+                  개찰결과파일 변경
+                </button>
+              </div>
+              <div>
                 <label className="field-label" style={strongLabelStyle}>협정파일 업로드</label>
                 <input
                   type="file"
@@ -2184,6 +2192,25 @@ export default function ExcelHelperPage() {
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '18px' }}>
+              <div>
+                <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
+                <div className="input" style={{ fontWeight: 700 }}>
+                  {templateFileName || '템플릿을 먼저 생성하세요.'}
+                </div>
+                {templatePath && (
+                  <p className="section-help" style={{ marginTop: 6, fontWeight: 700 }}>
+                    {templatePath}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="btn-soft"
+                  style={{ marginTop: '8px' }}
+                  onClick={handlePickTemplateFile}
+                >
+                  개찰결과파일 변경
+                </button>
+              </div>
               <div>
                 <label className="field-label" style={strongLabelStyle}>발주처결과 업로드</label>
                 <input
