@@ -37,6 +37,66 @@ const getCellText = (cell) => {
 
 const normalizeBizNumber = (value) => String(value || '').replace(/[^0-9]/g, '');
 
+const columnToNumber = (letters = '') => {
+  let num = 0;
+  for (let i = 0; i < letters.length; i += 1) {
+    const code = letters.toUpperCase().charCodeAt(i) - 64;
+    if (code < 1 || code > 26) continue;
+    num = num * 26 + code;
+  }
+  return num;
+};
+
+const parseCell = (ref = '') => {
+  const match = /^([A-Z]+)(\d+)$/i.exec(ref.trim());
+  if (!match) return null;
+  return {
+    col: columnToNumber(match[1]),
+    row: Number(match[2]),
+  };
+};
+
+const parseRange = (ref = '') => {
+  const cleaned = ref.replace(/\$/g, '').trim();
+  if (!cleaned) return null;
+  if (!cleaned.includes(':')) {
+    const cell = parseCell(cleaned);
+    return cell ? { start: cell, end: cell } : null;
+  }
+  const [startRef, endRef] = cleaned.split(':');
+  const start = parseCell(startRef);
+  const end = parseCell(endRef);
+  if (!start || !end) return null;
+  return {
+    start: { col: Math.min(start.col, end.col), row: Math.min(start.row, end.row) },
+    end: { col: Math.max(start.col, end.col), row: Math.max(start.row, end.row) },
+  };
+};
+
+const touchesB14 = (ref = '') => {
+  const tokens = ref.split(/\s+/).filter(Boolean);
+  const targetCol = 2; // B
+  for (const token of tokens) {
+    const range = parseRange(token);
+    if (!range) continue;
+    if (range.end.col < targetCol || range.start.col > targetCol) continue;
+    if (range.end.row < 14) continue;
+    return true;
+  }
+  return false;
+};
+
+const removeConditionalFormatting = (worksheet) => {
+  const list = Array.isArray(worksheet.conditionalFormattings)
+    ? worksheet.conditionalFormattings
+    : [];
+  const filtered = list.filter((rule) => !touchesB14(rule?.ref || ''));
+  worksheet.conditionalFormattings = filtered;
+  if (worksheet.model) {
+    worksheet.model.conditionalFormattings = filtered;
+  }
+};
+
 const findLastDataRow = (worksheet) => {
   const maxRow = Math.max(worksheet.rowCount, 14);
   let lastRow = 0;
@@ -59,6 +119,8 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   await templateWorkbook.xlsx.readFile(templateSanitized);
   const templateSheet = templateWorkbook.worksheets[0];
   if (!templateSheet) throw new Error('개찰결과 파일 시트를 찾을 수 없습니다.');
+
+  removeConditionalFormatting(templateSheet);
 
   const entryMap = new Map();
   entries.forEach((entry) => {
