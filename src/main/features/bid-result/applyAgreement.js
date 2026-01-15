@@ -124,7 +124,7 @@ const buildStyleIds = (stylesXml, baseStyleId) => {
 
 const updateSheetStyles = (sheetXml, { blueStyleId, clearStyleId, greenStyleId, lastRow, specialRows, matchedRows }) => {
   let updatedCount = 0;
-  const nextXml = sheetXml.replace(/<c[^>]*r=['"]B(\\d+)['"][^>]*>/g, (match, rowStr) => {
+  const nextXml = sheetXml.replace(/<c[^>]*r=['"]B(\d+)['"][^>]*>/gi, (match, rowStr) => {
     const row = Number(rowStr);
     if (Number.isNaN(row) || row < 14 || row > lastRow) return match;
     let targetStyle = clearStyleId;
@@ -133,7 +133,7 @@ const updateSheetStyles = (sheetXml, { blueStyleId, clearStyleId, greenStyleId, 
     }
     let updated = match;
     if (match.includes(' s="') || match.includes(" s='")) {
-      updated = match.replace(/ s=['"]\\d+['"]/, ` s="${targetStyle}"`);
+      updated = match.replace(/ s=['"]\d+['"]/, ` s="${targetStyle}"`);
     } else {
       updated = updated.replace('<c ', `<c s="${targetStyle}" `);
     }
@@ -316,7 +316,9 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
     specialRows,
     matchedRows,
   });
-  const preview = nextSheetXml.match(/<c[^>]*r="B14"[^>]*>/);
+  const rawMatches = sheetXml.match(/<c[^>]*r=['"]B\d+['"][^>]*>/gi) || [];
+  console.log('[bid-result] B tag count:', rawMatches.length);
+  const preview = nextSheetXml.match(/<c[^>]*r=['"]B14['"][^>]*>/i);
   console.log('[bid-result] updated B cells:', updatedCount, 'B14 tag:', preview ? preview[0] : 'missing');
   writeXml(zip, 'xl/styles.xml', nextStyles);
   writeXml(zip, sheetPath, nextSheetXml);
