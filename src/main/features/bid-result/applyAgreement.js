@@ -124,7 +124,7 @@ const buildStyleIds = (stylesXml, baseStyleId) => {
 
 const updateSheetStyles = (sheetXml, { blueStyleId, clearStyleId, greenStyleId, lastRow, specialRows, matchedRows }) => {
   let updatedCount = 0;
-  const nextXml = sheetXml.replace(/<c[^>]*r="B(\\d+)"[^>]*>/g, (match, rowStr) => {
+  const nextXml = sheetXml.replace(/<c[^>]*r=['"]B(\\d+)['"][^>]*>/g, (match, rowStr) => {
     const row = Number(rowStr);
     if (Number.isNaN(row) || row < 14 || row > lastRow) return match;
     let targetStyle = clearStyleId;
@@ -132,10 +132,11 @@ const updateSheetStyles = (sheetXml, { blueStyleId, clearStyleId, greenStyleId, 
       targetStyle = specialRows.has(row) ? greenStyleId : blueStyleId;
     }
     let updated = match;
-    if (match.includes(' s="')) {
-      updated = match.replace(/ s="\\d+"/, ` s="${targetStyle}"`);
+    if (match.includes(' s="') || match.includes(" s='")) {
+      updated = match.replace(/ s=['"]\\d+['"]/, ` s="${targetStyle}"`);
+    } else {
+      updated = updated.replace('<c ', `<c s="${targetStyle}" `);
     }
-    updated = updated.replace('<c ', `<c s="${targetStyle}" `);
     if (updated !== match) updatedCount += 1;
     return updated;
   });
