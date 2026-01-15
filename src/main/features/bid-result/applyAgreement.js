@@ -125,11 +125,12 @@ const removeConditionalFormatting = (worksheet) => {
     : Array.isArray(worksheet.model?.conditionalFormattings)
       ? worksheet.model.conditionalFormattings
       : [];
-  worksheet.conditionalFormattings = [];
+  const filtered = list.filter((rule) => !touchesB14(rule?.ref || ''));
+  worksheet.conditionalFormattings = filtered;
   if (worksheet.model) {
-    worksheet.model.conditionalFormattings = [];
+    worksheet.model.conditionalFormattings = filtered;
   }
-  console.log('[bid-result] conditional formats total:', list.length, 'removed:', list.length);
+  console.log('[bid-result] conditional formats total:', list.length, 'removed:', list.length - filtered.length);
 };
 
 const findLastDataRow = (worksheet) => {
