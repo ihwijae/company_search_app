@@ -123,18 +123,23 @@ const buildStyleIds = (stylesXml, baseStyleId) => {
 };
 
 const updateSheetStyles = (sheetXml, { blueStyleId, clearStyleId, greenStyleId, lastRow, specialRows, matchedRows }) => {
-  return sheetXml.replace(/<c[^>]*r="B(\\d+)"[^>]*>/g, (match, rowStr) => {
+  let updatedCount = 0;
+  const nextXml = sheetXml.replace(/<c[^>]*r="B(\\d+)"[^>]*>/g, (match, rowStr) => {
     const row = Number(rowStr);
     if (Number.isNaN(row) || row < 14 || row > lastRow) return match;
     let targetStyle = clearStyleId;
     if (matchedRows.has(row)) {
       targetStyle = specialRows.has(row) ? greenStyleId : blueStyleId;
     }
+    let updated = match;
     if (match.includes(' s="')) {
-      return match.replace(/ s="\\d+"/, ` s="${targetStyle}"`);
+      updated = match.replace(/ s="\\d+"/, ` s="${targetStyle}"`);
     }
-    return match.replace('<c ', `<c s="${targetStyle}" `);
+    updated = updated.replace('<c ', `<c s="${targetStyle}" `);
+    if (updated !== match) updatedCount += 1;
+    return updated;
   });
+  return { xml: nextXml, updatedCount };
 };
 
 const columnToNumber = (letters = '') => {
@@ -302,7 +307,7 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   if (!sheetXml) throw new Error('시트 XML을 찾을 수 없습니다.');
   const stylesXml = readXml(zip, 'xl/styles.xml');
   const { stylesXml: nextStyles, clearStyleId, blueStyleId, greenStyleId } = buildStyleIds(stylesXml, 0);
-  const nextSheetXml = updateSheetStyles(sheetXml, {
+  const { xml: nextSheetXml, updatedCount } = updateSheetStyles(sheetXml, {
     blueStyleId,
     clearStyleId,
     greenStyleId,
@@ -310,6 +315,8 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
     specialRows,
     matchedRows,
   });
+  const preview = nextSheetXml.match(/<c[^>]*r="B14"[^>]*>/);
+  console.log('[bid-result] updated B cells:', updatedCount, 'B14 tag:', preview ? preview[0] : 'missing');
   writeXml(zip, 'xl/styles.xml', nextStyles);
   writeXml(zip, sheetPath, nextSheetXml);
   zip.writeZip(templatePath);
