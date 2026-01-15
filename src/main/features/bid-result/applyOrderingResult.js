@@ -559,7 +559,7 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
 
   if (winnerInfo?.rank && winnerInfo?.companyName) {
     const summary = `실제낙찰사: 균형근접 ${winnerInfo.rank}순위 ${winnerInfo.companyName}`;
-    const summaryRef = resolveMergedAnchor(nextSheetXml, 'K5');
+    const summaryRef = resolveMergedAnchor(nextSheetXml, 'K4');
     const k5StyleId = getCellStyleId(nextSheetXml, summaryRef);
     nextSheetXml = upsertInlineStringCell(nextSheetXml, summaryRef, summary, k5StyleId);
   }
