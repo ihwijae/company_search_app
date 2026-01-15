@@ -232,6 +232,7 @@ export default function BidResultPage() {
                   </div>
                 )}
                 {ownerId === 'LH' && (
+                  <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div>
                     <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
@@ -424,6 +425,7 @@ export default function BidResultPage() {
                     </button>
                   </div>
                 </div>
+                  </>
                 )}
               </section>
             </div>
