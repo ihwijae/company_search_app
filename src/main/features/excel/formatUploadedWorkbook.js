@@ -57,7 +57,8 @@ const findLastDataRow = (worksheet) => {
   let lastRow = 0;
   for (let row = 14; row <= maxRow; row += 1) {
     const cell = worksheet.getCell(row, 2); // Column B
-    if (!isEmptyCell(cell)) lastRow = row;
+    const text = getCellText(cell).trim();
+    if (text || !isEmptyCell(cell)) lastRow = row;
   }
   return lastRow || 13;
 };
