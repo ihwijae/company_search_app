@@ -321,6 +321,7 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
       styleMap = null;
     }
   }
+  console.log('[bid-result] ordering styles:', styleMap ? 'xlsx-style' : 'none/xls');
 
   const validNumbers = new Set();
   let winnerInfo = null;
@@ -347,6 +348,7 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
           rank,
           companyName,
         };
+        console.log('[bid-result] winner found:', { row, rank, bizNo, companyName });
       }
     }
     if (seq) {
@@ -384,6 +386,9 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
         break;
       }
     }
+    console.log('[bid-result] winner match row:', winnerRow || 'not-found');
+  } else {
+    console.log('[bid-result] winner not found in ordering file');
   }
 
   const zip = new AdmZip(templatePath);
