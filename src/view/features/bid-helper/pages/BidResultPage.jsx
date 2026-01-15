@@ -637,7 +637,7 @@ export default function BidResultPage() {
                   </div>
                 </div>
                 <div className="section-divider" style={{ margin: '18px 0' }} />
-                <h3 className="section-title">개찰결과 엑셀에 협정 업체 체크</h3>
+                <h3 className="section-title" style={{ fontSize: '18px', fontWeight: 700 }}>개찰결과 엑셀에 협정 업체 체크</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '18px' }}>
                   <div>
                     <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
@@ -727,7 +727,7 @@ export default function BidResultPage() {
                   </div>
                 </div>
                 <div className="section-divider" style={{ margin: '18px 0' }} />
-                <h3 className="section-title">개찰결과 엑셀에 무효표, 실제낙찰사 표시</h3>
+                <h3 className="section-title" style={{ fontSize: '18px', fontWeight: 700 }}>개찰결과 엑셀에 무효표, 실제낙찰사 표시</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '18px' }}>
                   <div>
                     <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
