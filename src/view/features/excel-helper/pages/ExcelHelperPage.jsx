@@ -7,6 +7,7 @@ import { BASE_ROUTES } from '../../../../shared/navigation.js';
 import { generateMany, validateAgreement } from '../../../../shared/agreements/generator.js';
 import { extractManagerNames, getQualityBadgeText, isWomenOwnedCompany } from '../../../../utils/companyIndicators.js';
 import { INDUSTRY_AVERAGES } from '../../../../ratios.js';
+import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import * as XLSX from 'xlsx'; // Import xlsx library
 
 const OWNER_OPTIONS = [
@@ -877,7 +878,6 @@ export default function ExcelHelperPage() {
   const [sheetNames, setSheetNames] = React.useState([]);
   const [selectedSheet, setSelectedSheet] = React.useState('');
   const [formatFile, setFormatFile] = React.useState(null);
-  const [formatStatus, setFormatStatus] = React.useState('');
   const [isFormatting, setIsFormatting] = React.useState(false);
   const [pendingAgreementContext, setPendingAgreementContext] = React.useState(null);
   const [companyConflictSelections, setCompanyConflictSelections] = React.useState(() => getPersisted('companyConflictSelections', {}));
@@ -1319,14 +1319,14 @@ export default function ExcelHelperPage() {
     setSelectedSheet('');
   }, []);
 
+  const { notify } = useFeedback();
+
   const handleFormatFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
       setFormatFile(file);
-      setFormatStatus('');
     } else {
       setFormatFile(null);
-      setFormatStatus('');
     }
   };
 
@@ -1335,26 +1335,27 @@ export default function ExcelHelperPage() {
       formatFileInputRef.current.value = '';
     }
     setFormatFile(null);
-    setFormatStatus('');
   }, []);
 
   const handleFormatWorkbook = async () => {
-    setFormatStatus('');
     if (!formatFile?.path) {
-      setFormatStatus('엑셀 파일을 선택하세요.');
+      notify({ type: 'info', message: '엑셀 파일을 선택하세요.' });
       return;
     }
     if (!window.electronAPI?.excelHelper?.formatUploaded) {
-      setFormatStatus('엑셀 서식 변환 기능을 사용할 수 없습니다.');
+      notify({ type: 'error', message: '엑셀 서식 변환 기능을 사용할 수 없습니다.' });
       return;
     }
     setIsFormatting(true);
     try {
       const response = await window.electronAPI.excelHelper.formatUploaded({ path: formatFile.path });
       if (!response?.success) throw new Error(response?.message || '엑셀 서식 변환에 실패했습니다.');
-      setFormatStatus(response?.path ? `저장 완료: ${response.path}` : '저장 완료');
+      notify({
+        type: 'success',
+        message: response?.path ? `변환이 완료되었습니다. (${response.path})` : '변환이 완료되었습니다.',
+      });
     } catch (err) {
-      setFormatStatus(err.message || '엑셀 서식 변환에 실패했습니다.');
+      notify({ type: 'error', message: err.message || '엑셀 서식 변환에 실패했습니다.' });
     } finally {
       setIsFormatting(false);
     }
@@ -2030,7 +2031,6 @@ export default function ExcelHelperPage() {
                 >
                   {isFormatting ? '변환 중...' : '엑셀 서식 변환 실행'}
                 </button>
-                {formatStatus && <span>{formatStatus}</span>}
               </div>
             </div>
           </section>
