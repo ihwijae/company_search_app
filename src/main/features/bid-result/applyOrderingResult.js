@@ -335,6 +335,19 @@ const updateInvalidSummary = (sheetXml, { b4StyleId, invalidCount }) => {
   return sheetXml.replace(/<row[^>]*r="5"[^>]*>/, (match) => `<row r="4">${cellMarkup}</row>${match}`);
 };
 
+const clearOColumnMarks = (sheetXml, { lastRow, keepRow }) => {
+  if (!sheetXml) return sheetXml;
+  return sheetXml.replace(
+    /<c[^>]*r=['"]O(\d+)['"][^>]*>([\s\S]*?)<\/c>|<c[^>]*r=['"]O(\d+)['"][^>]*\/>/gi,
+    (match, rowA, _content, rowB) => {
+      const row = Number(rowA || rowB);
+      if (Number.isNaN(row) || row < 14 || row > lastRow) return match;
+      if (keepRow && row === keepRow) return match;
+      return '';
+    },
+  );
+};
+
 const applyOrderingResult = async ({ templatePath, orderingPath }) => {
   if (!templatePath) throw new Error('개찰결과파일을 먼저 선택하세요.');
   if (!orderingPath) throw new Error('발주처결과 파일을 먼저 선택하세요.');
@@ -453,6 +466,16 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
   } else {
     console.log('[bid-result] winner not found in ordering file');
   }
+  if (winnerRow) {
+    if (!winnerInfo.companyName) {
+      const templateName = getCellText(templateSheet.getCell(winnerRow, 4)).trim();
+      if (templateName) winnerInfo.companyName = templateName;
+    }
+    if (!winnerInfo.rank) {
+      const templateRank = normalizeSequence(getCellText(templateSheet.getCell(winnerRow, 2)));
+      if (templateRank) winnerInfo.rank = templateRank;
+    }
+  }
 
   const zip = new AdmZip(templatePath);
   const sheetPath = readXml(zip, 'xl/worksheets/sheet1.xml')
@@ -480,6 +503,7 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
     nextSheetXml = updated.xml;
   }
   nextSheetXml = updateInvalidSummary(nextSheetXml, { b4StyleId: redFontResult.styleId, invalidCount: invalidRows.size });
+  nextSheetXml = clearOColumnMarks(nextSheetXml, { lastRow, keepRow: winnerRow });
 
   if (winnerRow) {
     const oStyleId = getCellStyleId(nextSheetXml, `O${winnerRow}`);
