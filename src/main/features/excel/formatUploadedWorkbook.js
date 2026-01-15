@@ -14,6 +14,15 @@ const setFontSize = (cell, size) => {
   const target = cell.isMerged && cell.master ? cell.master : cell;
   if (!target) return;
   target.font = { ...(target.font || {}), size };
+  if (target.value && Array.isArray(target.value.richText)) {
+    target.value = {
+      ...target.value,
+      richText: target.value.richText.map((part) => ({
+        ...part,
+        font: { ...(part.font || {}), size },
+      })),
+    };
+  }
 };
 
 const cloneFont = (font) => {
