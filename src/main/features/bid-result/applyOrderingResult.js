@@ -209,6 +209,15 @@ const normalizeRgb = (rgb) => {
   return cleaned;
 };
 
+const isYellowBoldStyleId = (styleId, styleMap) => {
+  if (styleId === null || styleId === undefined || !styleMap) return false;
+  const xf = styleMap.xfStyles?.[styleId];
+  if (!xf) return false;
+  const fontBold = xf.fontId !== null && styleMap.fontFlags?.[xf.fontId]?.bold;
+  const fillRgb = xf.fillId !== null ? styleMap.fillColors?.[xf.fillId] || '' : '';
+  return fontBold && normalizeRgb(fillRgb) === 'FFFF00';
+};
+
 const isYellowBold = (cell, styleMap) => {
   if (!cell) return false;
   const style = cell.s;
@@ -217,6 +226,9 @@ const isYellowBold = (cell, styleMap) => {
   if (style && typeof style === 'object') {
     fontBold = Boolean(style.font?.bold || style.font?.b);
     fillRgb = style.fill?.fgColor?.rgb || style.fgColor?.rgb || '';
+    if (!fillRgb && style.fill?.fgColor?.theme !== undefined) {
+      fillRgb = String(style.fill.fgColor.theme || '');
+    }
   } else if (typeof style === 'number' && styleMap?.xfStyles?.length) {
     const xf = styleMap.xfStyles[style];
     const fontId = xf?.fontId;
@@ -226,6 +238,34 @@ const isYellowBold = (cell, styleMap) => {
   }
   const normalized = normalizeRgb(fillRgb);
   return fontBold && normalized === 'FFFF00';
+};
+
+const findWinnerRowByXml = (sheetXml, styleMap) => {
+  if (!sheetXml || !styleMap) return null;
+  let winnerRow = null;
+  const cellRegex = /<c[^>]*r=['"]A(\d+)['"][^>]*s=['"](\d+)['"][^>]*>/gi;
+  let match = cellRegex.exec(sheetXml);
+  while (match) {
+    const row = Number(match[1]);
+    const styleId = Number(match[2]);
+    if (!Number.isNaN(row) && isYellowBoldStyleId(styleId, styleMap)) {
+      winnerRow = row;
+      break;
+    }
+    match = cellRegex.exec(sheetXml);
+  }
+  if (winnerRow) return winnerRow;
+  const rowRegex = /<row[^>]*r=['"](\d+)['"][^>]*s=['"](\d+)['"][^>]*>/gi;
+  match = rowRegex.exec(sheetXml);
+  while (match) {
+    const row = Number(match[1]);
+    const styleId = Number(match[2]);
+    if (!Number.isNaN(row) && isYellowBoldStyleId(styleId, styleMap)) {
+      return row;
+    }
+    match = rowRegex.exec(sheetXml);
+  }
+  return null;
 };
 
 const getCellStyleId = (sheetXml, cellRef) => {
@@ -313,18 +353,41 @@ const applyOrderingResult = async ({ templatePath, orderingPath }) => {
   if (!orderingSheet) throw new Error('발주처결과 파일에서 "입찰금액점수" 시트를 찾을 수 없습니다.');
 
   let styleMap = null;
+  let winnerRowFromXml = null;
   if (orderingReadPath.toLowerCase().endsWith('.xlsx')) {
     try {
       const orderingZip = new AdmZip(orderingReadPath);
       styleMap = parseStyleMap(readXml(orderingZip, 'xl/styles.xml'));
+      const orderingSheetPath = resolveSheetPath(orderingZip, orderingSheetName) || fallbackSheetPath(orderingZip);
+      if (orderingSheetPath) {
+        const orderingSheetXml = readXml(orderingZip, orderingSheetPath);
+        winnerRowFromXml = findWinnerRowByXml(orderingSheetXml, styleMap);
+      }
     } catch (e) {
       styleMap = null;
     }
   }
   console.log('[bid-result] ordering styles:', styleMap ? 'xlsx-style' : 'none/xls');
+  if (winnerRowFromXml) {
+    console.log('[bid-result] winner row from xml:', winnerRowFromXml);
+  }
 
   const validNumbers = new Set();
   let winnerInfo = null;
+  if (winnerRowFromXml) {
+    const seqCell = orderingSheet[XLSX.utils.encode_cell({ r: winnerRowFromXml - 1, c: 0 })];
+    const bizCell = orderingSheet[XLSX.utils.encode_cell({ r: winnerRowFromXml - 1, c: 2 })];
+    const nameCell = orderingSheet[XLSX.utils.encode_cell({ r: winnerRowFromXml - 1, c: 3 })];
+    const seqRaw = seqCell ? XLSX.utils.format_cell(seqCell) : '';
+    const bizRaw = bizCell ? XLSX.utils.format_cell(bizCell) : '';
+    const nameRaw = nameCell ? XLSX.utils.format_cell(nameCell) : '';
+    const bizNo = normalizeBizNumber(bizRaw);
+    const rank = normalizeSequence(seqRaw);
+    const companyName = String(nameRaw || '').trim();
+    if (bizNo) {
+      winnerInfo = { bizNo, rank, companyName };
+    }
+  }
   let started = false;
   let emptyStreak = 0;
   for (let row = 5; row <= 5000; row += 1) {
