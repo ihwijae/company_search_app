@@ -132,8 +132,9 @@ const buildCandidateFromSearchEntry = (entry) => {
     .toString()
     .trim();
   const baseId = bizNoNormalized || resolvedName || `search-${Date.now()}`;
+  const typePrefix = entryType ? `${entryType}:` : '';
   const candidate = {
-    id: `search:${baseId}`,
+    id: `search:${typePrefix}${baseId}`,
     bizNo: bizNoNormalized,
     name: resolvedName || baseId || '대표사',
     snapshot,
@@ -335,14 +336,37 @@ export function AgreementBoardProvider({ children }) {
     }));
   }, [boardState.ownerId, boardState.fileType, boardState.rangeId]);
 
-  const updateBoard = React.useCallback((payload = {}) => {
-    setBoardState((prev) => ({
-      ...prev,
-      ...payload,
-      candidates: Array.isArray(payload.candidates)
-        ? sanitizeCandidatesList(payload.candidates)
-        : (payload.candidates !== undefined ? payload.candidates : prev.candidates),
-    }));
+const updateBoard = React.useCallback((payload = {}) => {
+    setBoardState((prev) => {
+      const nextFileType = payload.fileType || prev.fileType;
+      const fileTypeChanged = payload.fileType && payload.fileType !== prev.fileType;
+      const next = {
+        ...prev,
+        ...payload,
+        candidates: Array.isArray(payload.candidates)
+          ? sanitizeCandidatesList(payload.candidates)
+          : (payload.candidates !== undefined ? payload.candidates : prev.candidates),
+      };
+      if (fileTypeChanged) {
+        return {
+          ...next,
+          candidates: [],
+          pinned: [],
+          excluded: [],
+          groupAssignments: [],
+          groupShares: [],
+          groupShareRawInputs: [],
+          groupCredibility: [],
+          groupTechnicianScores: [],
+          groupApprovals: [],
+          groupManagementBonus: [],
+          groupQualityScores: [],
+          alwaysInclude: [],
+          fileType: nextFileType,
+        };
+      }
+      return next;
+    });
   }, []);
 
 const appendCandidates = React.useCallback((entries = []) => {
