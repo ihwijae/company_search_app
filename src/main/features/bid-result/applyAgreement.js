@@ -56,21 +56,54 @@ const parseCell = (ref = '') => {
   };
 };
 
+const parseColumnOnly = (ref = '') => {
+  const match = /^([A-Z]+)$/i.exec(ref.trim());
+  if (!match) return null;
+  return { col: columnToNumber(match[1]) };
+};
+
 const parseRange = (ref = '') => {
   const cleaned = ref.replace(/\$/g, '').trim();
   if (!cleaned) return null;
   if (!cleaned.includes(':')) {
     const cell = parseCell(cleaned);
-    return cell ? { start: cell, end: cell } : null;
+    if (cell) return { start: cell, end: cell };
+    const colOnly = parseColumnOnly(cleaned);
+    if (colOnly) {
+      return { start: { col: colOnly.col, row: 1 }, end: { col: colOnly.col, row: 1048576 } };
+    }
+    return null;
   }
   const [startRef, endRef] = cleaned.split(':');
-  const start = parseCell(startRef);
-  const end = parseCell(endRef);
-  if (!start || !end) return null;
-  return {
-    start: { col: Math.min(start.col, end.col), row: Math.min(start.row, end.row) },
-    end: { col: Math.max(start.col, end.col), row: Math.max(start.row, end.row) },
-  };
+  const startCell = parseCell(startRef);
+  const endCell = parseCell(endRef);
+  if (startCell && endCell) {
+    return {
+      start: { col: Math.min(startCell.col, endCell.col), row: Math.min(startCell.row, endCell.row) },
+      end: { col: Math.max(startCell.col, endCell.col), row: Math.max(startCell.row, endCell.row) },
+    };
+  }
+  const startCol = parseColumnOnly(startRef);
+  const endCol = parseColumnOnly(endRef);
+  if (startCol && endCol) {
+    return {
+      start: { col: Math.min(startCol.col, endCol.col), row: 1 },
+      end: { col: Math.max(startCol.col, endCol.col), row: 1048576 },
+    };
+  }
+  if (startCell && endCol) {
+    return {
+      start: { col: Math.min(startCell.col, endCol.col), row: startCell.row },
+      end: { col: Math.max(startCell.col, endCol.col), row: 1048576 },
+    };
+  }
+  if (startCol && endCell) {
+    return {
+      start: { col: Math.min(startCol.col, endCell.col), row: 1 },
+      end: { col: Math.max(startCol.col, endCell.col), row: endCell.row },
+    };
+  }
+  return null;
 };
 
 const touchesB14 = (ref = '') => {
@@ -94,6 +127,9 @@ const removeConditionalFormatting = (worksheet) => {
   worksheet.conditionalFormattings = filtered;
   if (worksheet.model) {
     worksheet.model.conditionalFormattings = filtered;
+  }
+  if (list.length !== filtered.length) {
+    console.log('[bid-result] removed conditional formats:', list.length - filtered.length);
   }
 };
 
