@@ -53,7 +53,7 @@ const getCellText = (cell) => {
   return String(value);
 };
 
-const autoFitColumn = (worksheet, columnNumber, maxRow) => {
+const autoFitColumn = (worksheet, columnNumber, maxRow, { minWidth = 10, maxWidth = 60 } = {}) => {
   let maxLen = 0;
   for (let row = 1; row <= maxRow; row += 1) {
     const text = getCellText(worksheet.getCell(row, columnNumber));
@@ -61,8 +61,24 @@ const autoFitColumn = (worksheet, columnNumber, maxRow) => {
     const lineLen = Math.max(...text.split('\n').map((line) => line.length));
     if (lineLen > maxLen) maxLen = lineLen;
   }
-  const width = Math.min(60, Math.max(10, maxLen + 2));
+  const width = Math.min(maxWidth, Math.max(minWidth, maxLen + 2));
   worksheet.getColumn(columnNumber).width = width;
+};
+
+const autoFitDiffColumn = (worksheet, maxRow, { minWidth = 8, maxWidth = 20 } = {}) => {
+  let maxLen = 0;
+  for (let row = 15; row <= maxRow; row += 1) {
+    const current = worksheet.getCell(row, 5).value;
+    const prev = worksheet.getCell(row - 1, 5).value;
+    const currentNum = typeof current === 'number' ? current : Number(String(current || '').replace(/[^0-9.\-]/g, ''));
+    const prevNum = typeof prev === 'number' ? prev : Number(String(prev || '').replace(/[^0-9.\-]/g, ''));
+    if (!Number.isFinite(currentNum) || !Number.isFinite(prevNum)) continue;
+    const diff = currentNum - prevNum;
+    const text = diff.toLocaleString('en-US');
+    if (text.length > maxLen) maxLen = text.length;
+  }
+  const width = Math.min(maxWidth, Math.max(minWidth, maxLen + 2));
+  worksheet.getColumn(16).width = width;
 };
 
 const findLastDataRow = (worksheet) => {
@@ -117,7 +133,6 @@ const formatUploadedWorkbook = async ({ sourcePath, outputPath }) => {
   }
 
   worksheet.getColumn('N').hidden = true;
-  autoFitColumn(worksheet, 15, Math.max(lastDataRow, worksheet.rowCount)); // O
 
   if (lastDataRow >= 15) {
     for (let row = 15; row <= lastDataRow; row += 1) {
@@ -127,6 +142,10 @@ const formatUploadedWorkbook = async ({ sourcePath, outputPath }) => {
       cell.font = { ...(cell.font || {}), size: 12, bold: true };
     }
   }
+
+  const maxAutoRow = Math.max(lastDataRow, worksheet.rowCount);
+  autoFitColumn(worksheet, 15, maxAutoRow); // O
+  autoFitDiffColumn(worksheet, maxAutoRow); // P
 
   preservedFonts.forEach((font, key) => {
     const [row, col] = key.split(':').map(Number);
