@@ -122,15 +122,15 @@ const touchesB14 = (ref = '') => {
 const removeConditionalFormatting = (worksheet) => {
   const list = Array.isArray(worksheet.conditionalFormattings)
     ? worksheet.conditionalFormattings
-    : [];
+    : Array.isArray(worksheet.model?.conditionalFormattings)
+      ? worksheet.model.conditionalFormattings
+      : [];
   const filtered = list.filter((rule) => !touchesB14(rule?.ref || ''));
   worksheet.conditionalFormattings = filtered;
   if (worksheet.model) {
     worksheet.model.conditionalFormattings = filtered;
   }
-  if (list.length !== filtered.length) {
-    console.log('[bid-result] removed conditional formats:', list.length - filtered.length);
-  }
+  console.log('[bid-result] conditional formats total:', list.length, 'removed:', list.length - filtered.length);
 };
 
 const findLastDataRow = (worksheet) => {
@@ -157,6 +157,10 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   if (!templateSheet) throw new Error('개찰결과 파일 시트를 찾을 수 없습니다.');
 
   removeConditionalFormatting(templateSheet);
+  const columnB = templateSheet.getColumn(2);
+  if (columnB?.style) {
+    columnB.style = { ...columnB.style, fill: CLEAR_FILL };
+  }
 
   const entryMap = new Map();
   entries.forEach((entry) => {
@@ -176,6 +180,10 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   let matchLogCount = 0;
   console.log('[bid-result] entries size:', entries.length, 'normalized:', entryMap.size);
   for (let row = 14; row <= lastRow; row += 1) {
+    const rowObj = templateSheet.getRow(row);
+    if (rowObj?.style) {
+      rowObj.style = { ...rowObj.style, fill: CLEAR_FILL };
+    }
     templateSheet.getCell(row, 2).fill = CLEAR_FILL;
   }
   for (let row = 14; row <= lastRow; row += 1) {
