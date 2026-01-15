@@ -174,9 +174,19 @@ export default function BidResultPage() {
       notify({ type: 'info', message: '협정파일 시트를 선택하세요.' });
       return;
     }
+    if (!window.electronAPI?.bidResult?.applyAgreement) {
+      notify({ type: 'error', message: '협정파일 실행 기능을 사용할 수 없습니다.' });
+      return;
+    }
     setIsAgreementProcessing(true);
     try {
-      notify({ type: 'info', message: `협정파일 처리는 준비 중입니다. (템플릿: ${templatePath})` });
+      const response = await window.electronAPI.bidResult.applyAgreement({
+        templatePath,
+        agreementPath: agreementFile.path,
+        sheetName: selectedAgreementSheet,
+      });
+      if (!response?.success) throw new Error(response?.message || '협정파일 처리에 실패했습니다.');
+      notify({ type: 'success', message: '협정파일 처리 완료: 개찰결과파일에 색상이 반영되었습니다.' });
     } finally {
       setIsAgreementProcessing(false);
     }

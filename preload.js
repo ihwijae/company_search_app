@@ -73,6 +73,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     readOffsets: (payload) => ipcRenderer.invoke('excel-helper:read-offsets', payload),
     formatUploaded: (payload) => ipcRenderer.invoke('excel-helper:format-uploaded', payload),
   },
+  bidResult: {
+    applyAgreement: (payload) => ipcRenderer.invoke('bid-result:apply-agreement', payload),
+  },
 
   records: {
     listProjects: (filters) => ipcRenderer.invoke('records:list-projects', filters),

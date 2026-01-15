@@ -38,17 +38,6 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
       ),
     },
     {
-      key: 'bid-result',
-      label: '개찰결과',
-      icon: (
-        <img
-          src={exchangeIcon}
-          alt="개찰결과"
-          style={{ width: 22, height: 22, objectFit: 'contain' }}
-        />
-      ),
-    },
-    {
       key: 'agreements-sms',
       label: '협정 문자',
       icon: (
