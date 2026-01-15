@@ -233,11 +233,11 @@ const removeConditionalFormatting = (worksheet) => {
   console.log('[bid-result] conditional formats total:', list.length, 'removed:', list.length - filtered.length);
 };
 
-const findLastDataRow = (worksheet) => {
+const findLastDataRow = (worksheet, columnIndex = 2) => {
   const maxRow = Math.max(worksheet.rowCount, 14);
   let lastRow = 0;
   for (let row = 14; row <= maxRow; row += 1) {
-    const text = getCellText(worksheet.getCell(row, 2)).trim();
+    const text = getCellText(worksheet.getCell(row, columnIndex)).trim();
     if (text) lastRow = row;
   }
   return lastRow || 13;
@@ -270,7 +270,7 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
     }
   });
 
-  const lastRow = findLastDataRow(templateSheet);
+  const lastRow = findLastDataRow(templateSheet, 3);
   let matchedCount = 0;
   let templateValidCount = 0;
   let matchLogCount = 0;
