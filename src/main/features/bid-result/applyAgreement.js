@@ -1,4 +1,5 @@
 const ExcelJS = require('exceljs');
+const AdmZip = require('adm-zip');
 const { sanitizeXlsx } = require('../../../../utils/sanitizeXlsx');
 
 const SPECIAL_FILL = {
@@ -36,6 +37,67 @@ const getCellText = (cell) => {
 };
 
 const normalizeBizNumber = (value) => String(value || '').replace(/[^0-9]/g, '');
+
+const readXml = (zip, name) => {
+  const entry = zip.getEntry(name);
+  if (!entry) return '';
+  return entry.getData().toString('utf8');
+};
+
+const writeXml = (zip, name, content) => {
+  zip.deleteFile(name);
+  zip.addFile(name, Buffer.from(content, 'utf8'));
+};
+
+const buildStyleIds = (stylesXml, baseStyleId) => {
+  const xfMatches = stylesXml.match(/<cellXfs[^>]*>[\s\S]*?<\/cellXfs>/);
+  if (!xfMatches) throw new Error('스타일 정보를 찾을 수 없습니다.');
+  const cellXfsBlock = xfMatches[0];
+  const xfList = cellXfsBlock.match(/<xf[^>]*\/>/g) || [];
+  const baseXf = xfList[baseStyleId];
+  if (!baseXf) throw new Error('기본 스타일을 찾을 수 없습니다.');
+
+  const fillsMatch = stylesXml.match(/<fills[^>]*>[\s\S]*?<\/fills>/);
+  if (!fillsMatch) throw new Error('fill 정보를 찾을 수 없습니다.');
+  const fillsBlock = fillsMatch[0];
+  const fillList = fillsBlock.match(/<fill>[\s\S]*?<\/fill>/g) || [];
+  const greenFillId = fillList.length;
+  const greenFill = '<fill><patternFill patternType="solid"><fgColor rgb="FF00B050"/></patternFill></fill>';
+  const nextFills = fillsBlock.replace(/<\/fills>/, `${greenFill}</fills>`)
+    .replace(/count="(\d+)"/, `count="${fillList.length + 1}"`);
+
+  const clearXf = baseXf.replace(/fillId="\\d+"/, 'fillId="0"');
+  const greenXf = baseXf.replace(/fillId="\\d+"/, `fillId="${greenFillId}"`);
+  const clearStyleId = xfList.length;
+  const greenStyleId = xfList.length + 1;
+  const nextCellXfs = cellXfsBlock
+    .replace(/<\/cellXfs>/, `${clearXf}${greenXf}</cellXfs>`)
+    .replace(/count="(\d+)"/, `count="${xfList.length + 2}"`);
+
+  let nextStyles = stylesXml.replace(cellXfsBlock, nextCellXfs);
+  nextStyles = nextStyles.replace(fillsBlock, nextFills);
+
+  return {
+    stylesXml: nextStyles,
+    clearStyleId,
+    greenStyleId,
+  };
+};
+
+const updateSheetStyles = (sheetXml, { baseStyleId, clearStyleId, greenStyleId, lastRow, specialRows, matchedRows }) => {
+  return sheetXml.replace(/<c[^>]*r="B(\\d+)"[^>]*>/g, (match, rowStr) => {
+    const row = Number(rowStr);
+    if (Number.isNaN(row) || row < 14 || row > lastRow) return match;
+    let targetStyle = clearStyleId;
+    if (matchedRows.has(row)) {
+      targetStyle = specialRows.has(row) ? greenStyleId : baseStyleId;
+    }
+    if (match.includes(' s="')) {
+      return match.replace(/ s="\\d+"/, ` s="${targetStyle}"`);
+    }
+    return match.replace('<c ', `<c s="${targetStyle}" `);
+  });
+};
 
 const columnToNumber = (letters = '') => {
   let num = 0;
@@ -157,10 +219,6 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   if (!templateSheet) throw new Error('개찰결과 파일 시트를 찾을 수 없습니다.');
 
   removeConditionalFormatting(templateSheet);
-  const columnB = templateSheet.getColumn(2);
-  if (columnB?.style) {
-    columnB.style = { ...columnB.style, fill: CLEAR_FILL };
-  }
 
   const entryMap = new Map();
   entries.forEach((entry) => {
@@ -179,21 +237,17 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   let templateValidCount = 0;
   let matchLogCount = 0;
   console.log('[bid-result] entries size:', entries.length, 'normalized:', entryMap.size);
-  for (let row = 14; row <= lastRow; row += 1) {
-    const rowObj = templateSheet.getRow(row);
-    if (rowObj?.style) {
-      rowObj.style = { ...rowObj.style, fill: CLEAR_FILL };
-    }
-    templateSheet.getCell(row, 2).fill = CLEAR_FILL;
-  }
+
+  const matchedRows = new Set();
+  const specialRows = new Set();
   for (let row = 14; row <= lastRow; row += 1) {
     const rawBiz = getCellText(templateSheet.getCell(row, 3));
     const normalized = normalizeBizNumber(rawBiz);
     if (!normalized || normalized.length !== 10) continue;
     templateValidCount += 1;
     if (!entryMap.has(normalized)) continue;
-    const targetCell = templateSheet.getCell(row, 2); // B
-    targetCell.fill = entryMap.get(normalized) ? SPECIAL_FILL : DEFAULT_FILL;
+    matchedRows.add(row);
+    if (entryMap.get(normalized)) specialRows.add(row);
     matchedCount += 1;
     if (matchLogCount < 5) {
       console.log('[bid-result] match', { row, biz: normalized, special: entryMap.get(normalized) });
@@ -201,8 +255,26 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
     }
   }
   console.log('[bid-result] template valid:', templateValidCount, 'matched:', matchedCount);
-
-  await templateWorkbook.xlsx.writeFile(templatePath);
+  const sheetId = templateSheet.id || 1;
+  const sheetPath = `xl/worksheets/sheet${sheetId}.xml`;
+  const zip = new AdmZip(templatePath);
+  const sheetXml = readXml(zip, sheetPath);
+  if (!sheetXml) throw new Error('시트 XML을 찾을 수 없습니다.');
+  const baseMatch = sheetXml.match(/<c[^>]*r="B14"[^>]*s="(\\d+)"[^>]*>/);
+  const baseStyleId = baseMatch ? Number(baseMatch[1]) : 0;
+  const stylesXml = readXml(zip, 'xl/styles.xml');
+  const { stylesXml: nextStyles, clearStyleId, greenStyleId } = buildStyleIds(stylesXml, baseStyleId);
+  const nextSheetXml = updateSheetStyles(sheetXml, {
+    baseStyleId,
+    clearStyleId,
+    greenStyleId,
+    lastRow,
+    specialRows,
+    matchedRows,
+  });
+  writeXml(zip, 'xl/styles.xml', nextStyles);
+  writeXml(zip, sheetPath, nextSheetXml);
+  zip.writeZip(templatePath);
   return { path: templatePath, matchedCount, scannedCount: entryMap.size };
 };
 
