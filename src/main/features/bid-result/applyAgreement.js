@@ -46,18 +46,6 @@ const findLastDataRow = (worksheet) => {
   return lastRow || 13;
 };
 
-const buildTemplateBizMap = (worksheet) => {
-  const map = new Map();
-  const lastRow = findLastDataRow(worksheet);
-  for (let row = 14; row <= lastRow; row += 1) {
-    const raw = getCellText(worksheet.getCell(row, 3));
-    const normalized = normalizeBizNumber(raw);
-    if (!normalized) continue;
-    if (!map.has(normalized)) map.set(normalized, row);
-  }
-  return map;
-};
-
 const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   if (!templatePath) throw new Error('파일 경로가 필요합니다.');
   if (!Array.isArray(entries) || entries.length === 0) {
@@ -71,22 +59,32 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   const templateSheet = templateWorkbook.worksheets[0];
   if (!templateSheet) throw new Error('개찰결과 파일 시트를 찾을 수 없습니다.');
 
-  const templateMap = buildTemplateBizMap(templateSheet);
-  let matchedCount = 0;
-  const scannedCount = entries.length;
-
+  const entryMap = new Map();
   entries.forEach((entry) => {
     const normalized = normalizeBizNumber(entry?.bizNo);
     if (!normalized) return;
-    const targetRow = templateMap.get(normalized);
-    if (!targetRow) return;
-    const targetCell = templateSheet.getCell(targetRow, 2); // B
-    targetCell.fill = entry?.special ? SPECIAL_FILL : DEFAULT_FILL;
-    matchedCount += 1;
+    const existing = entryMap.get(normalized);
+    if (existing) {
+      entryMap.set(normalized, existing || entry?.special);
+    } else {
+      entryMap.set(normalized, Boolean(entry?.special));
+    }
   });
 
+  const lastRow = findLastDataRow(templateSheet);
+  let matchedCount = 0;
+  for (let row = 14; row <= lastRow; row += 1) {
+    const rawBiz = getCellText(templateSheet.getCell(row, 3));
+    const normalized = normalizeBizNumber(rawBiz);
+    if (!normalized) continue;
+    if (!entryMap.has(normalized)) continue;
+    const targetCell = templateSheet.getCell(row, 2); // B
+    targetCell.fill = entryMap.get(normalized) ? SPECIAL_FILL : DEFAULT_FILL;
+    matchedCount += 1;
+  }
+
   await templateWorkbook.xlsx.writeFile(templatePath);
-  return { path: templatePath, matchedCount, scannedCount };
+  return { path: templatePath, matchedCount, scannedCount: entryMap.size };
 };
 
 module.exports = { applyAgreementToTemplate };

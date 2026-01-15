@@ -3,6 +3,7 @@ import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
+import { extractManagerNames } from '../../../../utils/companyIndicators.js';
 import { BASE_ROUTES } from '../../../../shared/navigation.js';
 import * as XLSX from 'xlsx';
 
@@ -11,9 +12,16 @@ const FILE_TYPE_OPTIONS = [
   { value: 'tongsin', label: '통신' },
   { value: 'sobang', label: '소방' },
 ];
+const FILE_TYPE_LABELS = {
+  eung: '전기',
+  tongsin: '통신',
+  sobang: '소방',
+};
 
 const BIZ_FIELDS = ['사업자번호', 'bizNo', '사업자 번호'];
 const NAME_FIELDS = ['업체명', '회사명', 'name', '검색된 회사'];
+const REPRESENTATIVE_FIELDS = ['대표자', '대표자명'];
+const REGION_FIELDS = ['대표지역', '지역'];
 const SPECIAL_NAMES = ['조정', '서권형', '구본진'];
 
 const normalizeName = (value) => {
@@ -34,6 +42,17 @@ const pickFirstValue = (obj, fields) => {
     if (obj[key]) return obj[key];
   }
   return '';
+};
+
+const buildCompanyOptionKey = (company) => {
+  if (!company || typeof company !== 'object') return '';
+  const typeToken = String(company?._file_type || '').trim().toLowerCase();
+  const biz = normalizeBizNumber(pickFirstValue(company, BIZ_FIELDS));
+  if (biz) return typeToken ? `${typeToken}|biz:${biz}` : `biz:${biz}`;
+  const name = String(pickFirstValue(company, NAME_FIELDS) || '').trim();
+  if (name) return typeToken ? `${typeToken}|name:${name}` : `name:${name}`;
+  const fallback = String(company?.id || company?.rowIndex || company?.row || '');
+  return fallback ? `${typeToken}|row:${fallback}` : typeToken || Math.random().toString(36).slice(2);
 };
 
 const COMMON_SURNAMES = new Set([
@@ -144,6 +163,10 @@ export default function BidResultPage() {
   const [agreementWorkbook, setAgreementWorkbook] = React.useState(null);
   const [agreementSheetNames, setAgreementSheetNames] = React.useState([]);
   const [selectedAgreementSheet, setSelectedAgreementSheet] = React.useState('');
+  const [companyConflictSelections, setCompanyConflictSelections] = React.useState({});
+  const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
+  const [pendingAgreementEntries, setPendingAgreementEntries] = React.useState(null);
+  const [pendingCandidatesMap, setPendingCandidatesMap] = React.useState(null);
 
   const formatFileInputRef = React.useRef(null);
   const templateFileInputRef = React.useRef(null);
@@ -306,11 +329,83 @@ export default function BidResultPage() {
       entries.push({
         rawName,
         cleanedName: cleaned,
+        normalizedName: normalizeName(cleaned),
         special: hasSpecialName(rawName),
       });
     }
     return entries;
   }, [agreementWorkbook, selectedAgreementSheet]);
+
+  const buildBizEntries = React.useCallback((entries, candidatesMap, selections) => {
+    const bizEntries = [];
+    entries.forEach((entry) => {
+      const normalizedName = entry.normalizedName;
+      if (!normalizedName) return;
+      const candidates = candidatesMap.get(normalizedName) || [];
+      if (!candidates.length) return;
+      let picked = null;
+      if (candidates.length === 1) {
+        picked = candidates[0];
+      } else {
+        const savedKey = selections?.[normalizedName];
+        if (savedKey) {
+          picked = candidates.find((candidate) => buildCompanyOptionKey(candidate) === savedKey) || null;
+        }
+        if (!picked) {
+          const exact = candidates.find((candidate) => {
+            const name = pickFirstValue(candidate, NAME_FIELDS);
+            return normalizeName(name) === normalizedName;
+          });
+          picked = exact || candidates[0];
+        }
+      }
+      const bizNo = pickFirstValue(picked, BIZ_FIELDS);
+      const normalizedBiz = normalizeBizNumber(bizNo);
+      if (!normalizedBiz) return;
+      bizEntries.push({ bizNo: normalizedBiz, special: entry.special });
+    });
+    return bizEntries;
+  }, []);
+
+  const handleCompanyConflictPick = (normalizedName, option) => {
+    const key = buildCompanyOptionKey(option);
+    setCompanyConflictSelections((prev) => ({ ...prev, [normalizedName]: key }));
+  };
+
+  const handleCompanyConflictCancel = () => {
+    setCompanyConflictModal({ open: false, entries: [], isResolving: false });
+    setPendingAgreementEntries(null);
+    setPendingCandidatesMap(null);
+  };
+
+  const handleCompanyConflictConfirm = async () => {
+    if (!pendingAgreementEntries || !pendingCandidatesMap) {
+      handleCompanyConflictCancel();
+      return;
+    }
+    setCompanyConflictModal((prev) => ({ ...prev, isResolving: true }));
+    try {
+      const bizEntries = buildBizEntries(pendingAgreementEntries, pendingCandidatesMap, companyConflictSelections);
+      if (!bizEntries.length) throw new Error('조회된 사업자번호가 없습니다.');
+      const response = await window.electronAPI.bidResult.applyAgreement({
+        templatePath,
+        entries: bizEntries,
+      });
+      if (!response?.success) throw new Error(response?.message || '협정파일 처리에 실패했습니다.');
+      const matched = Number.isFinite(response?.matchedCount) ? response.matchedCount : null;
+      const scanned = Number.isFinite(response?.scannedCount) ? response.scannedCount : null;
+      const summary = matched !== null && scanned !== null
+        ? ` (매칭 ${matched}/${scanned})`
+        : '';
+      notify({ type: 'success', message: `협정파일 처리 완료: 개찰결과파일에 색상이 반영되었습니다.${summary}` });
+      setCompanyConflictModal({ open: false, entries: [], isResolving: false });
+      setPendingAgreementEntries(null);
+      setPendingCandidatesMap(null);
+    } catch (err) {
+      notify({ type: 'error', message: err?.message || '협정파일 처리에 실패했습니다.' });
+      setCompanyConflictModal((prev) => ({ ...prev, isResolving: false }));
+    }
+  };
 
   const handleRunAgreementProcess = async () => {
     if (!templatePath) {
@@ -341,25 +436,46 @@ export default function BidResultPage() {
     try {
       const entries = extractAgreementEntries();
       if (!entries.length) throw new Error('협정파일에서 업체명을 찾지 못했습니다.');
-
-      const bizEntries = [];
+      const candidatesMap = new Map();
       for (const entry of entries) {
+        if (!entry.normalizedName) continue;
+        if (candidatesMap.has(entry.normalizedName)) continue;
         const response = await window.electronAPI.searchCompanies({ name: entry.cleanedName }, fileType);
-        if (!response?.success) continue;
+        if (!response?.success) {
+          candidatesMap.set(entry.normalizedName, []);
+          continue;
+        }
         const data = Array.isArray(response.data) ? response.data : [];
-        if (!data.length) continue;
-        const cleanedNormalized = normalizeName(entry.cleanedName);
-        const exactMatch = data.find((company) => {
-          const name = pickFirstValue(company, NAME_FIELDS);
-          return normalizeName(name) === cleanedNormalized;
-        });
-        const picked = exactMatch || data[0];
-        const bizNo = pickFirstValue(picked, BIZ_FIELDS);
-        const normalizedBiz = normalizeBizNumber(bizNo);
-        if (!normalizedBiz) continue;
-        bizEntries.push({ bizNo: normalizedBiz, special: entry.special });
+        candidatesMap.set(entry.normalizedName, data);
       }
 
+      const conflictEntries = [];
+      entries.forEach((entry) => {
+        const normalized = entry.normalizedName;
+        if (!normalized) return;
+        const candidates = candidatesMap.get(normalized) || [];
+        if (candidates.length <= 1) return;
+        const savedKey = companyConflictSelections?.[normalized];
+        const hasValidSelection = savedKey
+          ? candidates.some((candidate) => buildCompanyOptionKey(candidate) === savedKey)
+          : false;
+        if (hasValidSelection) return;
+        conflictEntries.push({
+          normalizedName: normalized,
+          displayName: entry.cleanedName || entry.rawName || normalized,
+          options: candidates,
+        });
+      });
+
+      if (conflictEntries.length > 0) {
+        setPendingAgreementEntries(entries);
+        setPendingCandidatesMap(candidatesMap);
+        setCompanyConflictModal({ open: true, entries: conflictEntries, isResolving: false });
+        setIsAgreementProcessing(false);
+        return;
+      }
+
+      const bizEntries = buildBizEntries(entries, candidatesMap, companyConflictSelections);
       if (!bizEntries.length) throw new Error('조회된 사업자번호가 없습니다.');
 
       const response = await window.electronAPI.bidResult.applyAgreement({
@@ -642,6 +758,69 @@ export default function BidResultPage() {
           </div>
         </div>
       </div>
+      {companyConflictModal.open && (
+        <div className="excel-helper-modal-overlay" role="presentation">
+          <div className="excel-helper-modal" role="dialog" aria-modal="true">
+            <header className="excel-helper-modal__header">
+              <h3>중복된 업체 선택</h3>
+              <p>동일한 이름의 업체가 여러 건 조회되었습니다. 각 업체에 맞는 자료를 선택해 주세요.</p>
+            </header>
+            <div className="excel-helper-modal__body">
+              {(companyConflictModal.entries || []).map((entry) => (
+                <div key={entry.normalizedName} className="excel-helper-modal__conflict">
+                  <div className="excel-helper-modal__conflict-title">{entry.displayName}</div>
+                  <div className="excel-helper-modal__options">
+                    {entry.options.map((option) => {
+                      const optionKey = buildCompanyOptionKey(option);
+                      const selectedKey = companyConflictSelections?.[entry.normalizedName];
+                      const isActive = selectedKey === optionKey;
+                      const bizNo = pickFirstValue(option, BIZ_FIELDS) || '-';
+                      const representative = pickFirstValue(option, REPRESENTATIVE_FIELDS) || '-';
+                      const region = pickFirstValue(option, REGION_FIELDS) || '-';
+                      const typeKey = String(option?._file_type || '').toLowerCase();
+                      const typeLabel = FILE_TYPE_LABELS[typeKey] || '';
+                      const managers = extractManagerNames(option);
+                      return (
+                        <button
+                          key={optionKey}
+                          type="button"
+                          className={isActive ? 'excel-helper-modal__option active' : 'excel-helper-modal__option'}
+                          onClick={() => handleCompanyConflictPick(entry.normalizedName, option)}
+                        >
+                          <div className="excel-helper-modal__option-name">
+                            {pickFirstValue(option, NAME_FIELDS) || entry.displayName}
+                            {typeLabel && <span className={`file-type-badge-small file-type-${typeKey}`}>{typeLabel}</span>}
+                          </div>
+                          <div className="excel-helper-modal__option-meta">사업자번호 {bizNo}</div>
+                          <div className="excel-helper-modal__option-meta">대표자 {representative} · 지역 {region}</div>
+                          {managers.length > 0 && (
+                            <div className="excel-helper-modal__option-managers">
+                              {managers.map((manager) => (
+                                <span key={`${optionKey}-${manager}`} className="badge-person">{manager}</span>
+                              ))}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <footer className="excel-helper-modal__footer">
+              <button type="button" className="btn-soft" onClick={handleCompanyConflictCancel} disabled={companyConflictModal.isResolving}>취소</button>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleCompanyConflictConfirm}
+                disabled={companyConflictModal.isResolving}
+              >
+                {companyConflictModal.isResolving ? '처리 중...' : '선택 완료'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
