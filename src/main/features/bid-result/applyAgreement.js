@@ -68,11 +68,17 @@ const resolveSheetPath = (zip, sheetName) => {
   return target.startsWith('xl/') ? target : `xl/${target}`;
 };
 
+const fallbackSheetPath = (zip) => {
+  const entries = zip.getEntries().map((entry) => entry.entryName);
+  const sheet = entries.find((name) => /^xl\\/worksheets\\/sheet\\d+\\.xml$/i.test(name));
+  return sheet || '';
+};
+
 const buildStyleIds = (stylesXml, baseStyleId) => {
   const xfMatches = stylesXml.match(/<cellXfs[^>]*>[\s\S]*?<\/cellXfs>/);
   if (!xfMatches) throw new Error('스타일 정보를 찾을 수 없습니다.');
   const cellXfsBlock = xfMatches[0];
-  const xfList = cellXfsBlock.match(/<xf[^>]*\/>/g) || [];
+  const xfList = cellXfsBlock.match(/<xf[^>]*\/>|<xf[^>]*>[\s\S]*?<\/xf>/g) || [];
   const baseXf = xfList[baseStyleId] || xfList[0];
   if (!baseXf) throw new Error('기본 스타일을 찾을 수 없습니다.');
 
@@ -87,9 +93,16 @@ const buildStyleIds = (stylesXml, baseStyleId) => {
   const nextFills = fillsBlock.replace(/<\/fills>/, `${blueFill}${greenFill}</fills>`)
     .replace(/count="(\d+)"/, `count="${fillList.length + 2}"`);
 
-  const clearXf = baseXf.replace(/fillId="\\d+"/, 'fillId="0"');
-  const blueXf = baseXf.replace(/fillId="\\d+"/, `fillId="${blueFillId}"`);
-  const greenXf = baseXf.replace(/fillId="\\d+"/, `fillId="${greenFillId}"`);
+  const setFillId = (xf, fillId) => {
+    let next = xf.replace(/fillId="\\d+"/, `fillId="${fillId}"`);
+    if (!/applyFill=/.test(next)) {
+      next = next.replace('<xf ', '<xf applyFill="1" ');
+    }
+    return next;
+  };
+  const clearXf = setFillId(baseXf, 0);
+  const blueXf = setFillId(baseXf, blueFillId);
+  const greenXf = setFillId(baseXf, greenFillId);
   const clearStyleId = xfList.length;
   const blueStyleId = xfList.length + 1;
   const greenStyleId = xfList.length + 2;
@@ -280,7 +293,10 @@ const applyAgreementToTemplate = async ({ templatePath, entries = [] }) => {
   }
   console.log('[bid-result] template valid:', templateValidCount, 'matched:', matchedCount);
   const zip = new AdmZip(templatePath);
-  const sheetPath = resolveSheetPath(zip, templateSheet.name) || `xl/worksheets/sheet${templateSheet.id || 1}.xml`;
+  const sheetPath = readXml(zip, 'xl/worksheets/sheet1.xml')
+    ? 'xl/worksheets/sheet1.xml'
+    : (resolveSheetPath(zip, templateSheet.name) || fallbackSheetPath(zip));
+  console.log('[bid-result] sheetPath:', sheetPath || '(missing)');
   const sheetXml = readXml(zip, sheetPath);
   if (!sheetXml) throw new Error('시트 XML을 찾을 수 없습니다.');
   const stylesXml = readXml(zip, 'xl/styles.xml');
