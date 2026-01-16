@@ -654,46 +654,48 @@ export default function BidResultPage() {
                   </div>
                 )}
                 {ownerId === 'LH' && (
-                  <>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div>
-                        <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
-                        <input
-                          type="file"
-                          className="input"
-                          accept=".xlsx"
-                          ref={formatFileInputRef}
-                          onChange={handleFormatFileUpload}
-                          onClick={(e) => { e.target.value = ''; }}
-                        />
-                        <button
-                          type="button"
-                          className="btn-soft"
-                          style={{ marginTop: '8px' }}
-                          onClick={handleClearFormatFile}
-                          disabled={!formatFile}
-                        >
-                          업로드 파일 지우기
-                        </button>
-                        {formatFile && (
-                          <p className="section-help" style={{ marginTop: 8 }}>
-                            선택된 파일: {formatFile.name}
-                          </p>
-                        )}
-                      </div>
-                      <div className="excel-helper-actions">
-                        <button
-                          type="button"
-                          className="primary"
-                          onClick={handleFormatWorkbook}
-                          disabled={isFormatting}
-                          style={{ minWidth: '180px' }}
-                        >
-                          {isFormatting ? '변환 중...' : '서식 변환'}
-                        </button>
-                      </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
+                      <input
+                        type="file"
+                        className="input"
+                        accept=".xlsx"
+                        ref={formatFileInputRef}
+                        onChange={handleFormatFileUpload}
+                        onClick={(e) => { e.target.value = ''; }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-soft"
+                        style={{ marginTop: '8px' }}
+                        onClick={handleClearFormatFile}
+                        disabled={!formatFile}
+                      >
+                        업로드 파일 지우기
+                      </button>
+                      {formatFile && (
+                        <p className="section-help" style={{ marginTop: 8 }}>
+                          선택된 파일: {formatFile.name}
+                        </p>
+                      )}
+                    </div>
+                    <div className="excel-helper-actions">
+                      <button
+                        type="button"
+                        className="primary"
+                        onClick={handleFormatWorkbook}
+                        disabled={isFormatting}
+                        style={{ minWidth: '180px' }}
+                      >
+                        {isFormatting ? '변환 중...' : '서식 변환'}
+                      </button>
                     </div>
                   </div>
+                )}
+                </div>
+                {ownerId === 'LH' && (
+                  <>
                   <div style={{ height: '16px' }} />
                   <div style={sectionCardStyle}>
                     <div style={{ marginBottom: '12px' }}>
