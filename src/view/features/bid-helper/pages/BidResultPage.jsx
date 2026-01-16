@@ -149,6 +149,27 @@ const hasSpecialName = (raw) => {
   return SPECIAL_NAMES.some((token) => normalized.includes(token));
 };
 
+const summarizeMissingEntries = (entries, candidatesMap) => {
+  if (!Array.isArray(entries) || !candidatesMap) return null;
+  const seen = new Set();
+  const missingNames = [];
+  entries.forEach((entry) => {
+    const normalized = entry?.normalizedName;
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    const candidates = candidatesMap.get(normalized) || [];
+    if (candidates.length > 0) return;
+    const displayName = entry.cleanedName || entry.rawName || normalized;
+    missingNames.push(displayName);
+  });
+  if (missingNames.length === 0) return null;
+  return {
+    totalCount: entries.length,
+    missingCount: missingNames.length,
+    missingNames,
+  };
+};
+
 export default function BidResultPage() {
   const { notify } = useFeedback();
   const [ownerId, setOwnerId] = React.useState('LH');
@@ -413,7 +434,14 @@ export default function BidResultPage() {
       const summary = matched !== null && scanned !== null
         ? ` (매칭 ${matched}/${scanned})`
         : '';
+      const missingSummary = summarizeMissingEntries(pendingAgreementEntries, pendingCandidatesMap);
       notify({ type: 'success', message: `협정파일 처리 완료: 개찰결과파일에 색상이 반영되었습니다.${summary}` });
+      if (missingSummary) {
+        notify({
+          type: 'info',
+          message: `협정파일 업체 ${missingSummary.totalCount}개 중 ${missingSummary.missingCount}개는 DB에서 찾지 못해 제외되었습니다.\n제외 업체: ${missingSummary.missingNames.join(', ')}`,
+        });
+      }
       setCompanyConflictModal({ open: false, entries: [], isResolving: false });
       setPendingAgreementEntries(null);
       setPendingCandidatesMap(null);
@@ -494,6 +522,7 @@ export default function BidResultPage() {
       const bizEntries = buildBizEntries(entries, candidatesMap, companyConflictSelections);
       console.log('[bid-result] agreement entries:', entries.length);
       console.log('[bid-result] biz entries:', bizEntries.slice(0, 5), 'total:', bizEntries.length);
+      const missingSummary = summarizeMissingEntries(entries, candidatesMap);
       if (!bizEntries.length) throw new Error('조회된 사업자번호가 없습니다.');
 
       const response = await window.electronAPI.bidResult.applyAgreement({
@@ -507,6 +536,12 @@ export default function BidResultPage() {
         ? ` (매칭 ${matched}/${scanned})`
         : '';
       notify({ type: 'success', message: `협정파일 처리 완료: 개찰결과파일에 색상이 반영되었습니다.${summary}` });
+      if (missingSummary) {
+        notify({
+          type: 'info',
+          message: `협정파일 업체 ${missingSummary.totalCount}개 중 ${missingSummary.missingCount}개는 DB에서 찾지 못해 제외되었습니다.\n제외 업체: ${missingSummary.missingNames.join(', ')}`,
+        });
+      }
     } catch (err) {
       notify({ type: 'error', message: err?.message || '협정파일 처리에 실패했습니다.' });
     } finally {
