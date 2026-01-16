@@ -593,8 +593,8 @@ const buildDefaultSheetName = (title = '') => {
 const ensureSheetNameSuffix = (name, fileType) => {
   const base = normalizeSheetNameToken(name);
   if (!base) return base;
-  if (fileType === 'tongsin' && !base.includes('통신')) return `${base}(통신)`;
-  if (fileType === 'sobang' && !base.includes('소방')) return `${base}(소방)`;
+  if (fileType === 'tongsin' && !base.includes('(통신)')) return `${base}(통신)`;
+  if (fileType === 'sobang' && !base.includes('(소방)')) return `${base}(소방)`;
   return base;
 };
 
