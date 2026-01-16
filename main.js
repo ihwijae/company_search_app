@@ -172,6 +172,13 @@ const FILE_TYPE_LABELS = {
 
 const resolveFileTypeLabel = (type) => FILE_TYPE_LABELS[type] || String(type || '');
 
+const resolveExistingPath = (paths = []) => {
+  for (const candidate of paths) {
+    if (candidate && fs.existsSync(candidate)) return candidate;
+  }
+  return '';
+};
+
 const AGREEMENT_TEMPLATE_CONFIGS = {
   'mois-under30': {
     label: '행안부 30억 미만',
@@ -367,7 +374,11 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
   },
   'ex-under50': {
     label: '한국도로공사 50억 미만',
-    path: path.join(__dirname, '템플릿', '한국도로공사 50억미만.xlsx'),
+    path: path.join(__dirname, '템플릿', '한국도로공사50억미만.xlsx'),
+    altPaths: [
+      path.join(__dirname, '템플릿', '한국도로공사 50억미만.xlsx'),
+      path.join(__dirname, '템플릿', '한국도로공사 50억 미만.xlsx'),
+    ],
     sheetName: '양식',
     startRow: 5,
     maxRows: 68,
@@ -2546,7 +2557,8 @@ try {
         throw new Error('지원하지 않는 템플릿입니다.');
       }
       const config = AGREEMENT_TEMPLATE_CONFIGS[templateKey];
-      if (!config.path || !fs.existsSync(config.path)) {
+      const resolvedTemplatePath = resolveExistingPath([config.path, ...(config.altPaths || [])]);
+      if (!resolvedTemplatePath) {
         throw new Error('템플릿 파일을 찾을 수 없습니다.');
       }
 
@@ -2582,7 +2594,7 @@ try {
       }
 
       const result = await exportAgreementExcel({
-        config,
+        config: { ...config, path: resolvedTemplatePath },
         payload,
         outputPath,
         appendToPath: appendTargetPath,
