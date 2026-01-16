@@ -339,7 +339,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     clearColumns: [
       'B', 'C', 'D', 'E', 'F', 'G', 'H',
       'I', 'J', 'K', 'L', 'M',
-      'O', 'P', 'Q', 'R', 'S', 'T',
+      'P', 'Q', 'R', 'S', 'T',
       'W', 'X', 'Y', 'Z', 'AA',
       'AD', 'AE',
       'AV', 'AW',

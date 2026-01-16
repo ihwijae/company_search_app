@@ -1088,6 +1088,7 @@ export default function AgreementBoardWindow({
   groupApprovals: initialGroupApprovals = [],
   groupManagementBonus: initialGroupManagementBonus = [],
   groupQualityScores: initialGroupQualityScores = [],
+  technicianEntriesByTarget: initialTechnicianEntriesByTarget = {},
   dutyRegions = [],
   groupSize = DEFAULT_GROUP_SIZE,
   title = '협정보드',
@@ -1163,6 +1164,7 @@ export default function AgreementBoardWindow({
   const [technicianModalOpen, setTechnicianModalOpen] = React.useState(false);
   const [technicianEntries, setTechnicianEntries] = React.useState([]);
   const technicianEntriesByTargetRef = React.useRef({});
+  const technicianEntriesTargetKeyRef = React.useRef('0:0');
   const [technicianTarget, setTechnicianTarget] = React.useState({ groupIndex: 0, slotIndex: 0 });
   const [bidDatePart, setBidDatePart] = React.useState('');
   const [bidTimePeriod, setBidTimePeriod] = React.useState('AM');
@@ -1405,15 +1407,27 @@ export default function AgreementBoardWindow({
   );
 
   React.useEffect(() => {
+    technicianEntriesByTargetRef.current = (
+      initialTechnicianEntriesByTarget && typeof initialTechnicianEntriesByTarget === 'object'
+        ? { ...initialTechnicianEntriesByTarget }
+        : {}
+    );
+  }, [initialTechnicianEntriesByTarget]);
+
+  React.useEffect(() => {
     if (!technicianModalOpen) return;
+    technicianEntriesTargetKeyRef.current = technicianTargetKey;
     const stored = technicianEntriesByTargetRef.current[technicianTargetKey];
     setTechnicianEntries(Array.isArray(stored) ? stored : []);
   }, [technicianModalOpen, technicianTargetKey]);
 
   React.useEffect(() => {
     if (!technicianModalOpen) return;
-    technicianEntriesByTargetRef.current[technicianTargetKey] = technicianEntries;
-  }, [technicianEntries, technicianModalOpen, technicianTargetKey]);
+    const key = technicianEntriesTargetKeyRef.current || technicianTargetKey;
+    const nextMap = { ...technicianEntriesByTargetRef.current, [key]: technicianEntries };
+    technicianEntriesByTargetRef.current = nextMap;
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ technicianEntriesByTarget: nextMap });
+  }, [technicianEntries, technicianModalOpen, onUpdateBoard, technicianTargetKey]);
 
   const handleMemoSave = React.useCallback(() => {
     const cleaned = sanitizeHtml(memoDraft || '');
@@ -1911,6 +1925,7 @@ export default function AgreementBoardWindow({
     groupApprovals,
     groupManagementBonus,
     groupQualityScores,
+    technicianEntriesByTarget: initialTechnicianEntriesByTarget,
     setGroupAssignments,
     setGroupShares,
     setGroupShareRawInputs,

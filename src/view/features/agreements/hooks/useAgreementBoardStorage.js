@@ -47,6 +47,7 @@ export default function useAgreementBoardStorage({
   groupApprovals,
   groupManagementBonus,
   groupQualityScores,
+  technicianEntriesByTarget,
   setGroupAssignments,
   setGroupShares,
   setGroupShareRawInputs,
@@ -117,6 +118,9 @@ export default function useAgreementBoardStorage({
       groupApprovals: Array.isArray(groupApprovals) ? groupApprovals : [],
       groupManagementBonus: Array.isArray(groupManagementBonus) ? groupManagementBonus : [],
       groupQualityScores: Array.isArray(groupQualityScores) ? groupQualityScores : [],
+      technicianEntriesByTarget: technicianEntriesByTarget && typeof technicianEntriesByTarget === 'object'
+        ? technicianEntriesByTarget
+        : {},
     },
   }), [
     ownerId,
@@ -156,6 +160,7 @@ export default function useAgreementBoardStorage({
     groupApprovals,
     groupManagementBonus,
     groupQualityScores,
+    technicianEntriesByTarget,
     parseNumeric,
   ]);
 
@@ -234,6 +239,9 @@ export default function useAgreementBoardStorage({
       pinned: Array.isArray(snapshot.pinned) ? snapshot.pinned : [],
       excluded: Array.isArray(snapshot.excluded) ? snapshot.excluded : [],
       alwaysInclude: Array.isArray(snapshot.alwaysInclude) ? snapshot.alwaysInclude : [],
+      technicianEntriesByTarget: snapshot.technicianEntriesByTarget && typeof snapshot.technicianEntriesByTarget === 'object'
+        ? snapshot.technicianEntriesByTarget
+        : {},
     };
     if (typeof onUpdateBoard === 'function') onUpdateBoard(next);
     if (typeof markSkipAssignmentSync === 'function') markSkipAssignmentSync();

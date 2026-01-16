@@ -23,6 +23,7 @@ const initialState = {
   groupApprovals: [],
   groupManagementBonus: [],
   groupQualityScores: [],
+  technicianEntriesByTarget: {},
   dutyRegions: [],
   groupSize: DEFAULT_GROUP_SIZE,
   title: '협정보드',
@@ -201,6 +202,9 @@ const buildPersistedBoardState = (state) => ({
   groupApprovals: Array.isArray(state?.groupApprovals) ? state.groupApprovals : [],
   groupManagementBonus: Array.isArray(state?.groupManagementBonus) ? state.groupManagementBonus : [],
   groupQualityScores: Array.isArray(state?.groupQualityScores) ? state.groupQualityScores : [],
+  technicianEntriesByTarget: state?.technicianEntriesByTarget && typeof state.technicianEntriesByTarget === 'object'
+    ? state.technicianEntriesByTarget
+    : {},
   dutyRegions: Array.isArray(state?.dutyRegions) ? state.dutyRegions : [],
   alwaysInclude: Array.isArray(state?.alwaysInclude) ? state.alwaysInclude : [],
 });
@@ -361,6 +365,7 @@ const updateBoard = React.useCallback((payload = {}) => {
           groupApprovals: [],
           groupManagementBonus: [],
           groupQualityScores: [],
+          technicianEntriesByTarget: {},
           alwaysInclude: [],
           fileType: nextFileType,
         };
@@ -535,6 +540,7 @@ const appendCandidates = React.useCallback((entries = []) => {
           groupApprovals={boardState.groupApprovals || []}
           groupManagementBonus={boardState.groupManagementBonus || []}
           groupQualityScores={boardState.groupQualityScores || []}
+          technicianEntriesByTarget={boardState.technicianEntriesByTarget || {}}
           dutyRegions={boardState.dutyRegions || []}
           groupSize={boardState.groupSize || DEFAULT_GROUP_SIZE}
           title={boardState.title || '협정보드'}

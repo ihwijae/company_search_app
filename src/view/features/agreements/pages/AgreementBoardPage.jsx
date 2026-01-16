@@ -91,6 +91,7 @@ export default function AgreementBoardPage() {
             groupApprovals={boardState.groupApprovals || []}
             groupManagementBonus={boardState.groupManagementBonus || []}
             groupQualityScores={boardState.groupQualityScores || []}
+            technicianEntriesByTarget={boardState.technicianEntriesByTarget || {}}
             dutyRegions={boardState.dutyRegions || []}
             groupSize={boardState.groupSize}
             title={boardState.title || '협정보드'}
