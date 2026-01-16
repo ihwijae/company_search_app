@@ -1162,7 +1162,7 @@ export default function AgreementBoardWindow({
   const exportFileInputRef = React.useRef(null);
   const [technicianModalOpen, setTechnicianModalOpen] = React.useState(false);
   const [technicianEntries, setTechnicianEntries] = React.useState([]);
-  const [technicianEntriesByTarget, setTechnicianEntriesByTarget] = React.useState({});
+  const technicianEntriesByTargetRef = React.useRef({});
   const [technicianTarget, setTechnicianTarget] = React.useState({ groupIndex: 0, slotIndex: 0 });
   const [bidDatePart, setBidDatePart] = React.useState('');
   const [bidTimePeriod, setBidTimePeriod] = React.useState('AM');
@@ -1406,16 +1406,13 @@ export default function AgreementBoardWindow({
 
   React.useEffect(() => {
     if (!technicianModalOpen) return;
-    const stored = technicianEntriesByTarget[technicianTargetKey];
+    const stored = technicianEntriesByTargetRef.current[technicianTargetKey];
     setTechnicianEntries(Array.isArray(stored) ? stored : []);
-  }, [technicianModalOpen, technicianEntriesByTarget, technicianTargetKey]);
+  }, [technicianModalOpen, technicianTargetKey]);
 
   React.useEffect(() => {
     if (!technicianModalOpen) return;
-    setTechnicianEntriesByTarget((prev) => {
-      if (prev[technicianTargetKey] === technicianEntries) return prev;
-      return { ...prev, [technicianTargetKey]: technicianEntries };
-    });
+    technicianEntriesByTargetRef.current[technicianTargetKey] = technicianEntries;
   }, [technicianEntries, technicianModalOpen, technicianTargetKey]);
 
   const handleMemoSave = React.useCallback(() => {
