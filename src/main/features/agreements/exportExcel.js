@@ -51,6 +51,33 @@ const cloneCellStyle = (style) => {
   try { return JSON.parse(JSON.stringify(style)); } catch { return style; }
 };
 
+const buildCredibilityFormula = (members, shareColumns, rowIndex) => {
+  if (!Array.isArray(members) || !Array.isArray(shareColumns) || !rowIndex) return null;
+  const parts = [];
+  let result = 0;
+  let hasResult = false;
+  members.forEach((member) => {
+    if (!member || typeof member !== 'object') return;
+    const cred = Number(member.credibilityBonus);
+    if (!Number.isFinite(cred) || cred === 0) return;
+    const slotIndex = member.slotIndex;
+    const shareColumn = shareColumns[slotIndex];
+    if (!shareColumn) return;
+    parts.push(`${cred}*${shareColumn}${rowIndex}`);
+    const sharePercent = Number(member.sharePercent);
+    if (Number.isFinite(sharePercent)) {
+      const ratio = sharePercent >= 1 ? sharePercent / 100 : sharePercent;
+      result += cred * ratio;
+      hasResult = true;
+    }
+  });
+  if (parts.length === 0) return null;
+  return {
+    formula: parts.join('+'),
+    result: hasResult ? result : null,
+  };
+};
+
 const copyWorksheet = (source, target) => {
   target.properties = {
     ...cloneCellStyle(source.properties),
@@ -430,9 +457,17 @@ async function exportAgreementExcel({
 
     if (summaryColumns.credibility && summary?.credibilityScore != null) {
       const credCell = worksheet.getCell(`${summaryColumns.credibility}${rowIndex}`);
-      const credValue = toExcelNumber(summary.credibilityScore);
-      if (credValue != null) {
-        credCell.value = credValue;
+      const credibilityFormula = buildCredibilityFormula(members, slotColumns.share, rowIndex);
+      if (credibilityFormula) {
+        credCell.value = {
+          formula: credibilityFormula.formula,
+          result: credibilityFormula.result,
+        };
+      } else {
+        const credValue = toExcelNumber(summary.credibilityScore);
+        if (credValue != null) {
+          credCell.value = credValue;
+        }
       }
     }
     if (summaryColumns.netCostBonus && summary?.netCostBonusScore != null) {
