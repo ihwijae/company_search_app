@@ -342,16 +342,17 @@ export function AgreementBoardProvider({ children }) {
 
 const updateBoard = React.useCallback((payload = {}) => {
     setBoardState((prev) => {
-      const nextFileType = payload.fileType || prev.fileType;
-      const fileTypeChanged = payload.fileType && payload.fileType !== prev.fileType;
+      const { _skipFileTypeReset, ...nextPayload } = payload || {};
+      const nextFileType = nextPayload.fileType || prev.fileType;
+      const fileTypeChanged = nextPayload.fileType && nextPayload.fileType !== prev.fileType;
       const next = {
         ...prev,
-        ...payload,
-        candidates: Array.isArray(payload.candidates)
-          ? sanitizeCandidatesList(payload.candidates)
-          : (payload.candidates !== undefined ? payload.candidates : prev.candidates),
+        ...nextPayload,
+        candidates: Array.isArray(nextPayload.candidates)
+          ? sanitizeCandidatesList(nextPayload.candidates)
+          : (nextPayload.candidates !== undefined ? nextPayload.candidates : prev.candidates),
       };
-      if (fileTypeChanged) {
+      if (fileTypeChanged && !_skipFileTypeReset) {
         return {
           ...next,
           candidates: [],

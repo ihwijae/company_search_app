@@ -243,7 +243,7 @@ export default function useAgreementBoardStorage({
         ? snapshot.technicianEntriesByTarget
         : {},
     };
-    if (typeof onUpdateBoard === 'function') onUpdateBoard(next);
+    if (typeof onUpdateBoard === 'function') onUpdateBoard({ ...next, _skipFileTypeReset: true });
     if (typeof markSkipAssignmentSync === 'function') markSkipAssignmentSync();
     if (Array.isArray(snapshot.groupAssignments)) setGroupAssignments(snapshot.groupAssignments);
     if (Array.isArray(snapshot.groupShares)) setGroupShares(snapshot.groupShares);
