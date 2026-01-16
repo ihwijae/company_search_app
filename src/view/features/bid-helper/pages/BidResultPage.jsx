@@ -439,6 +439,7 @@ export default function BidResultPage() {
       if (missingSummary) {
         notify({
           type: 'info',
+          duration: 0,
           message: `협정파일 업체 ${missingSummary.totalCount}개 중 ${missingSummary.missingCount}개는 DB에서 찾지 못해 제외되었습니다.\n제외 업체: ${missingSummary.missingNames.join(', ')}`,
         });
       }
@@ -539,6 +540,7 @@ export default function BidResultPage() {
       if (missingSummary) {
         notify({
           type: 'info',
+          duration: 0,
           message: `협정파일 업체 ${missingSummary.totalCount}개 중 ${missingSummary.missingCount}개는 DB에서 찾지 못해 제외되었습니다.\n제외 업체: ${missingSummary.missingNames.join(', ')}`,
         });
       }
