@@ -51,7 +51,7 @@ const cloneCellStyle = (style) => {
   try { return JSON.parse(JSON.stringify(style)); } catch { return style; }
 };
 
-const buildCredibilityFormula = (members, shareColumns, rowIndex) => {
+const buildCredibilityFormula = (members, shareColumns, rowIndex, scaleValue = 1, scaleExpr = '') => {
   if (!Array.isArray(members) || !Array.isArray(shareColumns) || !rowIndex) return null;
   const parts = [];
   let result = 0;
@@ -72,9 +72,13 @@ const buildCredibilityFormula = (members, shareColumns, rowIndex) => {
     }
   });
   if (parts.length === 0) return null;
+  const scale = Number(scaleValue);
+  const scaleText = scaleExpr || (Number.isFinite(scale) && scale !== 1 ? String(scale) : '');
+  const joined = parts.join('+');
+  const formula = scaleText ? `(${joined})*${scaleText}` : joined;
   return {
-    formula: parts.join('+'),
-    result: hasResult ? result : null,
+    formula,
+    result: hasResult ? (Number.isFinite(scale) ? result * scale : null) : null,
   };
 };
 
@@ -228,6 +232,8 @@ async function exportAgreementExcel({
   const qualityRowOffset = Number.isFinite(config.qualityRowOffset) ? Number(config.qualityRowOffset) : 0;
   const approvalColumn = config.approvalColumn || null;
   const managementBonusColumn = config.managementBonusColumn || null;
+  const credibilityScaleValue = config.credibilityScale ?? 1;
+  const credibilityScaleExpr = config.credibilityScaleExpr || '';
 
   const availableRows = config.maxRows
     ? Math.floor((config.maxRows - config.startRow) / rowStep) + 1
@@ -457,7 +463,13 @@ async function exportAgreementExcel({
 
     if (summaryColumns.credibility && summary?.credibilityScore != null) {
       const credCell = worksheet.getCell(`${summaryColumns.credibility}${rowIndex}`);
-      const credibilityFormula = buildCredibilityFormula(members, slotColumns.share, rowIndex);
+      const credibilityFormula = buildCredibilityFormula(
+        members,
+        slotColumns.share,
+        rowIndex,
+        credibilityScaleValue,
+        credibilityScaleExpr
+      );
       if (credibilityFormula) {
         credCell.value = {
           formula: credibilityFormula.formula,

@@ -353,7 +353,11 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       memo: 'AD1',
     },
     approvalColumn: 'B',
-    summaryColumns: {},
+    summaryColumns: {
+      credibility: 'AK',
+    },
+    credibilityScale: 0.5 / 3,
+    credibilityScaleExpr: '0.5/3',
     regionFill: {
       type: 'pattern',
       pattern: 'solid',
@@ -390,7 +394,9 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       memo: 'W2',
     },
     approvalColumn: 'B',
-    summaryColumns: {},
+    summaryColumns: {
+      credibility: 'AD',
+    },
     regionFill: {
       type: 'pattern',
       pattern: 'solid',
