@@ -376,8 +376,11 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     label: '한국도로공사 50억 미만',
     path: path.join(__dirname, '템플릿', '한국도로공사50억미만.xlsx'),
     altPaths: [
+      path.join(process.cwd(), '템플릿', '한국도로공사50억미만.xlsx'),
       path.join(__dirname, '템플릿', '한국도로공사 50억미만.xlsx'),
+      path.join(process.cwd(), '템플릿', '한국도로공사 50억미만.xlsx'),
       path.join(__dirname, '템플릿', '한국도로공사 50억 미만.xlsx'),
+      path.join(process.cwd(), '템플릿', '한국도로공사 50억 미만.xlsx'),
     ],
     sheetName: '양식',
     startRow: 5,
