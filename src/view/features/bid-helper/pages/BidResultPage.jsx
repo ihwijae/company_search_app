@@ -202,6 +202,23 @@ export default function BidResultPage() {
     fontSize: '14px',
     color: '#0f172a',
   }), []);
+  const sectionCardStyle = React.useMemo(() => ({
+    border: '1px solid #e2e8f0',
+    borderRadius: '12px',
+    padding: '18px',
+    background: '#f8fafc',
+    boxShadow: '0 1px 0 rgba(15, 23, 42, 0.04)',
+  }), []);
+  const sectionTitleBadgeStyle = React.useMemo(() => ({
+    display: 'inline-block',
+    padding: '6px 12px',
+    borderRadius: '999px',
+    background: '#0f172a',
+    color: '#f8fafc',
+    fontSize: '14px',
+    fontWeight: 700,
+    letterSpacing: '0.2px',
+  }), []);
 
   const handleSidebarSelect = React.useCallback((key) => {
     if (!key) return;
@@ -600,34 +617,37 @@ export default function BidResultPage() {
             <h1 className="excel-helper-title">개찰결과 도우미</h1>
             <div className="excel-helper-body">
               <section className="excel-helper-section">
-                <h2>개찰결과 엑셀 크기 및 폰트 수정</h2>
-                <p className="section-help">업로드한 엑셀 파일의 서식/수식을 자동으로 정리합니다. (B열 순번 기준으로 마지막 행까지 적용)</p>
-                <div style={{ marginBottom: '16px' }}>
-                  <label className="field-label" style={strongLabelStyle}>발주처</label>
-                  <select
-                    className="input"
-                    value={ownerId}
-                    onChange={(e) => setOwnerId(e.target.value)}
-                  >
-                    <option value="LH">LH</option>
-                    <option value="MOIS">행안부</option>
-                    <option value="PPS">조달청</option>
-                    <option value="EX">한국도로공사</option>
-                    <option value="KRAIL">국가철도공단</option>
-                  </select>
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label className="field-label" style={strongLabelStyle}>업체 분류</label>
-                  <select
-                    className="input"
-                    value={fileType}
-                    onChange={(e) => setFileType(e.target.value)}
-                  >
-                    {FILE_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
+                <div style={sectionCardStyle}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <span style={sectionTitleBadgeStyle}>개찰결과 엑셀 크기 및 폰트 수정</span>
+                  </div>
+                  <p className="section-help">업로드한 엑셀 파일의 서식/수식을 자동으로 정리합니다. (B열 순번 기준으로 마지막 행까지 적용)</p>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label className="field-label" style={strongLabelStyle}>발주처</label>
+                    <select
+                      className="input"
+                      value={ownerId}
+                      onChange={(e) => setOwnerId(e.target.value)}
+                    >
+                      <option value="LH">LH</option>
+                      <option value="MOIS">행안부</option>
+                      <option value="PPS">조달청</option>
+                      <option value="EX">한국도로공사</option>
+                      <option value="KRAIL">국가철도공단</option>
+                    </select>
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label className="field-label" style={strongLabelStyle}>업체 분류</label>
+                    <select
+                      className="input"
+                      value={fileType}
+                      onChange={(e) => setFileType(e.target.value)}
+                    >
+                      {FILE_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 {ownerId !== 'LH' && (
                   <div className="excel-inline-alert">
                     선택한 발주처 양식은 아직 준비 중입니다. 현재는 LH만 지원합니다.
@@ -635,202 +655,211 @@ export default function BidResultPage() {
                 )}
                 {ownerId === 'LH' && (
                   <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div>
-                    <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
-                    <input
-                      type="file"
-                      className="input"
-                      accept=".xlsx"
-                      ref={formatFileInputRef}
-                      onChange={handleFormatFileUpload}
-                      onClick={(e) => { e.target.value = ''; }}
-                    />
-                    <button
-                      type="button"
-                      className="btn-soft"
-                      style={{ marginTop: '8px' }}
-                      onClick={handleClearFormatFile}
-                      disabled={!formatFile}
-                    >
-                      업로드 파일 지우기
-                    </button>
-                    {formatFile && (
-                      <p className="section-help" style={{ marginTop: 8 }}>
-                        선택된 파일: {formatFile.name}
-                      </p>
-                    )}
-                  </div>
-                  <div className="excel-helper-actions">
-                    <button
-                      type="button"
-                      className="primary"
-                      onClick={handleFormatWorkbook}
-                      disabled={isFormatting}
-                      style={{ minWidth: '180px' }}
-                    >
-                      {isFormatting ? '변환 중...' : '서식 변환'}
-                    </button>
-                  </div>
-                </div>
-                <div className="section-divider" style={{ margin: '18px 0' }} />
-                <h3 className="section-title" style={{ fontSize: '18px', fontWeight: 700 }}>개찰결과 엑셀에 협정 업체 체크</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '18px' }}>
-                  <div>
-                    <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
-                    <input
-                      type="file"
-                      accept=".xlsx"
-                      ref={templateFileInputRef}
-                      onChange={handleTemplateFileUpload}
-                      onClick={(e) => { e.target.value = ''; }}
-                      style={{ display: 'none' }}
-                    />
-                    <div className="input" style={{ fontWeight: 700 }}>
-                      {templateFileName || '템플릿을 먼저 생성하세요.'}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div>
+                        <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
+                        <input
+                          type="file"
+                          className="input"
+                          accept=".xlsx"
+                          ref={formatFileInputRef}
+                          onChange={handleFormatFileUpload}
+                          onClick={(e) => { e.target.value = ''; }}
+                        />
+                        <button
+                          type="button"
+                          className="btn-soft"
+                          style={{ marginTop: '8px' }}
+                          onClick={handleClearFormatFile}
+                          disabled={!formatFile}
+                        >
+                          업로드 파일 지우기
+                        </button>
+                        {formatFile && (
+                          <p className="section-help" style={{ marginTop: 8 }}>
+                            선택된 파일: {formatFile.name}
+                          </p>
+                        )}
+                      </div>
+                      <div className="excel-helper-actions">
+                        <button
+                          type="button"
+                          className="primary"
+                          onClick={handleFormatWorkbook}
+                          disabled={isFormatting}
+                          style={{ minWidth: '180px' }}
+                        >
+                          {isFormatting ? '변환 중...' : '서식 변환'}
+                        </button>
+                      </div>
                     </div>
-                    {templatePath && (
-                      <p className="section-help" style={{ marginTop: 6, fontWeight: 700 }}>
-                        {templatePath}
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      className="btn-soft"
-                      style={{ marginTop: '8px' }}
-                      onClick={handlePickTemplateFile}
-                    >
-                      개찰결과파일 변경
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-soft"
-                      style={{ marginTop: '8px' }}
-                      onClick={handleClearTemplateFile}
-                      disabled={!templatePath}
-                    >
-                      업로드 파일 지우기
-                    </button>
                   </div>
-                  <div>
-                    <label className="field-label" style={strongLabelStyle}>협정파일 업로드</label>
-                    <input
-                      type="file"
-                      className="input"
-                      accept=".xlsx"
-                      ref={agreementFileInputRef}
-                      onChange={handleAgreementFileUpload}
-                      onClick={(e) => { e.target.value = ''; }}
-                    />
-                    <button
-                      type="button"
-                      className="btn-soft"
-                      style={{ marginTop: '8px' }}
-                      onClick={handleClearAgreementFile}
-                      disabled={!agreementFile}
-                    >
-                      업로드 파일 지우기
-                    </button>
-                    {agreementFile && (
-                      <p className="section-help" style={{ marginTop: 8 }}>
-                        선택된 파일: {agreementFile.name}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="field-label" style={strongLabelStyle}>협정파일 시트 선택</label>
-                    <select
-                      className="input"
-                      value={selectedAgreementSheet}
-                      onChange={handleAgreementSheetSelect}
-                      disabled={agreementSheetNames.length === 0}
-                    >
-                      <option value="">시트를 선택하세요</option>
-                      {agreementSheetNames.map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="excel-helper-actions">
-                    <button
-                      type="button"
-                      className="primary"
-                      onClick={handleRunAgreementProcess}
-                      disabled={isAgreementProcessing}
-                      style={{ minWidth: '180px' }}
-                    >
-                      {isAgreementProcessing ? '처리 중...' : '협정 실행'}
-                    </button>
-                  </div>
-                </div>
-                <div className="section-divider" style={{ margin: '18px 0' }} />
-                <h3 className="section-title" style={{ fontSize: '18px', fontWeight: 700 }}>개찰결과 엑셀에 무효표, 실제낙찰사 표시</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '18px' }}>
-                  <div>
-                    <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
-                    <div className="input" style={{ fontWeight: 700 }}>
-                      {templateFileName || '템플릿을 먼저 생성하세요.'}
+                  <div style={{ height: '16px' }} />
+                  <div style={sectionCardStyle}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <span style={sectionTitleBadgeStyle}>개찰결과 엑셀에 협정 업체 체크</span>
                     </div>
-                    {templatePath && (
-                      <p className="section-help" style={{ marginTop: 6, fontWeight: 700 }}>
-                        {templatePath}
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      className="btn-soft"
-                      style={{ marginTop: '8px' }}
-                      onClick={handlePickTemplateFile}
-                    >
-                      개찰결과파일 변경
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-soft"
-                      style={{ marginTop: '8px' }}
-                      onClick={handleClearTemplateFile}
-                      disabled={!templatePath}
-                    >
-                      업로드 파일 지우기
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div>
+                        <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
+                        <input
+                          type="file"
+                          accept=".xlsx"
+                          ref={templateFileInputRef}
+                          onChange={handleTemplateFileUpload}
+                          onClick={(e) => { e.target.value = ''; }}
+                          style={{ display: 'none' }}
+                        />
+                        <div className="input" style={{ fontWeight: 700 }}>
+                          {templateFileName || '템플릿을 먼저 생성하세요.'}
+                        </div>
+                        {templatePath && (
+                          <p className="section-help" style={{ marginTop: 6, fontWeight: 700 }}>
+                            {templatePath}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-soft"
+                          style={{ marginTop: '8px' }}
+                          onClick={handlePickTemplateFile}
+                        >
+                          개찰결과파일 변경
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-soft"
+                          style={{ marginTop: '8px' }}
+                          onClick={handleClearTemplateFile}
+                          disabled={!templatePath}
+                        >
+                          업로드 파일 지우기
+                        </button>
+                      </div>
+                      <div>
+                        <label className="field-label" style={strongLabelStyle}>협정파일 업로드</label>
+                        <input
+                          type="file"
+                          className="input"
+                          accept=".xlsx"
+                          ref={agreementFileInputRef}
+                          onChange={handleAgreementFileUpload}
+                          onClick={(e) => { e.target.value = ''; }}
+                        />
+                        <button
+                          type="button"
+                          className="btn-soft"
+                          style={{ marginTop: '8px' }}
+                          onClick={handleClearAgreementFile}
+                          disabled={!agreementFile}
+                        >
+                          업로드 파일 지우기
+                        </button>
+                        {agreementFile && (
+                          <p className="section-help" style={{ marginTop: 8 }}>
+                            선택된 파일: {agreementFile.name}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="field-label" style={strongLabelStyle}>협정파일 시트 선택</label>
+                        <select
+                          className="input"
+                          value={selectedAgreementSheet}
+                          onChange={handleAgreementSheetSelect}
+                          disabled={agreementSheetNames.length === 0}
+                        >
+                          <option value="">시트를 선택하세요</option>
+                          {agreementSheetNames.map((name) => (
+                            <option key={name} value={name}>{name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="excel-helper-actions">
+                        <button
+                          type="button"
+                          className="primary"
+                          onClick={handleRunAgreementProcess}
+                          disabled={isAgreementProcessing}
+                          style={{ minWidth: '180px' }}
+                        >
+                          {isAgreementProcessing ? '처리 중...' : '협정 실행'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="field-label" style={strongLabelStyle}>발주처결과 업로드</label>
-                    <input
-                      type="file"
-                      className="input"
-                      accept=".xlsx,.xls"
-                      ref={orderingFileInputRef}
-                      onChange={handleOrderingResultUpload}
-                      onClick={(e) => { e.target.value = ''; }}
-                    />
-                    <button
-                      type="button"
-                      className="btn-soft"
-                      style={{ marginTop: '8px' }}
-                      onClick={handleClearOrderingFile}
-                      disabled={!orderingResultFile}
-                    >
-                      업로드 파일 지우기
-                    </button>
-                    {orderingResultFile && (
-                      <p className="section-help" style={{ marginTop: 8 }}>
-                        선택된 파일: {orderingResultFile.name}
-                      </p>
-                    )}
+                  <div style={{ height: '16px' }} />
+                  <div style={sectionCardStyle}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <span style={sectionTitleBadgeStyle}>개찰결과 엑셀에 무효표, 실제낙찰사 표시</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div>
+                        <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
+                        <div className="input" style={{ fontWeight: 700 }}>
+                          {templateFileName || '템플릿을 먼저 생성하세요.'}
+                        </div>
+                        {templatePath && (
+                          <p className="section-help" style={{ marginTop: 6, fontWeight: 700 }}>
+                            {templatePath}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-soft"
+                          style={{ marginTop: '8px' }}
+                          onClick={handlePickTemplateFile}
+                        >
+                          개찰결과파일 변경
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-soft"
+                          style={{ marginTop: '8px' }}
+                          onClick={handleClearTemplateFile}
+                          disabled={!templatePath}
+                        >
+                          업로드 파일 지우기
+                        </button>
+                      </div>
+                      <div>
+                        <label className="field-label" style={strongLabelStyle}>발주처결과 업로드</label>
+                        <input
+                          type="file"
+                          className="input"
+                          accept=".xlsx,.xls"
+                          ref={orderingFileInputRef}
+                          onChange={handleOrderingResultUpload}
+                          onClick={(e) => { e.target.value = ''; }}
+                        />
+                        <button
+                          type="button"
+                          className="btn-soft"
+                          style={{ marginTop: '8px' }}
+                          onClick={handleClearOrderingFile}
+                          disabled={!orderingResultFile}
+                        >
+                          업로드 파일 지우기
+                        </button>
+                        {orderingResultFile && (
+                          <p className="section-help" style={{ marginTop: 8 }}>
+                            선택된 파일: {orderingResultFile.name}
+                          </p>
+                        )}
+                      </div>
+                      <div className="excel-helper-actions">
+                        <button
+                          type="button"
+                          className="primary"
+                          onClick={handleRunOrderingProcess}
+                          disabled={isOrderingProcessing}
+                          style={{ minWidth: '180px' }}
+                        >
+                          {isOrderingProcessing ? '처리 중...' : '결과 실행'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="excel-helper-actions">
-                    <button
-                      type="button"
-                      className="primary"
-                      onClick={handleRunOrderingProcess}
-                      disabled={isOrderingProcessing}
-                      style={{ minWidth: '180px' }}
-                    >
-                      {isOrderingProcessing ? '처리 중...' : '결과 실행'}
-                    </button>
-                  </div>
-                </div>
                   </>
                 )}
               </section>
