@@ -4421,11 +4421,17 @@ export default function AgreementBoardWindow({
     });
   };
 
+  const sheetNameFileType = React.useMemo(() => {
+    const normalized = String(fileType || '').toLowerCase();
+    if (normalized) return normalized;
+    return String(industryToFileType(industryLabel) || '').toLowerCase();
+  }, [fileType, industryLabel]);
+
   const resolveSheetName = React.useCallback((rawName) => {
     const normalized = normalizeSheetNameToken(rawName);
     if (!normalized) return '';
-    return ensureSheetNameSuffix(normalized, String(fileType || '').toLowerCase());
-  }, [fileType]);
+    return ensureSheetNameSuffix(normalized, sheetNameFileType);
+  }, [sheetNameFileType]);
 
   const handleOpenExportModal = React.useCallback(() => {
     const baseName = buildDefaultSheetName(noticeTitle || noticeNo || '') || '협정';

@@ -208,7 +208,6 @@ async function exportAgreementExcel({
   if (groups.length > availableRows) {
     throw new Error(`템플릿이 지원하는 최대 협정 수(${availableRows}개)를 초과했습니다.`);
   }
-  const clearColumns = Array.isArray(config.clearColumns) ? config.clearColumns : [];
   const endRow = config.maxRows || (config.startRow + (availableRows - 1) * rowStep);
   for (let row = config.startRow; row <= endRow; row += 1) {
     const rowObj = worksheet.getRow(row);
@@ -220,13 +219,7 @@ async function exportAgreementExcel({
     }
     const isQualityRow = rowStep > 1 && qualityRowOffset > 0
       && ((row - config.startRow) % rowStep) === qualityRowOffset;
-    if (!isQualityRow) {
-      clearColumns.forEach((col) => {
-        const cell = worksheet.getCell(`${col}${row}`);
-        cell.value = null;
-        if (cell.fill) cell.fill = undefined;
-      });
-    }
+    if (isQualityRow) continue;
   }
 
   const amountForScore = (
