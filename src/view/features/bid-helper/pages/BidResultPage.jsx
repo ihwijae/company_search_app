@@ -191,6 +191,7 @@ export default function BidResultPage() {
   const [pendingConflictAction, setPendingConflictAction] = React.useState(null);
   const [pendingAgreementEntries, setPendingAgreementEntries] = React.useState(null);
   const [pendingBidAmountEntries, setPendingBidAmountEntries] = React.useState(null);
+  const [pendingBidAmountExcluded, setPendingBidAmountExcluded] = React.useState([]);
   const [pendingCandidatesMap, setPendingCandidatesMap] = React.useState(null);
 
   const formatFileInputRef = React.useRef(null);
@@ -332,7 +333,7 @@ export default function BidResultPage() {
     }
     setIsBidAmountProcessing(true);
     try {
-      const entries = extractBidAmountEntries();
+      const { entries, excludedNames } = extractBidAmountEntries();
       if (!entries.length) throw new Error('협정파일에서 업체명을 찾지 못했습니다.');
       const candidatesMap = new Map();
       for (const entry of entries) {
@@ -367,6 +368,7 @@ export default function BidResultPage() {
 
       if (conflictEntries.length > 0) {
         setPendingBidAmountEntries(entries);
+        setPendingBidAmountExcluded(excludedNames);
         setPendingCandidatesMap(candidatesMap);
         setPendingConflictAction('bid-amount');
         setCompanyConflictModal({ open: true, entries: conflictEntries, isResolving: false });
@@ -399,6 +401,13 @@ export default function BidResultPage() {
           type: 'info',
           duration: 0,
           message: `협정파일 업체 ${missingSummary.totalCount}개 중 ${missingSummary.missingCount}개는 DB에서 찾지 못해 제외되었습니다.\n제외 업체: ${missingSummary.missingNames.join(', ')}`,
+        });
+      }
+      if (excludedNames.length > 0) {
+        notify({
+          type: 'info',
+          duration: 0,
+          message: `담당자 제외 업체 (${excludedNames.length}개): ${excludedNames.join(', ')}`,
         });
       }
     } catch (err) {
@@ -527,10 +536,11 @@ export default function BidResultPage() {
   }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
 
   const extractBidAmountEntries = React.useCallback(() => {
-    if (!agreementWorkbook || !selectedAgreementSheet) return [];
+    if (!agreementWorkbook || !selectedAgreementSheet) return { entries: [], excludedNames: [] };
     const sheet = agreementWorkbook.Sheets?.[selectedAgreementSheet];
-    if (!sheet) return [];
+    if (!sheet) return { entries: [], excludedNames: [] };
     const entries = [];
+    const excludedNames = [];
     const isLhOwner = ownerId === 'LH';
     const maxConsecutiveEmptyRows = isLhOwner ? 2 : 1;
     let consecutiveEmptyRows = 0;
@@ -549,7 +559,12 @@ export default function BidResultPage() {
       const nameCell = sheet[nameAddress];
       const raw = nameCell ? XLSX.utils.format_cell(nameCell) : '';
       const rawName = String(raw || '').trim();
-      if (!rawName || hasSpecialName(rawName)) continue;
+      if (!rawName) continue;
+      if (hasSpecialName(rawName)) {
+        const cleaned = cleanCompanyName(rawName);
+        excludedNames.push(cleaned || rawName);
+        continue;
+      }
       const cleaned = cleanCompanyName(rawName);
       if (!cleaned) continue;
       const remarkAddress = XLSX.utils.encode_cell({ r: row - 1, c: 7 });
@@ -568,7 +583,7 @@ export default function BidResultPage() {
         isTie,
       });
     }
-    return entries;
+    return { entries, excludedNames };
   }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
 
   const buildBizEntries = React.useCallback((entries, candidatesMap, selections) => {
@@ -629,6 +644,7 @@ export default function BidResultPage() {
     setPendingConflictAction(null);
     setPendingAgreementEntries(null);
     setPendingBidAmountEntries(null);
+    setPendingBidAmountExcluded([]);
     setPendingCandidatesMap(null);
   };
 
@@ -688,6 +704,13 @@ export default function BidResultPage() {
             message: `협정파일 업체 ${missingSummary.totalCount}개 중 ${missingSummary.missingCount}개는 DB에서 찾지 못해 제외되었습니다.\n제외 업체: ${missingSummary.missingNames.join(', ')}`,
           });
         }
+        if (pendingBidAmountExcluded.length > 0) {
+          notify({
+            type: 'info',
+            duration: 0,
+            message: `담당자 제외 업체 (${pendingBidAmountExcluded.length}개): ${pendingBidAmountExcluded.join(', ')}`,
+          });
+        }
       } else {
         const bizEntries = buildBizEntries(pendingAgreementEntries, pendingCandidatesMap, companyConflictSelections);
         if (!bizEntries.length) throw new Error('조회된 사업자번호가 없습니다.');
@@ -715,6 +738,7 @@ export default function BidResultPage() {
       setPendingConflictAction(null);
       setPendingAgreementEntries(null);
       setPendingBidAmountEntries(null);
+      setPendingBidAmountExcluded([]);
       setPendingCandidatesMap(null);
     } catch (err) {
       notify({ type: 'error', message: err?.message || '협정파일 처리에 실패했습니다.' });

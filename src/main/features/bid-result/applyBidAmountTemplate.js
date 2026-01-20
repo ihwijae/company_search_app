@@ -157,7 +157,12 @@ const applyBidAmountTemplate = async ({ templatePath, outputPath, entries = [] }
     templateSheet.getCell(row, 2).value = index + 1;
     templateSheet.getCell(row, 3).value = entry.name;
     if (entry.isQuality) {
-      templateSheet.getCell(row, 2).fill = QUALITY_FILL;
+      const targetCell = templateSheet.getCell(row, 2);
+      const baseStyle = targetCell.style ? { ...targetCell.style } : {};
+      targetCell.style = {
+        ...baseStyle,
+        fill: QUALITY_FILL,
+      };
     }
   });
 
