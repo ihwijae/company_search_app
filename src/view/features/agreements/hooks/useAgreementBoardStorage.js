@@ -342,6 +342,18 @@ export default function useAgreementBoardStorage({
       if (Number.isNaN(parsed)) return null;
       return parsed;
     };
+    const getSavedAtValue = (value) => {
+      if (!value) return null;
+      const parsed = Date.parse(value);
+      if (Number.isNaN(parsed)) return null;
+      return parsed;
+    };
+    const resolveSortOrder = (value) => {
+      if (value === 'noticeDateAsc') return 'noticeDateAsc';
+      if (value === 'savedAtAsc') return 'savedAtAsc';
+      if (value === 'savedAtDesc') return 'savedAtDesc';
+      return 'noticeDateDesc';
+    };
     const filtered = (loadItems || []).filter((item) => {
       const meta = item?.meta || {};
       if (ownerFilter && String(meta.ownerId || '') !== ownerFilter) return false;
@@ -357,17 +369,25 @@ export default function useAgreementBoardStorage({
       if ((Number.isFinite(amountMin) || Number.isFinite(amountMax)) && amount == null) return false;
       return true;
     });
-    const sortOrder = loadFilters.sortOrder === 'noticeDateAsc' ? 'noticeDateAsc' : 'noticeDateDesc';
+    const sortOrder = resolveSortOrder(loadFilters.sortOrder);
+    const isAsc = sortOrder === 'noticeDateAsc' || sortOrder === 'savedAtAsc';
+    const useSavedAt = sortOrder === 'savedAtAsc' || sortOrder === 'savedAtDesc';
     return filtered.sort((a, b) => {
-      const aTime = getNoticeDateValue(a?.meta?.noticeDate);
-      const bTime = getNoticeDateValue(b?.meta?.noticeDate);
+      const aMeta = a?.meta || {};
+      const bMeta = b?.meta || {};
+      const aTime = useSavedAt
+        ? (getSavedAtValue(aMeta.savedAt) ?? getNoticeDateValue(aMeta.noticeDate))
+        : (getNoticeDateValue(aMeta.noticeDate) ?? getSavedAtValue(aMeta.savedAt));
+      const bTime = useSavedAt
+        ? (getSavedAtValue(bMeta.savedAt) ?? getNoticeDateValue(bMeta.noticeDate))
+        : (getNoticeDateValue(bMeta.noticeDate) ?? getSavedAtValue(bMeta.savedAt));
       if (aTime != null && bTime != null) {
-        return sortOrder === 'noticeDateAsc' ? (aTime - bTime) : (bTime - aTime);
+        return isAsc ? (aTime - bTime) : (bTime - aTime);
       }
-      if (aTime != null) return sortOrder === 'noticeDateAsc' ? 1 : -1;
-      if (bTime != null) return sortOrder === 'noticeDateAsc' ? -1 : 1;
-      const aKey = String(a?.meta?.noticeTitle || a?.meta?.noticeNo || a?.path || '');
-      const bKey = String(b?.meta?.noticeTitle || b?.meta?.noticeNo || b?.path || '');
+      if (aTime != null) return isAsc ? 1 : -1;
+      if (bTime != null) return isAsc ? -1 : 1;
+      const aKey = String(aMeta.noticeTitle || aMeta.noticeNo || a?.path || '');
+      const bKey = String(bMeta.noticeTitle || bMeta.noticeNo || b?.path || '');
       return aKey.localeCompare(bKey, 'ko');
     });
   }, [loadFilters, loadItems, parseNumeric]);

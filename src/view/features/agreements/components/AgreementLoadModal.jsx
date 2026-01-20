@@ -145,6 +145,8 @@ export default function AgreementLoadModal({
             >
               <option value="noticeDateDesc">개찰일 최신순</option>
               <option value="noticeDateAsc">개찰일 오래된순</option>
+              <option value="savedAtDesc">작성일 최신순</option>
+              <option value="savedAtAsc">작성일 오래된순</option>
             </select>
           </label>
           <button type="button" className="excel-btn" onClick={onResetFilters}>필터 초기화</button>
