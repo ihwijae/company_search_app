@@ -820,6 +820,18 @@ export default function BidResultPage() {
                           <p className="section-help" style={{ marginTop: 6 }}>
                             시트: {selectedAgreementSheet || '선택 안 함'}
                           </p>
+                          <select
+                            className="input"
+                            value={selectedAgreementSheet}
+                            onChange={handleAgreementSheetSelect}
+                            disabled={agreementSheetNames.length === 0}
+                            style={{ marginTop: '8px' }}
+                          >
+                            <option value="">시트를 선택하세요</option>
+                            {agreementSheetNames.map((name) => (
+                              <option key={name} value={name}>{name}</option>
+                            ))}
+                          </select>
                           <button
                             type="button"
                             className="btn-soft"
