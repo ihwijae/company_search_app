@@ -1168,6 +1168,7 @@ export default function AgreementBoardWindow({
   const [technicianTarget, setTechnicianTarget] = React.useState({ groupIndex: 0, slotIndex: 0 });
   const [minRatingOpen, setMinRatingOpen] = React.useState(false);
   const [minRatingRequiredShare, setMinRatingRequiredShare] = React.useState('');
+  const [minRatingNetCostBonus, setMinRatingNetCostBonus] = React.useState('');
   const [minRatingCredibilityScore, setMinRatingCredibilityScore] = React.useState('');
   const [minRatingCredibilityShare, setMinRatingCredibilityShare] = React.useState('');
   const [bidDatePart, setBidDatePart] = React.useState('');
@@ -1582,13 +1583,18 @@ export default function AgreementBoardWindow({
 
   React.useEffect(() => {
     if (!minRatingOpen) return;
-    const current = String(minRatingRequiredShare || '').trim();
-    if (current) return;
     const dutyShare = parseNumeric(regionDutyRate);
     if (Number.isFinite(dutyShare) && dutyShare > 0) {
       setMinRatingRequiredShare(String(dutyShare));
+    } else {
+      setMinRatingRequiredShare('');
     }
-  }, [minRatingOpen, minRatingRequiredShare, regionDutyRate]);
+  }, [minRatingOpen, regionDutyRate]);
+
+  React.useEffect(() => {
+    if (!minRatingOpen) return;
+    setMinRatingNetCostBonus(formatScore(netCostBonusScore, 2));
+  }, [minRatingOpen, netCostBonusScore]);
 
 
   const credibilityConfig = React.useMemo(() => {
@@ -2055,6 +2061,7 @@ export default function AgreementBoardWindow({
     const credibilityShare = Number.isFinite(credibilityShareRaw)
       ? Math.min(Math.max(credibilityShareRaw, 0), 100)
       : 0;
+    const netCostBonusValue = parseNumeric(minRatingNetCostBonus) || 0;
     const credibilityBonusRaw = (Number.isFinite(credibilityScoreRaw) && credibilityScoreRaw > 0 && credibilityShare > 0)
       ? credibilityScoreRaw * (credibilityShare / 100)
       : 0;
@@ -2076,7 +2083,7 @@ export default function AgreementBoardWindow({
         managementScore
           + performanceMax
           + BID_SCORE_DEFAULT
-          + (netCostBonusScore || 0)
+          + (netCostBonusValue || 0)
           + credibilityBonus
           + qualityPoints
       ) || 0;
@@ -2096,6 +2103,7 @@ export default function AgreementBoardWindow({
       return {
         status: 'impossible',
         requiredShare,
+        netCostBonusValue,
         credibilityBonus,
         performanceMax,
       };
@@ -2106,6 +2114,7 @@ export default function AgreementBoardWindow({
       requiredShare,
       ratioBaseValue,
       performanceMax,
+      netCostBonusValue,
       credibilityBonus,
       minRatingAmount,
       ...best,
@@ -2116,6 +2125,7 @@ export default function AgreementBoardWindow({
     managementMax,
     minRatingCredibilityScore,
     minRatingCredibilityShare,
+    minRatingNetCostBonus,
     minRatingRequiredShare,
     netCostBonusScore,
     ownerPerformanceFallback,
@@ -5424,7 +5434,12 @@ export default function AgreementBoardWindow({
         <div className="export-sheet-modal">
           <div className="export-sheet-field">
             <span className="export-sheet-label">순공사원가가점</span>
-            <input type="text" value={formatScore(netCostBonusScore, 2)} readOnly />
+            <input
+              type="text"
+              value={minRatingNetCostBonus}
+              onChange={(event) => setMinRatingNetCostBonus(event.target.value)}
+              placeholder="예: 3.11"
+            />
           </div>
           <div className="export-sheet-field">
             <span className="export-sheet-label">신인도가점</span>
