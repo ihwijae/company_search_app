@@ -5490,10 +5490,10 @@ export default function AgreementBoardWindow({
             )}
             {minRatingResult.status === 'ok' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div>최소 가능지분: {formatPercentValue(minRatingResult.possibleShare)}</div>
+                <div>최소 가능지분: <strong>{formatPercentValue(minRatingResult.possibleShare)}</strong></div>
                 <div>가능지분 합계: {formatPercentValue(minRatingResult.effectiveShare)}</div>
                 <div>예상 총점: {formatScore(minRatingResult.totalScore, 2)}</div>
-                <div>최소 시평액: {formatAmount(minRatingResult.minRatingAmount)}</div>
+                <div>최소 시평액: <strong>{formatAmount(minRatingResult.minRatingAmount)}</strong></div>
               </div>
             )}
             {minRatingResult.status === 'ok'
