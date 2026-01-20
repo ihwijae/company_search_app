@@ -193,6 +193,7 @@ export default function BidResultPage() {
   const [bidAmountNoticeNo, setBidAmountNoticeNo] = React.useState('');
   const [bidAmountNoticeTitle, setBidAmountNoticeTitle] = React.useState('');
   const [bidAmountDeadlineDate, setBidAmountDeadlineDate] = React.useState('');
+  const [bidAmountDeadlinePeriod, setBidAmountDeadlinePeriod] = React.useState('AM');
   const [bidAmountDeadlineTime, setBidAmountDeadlineTime] = React.useState('');
   const [bidAmountBaseAmount, setBidAmountBaseAmount] = React.useState('');
   const [agreementWorkbook, setAgreementWorkbook] = React.useState(null);
@@ -393,6 +394,11 @@ export default function BidResultPage() {
 
       const bidEntries = buildBidAmountEntries(entries, candidatesMap, companyConflictSelections);
       if (!bidEntries.length) throw new Error('조회된 업체명이 없습니다.');
+      const deadlineParts = [bidAmountDeadlineDate];
+      if (bidAmountDeadlineTime) {
+        deadlineParts.push(bidAmountDeadlinePeriod === 'PM' ? '오후' : '오전');
+        deadlineParts.push(bidAmountDeadlineTime);
+      }
       const response = await window.electronAPI.bidResult.applyBidAmountTemplate({
         templatePath: bidAmountTemplatePath,
         entries: bidEntries,
@@ -400,7 +406,7 @@ export default function BidResultPage() {
           noticeNo: bidAmountNoticeNo,
           noticeTitle: bidAmountNoticeTitle,
           ownerLabel,
-          bidDeadline: [bidAmountDeadlineDate, bidAmountDeadlineTime].filter(Boolean).join(' '),
+          bidDeadline: deadlineParts.filter(Boolean).join(' '),
           baseAmount: bidAmountBaseAmount,
         },
       });
@@ -698,6 +704,11 @@ export default function BidResultPage() {
       if (pendingConflictAction === 'bid-amount') {
         const bidEntries = buildBidAmountEntries(pendingBidAmountEntries, pendingCandidatesMap, companyConflictSelections);
         if (!bidEntries.length) throw new Error('조회된 업체명이 없습니다.');
+        const deadlineParts = [bidAmountDeadlineDate];
+        if (bidAmountDeadlineTime) {
+          deadlineParts.push(bidAmountDeadlinePeriod === 'PM' ? '오후' : '오전');
+          deadlineParts.push(bidAmountDeadlineTime);
+        }
         const response = await window.electronAPI.bidResult.applyBidAmountTemplate({
           templatePath: bidAmountTemplatePath,
           entries: bidEntries,
@@ -705,7 +716,7 @@ export default function BidResultPage() {
             noticeNo: bidAmountNoticeNo,
             noticeTitle: bidAmountNoticeTitle,
             ownerLabel,
-            bidDeadline: [bidAmountDeadlineDate, bidAmountDeadlineTime].filter(Boolean).join(' '),
+            bidDeadline: deadlineParts.filter(Boolean).join(' '),
             baseAmount: bidAmountBaseAmount,
           },
         });
@@ -1021,6 +1032,7 @@ export default function BidResultPage() {
                             className="input"
                             value={bidAmountNoticeTitle}
                             onChange={(event) => setBidAmountNoticeTitle(event.target.value)}
+                            style={{ minWidth: '420px', width: '100%' }}
                             placeholder="공사명을 입력하세요"
                           />
                         </div>
@@ -1033,11 +1045,21 @@ export default function BidResultPage() {
                               value={bidAmountDeadlineDate}
                               onChange={(event) => setBidAmountDeadlineDate(event.target.value)}
                             />
+                            <select
+                              className="input"
+                              value={bidAmountDeadlinePeriod}
+                              onChange={(event) => setBidAmountDeadlinePeriod(event.target.value)}
+                            >
+                              <option value="AM">오전</option>
+                              <option value="PM">오후</option>
+                            </select>
                             <input
                               className="input"
-                              type="time"
+                              type="text"
+                              inputMode="numeric"
                               value={bidAmountDeadlineTime}
                               onChange={(event) => setBidAmountDeadlineTime(event.target.value)}
+                              placeholder="예: 10:30"
                             />
                           </div>
                         </div>
