@@ -420,6 +420,12 @@ export default function BidResultPage() {
     setSelectedAgreementSheet(event.target.value);
   };
 
+  const handlePickAgreementFile = () => {
+    if (agreementFileInputRef.current) {
+      agreementFileInputRef.current.click();
+    }
+  };
+
   const extractAgreementEntries = React.useCallback(() => {
     if (!agreementWorkbook || !selectedAgreementSheet) return [];
     const sheet = agreementWorkbook.Sheets?.[selectedAgreementSheet];
@@ -814,6 +820,23 @@ export default function BidResultPage() {
                           <p className="section-help" style={{ marginTop: 6 }}>
                             시트: {selectedAgreementSheet || '선택 안 함'}
                           </p>
+                          <button
+                            type="button"
+                            className="btn-soft"
+                            style={{ marginTop: '8px' }}
+                            onClick={handlePickAgreementFile}
+                          >
+                            협정파일 선택
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-soft"
+                            style={{ marginTop: '8px' }}
+                            onClick={handleClearAgreementFile}
+                            disabled={!agreementFile}
+                          >
+                            선택 해제
+                          </button>
                         </div>
                         <div className="excel-helper-actions">
                           <button
