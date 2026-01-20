@@ -150,12 +150,18 @@ const applyBidAmountTemplate = async ({ templatePath, outputPath, entries = [] }
   for (let row = 8; row <= lastRow; row += 1) {
     templateSheet.getCell(row, 2).value = null;
     templateSheet.getCell(row, 3).value = null;
+    templateSheet.getCell(row, 7).value = null;
   }
 
   ordered.forEach((entry, index) => {
     const row = 8 + index;
     templateSheet.getCell(row, 2).value = index + 1;
     templateSheet.getCell(row, 3).value = entry.name;
+    if (entry.isQuality) {
+      templateSheet.getCell(row, 7).value = '품질만점';
+    } else if (entry.isTie) {
+      templateSheet.getCell(row, 7).value = '동가주의';
+    }
     if (entry.isQuality) {
       const targetCell = templateSheet.getCell(row, 2);
       const baseStyle = targetCell.style ? { ...targetCell.style } : {};
@@ -165,6 +171,14 @@ const applyBidAmountTemplate = async ({ templatePath, outputPath, entries = [] }
       };
     }
   });
+
+  const trimStartRow = 8 + ordered.length;
+  if (templateSheet.rowCount >= trimStartRow) {
+    const deleteCount = templateSheet.rowCount - trimStartRow + 1;
+    if (deleteCount > 0) {
+      templateSheet.spliceRows(trimStartRow, deleteCount);
+    }
+  }
 
   await templateWorkbook.xlsx.writeFile(outputPath);
   return {
