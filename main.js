@@ -1268,20 +1268,32 @@ try {
   ipcMain.handle('bid-result:apply-bid-amount-template', async (_event, payload = {}) => {
     try {
       const templatePath = payload?.templatePath ? String(payload.templatePath) : '';
-      const agreementPath = payload?.agreementPath ? String(payload.agreementPath) : '';
-      const agreementSheet = payload?.agreementSheet ? String(payload.agreementSheet) : '';
+      const entries = Array.isArray(payload?.entries) ? payload.entries : [];
       if (!templatePath) throw new Error('투찰금액 템플릿 파일을 먼저 선택하세요.');
-      if (!agreementPath) throw new Error('협정파일을 먼저 선택하세요.');
-      if (!agreementSheet) throw new Error('협정파일 시트를 선택하세요.');
       if (!templatePath.toLowerCase().endsWith('.xlsx')) throw new Error('xlsx 파일만 선택할 수 있습니다.');
-      if (!agreementPath.toLowerCase().endsWith('.xlsx')) throw new Error('협정파일은 xlsx만 선택할 수 있습니다.');
       if (!fs.existsSync(templatePath)) throw new Error('투찰금액 템플릿 파일을 찾을 수 없습니다.');
-      if (!fs.existsSync(agreementPath)) throw new Error('협정파일을 찾을 수 없습니다.');
+      if (!entries.length) throw new Error('업체 정보를 찾을 수 없습니다.');
 
-      const result = await applyBidAmountTemplate({ templatePath, agreementPath, agreementSheet });
+      const baseName = sanitizeFileName(path.basename(templatePath, path.extname(templatePath)) || '투찰금액템플릿');
+      const defaultPath = path.join(path.dirname(templatePath), `${baseName}_배치.xlsx`);
+      const targetWindow = BrowserWindow.getFocusedWindow();
+      const saveDialogResult = await dialog.showSaveDialog(targetWindow, {
+        title: '투찰금액 템플릿 저장',
+        defaultPath,
+        filters: [{ name: '엑셀 파일', extensions: ['xlsx'] }],
+      });
+      if (saveDialogResult.canceled || !saveDialogResult.filePath) {
+        return { success: false, canceled: true };
+      }
+
+      const result = await applyBidAmountTemplate({
+        templatePath,
+        outputPath: saveDialogResult.filePath,
+        entries,
+      });
       return {
         success: true,
-        path: result?.path || templatePath,
+        path: result?.path || saveDialogResult.filePath,
         totalCount: result?.totalCount,
         qualityCount: result?.qualityCount,
         tieCount: result?.tieCount,

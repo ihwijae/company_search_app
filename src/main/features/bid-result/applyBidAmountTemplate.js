@@ -77,43 +77,18 @@ const buildCenterSequence = (total) => {
   return indices;
 };
 
-const applyBidAmountTemplate = async ({ templatePath, agreementPath, agreementSheet }) => {
+const QUALITY_FILL = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FFFFFF00' },
+};
+
+const applyBidAmountTemplate = async ({ templatePath, outputPath, entries = [] }) => {
   if (!templatePath) throw new Error('투찰금액 템플릿 파일을 선택하세요.');
-  if (!agreementPath) throw new Error('협정파일을 선택하세요.');
-  if (!agreementSheet) throw new Error('협정파일 시트를 선택하세요.');
-
-  const { sanitizedPath: agreementSanitized } = sanitizeXlsx(agreementPath);
-  const agreementWorkbook = new ExcelJS.Workbook();
-  await agreementWorkbook.xlsx.readFile(agreementSanitized);
-  const agreementSheetRef = agreementWorkbook.getWorksheet(agreementSheet);
-  if (!agreementSheetRef) throw new Error('협정파일 시트를 찾을 수 없습니다.');
-
-  const entries = [];
-  let emptyStreak = 0;
-  for (let row = 5; row <= 1000; row += 1) {
-    const seqText = getCellText(agreementSheetRef.getCell(row, 1)).trim();
-    if (!seqText) {
-      emptyStreak += 1;
-      if (emptyStreak >= 2) break;
-      continue;
-    }
-    emptyStreak = 0;
-    const rawName = getCellText(agreementSheetRef.getCell(row, 3)).trim();
-    if (!rawName) continue;
-    if (hasExcludedManager(rawName)) continue;
-    const name = cleanCompanyName(rawName);
-    if (!name) continue;
-    const remark = getCellText(agreementSheetRef.getCell(row, 8)).trim();
-    const flags = classifyRemark(remark);
-    entries.push({
-      name,
-      remark,
-      isQuality: flags.quality,
-      isTie: flags.tie,
-    });
+  if (!outputPath) throw new Error('저장 경로가 필요합니다.');
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throw new Error('업체 정보를 찾지 못했습니다.');
   }
-
-  if (!entries.length) throw new Error('협정파일에서 업체명을 찾지 못했습니다.');
 
   const qualityEntries = [];
   const tieEntries = [];
@@ -181,11 +156,14 @@ const applyBidAmountTemplate = async ({ templatePath, agreementPath, agreementSh
     const row = 8 + index;
     templateSheet.getCell(row, 2).value = index + 1;
     templateSheet.getCell(row, 3).value = entry.name;
+    if (entry.isQuality) {
+      templateSheet.getCell(row, 2).fill = QUALITY_FILL;
+    }
   });
 
-  await templateWorkbook.xlsx.writeFile(templatePath);
+  await templateWorkbook.xlsx.writeFile(outputPath);
   return {
-    path: templatePath,
+    path: outputPath,
     totalCount,
     qualityCount: qualityEntries.length,
     tieCount: tieEntries.length,

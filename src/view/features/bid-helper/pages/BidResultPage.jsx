@@ -188,7 +188,9 @@ export default function BidResultPage() {
   const [selectedAgreementSheet, setSelectedAgreementSheet] = React.useState('');
   const [companyConflictSelections, setCompanyConflictSelections] = React.useState({});
   const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
+  const [pendingConflictAction, setPendingConflictAction] = React.useState(null);
   const [pendingAgreementEntries, setPendingAgreementEntries] = React.useState(null);
+  const [pendingBidAmountEntries, setPendingBidAmountEntries] = React.useState(null);
   const [pendingCandidatesMap, setPendingCandidatesMap] = React.useState(null);
 
   const formatFileInputRef = React.useRef(null);
@@ -316,18 +318,72 @@ export default function BidResultPage() {
       notify({ type: 'info', message: '협정파일 시트를 선택하세요.' });
       return;
     }
+    if (!fileType) {
+      notify({ type: 'info', message: '업체 분류(전기/통신/소방)를 선택하세요.' });
+      return;
+    }
     if (!window.electronAPI?.bidResult?.applyBidAmountTemplate) {
       notify({ type: 'error', message: '투찰금액 템플릿 기능을 사용할 수 없습니다.' });
       return;
     }
+    if (!window.electronAPI?.searchCompanies) {
+      notify({ type: 'error', message: '업체 조회 기능을 사용할 수 없습니다.' });
+      return;
+    }
     setIsBidAmountProcessing(true);
     try {
+      const entries = extractBidAmountEntries();
+      if (!entries.length) throw new Error('협정파일에서 업체명을 찾지 못했습니다.');
+      const candidatesMap = new Map();
+      for (const entry of entries) {
+        if (!entry.normalizedName) continue;
+        if (candidatesMap.has(entry.normalizedName)) continue;
+        const response = await window.electronAPI.searchCompanies({ name: entry.cleanedName }, fileType);
+        if (!response?.success) {
+          candidatesMap.set(entry.normalizedName, []);
+          continue;
+        }
+        const data = Array.isArray(response.data) ? response.data : [];
+        candidatesMap.set(entry.normalizedName, data);
+      }
+
+      const conflictEntries = [];
+      entries.forEach((entry) => {
+        const normalized = entry.normalizedName;
+        if (!normalized) return;
+        const candidates = candidatesMap.get(normalized) || [];
+        if (candidates.length <= 1) return;
+        const savedKey = companyConflictSelections?.[normalized];
+        const hasValidSelection = savedKey
+          ? candidates.some((candidate) => buildCompanyOptionKey(candidate) === savedKey)
+          : false;
+        if (hasValidSelection) return;
+        conflictEntries.push({
+          normalizedName: normalized,
+          displayName: entry.cleanedName || entry.rawName || normalized,
+          options: candidates,
+        });
+      });
+
+      if (conflictEntries.length > 0) {
+        setPendingBidAmountEntries(entries);
+        setPendingCandidatesMap(candidatesMap);
+        setPendingConflictAction('bid-amount');
+        setCompanyConflictModal({ open: true, entries: conflictEntries, isResolving: false });
+        setIsBidAmountProcessing(false);
+        return;
+      }
+
+      const bidEntries = buildBidAmountEntries(entries, candidatesMap, companyConflictSelections);
+      if (!bidEntries.length) throw new Error('조회된 업체명이 없습니다.');
       const response = await window.electronAPI.bidResult.applyBidAmountTemplate({
         templatePath: bidAmountTemplatePath,
-        agreementPath: agreementFile.path,
-        agreementSheet: selectedAgreementSheet,
+        entries: bidEntries,
       });
-      if (!response?.success) throw new Error(response?.message || '투찰금액 템플릿 처리에 실패했습니다.');
+      if (!response?.success) {
+        if (response?.canceled) return;
+        throw new Error(response?.message || '투찰금액 템플릿 처리에 실패했습니다.');
+      }
       const total = Number.isFinite(response?.totalCount) ? response.totalCount : null;
       const quality = Number.isFinite(response?.qualityCount) ? response.qualityCount : null;
       const tie = Number.isFinite(response?.tieCount) ? response.tieCount : null;
@@ -336,7 +392,15 @@ export default function BidResultPage() {
       if (quality !== null) parts.push(`품질만점 ${quality}개`);
       if (tie !== null) parts.push(`동가주의 ${tie}개`);
       const summary = parts.length > 0 ? ` (${parts.join(', ')})` : '';
+      const missingSummary = summarizeMissingEntries(entries, candidatesMap);
       notify({ type: 'success', message: `투찰금액 템플릿 처리 완료${summary}` });
+      if (missingSummary) {
+        notify({
+          type: 'info',
+          duration: 0,
+          message: `협정파일 업체 ${missingSummary.totalCount}개 중 ${missingSummary.missingCount}개는 DB에서 찾지 못해 제외되었습니다.\n제외 업체: ${missingSummary.missingNames.join(', ')}`,
+        });
+      }
     } catch (err) {
       notify({ type: 'error', message: err?.message || '투찰금액 템플릿 처리에 실패했습니다.' });
     } finally {
@@ -462,6 +526,51 @@ export default function BidResultPage() {
     return entries;
   }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
 
+  const extractBidAmountEntries = React.useCallback(() => {
+    if (!agreementWorkbook || !selectedAgreementSheet) return [];
+    const sheet = agreementWorkbook.Sheets?.[selectedAgreementSheet];
+    if (!sheet) return [];
+    const entries = [];
+    const isLhOwner = ownerId === 'LH';
+    const maxConsecutiveEmptyRows = isLhOwner ? 2 : 1;
+    let consecutiveEmptyRows = 0;
+    for (let row = 5; row <= 1000; row += 1) {
+      const checkAddress = XLSX.utils.encode_cell({ r: row - 1, c: 0 });
+      const checkCell = sheet[checkAddress];
+      const checkValue = checkCell ? XLSX.utils.format_cell(checkCell) : '';
+      const hasCheck = String(checkValue || '').trim() !== '';
+      if (!hasCheck) {
+        consecutiveEmptyRows += 1;
+        if (!isLhOwner || consecutiveEmptyRows >= maxConsecutiveEmptyRows) break;
+        continue;
+      }
+      consecutiveEmptyRows = 0;
+      const nameAddress = XLSX.utils.encode_cell({ r: row - 1, c: 2 });
+      const nameCell = sheet[nameAddress];
+      const raw = nameCell ? XLSX.utils.format_cell(nameCell) : '';
+      const rawName = String(raw || '').trim();
+      if (!rawName || hasSpecialName(rawName)) continue;
+      const cleaned = cleanCompanyName(rawName);
+      if (!cleaned) continue;
+      const remarkAddress = XLSX.utils.encode_cell({ r: row - 1, c: 7 });
+      const remarkCell = sheet[remarkAddress];
+      const rawRemark = remarkCell ? XLSX.utils.format_cell(remarkCell) : '';
+      const remark = String(rawRemark || '').trim();
+      const normalizedRemark = remark.replace(/\s+/g, '');
+      const isQuality = normalizedRemark.includes('품질만점');
+      const isTie = normalizedRemark.includes('동가주의');
+      entries.push({
+        rawName,
+        cleanedName: cleaned,
+        normalizedName: normalizeName(cleaned),
+        remark,
+        isQuality,
+        isTie,
+      });
+    }
+    return entries;
+  }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
+
   const buildBizEntries = React.useCallback((entries, candidatesMap, selections) => {
     const bizEntries = [];
     entries.forEach((entry) => {
@@ -486,6 +595,30 @@ export default function BidResultPage() {
     return bizEntries;
   }, []);
 
+  const buildBidAmountEntries = React.useCallback((entries, candidatesMap, selections) => (
+    (entries || []).map((entry) => {
+      const normalizedName = entry.normalizedName;
+      const candidates = normalizedName ? (candidatesMap.get(normalizedName) || []) : [];
+      if (!normalizedName || candidates.length === 0) return null;
+      let picked = null;
+      if (candidates.length === 1) {
+        picked = candidates[0];
+      } else {
+        const savedKey = selections?.[normalizedName];
+        if (!savedKey) return null;
+        picked = candidates.find((candidate) => buildCompanyOptionKey(candidate) === savedKey) || null;
+        if (!picked) return null;
+      }
+      const resolvedName = String(pickFirstValue(picked, NAME_FIELDS) || entry.cleanedName || entry.rawName || '').trim();
+      if (!resolvedName) return null;
+      return {
+        name: resolvedName,
+        isQuality: Boolean(entry.isQuality),
+        isTie: Boolean(entry.isTie),
+      };
+    }).filter(Boolean)
+  ), []);
+
   const handleCompanyConflictPick = (normalizedName, option) => {
     const key = buildCompanyOptionKey(option);
     setCompanyConflictSelections((prev) => ({ ...prev, [normalizedName]: key }));
@@ -493,12 +626,22 @@ export default function BidResultPage() {
 
   const handleCompanyConflictCancel = () => {
     setCompanyConflictModal({ open: false, entries: [], isResolving: false });
+    setPendingConflictAction(null);
     setPendingAgreementEntries(null);
+    setPendingBidAmountEntries(null);
     setPendingCandidatesMap(null);
   };
 
   const handleCompanyConflictConfirm = async () => {
-    if (!pendingAgreementEntries || !pendingCandidatesMap) {
+    if (!pendingCandidatesMap || !pendingConflictAction) {
+      handleCompanyConflictCancel();
+      return;
+    }
+    if (pendingConflictAction === 'agreement' && !pendingAgreementEntries) {
+      handleCompanyConflictCancel();
+      return;
+    }
+    if (pendingConflictAction === 'bid-amount' && !pendingBidAmountEntries) {
       handleCompanyConflictCancel();
       return;
     }
@@ -514,29 +657,64 @@ export default function BidResultPage() {
     }
     setCompanyConflictModal((prev) => ({ ...prev, isResolving: true }));
     try {
-      const bizEntries = buildBizEntries(pendingAgreementEntries, pendingCandidatesMap, companyConflictSelections);
-      if (!bizEntries.length) throw new Error('조회된 사업자번호가 없습니다.');
-      const response = await window.electronAPI.bidResult.applyAgreement({
-        templatePath,
-        entries: bizEntries,
-      });
-      if (!response?.success) throw new Error(response?.message || '협정파일 처리에 실패했습니다.');
-      const matched = Number.isFinite(response?.matchedCount) ? response.matchedCount : null;
-      const scanned = Number.isFinite(response?.scannedCount) ? response.scannedCount : null;
-      const summary = matched !== null && scanned !== null
-        ? ` (매칭 ${matched}/${scanned})`
-        : '';
-      const missingSummary = summarizeMissingEntries(pendingAgreementEntries, pendingCandidatesMap);
-      notify({ type: 'success', message: `협정파일 처리 완료: 개찰결과파일에 색상이 반영되었습니다.${summary}` });
-      if (missingSummary) {
-        notify({
-          type: 'info',
-          duration: 0,
-          message: `협정파일 업체 ${missingSummary.totalCount}개 중 ${missingSummary.missingCount}개는 DB에서 찾지 못해 제외되었습니다.\n제외 업체: ${missingSummary.missingNames.join(', ')}`,
+      if (pendingConflictAction === 'bid-amount') {
+        const bidEntries = buildBidAmountEntries(pendingBidAmountEntries, pendingCandidatesMap, companyConflictSelections);
+        if (!bidEntries.length) throw new Error('조회된 업체명이 없습니다.');
+        const response = await window.electronAPI.bidResult.applyBidAmountTemplate({
+          templatePath: bidAmountTemplatePath,
+          entries: bidEntries,
         });
+        if (!response?.success) {
+          if (response?.canceled) {
+            handleCompanyConflictCancel();
+            return;
+          }
+          throw new Error(response?.message || '투찰금액 템플릿 처리에 실패했습니다.');
+        }
+        const total = Number.isFinite(response?.totalCount) ? response.totalCount : null;
+        const quality = Number.isFinite(response?.qualityCount) ? response.qualityCount : null;
+        const tie = Number.isFinite(response?.tieCount) ? response.tieCount : null;
+        const parts = [];
+        if (total !== null) parts.push(`총 ${total}개`);
+        if (quality !== null) parts.push(`품질만점 ${quality}개`);
+        if (tie !== null) parts.push(`동가주의 ${tie}개`);
+        const summary = parts.length > 0 ? ` (${parts.join(', ')})` : '';
+        const missingSummary = summarizeMissingEntries(pendingBidAmountEntries, pendingCandidatesMap);
+        notify({ type: 'success', message: `투찰금액 템플릿 처리 완료${summary}` });
+        if (missingSummary) {
+          notify({
+            type: 'info',
+            duration: 0,
+            message: `협정파일 업체 ${missingSummary.totalCount}개 중 ${missingSummary.missingCount}개는 DB에서 찾지 못해 제외되었습니다.\n제외 업체: ${missingSummary.missingNames.join(', ')}`,
+          });
+        }
+      } else {
+        const bizEntries = buildBizEntries(pendingAgreementEntries, pendingCandidatesMap, companyConflictSelections);
+        if (!bizEntries.length) throw new Error('조회된 사업자번호가 없습니다.');
+        const response = await window.electronAPI.bidResult.applyAgreement({
+          templatePath,
+          entries: bizEntries,
+        });
+        if (!response?.success) throw new Error(response?.message || '협정파일 처리에 실패했습니다.');
+        const matched = Number.isFinite(response?.matchedCount) ? response.matchedCount : null;
+        const scanned = Number.isFinite(response?.scannedCount) ? response.scannedCount : null;
+        const summary = matched !== null && scanned !== null
+          ? ` (매칭 ${matched}/${scanned})`
+          : '';
+        const missingSummary = summarizeMissingEntries(pendingAgreementEntries, pendingCandidatesMap);
+        notify({ type: 'success', message: `협정파일 처리 완료: 개찰결과파일에 색상이 반영되었습니다.${summary}` });
+        if (missingSummary) {
+          notify({
+            type: 'info',
+            duration: 0,
+            message: `협정파일 업체 ${missingSummary.totalCount}개 중 ${missingSummary.missingCount}개는 DB에서 찾지 못해 제외되었습니다.\n제외 업체: ${missingSummary.missingNames.join(', ')}`,
+          });
+        }
       }
       setCompanyConflictModal({ open: false, entries: [], isResolving: false });
+      setPendingConflictAction(null);
       setPendingAgreementEntries(null);
+      setPendingBidAmountEntries(null);
       setPendingCandidatesMap(null);
     } catch (err) {
       notify({ type: 'error', message: err?.message || '협정파일 처리에 실패했습니다.' });
@@ -607,6 +785,7 @@ export default function BidResultPage() {
       if (conflictEntries.length > 0) {
         setPendingAgreementEntries(entries);
         setPendingCandidatesMap(candidatesMap);
+        setPendingConflictAction('agreement');
         setCompanyConflictModal({ open: true, entries: conflictEntries, isResolving: false });
         setIsAgreementProcessing(false);
         return;
