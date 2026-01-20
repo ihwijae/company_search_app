@@ -1166,6 +1166,10 @@ export default function AgreementBoardWindow({
   const technicianEntriesByTargetRef = React.useRef({});
   const technicianEntriesTargetKeyRef = React.useRef('0:0');
   const [technicianTarget, setTechnicianTarget] = React.useState({ groupIndex: 0, slotIndex: 0 });
+  const [minRatingOpen, setMinRatingOpen] = React.useState(false);
+  const [minRatingRequiredShare, setMinRatingRequiredShare] = React.useState('');
+  const [minRatingCredibilityScore, setMinRatingCredibilityScore] = React.useState('');
+  const [minRatingCredibilityShare, setMinRatingCredibilityShare] = React.useState('');
   const [bidDatePart, setBidDatePart] = React.useState('');
   const [bidTimePeriod, setBidTimePeriod] = React.useState('AM');
   const [bidHourInput, setBidHourInput] = React.useState('');
@@ -1569,6 +1573,23 @@ export default function AgreementBoardWindow({
     }
   }, [noticeDate, onUpdateBoard]);
 
+  const openMinRatingModal = React.useCallback(() => {
+    setMinRatingOpen(true);
+  }, []);
+  const closeMinRatingModal = React.useCallback(() => {
+    setMinRatingOpen(false);
+  }, []);
+
+  React.useEffect(() => {
+    if (!minRatingOpen) return;
+    const current = String(minRatingRequiredShare || '').trim();
+    if (current) return;
+    const dutyShare = parseNumeric(regionDutyRate);
+    if (Number.isFinite(dutyShare) && dutyShare > 0) {
+      setMinRatingRequiredShare(String(dutyShare));
+    }
+  }, [minRatingOpen, minRatingRequiredShare, regionDutyRate]);
+
 
   const credibilityConfig = React.useMemo(() => {
     if (ownerKeyUpper === 'LH') return { enabled: true, max: null };
@@ -1697,6 +1718,13 @@ export default function AgreementBoardWindow({
     return perfectPerformanceBasis ? `${formatted} (${perfectPerformanceBasis})` : formatted;
   }, [perfectPerformanceAmount, perfectPerformanceBasis]);
 
+  const formatPercentValue = React.useCallback((value, digits = 1) => {
+    if (value == null) return '-';
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '-';
+    return `${numeric.toFixed(digits).replace(/\.0$/, '')}%`;
+  }, []);
+
   const derivePendingPlacementHint = React.useCallback((picked) => {
     if (!picked || typeof picked !== 'object') {
       return { candidateId: null, matchBizNo: '', matchNameKey: '' };
@@ -1811,6 +1839,90 @@ export default function AgreementBoardWindow({
     const rMax = roundTo((bidMax - aValueNumber) / (expectedMax - aValueNumber), 4);
     return Number.isFinite(rMin) && Number.isFinite(rMax) && (rMin > 0.88 || rMax > 0.88);
   }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
+
+  const minRatingResult = React.useMemo(() => {
+    if (!isLHOwner) return { status: 'inactive' };
+    const requiredShareRaw = parseNumeric(minRatingRequiredShare);
+    const requiredShare = Number.isFinite(requiredShareRaw)
+      ? Math.min(Math.max(requiredShareRaw, 0), 100)
+      : null;
+    const ratioBaseValue = parseAmountValue(ratioBaseAmount);
+    if (!(requiredShare > 0)) return { status: 'needShare' };
+    if (!(ratioBaseValue > 0)) return { status: 'needRatioBase', requiredShare };
+    const credibilityScoreRaw = parseNumeric(minRatingCredibilityScore);
+    const credibilityShareRaw = parseNumeric(minRatingCredibilityShare);
+    const credibilityShare = Number.isFinite(credibilityShareRaw)
+      ? Math.min(Math.max(credibilityShareRaw, 0), 100)
+      : 0;
+    const credibilityBonusRaw = (Number.isFinite(credibilityScoreRaw) && credibilityScoreRaw > 0 && credibilityShare > 0)
+      ? credibilityScoreRaw * (credibilityShare / 100)
+      : 0;
+    const credibilityBonus = roundForLhTotals(credibilityBonusRaw) || 0;
+    const performanceMax = (derivedMaxScores.performanceMax ?? ownerPerformanceFallback ?? 0) || 0;
+    const managementMaxValue = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
+    const step = 0.1;
+    const maxShare = Math.min(requiredShare, 100);
+    const steps = Math.max(0, Math.round(maxShare / step));
+    let best = null;
+    for (let i = 0; i <= steps; i += 1) {
+      const possibleShare = roundTo(i * step, 1);
+      const effectiveShare = Math.min(100, (100 - requiredShare) + Math.min(possibleShare, requiredShare));
+      const shareRatio = Math.max(0, Math.min(effectiveShare / 100, 1));
+      const managementScore = roundForLhTotals(managementMaxValue * shareRatio) || 0;
+      const qualityTotal = 85 * shareRatio;
+      const qualityPoints = resolveQualityPoints(qualityTotal, selectedRangeOption?.key) || 0;
+      const totalScore = roundForLhTotals(
+        managementScore
+          + performanceMax
+          + BID_SCORE_DEFAULT
+          + (netCostBonusScore || 0)
+          + credibilityBonus
+          + qualityPoints
+      ) || 0;
+      if (totalScore >= (LH_FULL_SCORE - 1e-6)) {
+        best = {
+          possibleShare,
+          effectiveShare,
+          managementScore,
+          qualityTotal,
+          qualityPoints,
+          totalScore,
+        };
+        break;
+      }
+    }
+    if (!best) {
+      return {
+        status: 'impossible',
+        requiredShare,
+        credibilityBonus,
+        performanceMax,
+      };
+    }
+    const minRatingAmount = Math.ceil(ratioBaseValue * (best.possibleShare / 100));
+    return {
+      status: 'ok',
+      requiredShare,
+      ratioBaseValue,
+      performanceMax,
+      credibilityBonus,
+      minRatingAmount,
+      ...best,
+    };
+  }, [
+    derivedMaxScores.performanceMax,
+    isLHOwner,
+    managementMax,
+    minRatingCredibilityScore,
+    minRatingCredibilityShare,
+    minRatingRequiredShare,
+    netCostBonusScore,
+    ownerPerformanceFallback,
+    ratioBaseAmount,
+    resolveQualityPoints,
+    roundForLhTotals,
+    selectedRangeOption?.key,
+  ]);
 
   React.useEffect(() => {
     let canceled = false;
@@ -4830,13 +4942,19 @@ export default function AgreementBoardWindow({
           <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
         </div>
         {isLH && (
-          <div className="excel-field-block size-xs readonly">
-            <span className="field-label">순공사원가가점</span>
-            <div className="readonly-value">{formatScore(netCostBonusScore, 2)}</div>
-            {netCostPenaltyNotice && (
-              <div className="readonly-note">올라탈수록 점수 깎임</div>
-            )}
-          </div>
+          <>
+            <div className="excel-field-block size-xs readonly">
+              <span className="field-label">순공사원가가점</span>
+              <div className="readonly-value">{formatScore(netCostBonusScore, 2)}</div>
+              {netCostPenaltyNotice && (
+                <div className="readonly-note">올라탈수록 점수 깎임</div>
+              )}
+            </div>
+            <div className="excel-field-block size-xs">
+              <span className="field-label">최소 시평액</span>
+              <button type="button" className="excel-btn" onClick={openMinRatingModal}>계산</button>
+            </div>
+          </>
         )}
       </div>
 
@@ -5292,6 +5410,72 @@ export default function AgreementBoardWindow({
               {excelCopying && copyingKind === action.kind ? '복사 중…' : action.label}
             </button>
           ))}
+        </div>
+      </Modal>
+      <Modal
+        open={minRatingOpen}
+        title="최소 시평액 계산"
+        onClose={closeMinRatingModal}
+        onCancel={closeMinRatingModal}
+        onSave={closeMinRatingModal}
+        closeOnSave
+        size="sm"
+      >
+        <div className="export-sheet-modal">
+          <div className="export-sheet-field">
+            <span className="export-sheet-label">순공사원가가점</span>
+            <input type="text" value={formatScore(netCostBonusScore, 2)} readOnly />
+          </div>
+          <div className="export-sheet-field">
+            <span className="export-sheet-label">신인도가점</span>
+            <input
+              type="text"
+              value={minRatingCredibilityScore}
+              onChange={(event) => setMinRatingCredibilityScore(event.target.value)}
+              placeholder="예: 1.5"
+            />
+            <p className="export-sheet-hint">신인도 가점이 없으면 비워두세요.</p>
+          </div>
+          <div className="export-sheet-field">
+            <span className="export-sheet-label">신인도 적용 지분(%)</span>
+            <input
+              type="text"
+              value={minRatingCredibilityShare}
+              onChange={(event) => setMinRatingCredibilityShare(event.target.value)}
+              placeholder="예: 70"
+            />
+          </div>
+          <div className="export-sheet-field">
+            <span className="export-sheet-label">의무지분(%)</span>
+            <input
+              type="text"
+              value={minRatingRequiredShare}
+              onChange={(event) => setMinRatingRequiredShare(event.target.value)}
+              placeholder="예: 30"
+            />
+            <p className="export-sheet-hint">의무지분이 필요한 업체의 지분을 입력하세요.</p>
+          </div>
+          <div className="export-sheet-field">
+            <span className="export-sheet-label">결과</span>
+            {minRatingResult.status === 'needShare' && (
+              <p className="export-sheet-hint">의무지분(%)을 입력해 주세요.</p>
+            )}
+            {minRatingResult.status === 'needRatioBase' && (
+              <p className="export-sheet-hint">시공비율기준금액을 입력해 주세요.</p>
+            )}
+            {minRatingResult.status === 'impossible' && (
+              <p className="export-sheet-hint">현재 가점 기준으로는 만점에 도달할 수 없습니다.</p>
+            )}
+            {minRatingResult.status === 'ok' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div>최소 가능지분: {formatPercentValue(minRatingResult.possibleShare)}</div>
+                <div>가능지분 합계: {formatPercentValue(minRatingResult.effectiveShare)}</div>
+                <div>예상 총점: {formatScore(minRatingResult.totalScore, 2)}</div>
+                <div>최소 시평액: {formatAmount(minRatingResult.minRatingAmount)}</div>
+              </div>
+            )}
+            <p className="export-sheet-hint">기준: 경영 15점, 실적 만점, 품질 85점, 입찰 65점 기준.</p>
+          </div>
         </div>
       </Modal>
       <Modal
