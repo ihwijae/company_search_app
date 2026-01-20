@@ -2065,6 +2065,7 @@ export default function AgreementBoardWindow({
       ? credibilityScoreRaw * (credibilityShare / 100)
       : 0;
     const credibilityBonus = roundForLhTotals(credibilityBonusRaw) || 0;
+    const bonusTotal = roundForLhTotals(netCostBonusValue + credibilityBonus) || 0;
     const performanceMax = (derivedMaxScores.performanceMax ?? ownerPerformanceFallback ?? 0) || 0;
     const managementMaxValue = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
     const step = 0.1;
@@ -2099,12 +2100,15 @@ export default function AgreementBoardWindow({
       }
     }
     if (!best) {
+      const reason = bonusTotal <= 0 ? '가점 없음' : '가점 부족';
       return {
         status: 'impossible',
         requiredShare,
         netCostBonusValue,
         credibilityBonus,
         performanceMax,
+        bonusTotal,
+        reason,
       };
     }
     const minRatingAmount = Math.ceil(ratioBaseValue * (best.possibleShare / 100));
@@ -2115,6 +2119,7 @@ export default function AgreementBoardWindow({
       performanceMax,
       netCostBonusValue,
       credibilityBonus,
+      bonusTotal,
       minRatingAmount,
       ...best,
     };
@@ -5479,7 +5484,9 @@ export default function AgreementBoardWindow({
               <p className="export-sheet-hint">시공비율기준금액을 입력해 주세요.</p>
             )}
             {minRatingResult.status === 'impossible' && (
-              <p className="export-sheet-hint">현재 가점 기준으로는 만점에 도달할 수 없습니다.</p>
+              <p className="export-sheet-hint" style={{ color: '#b91c1c' }}>
+                현재 가점 기준으로는 만점에 도달할 수 없습니다. ({minRatingResult.reason || '사유 미확인'})
+              </p>
             )}
             {minRatingResult.status === 'ok' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -5488,6 +5495,13 @@ export default function AgreementBoardWindow({
                 <div>예상 총점: {formatScore(minRatingResult.totalScore, 2)}</div>
                 <div>최소 시평액: {formatAmount(minRatingResult.minRatingAmount)}</div>
               </div>
+            )}
+            {minRatingResult.status === 'ok'
+              && minRatingResult.bonusTotal <= 0
+              && minRatingResult.possibleShare >= (minRatingResult.requiredShare - 0.0001) && (
+                <p className="export-sheet-hint" style={{ color: '#b91c1c' }}>
+                  가점 없음: 의무지분만으로 계산됩니다.
+                </p>
             )}
             <p className="export-sheet-hint">기준: 경영 15점, 실적 만점, 품질 85점, 입찰 65점 기준.</p>
           </div>
