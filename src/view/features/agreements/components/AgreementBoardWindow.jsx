@@ -1840,90 +1840,6 @@ export default function AgreementBoardWindow({
     return Number.isFinite(rMin) && Number.isFinite(rMax) && (rMin > 0.88 || rMax > 0.88);
   }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
 
-  const minRatingResult = React.useMemo(() => {
-    if (!isLHOwner) return { status: 'inactive' };
-    const requiredShareRaw = parseNumeric(minRatingRequiredShare);
-    const requiredShare = Number.isFinite(requiredShareRaw)
-      ? Math.min(Math.max(requiredShareRaw, 0), 100)
-      : null;
-    const ratioBaseValue = parseAmountValue(ratioBaseAmount);
-    if (!(requiredShare > 0)) return { status: 'needShare' };
-    if (!(ratioBaseValue > 0)) return { status: 'needRatioBase', requiredShare };
-    const credibilityScoreRaw = parseNumeric(minRatingCredibilityScore);
-    const credibilityShareRaw = parseNumeric(minRatingCredibilityShare);
-    const credibilityShare = Number.isFinite(credibilityShareRaw)
-      ? Math.min(Math.max(credibilityShareRaw, 0), 100)
-      : 0;
-    const credibilityBonusRaw = (Number.isFinite(credibilityScoreRaw) && credibilityScoreRaw > 0 && credibilityShare > 0)
-      ? credibilityScoreRaw * (credibilityShare / 100)
-      : 0;
-    const credibilityBonus = roundForLhTotals(credibilityBonusRaw) || 0;
-    const performanceMax = (derivedMaxScores.performanceMax ?? ownerPerformanceFallback ?? 0) || 0;
-    const managementMaxValue = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
-    const step = 0.1;
-    const maxShare = Math.min(requiredShare, 100);
-    const steps = Math.max(0, Math.round(maxShare / step));
-    let best = null;
-    for (let i = 0; i <= steps; i += 1) {
-      const possibleShare = roundTo(i * step, 1);
-      const effectiveShare = Math.min(100, (100 - requiredShare) + Math.min(possibleShare, requiredShare));
-      const shareRatio = Math.max(0, Math.min(effectiveShare / 100, 1));
-      const managementScore = roundForLhTotals(managementMaxValue * shareRatio) || 0;
-      const qualityTotal = 85 * shareRatio;
-      const qualityPoints = resolveQualityPoints(qualityTotal, selectedRangeOption?.key) || 0;
-      const totalScore = roundForLhTotals(
-        managementScore
-          + performanceMax
-          + BID_SCORE_DEFAULT
-          + (netCostBonusScore || 0)
-          + credibilityBonus
-          + qualityPoints
-      ) || 0;
-      if (totalScore >= (LH_FULL_SCORE - 1e-6)) {
-        best = {
-          possibleShare,
-          effectiveShare,
-          managementScore,
-          qualityTotal,
-          qualityPoints,
-          totalScore,
-        };
-        break;
-      }
-    }
-    if (!best) {
-      return {
-        status: 'impossible',
-        requiredShare,
-        credibilityBonus,
-        performanceMax,
-      };
-    }
-    const minRatingAmount = Math.ceil(ratioBaseValue * (best.possibleShare / 100));
-    return {
-      status: 'ok',
-      requiredShare,
-      ratioBaseValue,
-      performanceMax,
-      credibilityBonus,
-      minRatingAmount,
-      ...best,
-    };
-  }, [
-    derivedMaxScores.performanceMax,
-    isLHOwner,
-    managementMax,
-    minRatingCredibilityScore,
-    minRatingCredibilityShare,
-    minRatingRequiredShare,
-    netCostBonusScore,
-    ownerPerformanceFallback,
-    ratioBaseAmount,
-    resolveQualityPoints,
-    roundForLhTotals,
-    selectedRangeOption?.key,
-  ]);
-
   React.useEffect(() => {
     let canceled = false;
     const load = async () => {
@@ -2124,6 +2040,90 @@ export default function AgreementBoardWindow({
   const managementMax = React.useMemo(() => (
     isMois30To50 ? 10 : (derivedMaxScores.managementMax ?? MANAGEMENT_SCORE_MAX)
   ), [isMois30To50, derivedMaxScores.managementMax]);
+
+  const minRatingResult = React.useMemo(() => {
+    if (!isLHOwner) return { status: 'inactive' };
+    const requiredShareRaw = parseNumeric(minRatingRequiredShare);
+    const requiredShare = Number.isFinite(requiredShareRaw)
+      ? Math.min(Math.max(requiredShareRaw, 0), 100)
+      : null;
+    const ratioBaseValue = parseAmountValue(ratioBaseAmount);
+    if (!(requiredShare > 0)) return { status: 'needShare' };
+    if (!(ratioBaseValue > 0)) return { status: 'needRatioBase', requiredShare };
+    const credibilityScoreRaw = parseNumeric(minRatingCredibilityScore);
+    const credibilityShareRaw = parseNumeric(minRatingCredibilityShare);
+    const credibilityShare = Number.isFinite(credibilityShareRaw)
+      ? Math.min(Math.max(credibilityShareRaw, 0), 100)
+      : 0;
+    const credibilityBonusRaw = (Number.isFinite(credibilityScoreRaw) && credibilityScoreRaw > 0 && credibilityShare > 0)
+      ? credibilityScoreRaw * (credibilityShare / 100)
+      : 0;
+    const credibilityBonus = roundForLhTotals(credibilityBonusRaw) || 0;
+    const performanceMax = (derivedMaxScores.performanceMax ?? ownerPerformanceFallback ?? 0) || 0;
+    const managementMaxValue = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
+    const step = 0.1;
+    const maxShare = Math.min(requiredShare, 100);
+    const steps = Math.max(0, Math.round(maxShare / step));
+    let best = null;
+    for (let i = 0; i <= steps; i += 1) {
+      const possibleShare = roundTo(i * step, 1);
+      const effectiveShare = Math.min(100, (100 - requiredShare) + Math.min(possibleShare, requiredShare));
+      const shareRatio = Math.max(0, Math.min(effectiveShare / 100, 1));
+      const managementScore = roundForLhTotals(managementMaxValue * shareRatio) || 0;
+      const qualityTotal = 85 * shareRatio;
+      const qualityPoints = resolveQualityPoints(qualityTotal, selectedRangeOption?.key) || 0;
+      const totalScore = roundForLhTotals(
+        managementScore
+          + performanceMax
+          + BID_SCORE_DEFAULT
+          + (netCostBonusScore || 0)
+          + credibilityBonus
+          + qualityPoints
+      ) || 0;
+      if (totalScore >= (LH_FULL_SCORE - 1e-6)) {
+        best = {
+          possibleShare,
+          effectiveShare,
+          managementScore,
+          qualityTotal,
+          qualityPoints,
+          totalScore,
+        };
+        break;
+      }
+    }
+    if (!best) {
+      return {
+        status: 'impossible',
+        requiredShare,
+        credibilityBonus,
+        performanceMax,
+      };
+    }
+    const minRatingAmount = Math.ceil(ratioBaseValue * (best.possibleShare / 100));
+    return {
+      status: 'ok',
+      requiredShare,
+      ratioBaseValue,
+      performanceMax,
+      credibilityBonus,
+      minRatingAmount,
+      ...best,
+    };
+  }, [
+    derivedMaxScores.performanceMax,
+    isLHOwner,
+    managementMax,
+    minRatingCredibilityScore,
+    minRatingCredibilityShare,
+    minRatingRequiredShare,
+    netCostBonusScore,
+    ownerPerformanceFallback,
+    ratioBaseAmount,
+    resolveQualityPoints,
+    roundForLhTotals,
+    selectedRangeOption?.key,
+  ]);
 
   React.useEffect(() => {
     if (open) {
