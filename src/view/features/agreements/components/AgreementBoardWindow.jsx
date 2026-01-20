@@ -1492,7 +1492,9 @@ export default function AgreementBoardWindow({
   }, [onUpdateBoard]);
 
   const handleParticipantLimitChange = React.useCallback((event) => {
-    if (typeof onUpdateBoard === 'function') onUpdateBoard({ participantLimit: event.target.value });
+    if (typeof onUpdateBoard !== 'function') return;
+    const nextValue = Number(event.target.value);
+    onUpdateBoard({ participantLimit: nextValue, groupSize: nextValue });
   }, [onUpdateBoard]);
 
   const safeDutyRegions = React.useMemo(
