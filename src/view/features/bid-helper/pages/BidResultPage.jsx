@@ -17,6 +17,13 @@ const FILE_TYPE_LABELS = {
   tongsin: '통신',
   sobang: '소방',
 };
+const OWNER_OPTIONS = [
+  { value: 'LH', label: '한국토지주택공사' },
+  { value: 'MOIS', label: '행안부' },
+  { value: 'PPS', label: '조달청' },
+  { value: 'EX', label: '한국도로공사' },
+  { value: 'KRAIL', label: '국가철도공단' },
+];
 
 const BIZ_FIELDS = ['사업자번호', 'bizNo', '사업자 번호'];
 const NAME_FIELDS = ['업체명', '회사명', 'name', '검색된 회사'];
@@ -183,6 +190,11 @@ export default function BidResultPage() {
   const [isAgreementProcessing, setIsAgreementProcessing] = React.useState(false);
   const [isOrderingProcessing, setIsOrderingProcessing] = React.useState(false);
   const [isBidAmountProcessing, setIsBidAmountProcessing] = React.useState(false);
+  const [bidAmountNoticeNo, setBidAmountNoticeNo] = React.useState('');
+  const [bidAmountNoticeTitle, setBidAmountNoticeTitle] = React.useState('');
+  const [bidAmountDeadlineDate, setBidAmountDeadlineDate] = React.useState('');
+  const [bidAmountDeadlineTime, setBidAmountDeadlineTime] = React.useState('');
+  const [bidAmountBaseAmount, setBidAmountBaseAmount] = React.useState('');
   const [agreementWorkbook, setAgreementWorkbook] = React.useState(null);
   const [agreementSheetNames, setAgreementSheetNames] = React.useState([]);
   const [selectedAgreementSheet, setSelectedAgreementSheet] = React.useState('');
@@ -201,6 +213,9 @@ export default function BidResultPage() {
   const bidAmountTemplateInputRef = React.useRef(null);
   const templateFileName = templatePath ? templatePath.split(/[\\/]/).pop() : '';
   const bidAmountTemplateName = bidAmountTemplatePath ? bidAmountTemplatePath.split(/[\\/]/).pop() : '';
+  const ownerLabel = React.useMemo(() => (
+    OWNER_OPTIONS.find((option) => option.value === ownerId)?.label || ownerId
+  ), [ownerId]);
 
   const strongLabelStyle = React.useMemo(() => ({
     display: 'block',
@@ -381,6 +396,13 @@ export default function BidResultPage() {
       const response = await window.electronAPI.bidResult.applyBidAmountTemplate({
         templatePath: bidAmountTemplatePath,
         entries: bidEntries,
+        header: {
+          noticeNo: bidAmountNoticeNo,
+          noticeTitle: bidAmountNoticeTitle,
+          ownerLabel,
+          bidDeadline: [bidAmountDeadlineDate, bidAmountDeadlineTime].filter(Boolean).join(' '),
+          baseAmount: bidAmountBaseAmount,
+        },
       });
       if (!response?.success) {
         if (response?.canceled) return;
@@ -679,6 +701,13 @@ export default function BidResultPage() {
         const response = await window.electronAPI.bidResult.applyBidAmountTemplate({
           templatePath: bidAmountTemplatePath,
           entries: bidEntries,
+          header: {
+            noticeNo: bidAmountNoticeNo,
+            noticeTitle: bidAmountNoticeTitle,
+            ownerLabel,
+            bidDeadline: [bidAmountDeadlineDate, bidAmountDeadlineTime].filter(Boolean).join(' '),
+            baseAmount: bidAmountBaseAmount,
+          },
         });
         if (!response?.success) {
           if (response?.canceled) {
@@ -903,17 +932,15 @@ export default function BidResultPage() {
                     <p className="section-help">업로드한 엑셀 파일의 서식/수식을 자동으로 정리합니다. (B열 순번 기준으로 마지막 행까지 적용)</p>
                     <div style={{ marginBottom: '16px' }}>
                       <label className="field-label" style={strongLabelStyle}>발주처</label>
-                      <select
-                        className="input"
-                        value={ownerId}
-                        onChange={(e) => setOwnerId(e.target.value)}
-                      >
-                        <option value="LH">LH</option>
-                        <option value="MOIS">행안부</option>
-                        <option value="PPS">조달청</option>
-                        <option value="EX">한국도로공사</option>
-                        <option value="KRAIL">국가철도공단</option>
-                      </select>
+                        <select
+                          className="input"
+                          value={ownerId}
+                          onChange={(e) => setOwnerId(e.target.value)}
+                        >
+                          {OWNER_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
                     </div>
                     <div style={{ marginBottom: '16px' }}>
                       <label className="field-label" style={strongLabelStyle}>업체 분류</label>
@@ -979,6 +1006,50 @@ export default function BidResultPage() {
                         <span style={sectionTitleBadgeStyle}>투찰금액 템플릿 업체 배치</span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div>
+                          <label className="field-label" style={strongLabelStyle}>공고번호</label>
+                          <input
+                            className="input"
+                            value={bidAmountNoticeNo}
+                            onChange={(event) => setBidAmountNoticeNo(event.target.value)}
+                            placeholder="예: R26BK..."
+                          />
+                        </div>
+                        <div>
+                          <label className="field-label" style={strongLabelStyle}>공사명</label>
+                          <input
+                            className="input"
+                            value={bidAmountNoticeTitle}
+                            onChange={(event) => setBidAmountNoticeTitle(event.target.value)}
+                            placeholder="공사명을 입력하세요"
+                          />
+                        </div>
+                        <div>
+                          <label className="field-label" style={strongLabelStyle}>투찰마감일</label>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <input
+                              className="input"
+                              type="date"
+                              value={bidAmountDeadlineDate}
+                              onChange={(event) => setBidAmountDeadlineDate(event.target.value)}
+                            />
+                            <input
+                              className="input"
+                              type="time"
+                              value={bidAmountDeadlineTime}
+                              onChange={(event) => setBidAmountDeadlineTime(event.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="field-label" style={strongLabelStyle}>기초금액</label>
+                          <input
+                            className="input"
+                            value={bidAmountBaseAmount}
+                            onChange={(event) => setBidAmountBaseAmount(event.target.value)}
+                            placeholder="예: 2,550,405,000"
+                          />
+                        </div>
                         <div>
                           <label className="field-label" style={strongLabelStyle}>투찰금액 템플릿</label>
                           <input

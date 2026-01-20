@@ -1247,6 +1247,7 @@ try {
     try {
       const templatePath = payload?.templatePath ? String(payload.templatePath) : '';
       const entries = Array.isArray(payload?.entries) ? payload.entries : [];
+      const header = payload?.header && typeof payload.header === 'object' ? payload.header : {};
       if (!templatePath) throw new Error('개찰결과파일을 먼저 선택하세요.');
       if (!templatePath.toLowerCase().endsWith('.xlsx')) throw new Error('xlsx 파일만 선택할 수 있습니다.');
       if (!fs.existsSync(templatePath)) throw new Error('개찰결과 파일을 찾을 수 없습니다.');
@@ -1290,6 +1291,7 @@ try {
         templatePath,
         outputPath: saveDialogResult.filePath,
         entries,
+        header,
       });
       return {
         success: true,

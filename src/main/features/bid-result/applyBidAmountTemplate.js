@@ -83,7 +83,7 @@ const QUALITY_FILL = {
   fgColor: { argb: 'FFFFFF00' },
 };
 
-const applyBidAmountTemplate = async ({ templatePath, outputPath, entries = [] }) => {
+const applyBidAmountTemplate = async ({ templatePath, outputPath, entries = [], header = {} }) => {
   if (!templatePath) throw new Error('투찰금액 템플릿 파일을 선택하세요.');
   if (!outputPath) throw new Error('저장 경로가 필요합니다.');
   if (!Array.isArray(entries) || entries.length === 0) {
@@ -152,6 +152,17 @@ const applyBidAmountTemplate = async ({ templatePath, outputPath, entries = [] }
     templateSheet.getCell(row, 3).value = null;
     templateSheet.getCell(row, 7).value = null;
   }
+
+  const noticeNo = header.noticeNo ? String(header.noticeNo).trim() : '';
+  const noticeTitle = header.noticeTitle ? String(header.noticeTitle).trim() : '';
+  const ownerLabel = header.ownerLabel ? String(header.ownerLabel).trim() : '';
+  const bidDeadline = header.bidDeadline ? String(header.bidDeadline).trim() : '';
+  const baseAmount = header.baseAmount ? String(header.baseAmount).trim() : '';
+  if (noticeNo) templateSheet.getCell('C1').value = noticeNo;
+  if (noticeTitle) templateSheet.getCell('C2').value = noticeTitle;
+  if (ownerLabel) templateSheet.getCell('C3').value = ownerLabel;
+  if (bidDeadline) templateSheet.getCell('C4').value = bidDeadline;
+  if (baseAmount) templateSheet.getCell('C5').value = baseAmount;
 
   ordered.forEach((entry, index) => {
     const row = 8 + index;
