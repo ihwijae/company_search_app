@@ -105,16 +105,16 @@ const applyBidAmountTemplate = async ({ templatePath, outputPath, entries = [] }
 
   const totalCount = entries.length;
   const slots = Array(totalCount).fill(null);
-  const centerSequence = buildCenterSequence(totalCount);
-  let qualityIndex = 0;
-  centerSequence.forEach((index) => {
-    if (qualityIndex >= qualityEntries.length) return;
-    const slotIndex = index - 1;
-    if (!slots[slotIndex]) {
-      slots[slotIndex] = qualityEntries[qualityIndex];
-      qualityIndex += 1;
+  const qualityCount = qualityEntries.length;
+  const qualityStart = qualityCount > 0
+    ? Math.floor((totalCount - qualityCount) / 2)
+    : 0;
+  for (let i = 0; i < qualityCount; i += 1) {
+    const slotIndex = qualityStart + i;
+    if (slotIndex >= 0 && slotIndex < totalCount) {
+      slots[slotIndex] = qualityEntries[i];
     }
-  });
+  }
 
   let tieIndex = 0;
   for (let index = totalCount; index >= 1; index -= 1) {
