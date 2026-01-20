@@ -199,13 +199,13 @@ export default function AgreementFlowPage({
   }, [isPPS, isMoisShareRange, entryMode]);
 
   React.useEffect(() => {
-    const groupSizeValue = Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 5;
+    const groupSizeValue = 5;
     const boardDutyRegions = Array.isArray(boardState?.dutyRegions) ? boardState.dutyRegions : [];
     const sameRegions = boardDutyRegions.length === dutyRegions.length
       && boardDutyRegions.every((region, index) => region === dutyRegions[index]);
     if (sameRegions && boardState?.groupSize === groupSizeValue) return;
     updateBoard({ dutyRegions, groupSize: groupSizeValue });
-  }, [boardState, dutyRegions, form.teamSizeMax, updateBoard]);
+  }, [boardState, dutyRegions, updateBoard]);
 
   React.useEffect(() => {
     const normalizedOwnerValue = String(resolvedOwnerId || 'LH').toUpperCase();
@@ -589,7 +589,7 @@ export default function AgreementFlowPage({
       pinned: [],
       excluded: [],
       dutyRegions,
-      groupSize: Number(form.teamSizeMax) > 0 ? Number(form.teamSizeMax) : 5,
+      groupSize: 5,
       ownerId: (resolvedOwnerId || 'LH').toUpperCase(),
       fileType: currentFileType,
       rangeId: activeMenuKey,
@@ -609,7 +609,7 @@ export default function AgreementFlowPage({
       inlineMode: true,
     });
     window.location.hash = '#/agreement-board';
-  }, [openBoard, dutyRegions, form.teamSizeMax, resolvedOwnerId, currentFileType, activeMenuKey, form.noticeNo, form.title, form.industry, form.baseAmount, form.estimatedPrice, form.bidAmount, isPPS, form.ratioBaseAmount, form.bidRate, form.adjustmentRate, form.bidDeadline, form.regionDutyRate, form.entryQualificationAmount, entryMode]);
+  }, [openBoard, dutyRegions, resolvedOwnerId, currentFileType, activeMenuKey, form.noticeNo, form.title, form.industry, form.baseAmount, form.estimatedPrice, form.bidAmount, isPPS, form.ratioBaseAmount, form.bidRate, form.adjustmentRate, form.bidDeadline, form.regionDutyRate, form.entryQualificationAmount, entryMode]);
 
   return (
     <div className="app-shell">
@@ -824,7 +824,7 @@ export default function AgreementFlowPage({
                 <div className="section-divider" />
                 <div className="grid-2">
                   <Field label="팀원 수(최대)">
-                    <select className="filter-input" value={form.teamSizeMax} onChange={onChange('teamSizeMax')}>
+                    <select className="filter-input" value="5" disabled>
                       <option value="1">1</option>
                       <option value="2">2</option>
                       <option value="3">3</option>

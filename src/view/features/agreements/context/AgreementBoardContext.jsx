@@ -191,6 +191,7 @@ const buildPersistedBoardState = (state) => ({
   ...state,
   open: false,
   inlineMode: false,
+  groupSize: DEFAULT_GROUP_SIZE,
   candidates: sanitizeCandidatesList(state?.candidates || []),
   pinned: Array.isArray(state?.pinned) ? state.pinned : [],
   excluded: Array.isArray(state?.excluded) ? state.excluded : [],
@@ -348,6 +349,7 @@ const updateBoard = React.useCallback((payload = {}) => {
       const next = {
         ...prev,
         ...nextPayload,
+        groupSize: DEFAULT_GROUP_SIZE,
         candidates: Array.isArray(nextPayload.candidates)
           ? sanitizeCandidatesList(nextPayload.candidates)
           : (nextPayload.candidates !== undefined ? nextPayload.candidates : prev.candidates),
