@@ -75,6 +75,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   bidResult: {
     applyAgreement: (payload) => ipcRenderer.invoke('bid-result:apply-agreement', payload),
+    applyBidAmountTemplate: (payload) => ipcRenderer.invoke('bid-result:apply-bid-amount-template', payload),
     applyOrdering: (payload) => ipcRenderer.invoke('bid-result:apply-ordering', payload),
   },
 

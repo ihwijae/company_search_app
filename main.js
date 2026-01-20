@@ -12,6 +12,7 @@ const industryAverages = require('./src/shared/industryAverages.json');
 const { ExcelAutomationService } = require('./src/main/features/excel/excelAutomation.js');
 const { formatUploadedWorkbook } = require('./src/main/features/excel/formatUploadedWorkbook.js');
 const { applyAgreementToTemplate } = require('./src/main/features/bid-result/applyAgreement.js');
+const { applyBidAmountTemplate } = require('./src/main/features/bid-result/applyBidAmountTemplate.js');
 const { applyOrderingResult } = require('./src/main/features/bid-result/applyOrderingResult.js');
 const { sendTestMail, sendBulkMail } = require('./src/main/features/mail/smtpService.js');
 const os = require('os');
@@ -1260,6 +1261,34 @@ try {
     } catch (e) {
       console.error('[MAIN] bid-result:apply-agreement failed:', e);
       return { success: false, message: e?.message || '협정파일 처리에 실패했습니다.' };
+    }
+  });
+
+  if (ipcMain.removeHandler) ipcMain.removeHandler('bid-result:apply-bid-amount-template');
+  ipcMain.handle('bid-result:apply-bid-amount-template', async (_event, payload = {}) => {
+    try {
+      const templatePath = payload?.templatePath ? String(payload.templatePath) : '';
+      const agreementPath = payload?.agreementPath ? String(payload.agreementPath) : '';
+      const agreementSheet = payload?.agreementSheet ? String(payload.agreementSheet) : '';
+      if (!templatePath) throw new Error('투찰금액 템플릿 파일을 먼저 선택하세요.');
+      if (!agreementPath) throw new Error('협정파일을 먼저 선택하세요.');
+      if (!agreementSheet) throw new Error('협정파일 시트를 선택하세요.');
+      if (!templatePath.toLowerCase().endsWith('.xlsx')) throw new Error('xlsx 파일만 선택할 수 있습니다.');
+      if (!agreementPath.toLowerCase().endsWith('.xlsx')) throw new Error('협정파일은 xlsx만 선택할 수 있습니다.');
+      if (!fs.existsSync(templatePath)) throw new Error('투찰금액 템플릿 파일을 찾을 수 없습니다.');
+      if (!fs.existsSync(agreementPath)) throw new Error('협정파일을 찾을 수 없습니다.');
+
+      const result = await applyBidAmountTemplate({ templatePath, agreementPath, agreementSheet });
+      return {
+        success: true,
+        path: result?.path || templatePath,
+        totalCount: result?.totalCount,
+        qualityCount: result?.qualityCount,
+        tieCount: result?.tieCount,
+      };
+    } catch (e) {
+      console.error('[MAIN] bid-result:apply-bid-amount-template failed:', e);
+      return { success: false, message: e?.message || '투찰금액 템플릿 처리에 실패했습니다.' };
     }
   });
 
