@@ -1591,12 +1591,6 @@ export default function AgreementBoardWindow({
     }
   }, [minRatingOpen, regionDutyRate]);
 
-  React.useEffect(() => {
-    if (!minRatingOpen) return;
-    setMinRatingNetCostBonus(formatScore(netCostBonusScore, 2));
-  }, [minRatingOpen, netCostBonusScore]);
-
-
   const credibilityConfig = React.useMemo(() => {
     if (ownerKeyUpper === 'LH') return { enabled: true, max: null };
     if (ownerKeyUpper === 'PPS') return { enabled: true, max: null };
@@ -1845,6 +1839,11 @@ export default function AgreementBoardWindow({
     const rMax = roundTo((bidMax - aValueNumber) / (expectedMax - aValueNumber), 4);
     return Number.isFinite(rMin) && Number.isFinite(rMax) && (rMin > 0.88 || rMax > 0.88);
   }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
+
+  React.useEffect(() => {
+    if (!minRatingOpen) return;
+    setMinRatingNetCostBonus(formatScore(netCostBonusScore, 2));
+  }, [minRatingOpen, netCostBonusScore]);
 
   React.useEffect(() => {
     let canceled = false;
