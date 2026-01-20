@@ -5428,6 +5428,7 @@ export default function AgreementBoardWindow({
         onCancel={closeMinRatingModal}
         onSave={closeMinRatingModal}
         closeOnSave
+        confirmLabel="닫기"
         size="sm"
       >
         <div className="export-sheet-modal">
