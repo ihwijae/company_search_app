@@ -422,6 +422,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
 };
 
 const { sanitizeFileName, exportAgreementExcel } = require('./src/main/features/agreements/exportExcel.js');
+const { buildAgreementExportUpdates } = require('./src/main/features/agreements/exportExcelCom.js');
 
 const isRunningInWSL = (() => {
     if (process.platform !== 'linux') return false;
@@ -2638,6 +2639,30 @@ try {
           return { success: false, message: '사용자 취소' };
         }
         outputPath = saveDialogResult.filePath;
+      }
+
+      if (process.platform === 'win32') {
+        const comPayload = buildAgreementExportUpdates({
+          config: { ...config, path: resolvedTemplatePath },
+          payload,
+          sheetName,
+        });
+        const comResult = await excelAutomation.exportAgreementExcelCom({
+          templatePath: resolvedTemplatePath,
+          outputPath,
+          appendTargetPath: appendTargetPath || '',
+          sheetName: config.sheetName || '',
+          renameSheet: comPayload.renameSheet,
+          updates: comPayload.updates,
+        });
+        if (comResult?.success) {
+          return {
+            success: true,
+            path: comResult?.path || outputPath,
+            sheetName: comResult?.sheetName || comPayload.renameSheet || sheetName,
+          };
+        }
+        console.warn('[MAIN] agreements-export-excel COM failed, fallback to ExcelJS:', comResult?.message);
       }
 
       const result = await exportAgreementExcel({

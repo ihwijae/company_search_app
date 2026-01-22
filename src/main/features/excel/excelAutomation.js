@@ -247,6 +247,129 @@ $items += [pscustomobject]@{
       return { success: false, message: err?.message || String(err) };
     }
   }
+
+  async exportAgreementExcelCom(payload = {}) {
+    const script = `
+& {
+param([string]$payloadBase64)
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$payloadJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBase64))
+$payload = $payloadJson | ConvertFrom-Json
+if (-not $payload) { throw 'payload 파싱에 실패했습니다.' }
+try { Add-Type -AssemblyName System.Drawing } catch {}
+$excel = $null
+$templateWb = $null
+$targetWb = $null
+$ws = $null
+function Resolve-UniqueSheetName($workbook, $desired) {
+  if (-not $desired) { return $null }
+  $name = [string]$desired
+  $exists = $false
+  foreach ($s in $workbook.Worksheets) {
+    if ($s.Name -eq $name) { $exists = $true; break }
+  }
+  if (-not $exists) { return $name }
+  $base = $name -replace "\\(\\d+\\)$",""
+  for ($i = 2; $i -lt 1000; $i++) {
+    $candidate = ($base.Substring(0, [Math]::Min($base.Length, 31 - ($i.ToString().Length + 2)))) + "($i)"
+    $exists = $false
+    foreach ($s in $workbook.Worksheets) {
+      if ($s.Name -eq $candidate) { $exists = $true; break }
+    }
+    if (-not $exists) { return $candidate }
+  }
+  return $name.Substring(0, [Math]::Min($name.Length, 31))
+}
+
+try {
+  $excel = New-Object -ComObject Excel.Application
+  $excel.Visible = $false
+  $excel.DisplayAlerts = $false
+
+  $templateWb = $excel.Workbooks.Open([string]$payload.templatePath)
+  if (-not $templateWb) { throw '템플릿 파일을 열지 못했습니다.' }
+  if ($payload.sheetName) {
+    $ws = $templateWb.Worksheets.Item([string]$payload.sheetName)
+  }
+  if (-not $ws) { $ws = $templateWb.Worksheets.Item(1) }
+  if (-not $ws) { throw '엑셀 시트를 찾을 수 없습니다.' }
+
+  if ($payload.renameSheet) {
+    $ws.Name = [string]$payload.renameSheet
+  }
+
+  foreach ($update in $payload.updates) {
+    $addr = [string]$update.address
+    if (-not $addr) { continue }
+    $cell = $ws.Range($addr)
+    if (-not $update.noValueChange) {
+      if ($null -eq $update.value -and -not $update.formula) {
+        $cell.ClearContents() | Out-Null
+      } elseif ($update.formula) {
+        $cell.Formula = [string]$update.formula
+      } else {
+        $val = $update.value
+        if ($val -is [double] -or $val -is [float] -or $val -is [decimal] -or $val -is [int] -or $val -is [long]) {
+          $cell.Value2 = [double]$val
+        } else {
+          $cell.Value2 = [string]$val
+        }
+      }
+    }
+    if ($update.numFmt) {
+      $cell.NumberFormat = [string]$update.numFmt
+    }
+    if ($update.fillColor) {
+      try {
+        $hex = [string]$update.fillColor
+        if (-not $hex.StartsWith('#')) { $hex = '#'+$hex }
+        $colorObj = [System.Drawing.ColorTranslator]::FromHtml($hex)
+        $oleColor = [System.Drawing.ColorTranslator]::ToOle($colorObj)
+        $cell.Interior.Color = $oleColor
+      } catch {}
+    } elseif ($update.clearFill) {
+      try { $cell.Interior.ColorIndex = -4142 } catch {}
+    }
+  }
+
+  if ($payload.appendTargetPath) {
+    $targetWb = $excel.Workbooks.Open([string]$payload.appendTargetPath)
+    if (-not $targetWb) { throw '대상 엑셀 파일을 열지 못했습니다.' }
+    $desiredName = if ($payload.renameSheet) { [string]$payload.renameSheet } else { [string]$ws.Name }
+    $resolvedName = Resolve-UniqueSheetName $targetWb $desiredName
+    $ws.Copy([Type]::Missing, $targetWb.Worksheets.Item($targetWb.Worksheets.Count)) | Out-Null
+    $newSheet = $targetWb.Worksheets.Item($targetWb.Worksheets.Count)
+    if ($resolvedName) { $newSheet.Name = $resolvedName }
+    $targetWb.Save()
+    $templateWb.Close($false)
+    $targetWb.Close($true)
+    [pscustomobject]@{ success = $true; path = $payload.appendTargetPath; sheetName = $resolvedName } | ConvertTo-Json -Compress
+  } else {
+    $templateWb.SaveAs([string]$payload.outputPath)
+    $templateWb.Close($false)
+    [pscustomobject]@{ success = $true; path = $payload.outputPath; sheetName = $ws.Name } | ConvertTo-Json -Compress
+  }
+} finally {
+  if ($targetWb) { try { [System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($targetWb) | Out-Null } catch {} }
+  if ($templateWb) { try { [System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($templateWb) | Out-Null } catch {} }
+  if ($ws) { try { [System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($ws) | Out-Null } catch {} }
+  if ($excel) { try { $excel.Quit() | Out-Null } catch {} }
+  if ($excel) { try { [System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($excel) | Out-Null } catch {} }
+}
+}
+`;
+    try {
+      const raw = await this.runPowerShell(script, [this.encodePayload(payload)], { timeoutMs: 60000 });
+      const data = raw ? JSON.parse(raw) : null;
+      if (!data?.success) {
+        throw new Error(data?.message || '엑셀 COM 내보내기에 실패했습니다.');
+      }
+      return { success: true, path: data.path, sheetName: data.sheetName };
+    } catch (err) {
+      return { success: false, message: err?.message || String(err) };
+    }
+  }
 }
 
 module.exports = { ExcelAutomationService };
