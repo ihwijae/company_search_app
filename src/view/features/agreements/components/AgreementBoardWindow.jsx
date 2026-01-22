@@ -1714,7 +1714,8 @@ export default function AgreementBoardWindow({
       const normalizedType = String(fileType || '').toLowerCase();
       if (normalizedType === 'sobang') {
         const threshold = 30 * KOREAN_UNIT;
-        const multiplier = base < threshold ? 2 : 3;
+        const estimatedValue = parseAmountValue(estimatedAmount) || 0;
+        const multiplier = estimatedValue >= threshold ? 3 : 2;
         return { perfectPerformanceAmount: base * multiplier, perfectPerformanceBasis: `기초금액 × ${multiplier}배` };
       }
       return { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' };
