@@ -525,7 +525,6 @@ export default function AgreementFlowPage({
     if (!key) return;
     if (key === 'search') { window.location.hash = BASE_ROUTES.search; return; }
     if (key === 'agreements') { window.location.hash = BASE_ROUTES.agreementBoard; return; }
-    if (key === 'region-search') { window.location.hash = BASE_ROUTES.regionSearch; return; }
     if (key === 'agreements-sms') { window.location.hash = BASE_ROUTES.agreements; return; }
     if (key === 'auto-agreement') { window.location.hash = BASE_ROUTES.autoAgreement; return; }
     if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
@@ -835,18 +834,6 @@ export default function AgreementFlowPage({
                 </div>
               </div>
             </div>
-
-            {viewMode !== 'board' && (
-              <div className="panel" style={{ gridColumn: '1 / -1' }}>
-                <h3 style={{ marginTop: 0 }}>지역사 찾기 안내</h3>
-                <div className="candidate-summary__empty">
-                  지역사 찾기는 업체 검색과 정보 확인용 도구입니다. 필요한 업체를 확인한 뒤 협정보드 슬롯의 “업체 검색” 버튼으로 직접 배치하세요.
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <button className="btn-soft" onClick={handleOpenRegionSearch}>지역사 찾기</button>
-                </div>
-              </div>
-            )}
 
             {viewMode !== 'region' && (
               <div className="action-footer" style={{ gridColumn: '1 / -1' }}>

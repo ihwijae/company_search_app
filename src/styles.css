@@ -877,6 +877,12 @@ button.primary:hover { background: var(--accent-2); }
   cursor: not-allowed;
 }
 
+.excel-btn-region {
+  background: linear-gradient(135deg, #0ea5e9, #22c55e);
+  color: #fff;
+  border-color: transparent;
+}
+
 .excel-subtext {
   font-size: 13px;
   color: #475569;

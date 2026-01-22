@@ -7,6 +7,12 @@ import AmountInput from '../../../../components/AmountInput.jsx';
 import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
+import {
+  getRegionSearchState,
+  openRegionSearch,
+  subscribeRegionSearch,
+  updateRegionSearchProps,
+} from './regionSearchStore.js';
 import { isWomenOwnedCompany, getQualityBadgeText, extractManagerNames } from '../../../../utils/companyIndicators.js';
 import { generateMany } from '../../../../shared/agreements/generator.js';
 import { AGREEMENT_GROUPS } from '../../../../shared/navigation.js';
@@ -1161,6 +1167,7 @@ export default function AgreementBoardWindow({
   const [exportTargetName, setExportTargetName] = React.useState('');
   const [exportSheetName, setExportSheetName] = React.useState('');
   const exportFileInputRef = React.useRef(null);
+  const regionSearchSessionRef = React.useRef(null);
   const [technicianModalOpen, setTechnicianModalOpen] = React.useState(false);
   const [technicianEntries, setTechnicianEntries] = React.useState([]);
   const technicianEntriesByTargetRef = React.useRef({});
@@ -1735,6 +1742,72 @@ export default function AgreementBoardWindow({
     const formatted = Math.round(perfectPerformanceAmount).toLocaleString();
     return perfectPerformanceBasis ? `${formatted} (${perfectPerformanceBasis})` : formatted;
   }, [perfectPerformanceAmount, perfectPerformanceBasis]);
+
+  const buildRegionSearchPayload = React.useCallback(() => ({
+    ownerId,
+    menuKey: selectedRangeKey,
+    rangeId: selectedRangeKey,
+    fileType,
+    noticeNo,
+    noticeTitle,
+    noticeDate,
+    industryLabel,
+    entryAmount,
+    entryMode: entryModeResolved,
+    baseAmount,
+    estimatedAmount,
+    bidAmount,
+    bidRate,
+    adjustmentRate,
+    perfectPerformanceAmount,
+    dutyRegions,
+    ratioBaseAmount: isPpsUnder50 ? (bidAmount || ratioBaseAmount || '') : (ratioBaseAmount || bidAmount || ''),
+    defaultExcludeSingle: true,
+    readOnly: true,
+  }), [
+    ownerId,
+    selectedRangeKey,
+    fileType,
+    noticeNo,
+    noticeTitle,
+    noticeDate,
+    industryLabel,
+    entryAmount,
+    entryModeResolved,
+    baseAmount,
+    estimatedAmount,
+    bidAmount,
+    bidRate,
+    adjustmentRate,
+    perfectPerformanceAmount,
+    dutyRegions,
+    ratioBaseAmount,
+    isPpsUnder50,
+  ]);
+
+  const handleOpenRegionSearch = React.useCallback(() => {
+    const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    regionSearchSessionRef.current = sessionId;
+    const payload = { ...buildRegionSearchPayload(), sessionId };
+    openRegionSearch(payload);
+  }, [buildRegionSearchPayload]);
+
+  React.useEffect(() => {
+    const unsubscribe = subscribeRegionSearch((next) => {
+      if (!next.open && next.props?.sessionId === regionSearchSessionRef.current) {
+        regionSearchSessionRef.current = null;
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  React.useEffect(() => {
+    const sessionId = regionSearchSessionRef.current;
+    if (!sessionId) return;
+    const currentState = getRegionSearchState();
+    if (!currentState.open || currentState.props?.sessionId !== sessionId) return;
+    updateRegionSearchProps(buildRegionSearchPayload(), sessionId);
+  }, [buildRegionSearchPayload]);
 
 
   const formatPercentValue = React.useCallback((value, digits = 1) => {
@@ -4969,6 +5042,12 @@ export default function AgreementBoardWindow({
                       <option key={option} value={option}>{option}</option>
                     ))}
                   </select>
+                </div>
+                <div className="excel-field-block size-xs">
+                  <span className="field-label">지역사</span>
+                  <button type="button" className="excel-btn excel-btn-region" onClick={handleOpenRegionSearch}>
+                    지역사 찾기
+                  </button>
                 </div>
               </div>
 

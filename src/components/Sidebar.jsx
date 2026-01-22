@@ -64,7 +64,6 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
         />
       ),
     },
-    { key: 'region-search', label: '지역사 찾기', icon: '📍' },
     {
       key: 'bid-result',
       label: '개찰결과',
