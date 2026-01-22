@@ -2065,34 +2065,6 @@ export default function AgreementBoardWindow({
     isMois30To50 ? 10 : (derivedMaxScores.managementMax ?? MANAGEMENT_SCORE_MAX)
   ), [isMois30To50, derivedMaxScores.managementMax]);
 
-  const isSingleBidEligible = React.useCallback((candidate) => {
-    if (!candidate) return false;
-    const entryValue = parseAmountValue(entryAmount) || 0;
-    const sipyungAmount = getCandidateSipyungAmount(candidate);
-    const entryOk = entryValue > 0
-      ? (sipyungAmount != null && sipyungAmount >= entryValue)
-      : true;
-
-    const perfTarget = perfectPerformanceAmount || 0;
-    const performanceAmount = getCandidatePerformanceAmount(candidate);
-    const perfOk = perfTarget > 0
-      ? (performanceAmount != null && performanceAmount >= perfTarget)
-      : false;
-
-    const managementScore = getCandidateManagementScore(candidate);
-    const maxScore = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
-    const managementOk = managementScore != null && managementScore >= (maxScore - 0.01);
-
-    const regionOk = dutyRegionSet.size === 0 ? true : isDutyRegionCompany(candidate);
-
-    return entryOk && perfOk && managementOk && regionOk;
-  }, [
-    entryAmount,
-    perfectPerformanceAmount,
-    managementMax,
-    dutyRegionSet,
-    isDutyRegionCompany,
-  ]);
 
   const minRatingResult = React.useMemo(() => {
     if (!isLHOwner) return { status: 'inactive' };
@@ -2518,6 +2490,35 @@ export default function AgreementBoardWindow({
     }
     return false;
   }, [dutyRegionSet]);
+
+  const isSingleBidEligible = React.useCallback((candidate) => {
+    if (!candidate) return false;
+    const entryValue = parseAmountValue(entryAmount) || 0;
+    const sipyungAmount = getCandidateSipyungAmount(candidate);
+    const entryOk = entryValue > 0
+      ? (sipyungAmount != null && sipyungAmount >= entryValue)
+      : true;
+
+    const perfTarget = perfectPerformanceAmount || 0;
+    const performanceAmount = getCandidatePerformanceAmount(candidate);
+    const perfOk = perfTarget > 0
+      ? (performanceAmount != null && performanceAmount >= perfTarget)
+      : false;
+
+    const managementScore = getCandidateManagementScore(candidate);
+    const maxScore = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
+    const managementOk = managementScore != null && managementScore >= (maxScore - 0.01);
+
+    const regionOk = dutyRegionSet.size === 0 ? true : isDutyRegionCompany(candidate);
+
+    return entryOk && perfOk && managementOk && regionOk;
+  }, [
+    entryAmount,
+    perfectPerformanceAmount,
+    managementMax,
+    dutyRegionSet,
+    isDutyRegionCompany,
+  ]);
 
   const representativeCandidates = React.useMemo(
     () => representativeCandidatesRaw.filter((candidate) => (
