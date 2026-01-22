@@ -1709,8 +1709,25 @@ export default function AgreementBoardWindow({
       }
     }
 
+    if (ownerKeyUpper === 'KRAIL' && rangeKey === KRAIL_UNDER_50_KEY) {
+      if (base <= 0) return { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+      const normalizedType = String(fileType || '').toLowerCase();
+      if (normalizedType === 'sobang') {
+        const threshold = 30 * KOREAN_UNIT;
+        const multiplier = base < threshold ? 2 : 3;
+        return { perfectPerformanceAmount: base * multiplier, perfectPerformanceBasis: `기초금액 × ${multiplier}배` };
+      }
+      return { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' };
+    }
+
+    if (ownerKeyUpper === 'EX' && rangeKey === EX_UNDER_50_KEY) {
+      return base > 0
+        ? { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' }
+        : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+    }
+
     return { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
-  }, [ownerKeyUpper, selectedRangeOption?.key, estimatedAmount, baseAmount]);
+  }, [ownerKeyUpper, selectedRangeOption?.key, estimatedAmount, baseAmount, fileType]);
 
   const perfectPerformanceDisplay = React.useMemo(() => {
     if (!perfectPerformanceAmount || perfectPerformanceAmount <= 0) return '';
@@ -4338,6 +4355,9 @@ export default function AgreementBoardWindow({
     const tags = [];
     if (entry.type === 'region' || isDutyRegionCompany(candidate)) {
       tags.push({ key: 'region', label: '지역사' });
+    }
+    if (candidate?.singleBidEligible === true) {
+      tags.push({ key: 'single-bid', label: '단독가능' });
     }
     if (isWomenOwnedCompany(candidate)) {
       tags.push({ key: 'female', label: '女' });

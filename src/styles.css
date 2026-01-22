@@ -1282,6 +1282,11 @@ button.primary:hover { background: var(--accent-2); }
   color: #0f766e;
 }
 
+.excel-tag-single-bid {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .excel-member-name {
   font-weight: 700;
   color: #111827;
