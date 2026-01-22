@@ -1736,6 +1736,35 @@ export default function AgreementBoardWindow({
     return perfectPerformanceBasis ? `${formatted} (${perfectPerformanceBasis})` : formatted;
   }, [perfectPerformanceAmount, perfectPerformanceBasis]);
 
+  const isSingleBidEligible = React.useCallback((candidate) => {
+    if (!candidate) return false;
+    const entryValue = parseAmountValue(entryAmount) || 0;
+    const sipyungAmount = getCandidateSipyungAmount(candidate);
+    const entryOk = entryValue > 0
+      ? (sipyungAmount != null && sipyungAmount >= entryValue)
+      : true;
+
+    const perfTarget = perfectPerformanceAmount || 0;
+    const performanceAmount = getCandidatePerformanceAmount(candidate);
+    const perfOk = perfTarget > 0
+      ? (performanceAmount != null && performanceAmount >= perfTarget)
+      : false;
+
+    const managementScore = getCandidateManagementScore(candidate);
+    const maxScore = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
+    const managementOk = managementScore != null && managementScore >= (maxScore - 0.01);
+
+    const regionOk = dutyRegionSet.size === 0 ? true : isDutyRegionCompany(candidate);
+
+    return entryOk && perfOk && managementOk && regionOk;
+  }, [
+    entryAmount,
+    perfectPerformanceAmount,
+    managementMax,
+    dutyRegionSet,
+    isDutyRegionCompany,
+  ]);
+
   const formatPercentValue = React.useCallback((value, digits = 1) => {
     if (value == null) return '-';
     const numeric = Number(value);
@@ -4357,7 +4386,7 @@ export default function AgreementBoardWindow({
     if (entry.type === 'region' || isDutyRegionCompany(candidate)) {
       tags.push({ key: 'region', label: '지역사' });
     }
-    if (candidate?.singleBidEligible === true) {
+    if (isSingleBidEligible(candidate)) {
       tags.push({ key: 'single-bid', label: '단독가능' });
     }
     if (isWomenOwnedCompany(candidate)) {
