@@ -256,9 +256,10 @@ $items += [pscustomobject]@{
     fs.writeFileSync(payloadPath, JSON.stringify(payload ?? {}), 'utf8');
     const script = `
 & {
-param([string]$payloadPath)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$payloadPath = if ($args.Length -gt 0) { [string]$args[0] } else { '' }
+if ([string]::IsNullOrWhiteSpace($payloadPath)) { throw 'payload 파일 경로가 비어 있습니다.' }
 $payloadJson = Get-Content -Raw -Encoding UTF8 -LiteralPath $payloadPath
 $payload = $payloadJson | ConvertFrom-Json -Depth 100
 if (-not $payload) { throw 'payload 파싱에 실패했습니다.' }
