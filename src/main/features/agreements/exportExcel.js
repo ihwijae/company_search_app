@@ -51,36 +51,6 @@ const cloneCellStyle = (style) => {
   try { return JSON.parse(JSON.stringify(style)); } catch { return style; }
 };
 
-const cloneColumnModel = (worksheet) => {
-  const cols = worksheet?.model?.cols;
-  if (!Array.isArray(cols)) return null;
-  return cols.map((col) => (col ? cloneCellStyle(col) : col));
-};
-
-const applyColumnModel = (worksheet, cols) => {
-  if (!worksheet || !Array.isArray(cols)) return;
-  const cloned = cols.map((col) => (col ? cloneCellStyle(col) : col));
-  worksheet.model = worksheet.model || {};
-  worksheet.model.cols = cloned;
-  cloned.forEach((col) => {
-    if (!col) return;
-    const min = col.min || col.col || col.number || col.idx;
-    const max = col.max || min;
-    if (!min) return;
-    for (let i = min; i <= max; i += 1) {
-      const column = worksheet.getColumn(i);
-      if (col.width != null) {
-        column.width = col.width;
-        column.customWidth = col.customWidth != null ? col.customWidth : true;
-      }
-      if (col.hidden != null) column.hidden = col.hidden;
-      if (col.style) column.style = cloneCellStyle(col.style);
-      if (col.outlineLevel != null) column.outlineLevel = col.outlineLevel;
-      if (col.collapsed != null) column.collapsed = col.collapsed;
-    }
-  });
-};
-
 const buildCredibilityFormula = (members, shareColumns, rowIndex, scaleValue = 1, scaleExpr = '') => {
   if (!Array.isArray(members) || !Array.isArray(shareColumns) || !rowIndex) return null;
   const parts = [];
@@ -128,16 +98,12 @@ const copyWorksheet = (source, target) => {
     target.views = [{ state: 'normal', zoomScale: 100 }];
   }
   target.autoFilter = cloneCellStyle(source.autoFilter);
-  if (Array.isArray(source.model?.cols) && source.model.cols.length > 0) {
-    applyColumnModel(target, source.model.cols);
-  } else {
-    source.columns.forEach((column, index) => {
-      const targetColumn = target.getColumn(index + 1);
-      targetColumn.width = column.width;
-      targetColumn.hidden = column.hidden;
-      targetColumn.style = cloneCellStyle(column.style);
-    });
-  }
+  source.columns.forEach((column, index) => {
+    const targetColumn = target.getColumn(index + 1);
+    targetColumn.width = column.width;
+    targetColumn.hidden = column.hidden;
+    targetColumn.style = cloneCellStyle(column.style);
+  });
 
   source.eachRow({ includeEmpty: true }, (row, rowNumber) => {
     const targetRow = target.getRow(rowNumber);
@@ -243,7 +209,6 @@ async function exportAgreementExcel({
   if (!workbook.calcProperties) workbook.calcProperties = {};
   workbook.calcProperties.fullCalcOnLoad = true;
 
-  const preservedColumnModel = cloneColumnModel(worksheet);
   const preservedColumns = worksheet.columns.map((column) => ({
     width: column?.width,
     hidden: column?.hidden,
@@ -543,9 +508,7 @@ async function exportAgreementExcel({
     }
   });
 
-  if (Array.isArray(preservedColumnModel) && preservedColumnModel.length > 0) {
-    applyColumnModel(worksheet, preservedColumnModel);
-  } else if (Array.isArray(preservedColumns) && preservedColumns.length > 0) {
+  if (Array.isArray(preservedColumns) && preservedColumns.length > 0) {
     worksheet.columns.forEach((column, index) => {
       const preset = preservedColumns[index];
       if (!preset) return;
