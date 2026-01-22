@@ -183,7 +183,7 @@ const resolveExistingPath = (paths = []) => {
 const AGREEMENT_TEMPLATE_CONFIGS = {
   'mois-under30': {
     label: '행안부 30억 미만',
-    path: path.join(__dirname, '템플릿', '행안부_30억미만.xlsx'),
+    path: path.join(__dirname, '템플릿', '행안부_30억미만_템플릿.xlsx'),
     sheetName: '양식',
     startRow: 5,
     maxRows: 68,
@@ -212,7 +212,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
   },
   'mois-30to50': {
     label: '행안부 30억~50억',
-    path: path.join(__dirname, '템플릿', '행안부_30억~50억.xlsx'),
+    path: path.join(__dirname, '템플릿', '행안부_30억~50억_템플릿.xlsx'),
     sheetName: '양식',
     startRow: 5,
     maxRows: 68,
@@ -245,7 +245,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
   },
   'pps-under50': {
     label: '조달청 50억 미만',
-    path: path.join(__dirname, '템플릿', '조달청50억미만.xlsx'),
+    path: path.join(__dirname, '템플릿', '조달청50억미만_템플릿.xlsx'),
     sheetName: '양식',
     startRow: 5,
     maxRows: 68,
@@ -284,7 +284,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
   },
   'lh-under50': {
     label: 'LH 50억 미만',
-    path: path.join(__dirname, '템플릿', 'LH50억미만.xlsx'),
+    path: path.join(__dirname, '템플릿', 'LH50억미만_템플릿.xlsx'),
     sheetName: '양식',
     startRow: 5,
     maxRows: 68,
@@ -332,7 +332,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
   },
   'krail-under50': {
     label: '국가철도공단 50억 미만',
-    path: path.join(__dirname, '템플릿', '국가철도50억미만.xlsx'),
+    path: path.join(__dirname, '템플릿', '국가철도50억미만_템플릿.xlsx'),
     sheetName: '양식',
     startRow: 5,
     maxRows: 68,
@@ -375,13 +375,13 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
   },
   'ex-under50': {
     label: '한국도로공사 50억 미만',
-    path: path.join(__dirname, '템플릿', '한국도로공사50억미만.xlsx'),
+    path: path.join(__dirname, '템플릿', '한국도로공사50억미만_템플릿.xlsx'),
     altPaths: [
-      path.join(process.cwd(), '템플릿', '한국도로공사50억미만.xlsx'),
-      path.join(__dirname, '템플릿', '한국도로공사 50억미만.xlsx'),
-      path.join(process.cwd(), '템플릿', '한국도로공사 50억미만.xlsx'),
-      path.join(__dirname, '템플릿', '한국도로공사 50억 미만.xlsx'),
-      path.join(process.cwd(), '템플릿', '한국도로공사 50억 미만.xlsx'),
+      path.join(process.cwd(), '템플릿', '한국도로공사50억미만_템플릿.xlsx'),
+      path.join(__dirname, '템플릿', '한국도로공사 50억미만_템플릿.xlsx'),
+      path.join(process.cwd(), '템플릿', '한국도로공사 50억미만_템플릿.xlsx'),
+      path.join(__dirname, '템플릿', '한국도로공사 50억 미만_템플릿.xlsx'),
+      path.join(process.cwd(), '템플릿', '한국도로공사 50억 미만_템플릿.xlsx'),
     ],
     sheetName: '양식',
     startRow: 5,
