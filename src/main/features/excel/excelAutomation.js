@@ -61,6 +61,37 @@ class ExcelAutomationService {
     });
   }
 
+  runPowerShellFile(scriptPath, args = [], { timeoutMs } = {}) {
+    this.ensureSupported();
+    return new Promise((resolve, reject) => {
+      const ps = spawn(
+        this.powershellCommand,
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, ...args],
+        { windowsHide: true }
+      );
+      let stdout = '';
+      let stderr = '';
+      const timer = setTimeout(() => {
+        ps.kill();
+        reject(new Error('PowerShell 명령이 시간 초과되었습니다.'));
+      }, timeoutMs || this.commandTimeoutMs);
+      ps.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+      ps.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+      ps.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+      ps.on('close', (code) => {
+        clearTimeout(timer);
+        if (code !== 0 && stderr.trim()) {
+          reject(new Error(stderr.trim()));
+          return;
+        }
+        resolve(stdout.trim());
+      });
+    });
+  }
+
   async getSelection() {
     const script = `
 $ErrorActionPreference = 'Stop'
@@ -254,6 +285,7 @@ $items += [pscustomobject]@{
   async exportAgreementExcelCom(payload = {}) {
     const payloadPath = path.join(os.tmpdir(), `excel-export-payload.${Date.now()}.${Math.random().toString(16).slice(2)}.json`);
     fs.writeFileSync(payloadPath, JSON.stringify(payload ?? {}), 'utf8');
+    const scriptPath = path.join(os.tmpdir(), `excel-export-script.${Date.now()}.${Math.random().toString(16).slice(2)}.ps1`);
     const script = `
 & {
 $ErrorActionPreference = 'Stop'
@@ -366,7 +398,10 @@ try {
 }
 `;
     try {
-  const raw = await this.runPowerShell(script, [payloadPath], { timeoutMs: 60000 });
+`;
+    fs.writeFileSync(scriptPath, script, 'utf8');
+    try {
+      const raw = await this.runPowerShellFile(scriptPath, [payloadPath], { timeoutMs: 60000 });
       const data = raw ? JSON.parse(raw) : null;
       if (!data?.success) {
         throw new Error(data?.message || '엑셀 COM 내보내기에 실패했습니다.');
@@ -376,6 +411,7 @@ try {
       return { success: false, message: err?.message || String(err) };
     } finally {
       try { fs.unlinkSync(payloadPath); } catch {}
+      try { fs.unlinkSync(scriptPath); } catch {}
     }
   }
 }
