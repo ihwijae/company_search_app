@@ -1422,12 +1422,13 @@ button.primary:hover { background: var(--accent-2); }
 .excel-cell.total-score.score-full {
   color: #15803d;
   font-weight: 700;
+  background: #dcfce7;
 }
 
 .excel-cell.total-score.score-partial {
   color: #b91c1c;
   font-weight: 700;
-  background: #ffedd5;
+  background: #fee2e2;
 }
 
 .management-bonus-cell {
