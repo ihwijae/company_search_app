@@ -1,4 +1,7 @@
 const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 class ExcelAutomationService {
   constructor(options = {}) {
@@ -249,13 +252,15 @@ $items += [pscustomobject]@{
   }
 
   async exportAgreementExcelCom(payload = {}) {
+    const payloadPath = path.join(os.tmpdir(), `excel-export-payload.${Date.now()}.${Math.random().toString(16).slice(2)}.json`);
+    fs.writeFileSync(payloadPath, JSON.stringify(payload ?? {}), 'utf8');
     const script = `
 & {
-param([string]$payloadBase64)
+param([string]$payloadPath)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$payloadJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBase64))
-$payload = $payloadJson | ConvertFrom-Json
+$payloadJson = Get-Content -Raw -Encoding UTF8 -LiteralPath $payloadPath
+$payload = $payloadJson | ConvertFrom-Json -Depth 100
 if (-not $payload) { throw 'payload 파싱에 실패했습니다.' }
 try { Add-Type -AssemblyName System.Drawing } catch {}
 $excel = $null
@@ -360,7 +365,7 @@ try {
 }
 `;
     try {
-      const raw = await this.runPowerShell(script, [this.encodePayload(payload)], { timeoutMs: 60000 });
+  const raw = await this.runPowerShell(script, [payloadPath], { timeoutMs: 60000 });
       const data = raw ? JSON.parse(raw) : null;
       if (!data?.success) {
         throw new Error(data?.message || '엑셀 COM 내보내기에 실패했습니다.');
@@ -368,6 +373,8 @@ try {
       return { success: true, path: data.path, sheetName: data.sheetName };
     } catch (err) {
       return { success: false, message: err?.message || String(err) };
+    } finally {
+      try { fs.unlinkSync(payloadPath); } catch {}
     }
   }
 }
