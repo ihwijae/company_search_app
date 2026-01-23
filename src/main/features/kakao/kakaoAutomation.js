@@ -142,6 +142,16 @@ function Find-ChildWindowByText([IntPtr]$parent, [string]$text) {
   return [IntPtr]::Zero
 }
 
+function Find-ChildWindowByClassContains([IntPtr]$parent, [string]$classToken) {
+  $child = [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $null, $null)
+  while ($child -ne [IntPtr]::Zero) {
+    $className = Get-ClassName $child
+    if ($className -and $className -like (\"*\" + $classToken + \"*\")) { return $child }
+    $child = [Win32]::FindWindowEx($parent, $child, $null, $null)
+  }
+  return [IntPtr]::Zero
+}
+
 function Find-ChildWindowByClass([IntPtr]$parent, [string]$className) {
   return [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $className, $null)
 }
@@ -166,11 +176,20 @@ foreach ($item in $items) {
   }
   try {
     $onlineView = Find-ChildWindowByText $mainHwnd 'OnlineMainView'
+    if ($onlineView -eq [IntPtr]::Zero) {
+      $onlineView = Find-ChildWindowByClassContains $mainHwnd 'OnlineMainView'
+    }
     if ($onlineView -eq [IntPtr]::Zero) { throw 'OnlineMainView를 찾을 수 없습니다.' }
 
     $chatList = Find-ChildWindowByText $onlineView 'ChatRoomListView'
     if ($chatList -eq [IntPtr]::Zero) {
       $chatList = Find-ChildWindowByText $onlineView 'ContactListView'
+    }
+    if ($chatList -eq [IntPtr]::Zero) {
+      $chatList = Find-ChildWindowByClassContains $onlineView 'ChatRoomListView'
+    }
+    if ($chatList -eq [IntPtr]::Zero) {
+      $chatList = Find-ChildWindowByClassContains $onlineView 'ContactListView'
     }
     if ($chatList -eq [IntPtr]::Zero) { throw '채팅 목록을 찾을 수 없습니다.' }
 
