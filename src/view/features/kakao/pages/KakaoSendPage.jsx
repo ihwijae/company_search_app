@@ -196,9 +196,13 @@ export default function KakaoSendPage() {
                                 </select>
                               </td>
                               <td>
-                                {entry.managerId === 'exclude' || entry.managerId === 'none'
-                                  ? '-'
-                                  : managerOptions.find((row) => String(row.id) === String(entry.managerId))?.room || ''}
+                                {entry.managerId === 'exclude' || entry.managerId === 'none' ? (
+                                  <span style={{ color: '#94a3b8' }}>-</span>
+                                ) : (
+                                  <span className="chip" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                    {managerOptions.find((row) => String(row.id) === String(entry.managerId))?.room || '채팅방 미지정'}
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           ))
