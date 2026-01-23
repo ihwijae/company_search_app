@@ -373,7 +373,9 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       netCostPenaltyNotice: 'AD2',
     },
     approvalColumn: 'B',
-    summaryColumns: {},
+    summaryColumns: {
+      netCostBonus: 'AG',
+    },
     managementBonusColumn: 'O',
     regionFill: {
       type: 'pattern',
@@ -420,7 +422,9 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       netCostPenaltyNotice: 'AD2',
     },
     approvalColumn: 'B',
-    summaryColumns: {},
+    summaryColumns: {
+      netCostBonus: 'AG',
+    },
     managementBonusColumn: 'O',
     regionFill: {
       type: 'pattern',
