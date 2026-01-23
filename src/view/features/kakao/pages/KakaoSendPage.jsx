@@ -33,11 +33,9 @@ const FILE_TYPE_LABELS = [
 const normalizeCompanyName = (name) => {
   if (!name) return '';
   let normalized = String(name || '').replace(/\s+/g, '').toLowerCase();
-  normalized = normalized.replace(/^(주|\(주\)|㈜|주\)|\(합\))/, '');
-  normalized = normalized.replace(/(주|\(주\)|㈜|주\)|\(합\))$/, '');
   normalized = normalized.replace(/이앤/g, '이엔');
   normalized = normalized.replace(/앤/g, '엔');
-  normalized = normalized.replace(/[^a-z0-9가-힣]/g, '');
+  normalized = normalized.replace(/[^a-z0-9가-힣㈜\(\)]/g, '');
   return normalized;
 };
 
@@ -481,12 +479,12 @@ export default function KakaoSendPage() {
                                   </span>
                                 )}
                               </td>
-                              <td>
+                              <td style={{ textAlign: 'center' }}>
                                 <button className="secondary" type="button" onClick={() => openMessageModal(entry.id)}>
                                   {messageOverrides[entry.id] ? '수정됨' : '기본'}
                                 </button>
                               </td>
-                              <td>
+                              <td style={{ textAlign: 'center' }}>
                                 <button className="secondary" type="button" onClick={() => handleRemoveEntry(entry.id)}>
                                   제거
                                 </button>
