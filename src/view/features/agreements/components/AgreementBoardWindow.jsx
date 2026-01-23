@@ -2164,17 +2164,17 @@ export default function AgreementBoardWindow({
   }, [collapsedColumns, toggleColumnCollapse]);
 
   const tableMinWidth = React.useMemo(() => {
-    const nameWidth = slotLabels.length * (collapsedColumns.name ? COLLAPSED_COLUMN_WIDTHS.name : COLUMN_WIDTHS.name);
-    const shareWidth = slotLabels.length * (collapsedColumns.share ? COLLAPSED_COLUMN_WIDTHS.share : COLUMN_WIDTHS.share);
+    const nameWidth = columnSpans.nameSpan * (collapsedColumns.name ? COLLAPSED_COLUMN_WIDTHS.name : COLUMN_WIDTHS.name);
+    const shareWidth = columnSpans.shareSpan * (collapsedColumns.share ? COLLAPSED_COLUMN_WIDTHS.share : COLUMN_WIDTHS.share);
     const credibilityWidth = credibilityEnabled
-      ? slotLabels.length * (collapsedColumns.credibility ? COLLAPSED_COLUMN_WIDTHS.credibilityCell : COLUMN_WIDTHS.credibilityCell)
+      ? columnSpans.credibilitySpan * (collapsedColumns.credibility ? COLLAPSED_COLUMN_WIDTHS.credibilityCell : COLUMN_WIDTHS.credibilityCell)
       : 0;
-    const statusWidth = slotLabels.length * (collapsedColumns.status ? COLLAPSED_COLUMN_WIDTHS.status : COLUMN_WIDTHS.status);
-    const perfCellsWidth = slotLabels.length * (collapsedColumns.performance ? COLLAPSED_COLUMN_WIDTHS.performanceCell : COLUMN_WIDTHS.performanceCell);
+    const statusWidth = columnSpans.statusSpan * (collapsedColumns.status ? COLLAPSED_COLUMN_WIDTHS.status : COLUMN_WIDTHS.status);
+    const perfCellsWidth = columnSpans.performanceSpan * (collapsedColumns.performance ? COLLAPSED_COLUMN_WIDTHS.performanceCell : COLUMN_WIDTHS.performanceCell);
     const technicianCellsWidth = technicianEnabled
-      ? slotLabels.length * (collapsedColumns.technician ? COLLAPSED_COLUMN_WIDTHS.technicianCell : COLUMN_WIDTHS.technicianCell)
+      ? columnSpans.technicianSpan * (collapsedColumns.technician ? COLLAPSED_COLUMN_WIDTHS.technicianCell : COLUMN_WIDTHS.technicianCell)
       : 0;
-    const sipyungCellsWidth = slotLabels.length * (collapsedColumns.sipyung ? COLLAPSED_COLUMN_WIDTHS.sipyungCell : COLUMN_WIDTHS.sipyungCell);
+    const sipyungCellsWidth = columnSpans.sipyungSpan * (collapsedColumns.sipyung ? COLLAPSED_COLUMN_WIDTHS.sipyungCell : COLUMN_WIDTHS.sipyungCell);
     const base = (collapsedColumns.order ? COLLAPSED_COLUMN_WIDTHS.order : COLUMN_WIDTHS.order)
       + (collapsedColumns.select ? COLLAPSED_COLUMN_WIDTHS.select : COLUMN_WIDTHS.select)
       + (collapsedColumns.approval ? COLLAPSED_COLUMN_WIDTHS.approval : COLUMN_WIDTHS.approval)
@@ -2198,7 +2198,15 @@ export default function AgreementBoardWindow({
     const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth
       + perfCellsWidth + technicianCellsWidth + sipyungCellsWidth;
     return Math.max(1200, total);
-  }, [slotLabels.length, credibilityEnabled, isLHOwner, isMois30To50, isEx50To100, technicianEnabled, collapsedColumns]);
+  }, [
+    columnSpans,
+    credibilityEnabled,
+    isLHOwner,
+    isMois30To50,
+    isEx50To100,
+    technicianEnabled,
+    collapsedColumns,
+  ]);
 
   const derivedMaxScores = React.useMemo(() => {
     if (!formulasDoc) return { managementMax: null, performanceMax: null };
@@ -4501,15 +4509,47 @@ export default function AgreementBoardWindow({
     }
   }, [groups, showHeaderAlert]);
 
+  const columnSpans = React.useMemo(() => {
+    const nameSpan = collapsedColumns.name ? 1 : slotLabels.length;
+    const shareSpan = collapsedColumns.share ? 1 : slotLabels.length;
+    const credibilitySpan = credibilityEnabled ? (collapsedColumns.credibility ? 1 : slotLabels.length) : 0;
+    const statusSpan = collapsedColumns.status ? 1 : slotLabels.length;
+    const performanceSpan = collapsedColumns.performance ? 1 : slotLabels.length;
+    const technicianSpan = technicianEnabled ? (collapsedColumns.technician ? 1 : slotLabels.length) : 0;
+    const sipyungSpan = collapsedColumns.sipyung ? 1 : slotLabels.length;
+    return {
+      nameSpan,
+      shareSpan,
+      credibilitySpan,
+      statusSpan,
+      performanceSpan,
+      technicianSpan,
+      sipyungSpan,
+    };
+  }, [collapsedColumns, slotLabels.length, credibilityEnabled, technicianEnabled]);
+
   const tableColumnCount = React.useMemo(() => {
-    const perSlotCols = (credibilityEnabled ? 6 : 5) + (technicianEnabled ? 1 : 0);
     const baseColumns = 12
       + (credibilityEnabled ? 1 : 0)
       + (technicianEnabled ? 2 : 0)
       + (isLHOwner ? 1 : 0)
       + ((isMois30To50 || isEx50To100) ? 1 : 0);
-    return baseColumns + (slotLabels.length * perSlotCols);
-  }, [credibilityEnabled, isLHOwner, isMois30To50, isEx50To100, slotLabels.length, technicianEnabled]);
+    const variableColumns = columnSpans.nameSpan
+      + columnSpans.shareSpan
+      + columnSpans.credibilitySpan
+      + columnSpans.statusSpan
+      + columnSpans.performanceSpan
+      + columnSpans.technicianSpan
+      + columnSpans.sipyungSpan;
+    return baseColumns + variableColumns;
+  }, [
+    credibilityEnabled,
+    isLHOwner,
+    isMois30To50,
+    isEx50To100,
+    technicianEnabled,
+    columnSpans,
+  ]);
 
   const buildSlotMeta = (group, groupIndex, slotIndex, label) => {
     const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
@@ -4806,8 +4846,10 @@ export default function AgreementBoardWindow({
     const qualityGuide = (selectedRangeOption?.key === 'lh-50to100')
       ? '90점이상:5점/88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점'
       : '품질 88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점';
-    const guideSpan = 1 + slotMetas.length;
-    const usedColumns = 4 + (slotMetas.length * 2);
+    const nameSpan = columnSpans.nameSpan;
+    const shareSpan = columnSpans.shareSpan;
+    const guideSpan = 1 + nameSpan;
+    const usedColumns = 4 + nameSpan + shareSpan;
     const fillerSpan = Math.max(tableColumnCount - usedColumns, 0);
     const resolvedQualityTotal = qualityTotal ?? slotMetas.reduce((acc, meta) => {
       if (meta.empty) return acc;
@@ -4826,25 +4868,29 @@ export default function AgreementBoardWindow({
         <td className="excel-cell quality-guide" colSpan={guideSpan}>
           {qualityGuide}
         </td>
-        {slotMetas.map((meta) => (
-          <td
-            key={`quality-share-${groupIndex}-${meta.slotIndex}`}
-            className="excel-cell excel-share-cell quality-score"
-          >
-            {meta.empty ? '' : (
-              <input
-                type="text"
-                inputMode="decimal"
-                className="quality-score-input"
-                value={meta.qualityInput !== undefined && meta.qualityInput !== null
-                  ? String(meta.qualityInput)
-                  : (meta.qualityScore != null ? String(meta.qualityScore) : '')}
-                onChange={(event) => handleQualityScoreChange(groupIndex, meta.slotIndex, event.target.value)}
-                placeholder={meta.qualityScore != null ? String(meta.qualityScore) : ''}
-              />
-            )}
-          </td>
-        ))}
+        {collapsedColumns.share ? (
+          <td className="excel-cell collapsed-stub-cell share-stub" />
+        ) : (
+          slotMetas.map((meta) => (
+            <td
+              key={`quality-share-${groupIndex}-${meta.slotIndex}`}
+              className="excel-cell excel-share-cell quality-score"
+            >
+              {meta.empty ? '' : (
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="quality-score-input"
+                  value={meta.qualityInput !== undefined && meta.qualityInput !== null
+                    ? String(meta.qualityInput)
+                    : (meta.qualityScore != null ? String(meta.qualityScore) : '')}
+                  onChange={(event) => handleQualityScoreChange(groupIndex, meta.slotIndex, event.target.value)}
+                  placeholder={meta.qualityScore != null ? String(meta.qualityScore) : ''}
+                />
+              )}
+            </td>
+          ))
+        )}
         <td className="excel-cell total-cell quality-total">{qualityTotalDisplay}</td>
         {fillerSpan > 0 && (
           <td className="excel-cell quality-empty" colSpan={fillerSpan} />
@@ -4962,42 +5008,64 @@ export default function AgreementBoardWindow({
       && summaryInfo.entryMode !== 'none'
       && summaryInfo.entrySatisfied === false;
 
+    const renderCollapsedStubCell = (key, rowSpan) => (
+      <td
+        key={`${group.id}-${key}-stub`}
+        className={`excel-cell collapsed-stub-cell ${key}-stub`}
+        rowSpan={rowSpan}
+      />
+    );
+
     return (
       <React.Fragment key={group.id}>
         <tr className={`excel-board-row${entryFailed ? ' entry-failed' : ''}`}>
-        <td className="excel-cell select-cell">
-          <input
-            type="checkbox"
-            checked={selectedGroups.has(groupIndex)}
-            onChange={() => toggleGroupSelection(groupIndex)}
-            aria-label={`${group.id}번 협정 선택`}
-          />
+        <td className={`excel-cell select-cell${collapsedColumns.select ? ' collapsed-stub-cell select-stub' : ''}`}>
+          {!collapsedColumns.select && (
+            <input
+              type="checkbox"
+              checked={selectedGroups.has(groupIndex)}
+              onChange={() => toggleGroupSelection(groupIndex)}
+              aria-label={`${group.id}번 협정 선택`}
+            />
+          )}
         </td>
-        <td className={`excel-cell order-cell${scoreState ? ` score-${scoreState}` : ''}`}>{group.id}</td>
-        <td className={`excel-cell approval-cell${approvalValue === '취소' ? ' approval-cancel' : ''}`}>
-          <select
-            value={approvalValue}
-            onChange={(event) => handleApprovalChange(groupIndex, event.target.value)}
-          >
-            <option value="">선택</option>
-            <option value="알림">알림</option>
-            <option value="정정">정정</option>
-            <option value="취소">취소</option>
-          </select>
+        <td className={`excel-cell order-cell${scoreState ? ` score-${scoreState}` : ''}${collapsedColumns.order ? ' collapsed-stub-cell order-stub' : ''}`}>
+          {collapsedColumns.order ? '' : group.id}
         </td>
-        {slotMetasWithLimit.map((meta) => renderNameCell(meta))}
-        {slotMetasWithLimit.map(renderShareCell)}
+        <td className={`excel-cell approval-cell${approvalValue === '취소' ? ' approval-cancel' : ''}${collapsedColumns.approval ? ' collapsed-stub-cell approval-stub' : ''}`}>
+          {!collapsedColumns.approval && (
+            <select
+              value={approvalValue}
+              onChange={(event) => handleApprovalChange(groupIndex, event.target.value)}
+            >
+              <option value="">선택</option>
+              <option value="알림">알림</option>
+              <option value="정정">정정</option>
+              <option value="취소">취소</option>
+            </select>
+          )}
+        </td>
+        {collapsedColumns.name
+          ? renderCollapsedStubCell('name')
+          : slotMetasWithLimit.map((meta) => renderNameCell(meta))}
+        {collapsedColumns.share
+          ? renderCollapsedStubCell('share')
+          : slotMetasWithLimit.map(renderShareCell)}
         <td className={`excel-cell total-cell share-total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>
           <div>{shareSumDisplay}</div>
           {dutyShareInsufficient && (
             <div className="excel-warning">의무지분 미충족</div>
           )}
         </td>
-        {credibilityEnabled && slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan))}
+        {credibilityEnabled && (collapsedColumns.credibility
+          ? renderCollapsedStubCell('credibility', rightRowSpan)
+          : slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan)))}
         {credibilityEnabled && (
           <td className="excel-cell total-cell credibility-total-cell" rowSpan={rightRowSpan}>{credibilitySummary}</td>
         )}
-        {slotMetas.map((meta) => renderStatusCell(meta, rightRowSpan))}
+        {collapsedColumns.status
+          ? renderCollapsedStubCell('status', rightRowSpan)
+          : slotMetas.map((meta) => renderStatusCell(meta, rightRowSpan))}
         <td className={`excel-cell total-cell management-summary-cell ${managementState}`} rowSpan={rightRowSpan}>
           {managementSummary}
         </td>
@@ -5009,11 +5077,15 @@ export default function AgreementBoardWindow({
             aria-label="경영점수 가점 적용"
           />
         </td>
-        {slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
+        {collapsedColumns.performance
+          ? renderCollapsedStubCell('performance', rightRowSpan)
+          : slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
         <td className={`excel-cell total-cell performance-summary-cell ${performanceState}`} rowSpan={rightRowSpan}>
           {performanceSummary}
         </td>
-        {technicianEnabled && slotMetas.map((meta) => renderTechnicianCell(meta, rightRowSpan))}
+        {technicianEnabled && (collapsedColumns.technician
+          ? renderCollapsedStubCell('technician', rightRowSpan)
+          : slotMetas.map((meta) => renderTechnicianCell(meta, rightRowSpan)))}
         {technicianEnabled && (
           <td
             className={`excel-cell total-cell technician-summary-cell${
@@ -5053,7 +5125,9 @@ export default function AgreementBoardWindow({
         >
           {totalScoreDisplay}
         </td>
-        {slotMetas.map((meta) => renderSipyungCell(meta, rightRowSpan, entryDisabled))}
+        {collapsedColumns.sipyung
+          ? renderCollapsedStubCell('sipyung', rightRowSpan)
+          : slotMetas.map((meta) => renderSipyungCell(meta, rightRowSpan, entryDisabled))}
         <td
           className={`excel-cell total-cell sipyung-summary-cell${entryDisabled ? ' entry-disabled' : ''}`}
           rowSpan={rightRowSpan}
@@ -5388,43 +5462,80 @@ export default function AgreementBoardWindow({
               <col className="col-select" style={{ width: resolveColWidth('select') }} />
               <col className="col-order" style={{ width: resolveColWidth('order') }} />
               <col className="col-approval" style={{ width: resolveColWidth('approval') }} />
-              {slotLabels.map((_, index) => (
-                <col key={`col-name-${index}`} className="col-name" style={{ width: resolveColWidth('name') }} />
-              ))}
-                {slotLabels.map((_, index) => (
-                  <col key={`col-share-${index}`} className="col-share" style={{ width: resolveColWidth('share') }} />
-                ))}
+              {collapsedColumns.name ? (
+                <col className="col-name col-collapsed-stub" style={{ width: resolveColWidth('name') }} />
+              ) : (
+                slotLabels.map((_, index) => (
+                  <col key={`col-name-${index}`} className="col-name" style={{ width: resolveColWidth('name') }} />
+                ))
+              )}
+                {collapsedColumns.share ? (
+                  <col className="col-share col-collapsed-stub" style={{ width: resolveColWidth('share') }} />
+                ) : (
+                  slotLabels.map((_, index) => (
+                    <col key={`col-share-${index}`} className="col-share" style={{ width: resolveColWidth('share') }} />
+                  ))
+                )}
                 <col className="col-share-total" style={{ width: `${COLUMN_WIDTHS.shareTotal}px` }} />
-                {credibilityEnabled && slotLabels.map((_, index) => (
-                  <col
-                    key={`col-credibility-slot-${index}`}
-                    className="col-credibility-slot"
-                    style={{ width: resolveColWidth('credibilityCell', 'credibility') }}
-                  />
-                ))}
+                {credibilityEnabled && (
+                  collapsedColumns.credibility ? (
+                    <col
+                      className="col-credibility-slot col-collapsed-stub"
+                      style={{ width: resolveColWidth('credibilityCell', 'credibility') }}
+                    />
+                  ) : (
+                    slotLabels.map((_, index) => (
+                      <col
+                        key={`col-credibility-slot-${index}`}
+                        className="col-credibility-slot"
+                        style={{ width: resolveColWidth('credibilityCell', 'credibility') }}
+                      />
+                    ))
+                  )
+                )}
                 {credibilityEnabled && (
                   <col className="col-credibility" style={{ width: `${COLUMN_WIDTHS.credibility}px` }} />
                 )}
-                  {slotLabels.map((_, index) => (
-                    <col key={`col-status-${index}`} className="col-status" style={{ width: resolveColWidth('status') }} />
-                  ))}
+                  {collapsedColumns.status ? (
+                    <col className="col-status col-collapsed-stub" style={{ width: resolveColWidth('status') }} />
+                  ) : (
+                    slotLabels.map((_, index) => (
+                      <col key={`col-status-${index}`} className="col-status" style={{ width: resolveColWidth('status') }} />
+                    ))
+                  )}
                   <col className="col-management" style={{ width: `${COLUMN_WIDTHS.management}px` }} />
                   <col className="col-management-bonus" style={{ width: resolveColWidth('managementBonus') }} />
-              {slotLabels.map((_, index) => (
+              {collapsedColumns.performance ? (
                 <col
-                  key={`col-performance-${index}`}
-                  className="col-performance"
+                  className="col-performance col-collapsed-stub"
                   style={{ width: resolveColWidth('performanceCell', 'performance') }}
                 />
-              ))}
+              ) : (
+                slotLabels.map((_, index) => (
+                  <col
+                    key={`col-performance-${index}`}
+                    className="col-performance"
+                    style={{ width: resolveColWidth('performanceCell', 'performance') }}
+                  />
+                ))
+              )}
               <col className="col-performance-summary" style={{ width: `${COLUMN_WIDTHS.performanceSummary}px` }} />
-              {technicianEnabled && slotLabels.map((_, index) => (
-                <col
-                  key={`col-technician-${index}`}
-                  className="col-technician"
-                  style={{ width: resolveColWidth('technicianCell', 'technician') }}
-                />
-              ))}
+              {technicianEnabled && (
+                collapsedColumns.technician ? (
+                  <col
+                    className="col-technician col-collapsed-stub"
+                    style={{ width: resolveColWidth('technicianCell', 'technician') }}
+                  />
+                ) : (
+                  slotLabels.map((_, index) => (
+                    <col
+                      key={`col-technician-${index}`}
+                      className="col-technician"
+                      style={{ width: resolveColWidth('technicianCell', 'technician') }}
+                    />
+                  ))
+                )
+              )}
               {technicianEnabled && (
                 <col className="col-technician-summary" style={{ width: resolveColWidth('technicianSummary') }} />
               )}
@@ -5441,13 +5552,20 @@ export default function AgreementBoardWindow({
               <col className="col-bid" style={{ width: `${COLUMN_WIDTHS.bid}px` }} />
               <col className="col-netcost-bonus" style={{ width: `${COLUMN_WIDTHS.netCostBonus}px` }} />
               <col className="col-total" style={{ width: `${COLUMN_WIDTHS.total}px` }} />
-              {slotLabels.map((_, index) => (
+              {collapsedColumns.sipyung ? (
                 <col
-                  key={`col-sipyung-${index}`}
-                  className="col-sipyung"
+                  className="col-sipyung col-collapsed-stub"
                   style={{ width: resolveColWidth('sipyungCell', 'sipyung') }}
                 />
-              ))}
+              ) : (
+                slotLabels.map((_, index) => (
+                  <col
+                    key={`col-sipyung-${index}`}
+                    className="col-sipyung"
+                    style={{ width: resolveColWidth('sipyungCell', 'sipyung') }}
+                  />
+                ))
+              )}
               <col className="col-sipyung-summary" style={{ width: `${COLUMN_WIDTHS.sipyungSummary}px` }} />
             </colgroup>
             <thead>
@@ -5455,8 +5573,20 @@ export default function AgreementBoardWindow({
                 <th rowSpan="2" className="col-header select-header">{renderColToggle('select', '선택')}</th>
                 <th rowSpan="2" className="col-header order-header">{renderColToggle('order', '연번')}</th>
                 <th rowSpan="2" className="col-header approval-header">{renderColToggle('approval', '승인')}</th>
-                <th colSpan={slotLabels.length} className="col-header name-header">{renderColToggle('name', '업체명')}</th>
-                <th colSpan={slotLabels.length} className="col-header share-header">{renderColToggle('share', '지분(%)')}</th>
+                <th
+                  colSpan={collapsedColumns.name ? 1 : slotLabels.length}
+                  rowSpan={collapsedColumns.name ? 2 : undefined}
+                  className="col-header name-header"
+                >
+                  {renderColToggle('name', '업체명')}
+                </th>
+                <th
+                  colSpan={collapsedColumns.share ? 1 : slotLabels.length}
+                  rowSpan={collapsedColumns.share ? 2 : undefined}
+                  className="col-header share-header"
+                >
+                  {renderColToggle('share', '지분(%)')}
+                </th>
                   <th rowSpan="2" className="col-header share-total-header-cell">
                     {isLHOwner ? (
                       <span className="share-total-header">
@@ -5468,7 +5598,11 @@ export default function AgreementBoardWindow({
                     )}
                   </th>
                     {credibilityEnabled && (
-                      <th colSpan={slotLabels.length} className="col-header credibility-header">
+                      <th
+                        colSpan={collapsedColumns.credibility ? 1 : slotLabels.length}
+                        rowSpan={collapsedColumns.credibility ? 2 : undefined}
+                        className="col-header credibility-header"
+                      >
                         {renderColToggle('credibility', '신인도')}
                       </th>
                     )}
@@ -5479,17 +5613,33 @@ export default function AgreementBoardWindow({
                         : '신인도 합'}
                     </th>
                   )}
-                <th colSpan={slotLabels.length} className="col-header status-header">{renderColToggle('status', '경영상태')}</th>
+                <th
+                  colSpan={collapsedColumns.status ? 1 : slotLabels.length}
+                  rowSpan={collapsedColumns.status ? 2 : undefined}
+                  className="col-header status-header"
+                >
+                  {renderColToggle('status', '경영상태')}
+                </th>
                 <th rowSpan="2" className="col-header management-header">
                   {`경영(${formatScore(managementHeaderMax, 0)}점)`}
                 </th>
                 <th rowSpan="2" className="col-header management-bonus-header">{renderColToggle('managementBonus', '가점')}</th>
-                <th colSpan={slotLabels.length} className="col-header performance-header">{renderColToggle('performance', '시공실적')}</th>
+                <th
+                  colSpan={collapsedColumns.performance ? 1 : slotLabels.length}
+                  rowSpan={collapsedColumns.performance ? 2 : undefined}
+                  className="col-header performance-header"
+                >
+                  {renderColToggle('performance', '시공실적')}
+                </th>
                 <th rowSpan="2" className="col-header performance-summary-header">
                   {`실적(${formatScore(performanceHeaderMax, 0)}점)`}
                 </th>
                 {technicianEnabled && (
-                  <th colSpan={slotLabels.length} className="col-header technician-header">
+                  <th
+                    colSpan={collapsedColumns.technician ? 1 : slotLabels.length}
+                    rowSpan={collapsedColumns.technician ? 2 : undefined}
+                    className="col-header technician-header"
+                  >
                     {renderColToggle('technician', '기술자점수')}
                   </th>
                 )}
@@ -5525,31 +5675,37 @@ export default function AgreementBoardWindow({
                 <th rowSpan="2" className="col-header bid-header">입찰점수</th>
                 <th rowSpan="2" className="col-header netcost-header">순공사원가가점</th>
                 <th rowSpan="2" className="col-header total-header">예상점수</th>
-                <th colSpan={slotLabels.length} className="col-header sipyung-header">{renderColToggle('sipyung', '시평액')}</th>
+                <th
+                  colSpan={collapsedColumns.sipyung ? 1 : slotLabels.length}
+                  rowSpan={collapsedColumns.sipyung ? 2 : undefined}
+                  className="col-header sipyung-header"
+                >
+                  {renderColToggle('sipyung', '시평액')}
+                </th>
                 <th rowSpan="2" className="col-header sipyung-summary-header">
                   {sipyungSummaryLabel}
                 </th>
               </tr>
               <tr>
-                {slotLabels.map((label, index) => (
+                {!collapsedColumns.name && slotLabels.map((label, index) => (
                   <th key={`name-head-${index}`} className="subheader-name">{label}</th>
                 ))}
-                {slotLabels.map((label, index) => (
+                {!collapsedColumns.share && slotLabels.map((label, index) => (
                   <th key={`share-head-${index}`} className="subheader-share">{label}</th>
                 ))}
-                {credibilityEnabled && slotLabels.map((label, index) => (
+                {credibilityEnabled && !collapsedColumns.credibility && slotLabels.map((label, index) => (
                   <th key={`credibility-head-${index}`} className="subheader-credibility">{label}</th>
                 ))}
-                {slotLabels.map((label, index) => (
+                {!collapsedColumns.status && slotLabels.map((label, index) => (
                   <th key={`status-head-${index}`} className="subheader-status">{label}</th>
                 ))}
-                {slotLabels.map((label, index) => (
+                {!collapsedColumns.performance && slotLabels.map((label, index) => (
                   <th key={`perf-head-${index}`} className="subheader-performance">{label}</th>
                 ))}
-                {technicianEnabled && slotLabels.map((label, index) => (
+                {technicianEnabled && !collapsedColumns.technician && slotLabels.map((label, index) => (
                   <th key={`tech-head-${index}`} className="subheader-technician">{label}</th>
                 ))}
-                {slotLabels.map((label, index) => (
+                {!collapsedColumns.sipyung && slotLabels.map((label, index) => (
                   <th key={`sipyung-head-${index}`} className="subheader-sipyung">{label}</th>
                 ))}
               </tr>

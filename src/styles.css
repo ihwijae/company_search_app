@@ -1145,6 +1145,12 @@ button.primary:hover { background: var(--accent-2); }
   color: #64748b;
 }
 
+.collapsed-stub-cell {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
 .excel-board-table.is-collapsed-select td.select-cell input {
   display: none;
 }
