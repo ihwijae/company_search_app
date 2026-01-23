@@ -1134,11 +1134,15 @@ button.primary:hover { background: var(--accent-2); }
 .col-toggle.collapsed {
   background: #fde68a;
   color: #7c2d12;
+  justify-content: center;
 }
 .col-toggle-label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  text-align: center;
+  width: 100%;
+  justify-content: center;
 }
 .col-toggle-caret {
   font-size: 12px;
