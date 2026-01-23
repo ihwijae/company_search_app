@@ -1213,24 +1213,15 @@ export default function AgreementBoardWindow({
     approval: false,
     name: false,
     share: false,
-    shareTotal: false,
     credibility: false,
-    credibilityTotal: false,
     status: false,
-    management: false,
     managementBonus: false,
     performance: false,
-    performanceSummary: false,
     technician: false,
     technicianSummary: false,
     technicianAbility: false,
-    qualityPoints: false,
     subcontract: false,
-    bid: false,
-    netCostBonus: false,
-    total: false,
     sipyung: false,
-    sipyungSummary: false,
   }));
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
   const isLHOwner = ownerKeyUpper === 'LH';
@@ -2187,12 +2178,12 @@ export default function AgreementBoardWindow({
     const base = (collapsedColumns.order ? COLLAPSED_COLUMN_WIDTHS.order : COLUMN_WIDTHS.order)
       + (collapsedColumns.select ? COLLAPSED_COLUMN_WIDTHS.select : COLUMN_WIDTHS.select)
       + (collapsedColumns.approval ? COLLAPSED_COLUMN_WIDTHS.approval : COLUMN_WIDTHS.approval)
-      + (collapsedColumns.management ? COLLAPSED_COLUMN_WIDTHS.management : COLUMN_WIDTHS.management)
+      + COLUMN_WIDTHS.management
       + (collapsedColumns.managementBonus ? COLLAPSED_COLUMN_WIDTHS.managementBonus : COLUMN_WIDTHS.managementBonus)
-      + (collapsedColumns.shareTotal ? COLLAPSED_COLUMN_WIDTHS.shareTotal : COLUMN_WIDTHS.shareTotal)
-      + (isLHOwner ? (collapsedColumns.qualityPoints ? COLLAPSED_COLUMN_WIDTHS.qualityPoints : COLUMN_WIDTHS.qualityPoints) : 0)
-      + (credibilityEnabled ? (collapsedColumns.credibilityTotal ? COLLAPSED_COLUMN_WIDTHS.credibility : COLUMN_WIDTHS.credibility) : 0)
-      + (collapsedColumns.performanceSummary ? COLLAPSED_COLUMN_WIDTHS.performanceSummary : COLUMN_WIDTHS.performanceSummary)
+      + COLUMN_WIDTHS.shareTotal
+      + (isLHOwner ? COLUMN_WIDTHS.qualityPoints : 0)
+      + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
+      + COLUMN_WIDTHS.performanceSummary
       + (technicianEnabled
         ? (collapsedColumns.technicianSummary ? COLLAPSED_COLUMN_WIDTHS.technicianSummary : COLUMN_WIDTHS.technicianSummary)
           + (collapsedColumns.technicianAbility ? COLLAPSED_COLUMN_WIDTHS.technicianAbilitySummary : COLUMN_WIDTHS.technicianAbilitySummary)
@@ -2200,10 +2191,10 @@ export default function AgreementBoardWindow({
       + ((isMois30To50 || isEx50To100)
         ? (collapsedColumns.subcontract ? COLLAPSED_COLUMN_WIDTHS.subcontract : COLUMN_WIDTHS.subcontract)
         : 0)
-      + (collapsedColumns.bid ? COLLAPSED_COLUMN_WIDTHS.bid : COLUMN_WIDTHS.bid)
-      + (collapsedColumns.netCostBonus ? COLLAPSED_COLUMN_WIDTHS.netCostBonus : COLUMN_WIDTHS.netCostBonus)
-      + (collapsedColumns.total ? COLLAPSED_COLUMN_WIDTHS.total : COLUMN_WIDTHS.total)
-      + (collapsedColumns.sipyungSummary ? COLLAPSED_COLUMN_WIDTHS.sipyungSummary : COLUMN_WIDTHS.sipyungSummary);
+      + COLUMN_WIDTHS.bid
+      + COLUMN_WIDTHS.netCostBonus
+      + COLUMN_WIDTHS.total
+      + COLUMN_WIDTHS.sipyungSummary;
     const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth
       + perfCellsWidth + technicianCellsWidth + sipyungCellsWidth;
     return Math.max(1200, total);
@@ -5403,7 +5394,7 @@ export default function AgreementBoardWindow({
                 {slotLabels.map((_, index) => (
                   <col key={`col-share-${index}`} className="col-share" style={{ width: resolveColWidth('share') }} />
                 ))}
-                <col className="col-share-total" style={{ width: resolveColWidth('shareTotal') }} />
+                <col className="col-share-total" style={{ width: `${COLUMN_WIDTHS.shareTotal}px` }} />
                 {credibilityEnabled && slotLabels.map((_, index) => (
                   <col
                     key={`col-credibility-slot-${index}`}
@@ -5412,12 +5403,12 @@ export default function AgreementBoardWindow({
                   />
                 ))}
                 {credibilityEnabled && (
-                  <col className="col-credibility" style={{ width: resolveColWidth('credibility', 'credibilityTotal') }} />
+                  <col className="col-credibility" style={{ width: `${COLUMN_WIDTHS.credibility}px` }} />
                 )}
                   {slotLabels.map((_, index) => (
                     <col key={`col-status-${index}`} className="col-status" style={{ width: resolveColWidth('status') }} />
                   ))}
-                  <col className="col-management" style={{ width: resolveColWidth('management') }} />
+                  <col className="col-management" style={{ width: `${COLUMN_WIDTHS.management}px` }} />
                   <col className="col-management-bonus" style={{ width: resolveColWidth('managementBonus') }} />
               {slotLabels.map((_, index) => (
                 <col
@@ -5426,7 +5417,7 @@ export default function AgreementBoardWindow({
                   style={{ width: resolveColWidth('performanceCell', 'performance') }}
                 />
               ))}
-              <col className="col-performance-summary" style={{ width: resolveColWidth('performanceSummary') }} />
+              <col className="col-performance-summary" style={{ width: `${COLUMN_WIDTHS.performanceSummary}px` }} />
               {technicianEnabled && slotLabels.map((_, index) => (
                 <col
                   key={`col-technician-${index}`}
@@ -5443,13 +5434,13 @@ export default function AgreementBoardWindow({
                   style={{ width: resolveColWidth('technicianAbilitySummary', 'technicianAbility') }}
                 />
               )}
-              {isLHOwner && <col className="col-quality-points" style={{ width: resolveColWidth('qualityPoints') }} />}
+              {isLHOwner && <col className="col-quality-points" style={{ width: `${COLUMN_WIDTHS.qualityPoints}px` }} />}
               {(isMois30To50 || isEx50To100) && (
                 <col className="col-subcontract" style={{ width: resolveColWidth('subcontract') }} />
               )}
-              <col className="col-bid" style={{ width: resolveColWidth('bid') }} />
-              <col className="col-netcost-bonus" style={{ width: resolveColWidth('netCostBonus') }} />
-              <col className="col-total" style={{ width: resolveColWidth('total') }} />
+              <col className="col-bid" style={{ width: `${COLUMN_WIDTHS.bid}px` }} />
+              <col className="col-netcost-bonus" style={{ width: `${COLUMN_WIDTHS.netCostBonus}px` }} />
+              <col className="col-total" style={{ width: `${COLUMN_WIDTHS.total}px` }} />
               {slotLabels.map((_, index) => (
                 <col
                   key={`col-sipyung-${index}`}
@@ -5457,7 +5448,7 @@ export default function AgreementBoardWindow({
                   style={{ width: resolveColWidth('sipyungCell', 'sipyung') }}
                 />
               ))}
-              <col className="col-sipyung-summary" style={{ width: resolveColWidth('sipyungSummary') }} />
+              <col className="col-sipyung-summary" style={{ width: `${COLUMN_WIDTHS.sipyungSummary}px` }} />
             </colgroup>
             <thead>
               <tr>
@@ -5467,12 +5458,14 @@ export default function AgreementBoardWindow({
                 <th colSpan={slotLabels.length} className="col-header name-header">{renderColToggle('name', '업체명')}</th>
                 <th colSpan={slotLabels.length} className="col-header share-header">{renderColToggle('share', '지분(%)')}</th>
                   <th rowSpan="2" className="col-header share-total-header-cell">
-                    {renderColToggle('shareTotal', isLHOwner ? (
+                    {isLHOwner ? (
                       <span className="share-total-header">
                         <span>지분합계</span>
                         <span className="sub">품질총점</span>
                       </span>
-                    ) : '지분합계', { collapsedLabel: '지분합계' })}
+                    ) : (
+                      '지분합계'
+                    )}
                   </th>
                     {credibilityEnabled && (
                       <th colSpan={slotLabels.length} className="col-header credibility-header">
@@ -5481,23 +5474,19 @@ export default function AgreementBoardWindow({
                     )}
                   {credibilityEnabled && (
                     <th rowSpan="2" className="col-header credibility-total-header">
-                      {renderColToggle(
-                        'credibilityTotal',
-                        Number.isFinite(ownerCredibilityMax)
-                          ? `신인도 합(${formatScore(ownerCredibilityMax, 1)}점)`
-                          : '신인도 합',
-                        { collapsedLabel: '신인도 합' },
-                      )}
+                      {Number.isFinite(ownerCredibilityMax)
+                        ? `신인도 합(${formatScore(ownerCredibilityMax, 1)}점)`
+                        : '신인도 합'}
                     </th>
                   )}
                 <th colSpan={slotLabels.length} className="col-header status-header">{renderColToggle('status', '경영상태')}</th>
                 <th rowSpan="2" className="col-header management-header">
-                  {renderColToggle('management', `경영(${formatScore(managementHeaderMax, 0)}점)`, { collapsedLabel: '경영' })}
+                  {`경영(${formatScore(managementHeaderMax, 0)}점)`}
                 </th>
                 <th rowSpan="2" className="col-header management-bonus-header">{renderColToggle('managementBonus', '가점')}</th>
                 <th colSpan={slotLabels.length} className="col-header performance-header">{renderColToggle('performance', '시공실적')}</th>
                 <th rowSpan="2" className="col-header performance-summary-header">
-                  {renderColToggle('performanceSummary', `실적(${formatScore(performanceHeaderMax, 0)}점)`, { collapsedLabel: '실적' })}
+                  {`실적(${formatScore(performanceHeaderMax, 0)}점)`}
                 </th>
                 {technicianEnabled && (
                   <th colSpan={slotLabels.length} className="col-header technician-header">
@@ -5520,7 +5509,7 @@ export default function AgreementBoardWindow({
                 )}
                 {isLHOwner && (
                   <th rowSpan="2" className="col-header quality-points-header">
-                    {renderColToggle('qualityPoints', '품질점수')}
+                    품질점수
                   </th>
                 )}
                 {isMois30To50 && (
@@ -5533,12 +5522,12 @@ export default function AgreementBoardWindow({
                     {renderColToggle('subcontract', '하도급및자재', { collapsedLabel: '하도급' })}
                   </th>
                 )}
-                <th rowSpan="2" className="col-header bid-header">{renderColToggle('bid', '입찰점수')}</th>
-                <th rowSpan="2" className="col-header netcost-header">{renderColToggle('netCostBonus', '순공사원가가점', { collapsedLabel: '순공사원가' })}</th>
-                <th rowSpan="2" className="col-header total-header">{renderColToggle('total', '예상점수')}</th>
+                <th rowSpan="2" className="col-header bid-header">입찰점수</th>
+                <th rowSpan="2" className="col-header netcost-header">순공사원가가점</th>
+                <th rowSpan="2" className="col-header total-header">예상점수</th>
                 <th colSpan={slotLabels.length} className="col-header sipyung-header">{renderColToggle('sipyung', '시평액')}</th>
                 <th rowSpan="2" className="col-header sipyung-summary-header">
-                  {renderColToggle('sipyungSummary', sipyungSummaryLabel, { collapsedLabel: '시평액 합' })}
+                  {sipyungSummaryLabel}
                 </th>
               </tr>
               <tr>

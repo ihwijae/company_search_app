@@ -1185,22 +1185,9 @@ button.primary:hover { background: var(--accent-2); }
 .excel-board-table.is-collapsed-sipyung td.excel-sipyung-cell .excel-performance {
   display: none;
 }
-.excel-board-table.is-collapsed-shareTotal td.share-total-cell,
-.excel-board-table.is-collapsed-credibilityTotal td.credibility-total-cell,
-.excel-board-table.is-collapsed-management td.management-summary-cell,
-.excel-board-table.is-collapsed-managementBonus td.management-bonus-cell,
-.excel-board-table.is-collapsed-performanceSummary td.performance-summary-cell,
-.excel-board-table.is-collapsed-technicianSummary td.technician-summary-cell,
-.excel-board-table.is-collapsed-technicianAbility td.technician-ability-cell,
-.excel-board-table.is-collapsed-qualityPoints td.quality-points-cell,
-.excel-board-table.is-collapsed-subcontract td.subcontract-cell,
-.excel-board-table.is-collapsed-bid td.bid-score-cell,
-.excel-board-table.is-collapsed-netCostBonus td.netcost-bonus-cell,
-.excel-board-table.is-collapsed-total td.total-score-cell,
-.excel-board-table.is-collapsed-sipyungSummary td.sipyung-summary-cell {
+.excel-board-table.is-collapsed-managementBonus td.management-bonus-cell {
   color: transparent;
 }
-.excel-board-table.is-collapsed-shareTotal td.share-total-cell .excel-warning,
 .excel-board-table.is-collapsed-managementBonus td.management-bonus-cell input {
   display: none;
 }
