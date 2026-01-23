@@ -92,7 +92,7 @@ const getCandidateFileType = (candidate) => {
 };
 
 export default function KakaoSendPage() {
-  const { notify } = useFeedback();
+  const { notify, confirm, showLoading, hideLoading } = useFeedback();
   const [draft, setDraft] = React.useState('');
   const [splitEntries, setSplitEntries] = React.useState([]);
   const [roomModalOpen, setRoomModalOpen] = React.useState(false);
@@ -280,6 +280,77 @@ export default function KakaoSendPage() {
       type: 'success',
       message: `담당자 매칭 ${matchedCount}건 완료.`,
     });
+  };
+
+  const handleSendKakao = async () => {
+    if (splitEntries.length === 0) {
+      notify({ type: 'info', message: '전송할 업체 목록이 없습니다.' });
+      return;
+    }
+    const managerMap = new Map(managerOptions.map((option) => [String(option.id), option]));
+    const items = [];
+    let skipped = 0;
+    splitEntries.forEach((entry) => {
+      if (entry.managerId === 'none' || entry.managerId === 'exclude') {
+        skipped += 1;
+        return;
+      }
+      const manager = managerMap.get(String(entry.managerId));
+      const room = manager?.room || '';
+      if (!room) {
+        skipped += 1;
+        return;
+      }
+      const message = messageOverrides[entry.id] ?? entry.baseText ?? '';
+      if (!message) {
+        skipped += 1;
+        return;
+      }
+      items.push({
+        room,
+        message,
+        company: entry.company,
+      });
+    });
+
+    if (items.length === 0) {
+      notify({ type: 'warning', message: '전송 대상이 없습니다. 담당자/채팅방 설정을 확인하세요.' });
+      return;
+    }
+
+    const proceed = await confirm({
+      title: '카카오톡 전송',
+      message: `총 ${items.length}건 전송합니다. (제외/없음 ${skipped}건) 진행할까요?`,
+      confirmText: '전송',
+      cancelText: '취소',
+    });
+    if (!proceed) return;
+
+    showLoading({ title: '카카오톡 전송 중', message: '전송 중에는 카카오톡 창을 조작하지 마세요.' });
+    try {
+      if (!window?.electronAPI?.kakao?.sendBatch) {
+        throw new Error('카카오톡 전송 기능이 준비되지 않았습니다.');
+      }
+      const response = await window.electronAPI.kakao.sendBatch({
+        items,
+        delayMs: 300,
+      });
+      hideLoading();
+      if (!response?.success) {
+        notify({ type: 'error', message: response?.message || '카카오톡 전송에 실패했습니다.' });
+        return;
+      }
+      const results = Array.isArray(response.results) ? response.results : [];
+      const okCount = results.filter((r) => r.success).length;
+      const failCount = results.length - okCount;
+      notify({ type: failCount > 0 ? 'warning' : 'success', message: `전송 완료: 성공 ${okCount}건, 실패 ${failCount}건` });
+      if (failCount > 0) {
+        console.log('[kakao-send] failures:', results.filter((r) => !r.success));
+      }
+    } catch (err) {
+      hideLoading();
+      notify({ type: 'error', message: err?.message || '카카오톡 전송에 실패했습니다.' });
+    }
   };
 
   const handleRoomSettingChange = (id, field, value) => {
@@ -510,7 +581,7 @@ export default function KakaoSendPage() {
                     </table>
                   </div>
                   <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button className="primary" type="button">카카오톡 전송</button>
+                    <button className="primary" type="button" onClick={handleSendKakao}>카카오톡 전송</button>
                     <button className="secondary" type="button">전송 로그 확인</button>
                   </div>
                 </div>

@@ -10,6 +10,7 @@ const { RecordsService } = require('./src/main/features/records/recordsService.j
 const { registerRecordsIpcHandlers } = require('./src/main/features/records/ipc.js');
 const industryAverages = require('./src/shared/industryAverages.json');
 const { ExcelAutomationService } = require('./src/main/features/excel/excelAutomation.js');
+const { KakaoAutomationService } = require('./src/main/features/kakao/kakaoAutomation.js');
 const { formatUploadedWorkbook } = require('./src/main/features/excel/formatUploadedWorkbook.js');
 const { applyAgreementToTemplate } = require('./src/main/features/bid-result/applyAgreement.js');
 const { applyBidAmountTemplate } = require('./src/main/features/bid-result/applyBidAmountTemplate.js');
@@ -45,6 +46,7 @@ let recordsDbInstance = null;
 let recordsServiceInstance = null;
 let excelHelperWindow = null;
 const excelAutomation = new ExcelAutomationService();
+const kakaoAutomation = new KakaoAutomationService();
 const loadMergedFormulasCached = () => {
   if (formulasCache) return formulasCache;
   try {
@@ -1299,6 +1301,21 @@ try {
   });
 } catch (err) {
   console.error('[MAIN] mail:send-batch IPC wiring failed:', err);
+}
+
+try {
+  if (ipcMain.removeHandler) ipcMain.removeHandler('kakao:send-batch');
+  ipcMain.handle('kakao:send-batch', async (_event, payload = {}) => {
+    try {
+      const result = await kakaoAutomation.sendBatch(payload);
+      return result;
+    } catch (err) {
+      console.error('[MAIN] kakao:send-batch failed:', err?.message || err);
+      return { success: false, message: err?.message || '카카오톡 전송에 실패했습니다.' };
+    }
+  });
+} catch (err) {
+  console.error('[MAIN] kakao:send-batch IPC wiring failed:', err);
 }
 
 try {

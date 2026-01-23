@@ -107,4 +107,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return () => ipcRenderer.removeListener(channel, listener);
     },
   },
+  kakao: {
+    sendBatch: (payload) => ipcRenderer.invoke('kakao:send-batch', payload),
+  },
 });
