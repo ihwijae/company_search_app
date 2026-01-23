@@ -147,6 +147,17 @@ export default function KakaoSendPage() {
     );
   };
 
+  const handleRemoveEntry = (entryId) => {
+    setSplitEntries((prev) => prev.filter((entry) => entry.id !== entryId));
+    setMessageOverrides((prev) => {
+      if (!prev[entryId]) return prev;
+      const next = { ...prev };
+      delete next[entryId];
+      return next;
+    });
+    notify({ type: 'info', message: '해당 업체를 목록에서 제거했습니다.' });
+  };
+
   const openMessageModal = (entryId) => {
     const entry = splitEntries.find((item) => item.id === entryId);
     if (!entry) return;
@@ -201,7 +212,11 @@ export default function KakaoSendPage() {
       return;
     }
     if (value === 'cancel') {
-      setMessageDraft(`[협정 취소]\n${normalizedBase}\n\n사유: `);
+      const stripped = normalizedBase.replace(/협정\s*부탁드립니다\.?/g, '협정 취소 부탁드립니다.');
+      const finalText = stripped.includes('협정 취소 부탁드립니다.')
+        ? stripped
+        : `${stripped}\n\n협정 취소 부탁드립니다.`;
+      setMessageDraft(`[협정 취소]\n${finalText}\n\n사유: `);
       setMessageTemplate(value);
       return;
     }
@@ -250,12 +265,13 @@ export default function KakaoSendPage() {
                           <th style={{ width: '160px' }}>담당자</th>
                           <th style={{ width: '180px' }}>채팅방</th>
                           <th style={{ width: '140px' }}>메시지</th>
+                          <th style={{ width: '90px' }}>제거</th>
                         </tr>
                       </thead>
                       <tbody>
                         {splitEntries.length === 0 ? (
                           <tr>
-                            <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                            <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                               문자 분리 후 담당자 목록이 표시됩니다.
                             </td>
                           </tr>
@@ -291,6 +307,11 @@ export default function KakaoSendPage() {
                               <td>
                                 <button className="secondary" type="button" onClick={() => openMessageModal(entry.id)}>
                                   {messageOverrides[entry.id] ? '수정됨' : '기본'}
+                                </button>
+                              </td>
+                              <td>
+                                <button className="secondary" type="button" onClick={() => handleRemoveEntry(entry.id)}>
+                                  제거
                                 </button>
                               </td>
                             </tr>
