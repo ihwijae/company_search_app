@@ -23,7 +23,17 @@ const MENU_ROUTES = {
 const ROOM_SETTINGS_KEY = 'kakaoRoomSettings';
 const DEFAULT_ROOM_ROWS = [{ id: 1, manager: '', room: '' }];
 
-const COMPANY_NAME_FIELDS = ['업체명', '회사명', '상호', '법인명', 'companyName', 'company', 'name'];
+const COMPANY_NAME_FIELDS = [
+  '검색된 회사',
+  '검색된회사',
+  '업체명',
+  '회사명',
+  '상호',
+  '법인명',
+  'companyName',
+  'company',
+  'name',
+];
 const FILE_TYPE_LABELS = [
   { key: 'eung', match: /전기/ },
   { key: 'tongsin', match: /통신/ },
@@ -159,6 +169,7 @@ export default function KakaoSendPage() {
       if (!map.has(normalized)) map.set(normalized, []);
       map.get(normalized).push(candidate);
     });
+    console.log('[kakao-auto-match] mapped names:', Array.from(map.keys()));
     const nextEntries = entries.map(entry => {
       const normalizedName = normalizeCompanyName(entry.companyName);
       let list = map.get(normalizedName) || [];
@@ -173,6 +184,9 @@ export default function KakaoSendPage() {
         }
       }
       console.log('[kakao-auto-match] match for', entry.companyName, '->', list.length);
+      if (list.length > 0) {
+        console.log('[kakao-auto-match] candidates for', entry.companyName, list);
+      }
       const targetType = overrideFileType && overrideFileType !== 'auto' ? overrideFileType : entry.fileType;
       const filtered = targetType
         ? list.filter((candidate) => getCandidateFileType(candidate) === targetType)
