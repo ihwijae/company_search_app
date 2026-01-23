@@ -136,7 +136,7 @@ function Find-ChildWindowByText([IntPtr]$parent, [string]$text) {
   $child = [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $null, $null)
   while ($child -ne [IntPtr]::Zero) {
     $title = Get-WindowText $child
-    if ($title -and $title -like \"*${text}*\") { return $child }
+    if ($title -and $title -like (\"*\" + $text + \"*\")) { return $child }
     $child = [Win32]::FindWindowEx($parent, $child, $null, $null)
   }
   return [IntPtr]::Zero
