@@ -403,7 +403,8 @@ const truncateScore = (value, digits = 2) => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
   const factor = 10 ** digits;
-  return Math.floor(numeric * factor) / factor;
+  const epsilon = 1e-9;
+  return Math.floor((numeric + epsilon) * factor) / factor;
 };
 
 const roundTo = (value, digits = 4) => {

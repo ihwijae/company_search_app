@@ -248,23 +248,23 @@
                       "thresholds": [
                         {
                           "lt": 0.5,
-                          "score": 7.0
+                          "score": 7.3333333333
                         },
                         {
                           "lt": 0.75,
-                          "score": 6.2
+                          "score": 6.5666666667
                         },
                         {
                           "lt": 1.0,
-                          "score": 5.4
+                          "score": 5.8333333333
                         },
                         {
                           "lt": 1.25,
-                          "score": 4.6
+                          "score": 5.0666666667
                         },
                         {
                           "gte": 1.25,
-                          "score": 3.8
+                          "score": 4.3333333333
                         }
                       ]
                     },
@@ -278,19 +278,19 @@
                         },
                         {
                           "gte": 1.2,
-                          "score": 6.2
+                          "score": 6.2333333333
                         },
                         {
                           "gte": 1.0,
-                          "score": 5.4
+                          "score": 5.5
                         },
                         {
                           "gte": 0.7,
-                          "score": 4.6
+                          "score": 4.7333333333
                         },
                         {
                           "lt": 0.7,
-                          "score": 3.8
+                          "score": 4.0
                         }
                       ]
                     },
@@ -298,16 +298,16 @@
                       "scale": "higherIsBetter",
                       "thresholds": [
                         {
+                          "gteYears": 5,
+                          "score": 0.6666666667
+                        },
+                        {
                           "gteYears": 3,
-                          "score": 1.0
+                          "score": 0.6
                         },
                         {
-                          "gteYears": 1,
-                          "score": 0.9
-                        },
-                        {
-                          "ltYears": 1,
-                          "score": 0.8
+                          "ltYears": 3,
+                          "score": 0.5
                         }
                       ]
                     }
@@ -438,10 +438,31 @@
               }
             },
             "performance": {
-              "formula": "(perf5y / (baseAmount * 2)) * 13",
+              "formula": "(perf5y / (baseAmount * 3)) * 13",
               "variables": [
                 "perf5y",
                 "baseAmount"
+              ],
+              "variants": [
+                {
+                  "when": {
+                    "fileTypes": [
+                      "eung",
+                      "tongsin"
+                    ]
+                  },
+                  "formula": "(perf5y / (baseAmount * 2)) * 13",
+                  "variables": [
+                    "perf5y",
+                    "baseAmount"
+                  ],
+                  "maxScore": 13,
+                  "rounding": {
+                    "method": "truncate",
+                    "digits": 2
+                  },
+                  "mode": "formula"
+                }
               ],
               "maxScore": 13,
               "rounding": {
