@@ -35,6 +35,13 @@ export default function KakaoSendPage() {
 
   React.useEffect(() => {
     try {
+      if (window?.electronAPI?.stateLoadSync) {
+        const saved = window.electronAPI.stateLoadSync(ROOM_SETTINGS_KEY);
+        if (saved && !saved.__companySearchStateMissing && Array.isArray(saved) && saved.length > 0) {
+          setRoomSettings(saved);
+        }
+        return;
+      }
       const saved = window.localStorage.getItem(ROOM_SETTINGS_KEY);
       if (!saved) return;
       const parsed = JSON.parse(saved);
@@ -103,7 +110,7 @@ export default function KakaoSendPage() {
     ]);
   };
 
-  const handleSaveRoomSettings = () => {
+  const handleSaveRoomSettings = async () => {
     const normalized = (roomSettings || [])
       .map((row) => ({
         id: row.id || Date.now(),
@@ -114,7 +121,11 @@ export default function KakaoSendPage() {
     const nextRows = normalized.length > 0 ? normalized : DEFAULT_ROOM_ROWS;
     setRoomSettings(nextRows);
     try {
-      window.localStorage.setItem(ROOM_SETTINGS_KEY, JSON.stringify(nextRows));
+      if (window?.electronAPI?.stateSave) {
+        await window.electronAPI.stateSave(ROOM_SETTINGS_KEY, nextRows);
+      } else {
+        window.localStorage.setItem(ROOM_SETTINGS_KEY, JSON.stringify(nextRows));
+      }
     } catch {}
     setRoomModalOpen(false);
   };
