@@ -87,6 +87,14 @@ const copyWorksheet = (source, target) => {
     ...cloneCellStyle(source.properties),
     tabColor: target.properties?.tabColor || source.properties?.tabColor,
   };
+  if (source.properties) {
+    if (source.properties.defaultRowHeight != null) {
+      target.properties.defaultRowHeight = source.properties.defaultRowHeight;
+    }
+    if (source.properties.defaultColWidth != null) {
+      target.properties.defaultColWidth = source.properties.defaultColWidth;
+    }
+  }
   target.pageSetup = cloneCellStyle(source.pageSetup);
   const sourceViews = cloneCellStyle(source.views);
   if (Array.isArray(sourceViews) && sourceViews.length > 0) {
