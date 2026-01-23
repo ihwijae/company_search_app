@@ -129,6 +129,31 @@ const COLUMN_WIDTHS = {
   sipyungCell: 90,
   sipyungSummary: 60,
 };
+const COLLAPSED_COLUMN_WIDTHS = {
+  select: 24,
+  order: 26,
+  approval: 28,
+  name: 26,
+  share: 26,
+  status: 26,
+  management: 28,
+  managementBonus: 26,
+  shareTotal: 28,
+  qualityPoints: 28,
+  performanceCell: 26,
+  performanceSummary: 28,
+  technicianCell: 26,
+  technicianSummary: 28,
+  technicianAbilitySummary: 28,
+  credibilityCell: 26,
+  credibility: 28,
+  bid: 28,
+  subcontract: 28,
+  netCostBonus: 28,
+  total: 28,
+  sipyungCell: 26,
+  sipyungSummary: 28,
+};
 const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
 const BOARD_COPY_BUTTON_STYLE_MAP = {
   names: { backgroundColor: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' },
@@ -1182,6 +1207,31 @@ export default function AgreementBoardWindow({
   const [bidTimePeriod, setBidTimePeriod] = React.useState('AM');
   const [bidHourInput, setBidHourInput] = React.useState('');
   const [bidMinuteInput, setBidMinuteInput] = React.useState('');
+  const [collapsedColumns, setCollapsedColumns] = React.useState(() => ({
+    select: false,
+    order: false,
+    approval: false,
+    name: false,
+    share: false,
+    shareTotal: false,
+    credibility: false,
+    credibilityTotal: false,
+    status: false,
+    management: false,
+    managementBonus: false,
+    performance: false,
+    performanceSummary: false,
+    technician: false,
+    technicianSummary: false,
+    technicianAbility: false,
+    qualityPoints: false,
+    subcontract: false,
+    bid: false,
+    netCostBonus: false,
+    total: false,
+    sipyung: false,
+    sipyungSummary: false,
+  }));
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
   const isLHOwner = ownerKeyUpper === 'LH';
   const isKrailOwner = ownerKeyUpper === 'KRAIL';
@@ -2083,37 +2133,81 @@ export default function AgreementBoardWindow({
     return Array.from(map.values());
   }, [loadFilters.ownerId]);
 
+  const toggleColumnCollapse = React.useCallback((key) => {
+    setCollapsedColumns((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  }, []);
+
+  const resolveColWidth = React.useCallback((widthKey, collapsedKey = widthKey) => {
+    const baseWidth = COLUMN_WIDTHS[widthKey];
+    const collapsedWidth = COLLAPSED_COLUMN_WIDTHS[widthKey]
+      ?? COLLAPSED_COLUMN_WIDTHS[collapsedKey]
+      ?? 26;
+    const isCollapsed = collapsedColumns[collapsedKey];
+    return `${isCollapsed ? collapsedWidth : baseWidth}px`;
+  }, [collapsedColumns]);
+
+  const tableCollapseClasses = React.useMemo(() => (
+    Object.entries(collapsedColumns)
+      .filter(([, value]) => value)
+      .map(([key]) => `is-collapsed-${key}`)
+      .join(' ')
+  ), [collapsedColumns]);
+
+  const renderColToggle = React.useCallback((key, label, options = {}) => {
+    const collapsed = collapsedColumns[key];
+    const displayLabel = collapsed && options.collapsedLabel != null ? options.collapsedLabel : label;
+    return (
+      <button
+        type="button"
+        className={`col-toggle${collapsed ? ' collapsed' : ''}`}
+        onClick={() => toggleColumnCollapse(key)}
+        aria-pressed={collapsed}
+      >
+        <span className="col-toggle-label">{displayLabel}</span>
+        <span className="col-toggle-caret" aria-hidden="true">{collapsed ? '▸' : '▾'}</span>
+      </button>
+    );
+  }, [collapsedColumns, toggleColumnCollapse]);
+
   const tableMinWidth = React.useMemo(() => {
-    const nameWidth = slotLabels.length * COLUMN_WIDTHS.name;
-    const shareWidth = slotLabels.length * COLUMN_WIDTHS.share;
+    const nameWidth = slotLabels.length * (collapsedColumns.name ? COLLAPSED_COLUMN_WIDTHS.name : COLUMN_WIDTHS.name);
+    const shareWidth = slotLabels.length * (collapsedColumns.share ? COLLAPSED_COLUMN_WIDTHS.share : COLUMN_WIDTHS.share);
     const credibilityWidth = credibilityEnabled
-      ? slotLabels.length * COLUMN_WIDTHS.credibilityCell
+      ? slotLabels.length * (collapsedColumns.credibility ? COLLAPSED_COLUMN_WIDTHS.credibilityCell : COLUMN_WIDTHS.credibilityCell)
       : 0;
-    const statusWidth = slotLabels.length * COLUMN_WIDTHS.status;
-    const perfCellsWidth = slotLabels.length * COLUMN_WIDTHS.performanceCell;
+    const statusWidth = slotLabels.length * (collapsedColumns.status ? COLLAPSED_COLUMN_WIDTHS.status : COLUMN_WIDTHS.status);
+    const perfCellsWidth = slotLabels.length * (collapsedColumns.performance ? COLLAPSED_COLUMN_WIDTHS.performanceCell : COLUMN_WIDTHS.performanceCell);
     const technicianCellsWidth = technicianEnabled
-      ? slotLabels.length * COLUMN_WIDTHS.technicianCell
+      ? slotLabels.length * (collapsedColumns.technician ? COLLAPSED_COLUMN_WIDTHS.technicianCell : COLUMN_WIDTHS.technicianCell)
       : 0;
-    const sipyungCellsWidth = slotLabels.length * COLUMN_WIDTHS.sipyungCell;
-    const base = COLUMN_WIDTHS.order
-      + COLUMN_WIDTHS.select
-      + COLUMN_WIDTHS.approval
-      + COLUMN_WIDTHS.management
-      + COLUMN_WIDTHS.managementBonus
-      + COLUMN_WIDTHS.shareTotal
-      + (isLHOwner ? COLUMN_WIDTHS.qualityPoints : 0)
-      + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
-      + COLUMN_WIDTHS.performanceSummary
-      + (technicianEnabled ? COLUMN_WIDTHS.technicianSummary + COLUMN_WIDTHS.technicianAbilitySummary : 0)
-      + ((isMois30To50 || isEx50To100) ? COLUMN_WIDTHS.subcontract : 0)
-      + COLUMN_WIDTHS.bid
-      + COLUMN_WIDTHS.netCostBonus
-      + COLUMN_WIDTHS.total
-      + COLUMN_WIDTHS.sipyungSummary;
+    const sipyungCellsWidth = slotLabels.length * (collapsedColumns.sipyung ? COLLAPSED_COLUMN_WIDTHS.sipyungCell : COLUMN_WIDTHS.sipyungCell);
+    const base = (collapsedColumns.order ? COLLAPSED_COLUMN_WIDTHS.order : COLUMN_WIDTHS.order)
+      + (collapsedColumns.select ? COLLAPSED_COLUMN_WIDTHS.select : COLUMN_WIDTHS.select)
+      + (collapsedColumns.approval ? COLLAPSED_COLUMN_WIDTHS.approval : COLUMN_WIDTHS.approval)
+      + (collapsedColumns.management ? COLLAPSED_COLUMN_WIDTHS.management : COLUMN_WIDTHS.management)
+      + (collapsedColumns.managementBonus ? COLLAPSED_COLUMN_WIDTHS.managementBonus : COLUMN_WIDTHS.managementBonus)
+      + (collapsedColumns.shareTotal ? COLLAPSED_COLUMN_WIDTHS.shareTotal : COLUMN_WIDTHS.shareTotal)
+      + (isLHOwner ? (collapsedColumns.qualityPoints ? COLLAPSED_COLUMN_WIDTHS.qualityPoints : COLUMN_WIDTHS.qualityPoints) : 0)
+      + (credibilityEnabled ? (collapsedColumns.credibilityTotal ? COLLAPSED_COLUMN_WIDTHS.credibility : COLUMN_WIDTHS.credibility) : 0)
+      + (collapsedColumns.performanceSummary ? COLLAPSED_COLUMN_WIDTHS.performanceSummary : COLUMN_WIDTHS.performanceSummary)
+      + (technicianEnabled
+        ? (collapsedColumns.technicianSummary ? COLLAPSED_COLUMN_WIDTHS.technicianSummary : COLUMN_WIDTHS.technicianSummary)
+          + (collapsedColumns.technicianAbility ? COLLAPSED_COLUMN_WIDTHS.technicianAbilitySummary : COLUMN_WIDTHS.technicianAbilitySummary)
+        : 0)
+      + ((isMois30To50 || isEx50To100)
+        ? (collapsedColumns.subcontract ? COLLAPSED_COLUMN_WIDTHS.subcontract : COLUMN_WIDTHS.subcontract)
+        : 0)
+      + (collapsedColumns.bid ? COLLAPSED_COLUMN_WIDTHS.bid : COLUMN_WIDTHS.bid)
+      + (collapsedColumns.netCostBonus ? COLLAPSED_COLUMN_WIDTHS.netCostBonus : COLUMN_WIDTHS.netCostBonus)
+      + (collapsedColumns.total ? COLLAPSED_COLUMN_WIDTHS.total : COLUMN_WIDTHS.total)
+      + (collapsedColumns.sipyungSummary ? COLLAPSED_COLUMN_WIDTHS.sipyungSummary : COLUMN_WIDTHS.sipyungSummary);
     const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth
       + perfCellsWidth + technicianCellsWidth + sipyungCellsWidth;
     return Math.max(1200, total);
-  }, [slotLabels.length, credibilityEnabled, isLHOwner, isMois30To50, technicianEnabled]);
+  }, [slotLabels.length, credibilityEnabled, isLHOwner, isMois30To50, isEx50To100, technicianEnabled, collapsedColumns]);
 
   const derivedMaxScores = React.useMemo(() => {
     if (!formulasDoc) return { managementMax: null, performanceMax: null };
@@ -4902,7 +4996,7 @@ export default function AgreementBoardWindow({
         </td>
         {slotMetasWithLimit.map((meta) => renderNameCell(meta))}
         {slotMetasWithLimit.map(renderShareCell)}
-        <td className={`excel-cell total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>
+        <td className={`excel-cell total-cell share-total-cell ${summaryInfo?.shareComplete ? 'ok' : 'warn'}`}>
           <div>{shareSumDisplay}</div>
           {dutyShareInsufficient && (
             <div className="excel-warning">의무지분 미충족</div>
@@ -4910,10 +5004,12 @@ export default function AgreementBoardWindow({
         </td>
         {credibilityEnabled && slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan))}
         {credibilityEnabled && (
-          <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{credibilitySummary}</td>
+          <td className="excel-cell total-cell credibility-total-cell" rowSpan={rightRowSpan}>{credibilitySummary}</td>
         )}
         {slotMetas.map((meta) => renderStatusCell(meta, rightRowSpan))}
-        <td className={`excel-cell total-cell ${managementState}`} rowSpan={rightRowSpan}>{managementSummary}</td>
+        <td className={`excel-cell total-cell management-summary-cell ${managementState}`} rowSpan={rightRowSpan}>
+          {managementSummary}
+        </td>
         <td className="excel-cell management-bonus-cell" rowSpan={rightRowSpan}>
           <input
             type="checkbox"
@@ -4923,11 +5019,13 @@ export default function AgreementBoardWindow({
           />
         </td>
         {slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
-        <td className={`excel-cell total-cell ${performanceState}`} rowSpan={rightRowSpan}>{performanceSummary}</td>
+        <td className={`excel-cell total-cell performance-summary-cell ${performanceState}`} rowSpan={rightRowSpan}>
+          {performanceSummary}
+        </td>
         {technicianEnabled && slotMetas.map((meta) => renderTechnicianCell(meta, rightRowSpan))}
         {technicianEnabled && (
           <td
-            className={`excel-cell total-cell${
+            className={`excel-cell total-cell technician-summary-cell${
               technicianScoreWarn ? ' technician-warn' : (technicianScoreGood ? ' technician-good' : '')
             }`}
             rowSpan={rightRowSpan}
@@ -4937,7 +5035,7 @@ export default function AgreementBoardWindow({
         )}
         {technicianEnabled && (
           <td
-            className={`excel-cell total-cell${
+            className={`excel-cell total-cell technician-ability-cell${
               technicianScoreWarn ? ' technician-warn' : (technicianScoreGood ? ' technician-good' : '')
             }`}
             rowSpan={rightRowSpan}
@@ -4946,16 +5044,29 @@ export default function AgreementBoardWindow({
           </td>
         )}
         {isLHOwner && (
-          <td className={`excel-cell total-cell ${qualityPointsState}`} rowSpan={rightRowSpan}>{qualityPointsDisplay}</td>
+          <td
+            className={`excel-cell total-cell quality-points-cell ${qualityPointsState}`}
+            rowSpan={rightRowSpan}
+          >
+            {qualityPointsDisplay}
+          </td>
         )}
         {(isMois30To50 || isEx50To100) && (
-          <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{subcontractDisplay}</td>
+          <td className="excel-cell total-cell subcontract-cell" rowSpan={rightRowSpan}>{subcontractDisplay}</td>
         )}
-        <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
-        <td className="excel-cell total-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
-        <td className={`excel-cell total-cell total-score${scoreState ? ` score-${scoreState}` : ''}`} rowSpan={rightRowSpan}>{totalScoreDisplay}</td>
+        <td className="excel-cell total-cell bid-score-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
+        <td className="excel-cell total-cell netcost-bonus-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
+        <td
+          className={`excel-cell total-cell total-score-cell total-score${scoreState ? ` score-${scoreState}` : ''}`}
+          rowSpan={rightRowSpan}
+        >
+          {totalScoreDisplay}
+        </td>
         {slotMetas.map((meta) => renderSipyungCell(meta, rightRowSpan, entryDisabled))}
-        <td className={`excel-cell total-cell${entryDisabled ? ' entry-disabled' : ''}`} rowSpan={rightRowSpan}>
+        <td
+          className={`excel-cell total-cell sipyung-summary-cell${entryDisabled ? ' entry-disabled' : ''}`}
+          rowSpan={rightRowSpan}
+        >
           {entryDisabled ? '-' : sipyungSummaryDisplay}
         </td>
         </tr>
@@ -5279,115 +5390,178 @@ export default function AgreementBoardWindow({
         <div className="excel-table-wrapper" ref={boardMainRef}>
           <div className="excel-table-inner">
               <table
-                className="excel-board-table"
+                className={`excel-board-table ${tableCollapseClasses}`}
                 style={{ minWidth: `${tableMinWidth}px`, width: `${tableMinWidth}px` }}
               >
             <colgroup>
-              <col className="col-select" />
-              <col className="col-order" />
-              <col className="col-approval" />
+              <col className="col-select" style={{ width: resolveColWidth('select') }} />
+              <col className="col-order" style={{ width: resolveColWidth('order') }} />
+              <col className="col-approval" style={{ width: resolveColWidth('approval') }} />
               {slotLabels.map((_, index) => (
-                <col key={`col-name-${index}`} className="col-name" />
+                <col key={`col-name-${index}`} className="col-name" style={{ width: resolveColWidth('name') }} />
               ))}
                 {slotLabels.map((_, index) => (
-                  <col key={`col-share-${index}`} className="col-share" />
+                  <col key={`col-share-${index}`} className="col-share" style={{ width: resolveColWidth('share') }} />
                 ))}
-                <col className="col-share-total" />
+                <col className="col-share-total" style={{ width: resolveColWidth('shareTotal') }} />
                 {credibilityEnabled && slotLabels.map((_, index) => (
-                  <col key={`col-credibility-slot-${index}`} className="col-credibility-slot" />
+                  <col
+                    key={`col-credibility-slot-${index}`}
+                    className="col-credibility-slot"
+                    style={{ width: resolveColWidth('credibilityCell', 'credibility') }}
+                  />
                 ))}
-                {credibilityEnabled && <col className="col-credibility" />}
+                {credibilityEnabled && (
+                  <col className="col-credibility" style={{ width: resolveColWidth('credibility', 'credibilityTotal') }} />
+                )}
                   {slotLabels.map((_, index) => (
-                    <col key={`col-status-${index}`} className="col-status" />
+                    <col key={`col-status-${index}`} className="col-status" style={{ width: resolveColWidth('status') }} />
                   ))}
-                  <col className="col-management" />
-                  <col className="col-management-bonus" />
+                  <col className="col-management" style={{ width: resolveColWidth('management') }} />
+                  <col className="col-management-bonus" style={{ width: resolveColWidth('managementBonus') }} />
               {slotLabels.map((_, index) => (
-                <col key={`col-performance-${index}`} className="col-performance" />
+                <col
+                  key={`col-performance-${index}`}
+                  className="col-performance"
+                  style={{ width: resolveColWidth('performanceCell', 'performance') }}
+                />
               ))}
-              <col className="col-performance-summary" />
+              <col className="col-performance-summary" style={{ width: resolveColWidth('performanceSummary') }} />
               {technicianEnabled && slotLabels.map((_, index) => (
-                <col key={`col-technician-${index}`} className="col-technician" />
+                <col
+                  key={`col-technician-${index}`}
+                  className="col-technician"
+                  style={{ width: resolveColWidth('technicianCell', 'technician') }}
+                />
               ))}
-              {technicianEnabled && <col className="col-technician-summary" />}
-              {technicianEnabled && <col className="col-technician-ability-summary" />}
-              {isLHOwner && <col className="col-quality-points" />}
-              {(isMois30To50 || isEx50To100) && <col className="col-subcontract" />}
-              <col className="col-bid" />
-              <col className="col-netcost-bonus" />
-              <col className="col-total" />
+              {technicianEnabled && (
+                <col className="col-technician-summary" style={{ width: resolveColWidth('technicianSummary') }} />
+              )}
+              {technicianEnabled && (
+                <col
+                  className="col-technician-ability-summary"
+                  style={{ width: resolveColWidth('technicianAbilitySummary', 'technicianAbility') }}
+                />
+              )}
+              {isLHOwner && <col className="col-quality-points" style={{ width: resolveColWidth('qualityPoints') }} />}
+              {(isMois30To50 || isEx50To100) && (
+                <col className="col-subcontract" style={{ width: resolveColWidth('subcontract') }} />
+              )}
+              <col className="col-bid" style={{ width: resolveColWidth('bid') }} />
+              <col className="col-netcost-bonus" style={{ width: resolveColWidth('netCostBonus') }} />
+              <col className="col-total" style={{ width: resolveColWidth('total') }} />
               {slotLabels.map((_, index) => (
-                <col key={`col-sipyung-${index}`} className="col-sipyung" />
+                <col
+                  key={`col-sipyung-${index}`}
+                  className="col-sipyung"
+                  style={{ width: resolveColWidth('sipyungCell', 'sipyung') }}
+                />
               ))}
-              <col className="col-sipyung-summary" />
+              <col className="col-sipyung-summary" style={{ width: resolveColWidth('sipyungSummary') }} />
             </colgroup>
             <thead>
               <tr>
-                <th rowSpan="2">선택</th>
-                <th rowSpan="2">연번</th>
-                <th rowSpan="2">승인</th>
-                <th colSpan={slotLabels.length}>업체명</th>
-                <th colSpan={slotLabels.length}>지분(%)</th>
-                  <th rowSpan="2">
-                    {isLHOwner ? (
-                      <div className="share-total-header">
+                <th rowSpan="2" className="col-header select-header">{renderColToggle('select', '선택')}</th>
+                <th rowSpan="2" className="col-header order-header">{renderColToggle('order', '연번')}</th>
+                <th rowSpan="2" className="col-header approval-header">{renderColToggle('approval', '승인')}</th>
+                <th colSpan={slotLabels.length} className="col-header name-header">{renderColToggle('name', '업체명')}</th>
+                <th colSpan={slotLabels.length} className="col-header share-header">{renderColToggle('share', '지분(%)')}</th>
+                  <th rowSpan="2" className="col-header share-total-header-cell">
+                    {renderColToggle('shareTotal', isLHOwner ? (
+                      <span className="share-total-header">
                         <span>지분합계</span>
                         <span className="sub">품질총점</span>
-                      </div>
-                    ) : (
-                      '지분합계'
-                    )}
+                      </span>
+                    ) : '지분합계', { collapsedLabel: '지분합계' })}
                   </th>
-                    {credibilityEnabled && <th colSpan={slotLabels.length}>신인도</th>}
+                    {credibilityEnabled && (
+                      <th colSpan={slotLabels.length} className="col-header credibility-header">
+                        {renderColToggle('credibility', '신인도')}
+                      </th>
+                    )}
                   {credibilityEnabled && (
-                    <th rowSpan="2">
-                      {Number.isFinite(ownerCredibilityMax)
-                        ? `신인도 합(${formatScore(ownerCredibilityMax, 1)}점)`
-                        : '신인도 합'}
+                    <th rowSpan="2" className="col-header credibility-total-header">
+                      {renderColToggle(
+                        'credibilityTotal',
+                        Number.isFinite(ownerCredibilityMax)
+                          ? `신인도 합(${formatScore(ownerCredibilityMax, 1)}점)`
+                          : '신인도 합',
+                        { collapsedLabel: '신인도 합' },
+                      )}
                     </th>
                   )}
-                <th colSpan={slotLabels.length}>경영상태</th>
-                <th rowSpan="2">경영({formatScore(managementHeaderMax, 0)}점)</th>
-                <th rowSpan="2">가점</th>
-                <th colSpan={slotLabels.length}>시공실적</th>
-                <th rowSpan="2">실적({formatScore(performanceHeaderMax, 0)}점)</th>
-                {technicianEnabled && <th colSpan={slotLabels.length}>기술자점수</th>}
-                {technicianEnabled && <th rowSpan="2">기술자합산</th>}
+                <th colSpan={slotLabels.length} className="col-header status-header">{renderColToggle('status', '경영상태')}</th>
+                <th rowSpan="2" className="col-header management-header">
+                  {renderColToggle('management', `경영(${formatScore(managementHeaderMax, 0)}점)`, { collapsedLabel: '경영' })}
+                </th>
+                <th rowSpan="2" className="col-header management-bonus-header">{renderColToggle('managementBonus', '가점')}</th>
+                <th colSpan={slotLabels.length} className="col-header performance-header">{renderColToggle('performance', '시공실적')}</th>
+                <th rowSpan="2" className="col-header performance-summary-header">
+                  {renderColToggle('performanceSummary', `실적(${formatScore(performanceHeaderMax, 0)}점)`, { collapsedLabel: '실적' })}
+                </th>
                 {technicianEnabled && (
-                  <th rowSpan="2">
-                    {technicianAbilityMax != null ? `기술능력(${formatScore(technicianAbilityMax, 0)}점)` : '기술능력'}
+                  <th colSpan={slotLabels.length} className="col-header technician-header">
+                    {renderColToggle('technician', '기술자점수')}
                   </th>
                 )}
-                {isLHOwner && <th rowSpan="2">품질점수</th>}
-                {isMois30To50 && <th rowSpan="2">하도급</th>}
-                {isEx50To100 && <th rowSpan="2">하도급및자재</th>}
-                <th rowSpan="2">입찰점수</th>
-                <th rowSpan="2">순공사원가가점</th>
-                <th rowSpan="2">예상점수</th>
-                <th colSpan={slotLabels.length}>시평액</th>
-                <th rowSpan="2">{sipyungSummaryLabel}</th>
+                {technicianEnabled && (
+                  <th rowSpan="2" className="col-header technician-summary-header">
+                    {renderColToggle('technicianSummary', '기술자합산')}
+                  </th>
+                )}
+                {technicianEnabled && (
+                  <th rowSpan="2" className="col-header technician-ability-header">
+                    {renderColToggle(
+                      'technicianAbility',
+                      technicianAbilityMax != null ? `기술능력(${formatScore(technicianAbilityMax, 0)}점)` : '기술능력',
+                      { collapsedLabel: '기술능력' },
+                    )}
+                  </th>
+                )}
+                {isLHOwner && (
+                  <th rowSpan="2" className="col-header quality-points-header">
+                    {renderColToggle('qualityPoints', '품질점수')}
+                  </th>
+                )}
+                {isMois30To50 && (
+                  <th rowSpan="2" className="col-header subcontract-header">
+                    {renderColToggle('subcontract', '하도급')}
+                  </th>
+                )}
+                {isEx50To100 && (
+                  <th rowSpan="2" className="col-header subcontract-header">
+                    {renderColToggle('subcontract', '하도급및자재', { collapsedLabel: '하도급' })}
+                  </th>
+                )}
+                <th rowSpan="2" className="col-header bid-header">{renderColToggle('bid', '입찰점수')}</th>
+                <th rowSpan="2" className="col-header netcost-header">{renderColToggle('netCostBonus', '순공사원가가점', { collapsedLabel: '순공사원가' })}</th>
+                <th rowSpan="2" className="col-header total-header">{renderColToggle('total', '예상점수')}</th>
+                <th colSpan={slotLabels.length} className="col-header sipyung-header">{renderColToggle('sipyung', '시평액')}</th>
+                <th rowSpan="2" className="col-header sipyung-summary-header">
+                  {renderColToggle('sipyungSummary', sipyungSummaryLabel, { collapsedLabel: '시평액 합' })}
+                </th>
               </tr>
               <tr>
                 {slotLabels.map((label, index) => (
-                  <th key={`name-head-${index}`}>{label}</th>
+                  <th key={`name-head-${index}`} className="subheader-name">{label}</th>
                 ))}
                 {slotLabels.map((label, index) => (
-                  <th key={`share-head-${index}`}>{label}</th>
+                  <th key={`share-head-${index}`} className="subheader-share">{label}</th>
                 ))}
                 {credibilityEnabled && slotLabels.map((label, index) => (
-                  <th key={`credibility-head-${index}`}>{label}</th>
+                  <th key={`credibility-head-${index}`} className="subheader-credibility">{label}</th>
                 ))}
                 {slotLabels.map((label, index) => (
-                  <th key={`status-head-${index}`}>{label}</th>
+                  <th key={`status-head-${index}`} className="subheader-status">{label}</th>
                 ))}
                 {slotLabels.map((label, index) => (
-                  <th key={`perf-head-${index}`}>{label}</th>
+                  <th key={`perf-head-${index}`} className="subheader-performance">{label}</th>
                 ))}
                 {technicianEnabled && slotLabels.map((label, index) => (
-                  <th key={`tech-head-${index}`}>{label}</th>
+                  <th key={`tech-head-${index}`} className="subheader-technician">{label}</th>
                 ))}
                 {slotLabels.map((label, index) => (
-                  <th key={`sipyung-head-${index}`}>{label}</th>
+                  <th key={`sipyung-head-${index}`} className="subheader-sipyung">{label}</th>
                 ))}
               </tr>
             </thead>

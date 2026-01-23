@@ -1117,6 +1117,105 @@ button.primary:hover { background: var(--accent-2); }
 .col-sipyung { width: 90px; }
 .col-sipyung-summary { width: 90px; }
 
+.col-toggle {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.col-toggle.collapsed {
+  background: #e2e8f0;
+  color: #334155;
+}
+.col-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.col-toggle-caret {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.excel-board-table.is-collapsed-select td.select-cell input {
+  display: none;
+}
+.excel-board-table.is-collapsed-select td.select-cell {
+  padding: 2px 0;
+}
+.excel-board-table.is-collapsed-order td.order-cell {
+  color: transparent;
+}
+.excel-board-table.is-collapsed-approval td.approval-cell select {
+  display: none;
+}
+.excel-board-table.is-collapsed-approval td.approval-cell {
+  padding: 2px 0;
+}
+.excel-board-table.is-collapsed-name td.excel-name-cell > * {
+  display: none;
+}
+.excel-board-table.is-collapsed-share td.excel-share-cell input {
+  display: none;
+}
+.excel-board-table.is-collapsed-share td.excel-share-cell {
+  padding: 2px 0;
+}
+.excel-board-table.is-collapsed-credibility td.excel-credibility-cell input,
+.excel-board-table.is-collapsed-credibility td.excel-credibility-cell .excel-hint {
+  display: none;
+}
+.excel-board-table.is-collapsed-status td.excel-status-cell .excel-status {
+  display: none;
+}
+.excel-board-table.is-collapsed-performance td.excel-perf-cell .excel-performance {
+  display: none;
+}
+.excel-board-table.is-collapsed-technician td.excel-technician-cell input {
+  display: none;
+}
+.excel-board-table.is-collapsed-sipyung td.excel-sipyung-cell .excel-performance {
+  display: none;
+}
+.excel-board-table.is-collapsed-shareTotal td.share-total-cell,
+.excel-board-table.is-collapsed-credibilityTotal td.credibility-total-cell,
+.excel-board-table.is-collapsed-management td.management-summary-cell,
+.excel-board-table.is-collapsed-managementBonus td.management-bonus-cell,
+.excel-board-table.is-collapsed-performanceSummary td.performance-summary-cell,
+.excel-board-table.is-collapsed-technicianSummary td.technician-summary-cell,
+.excel-board-table.is-collapsed-technicianAbility td.technician-ability-cell,
+.excel-board-table.is-collapsed-qualityPoints td.quality-points-cell,
+.excel-board-table.is-collapsed-subcontract td.subcontract-cell,
+.excel-board-table.is-collapsed-bid td.bid-score-cell,
+.excel-board-table.is-collapsed-netCostBonus td.netcost-bonus-cell,
+.excel-board-table.is-collapsed-total td.total-score-cell,
+.excel-board-table.is-collapsed-sipyungSummary td.sipyung-summary-cell {
+  color: transparent;
+}
+.excel-board-table.is-collapsed-shareTotal td.share-total-cell .excel-warning,
+.excel-board-table.is-collapsed-managementBonus td.management-bonus-cell input {
+  display: none;
+}
+.excel-board-table.is-collapsed-name th.subheader-name,
+.excel-board-table.is-collapsed-share th.subheader-share,
+.excel-board-table.is-collapsed-credibility th.subheader-credibility,
+.excel-board-table.is-collapsed-status th.subheader-status,
+.excel-board-table.is-collapsed-performance th.subheader-performance,
+.excel-board-table.is-collapsed-technician th.subheader-technician,
+.excel-board-table.is-collapsed-sipyung th.subheader-sipyung {
+  font-size: 0;
+  padding: 2px 0;
+  color: transparent;
+}
+
 .excel-cell {
   min-width: 0;
   white-space: nowrap;
