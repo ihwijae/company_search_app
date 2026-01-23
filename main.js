@@ -369,11 +369,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       netCostPenaltyNotice: 'AD2',
     },
     approvalColumn: 'B',
-    summaryColumns: {
-      qualityPoints: 'AD',
-      credibility: 'AH',
-      netCostBonus: 'AI',
-    },
+    summaryColumns: {},
     managementBonusColumn: 'O',
     regionFill: {
       type: 'pattern',
@@ -420,11 +416,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       netCostPenaltyNotice: 'AD2',
     },
     approvalColumn: 'B',
-    summaryColumns: {
-      qualityPoints: 'AD',
-      credibility: 'AH',
-      netCostBonus: 'AI',
-    },
+    summaryColumns: {},
     managementBonusColumn: 'O',
     regionFill: {
       type: 'pattern',
