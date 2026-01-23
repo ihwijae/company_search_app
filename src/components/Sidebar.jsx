@@ -4,6 +4,7 @@ import mmsIcon from '../assets/mms.png';
 import emailIcon from '../assets/email.png';
 import autoIcon from '../assets/auto.png';
 import exchangeIcon from '../assets/교환.png';
+import kakaoIcon from '../assets/kakao.png';
 
 export default function Sidebar({ active, onSelect, fileStatuses, collapsed = true }) {
   const anyLoaded = !!(fileStatuses?.eung || fileStatuses?.tongsin || fileStatuses?.sobang);
@@ -33,6 +34,17 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
         <img
           src={excelIcon}
           alt="엑셀"
+          style={{ width: 22, height: 22, objectFit: 'contain' }}
+        />
+      ),
+    },
+    {
+      key: 'kakao-send',
+      label: '카카오전송',
+      icon: (
+        <img
+          src={kakaoIcon}
+          alt="카카오전송"
           style={{ width: 22, height: 22, objectFit: 'contain' }}
         />
       ),

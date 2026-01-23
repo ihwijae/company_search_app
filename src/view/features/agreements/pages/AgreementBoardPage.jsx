@@ -48,6 +48,7 @@ export default function AgreementBoardPage() {
     if (key === 'mail') { window.location.hash = '#/mail'; return; }
     if (key === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }
     if (key === 'bid-result') { window.location.hash = '#/bid-result'; return; }
+    if (key === 'kakao-send') { window.location.hash = '#/kakao-send'; return; }
     if (key === 'upload') { window.location.hash = BASE_ROUTES.agreementBoard; return; }
     if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
   }, []);
