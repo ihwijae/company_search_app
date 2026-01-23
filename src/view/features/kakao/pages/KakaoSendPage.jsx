@@ -18,19 +18,41 @@ const MENU_ROUTES = {
   upload: '#/upload',
 };
 
+const ROOM_SETTINGS_KEY = 'kakaoRoomSettings';
+const DEFAULT_ROOM_ROWS = [{ id: 1, manager: '', room: '' }];
+
 export default function KakaoSendPage() {
   const [draft, setDraft] = React.useState('');
   const [splitEntries, setSplitEntries] = React.useState([]);
   const [roomModalOpen, setRoomModalOpen] = React.useState(false);
-  const [roomSettings, setRoomSettings] = React.useState([
-    { id: 1, manager: '', room: '' },
-  ]);
+  const [roomSettings, setRoomSettings] = React.useState(DEFAULT_ROOM_ROWS);
 
   const handleMenuSelect = React.useCallback((key) => {
     if (!key || key === 'kakao-send') return;
     const target = MENU_ROUTES[key];
     if (target) window.location.hash = target;
   }, []);
+
+  React.useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(ROOM_SETTINGS_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setRoomSettings(parsed);
+      }
+    } catch {}
+  }, []);
+
+  const managerOptions = React.useMemo(() => {
+    return (roomSettings || [])
+      .map((row) => ({
+        id: row.id,
+        label: String(row.manager || '').trim(),
+        room: String(row.room || '').trim(),
+      }))
+      .filter((row) => row.label);
+  }, [roomSettings]);
 
   const handleSplitMessages = () => {
     const blocks = String(draft || '')
@@ -48,14 +70,14 @@ export default function KakaoSendPage() {
         entries.push({
           id: `${blockIndex}-0`,
           company: `협정안 ${blockIndex + 1}`,
-          manager: '미정',
+          managerId: 'none',
         });
       } else {
         companyLines.forEach((line, lineIndex) => {
           entries.push({
             id: `${blockIndex}-${lineIndex}`,
             company: line,
-            manager: '미정',
+            managerId: 'none',
           });
         });
       }
@@ -79,6 +101,28 @@ export default function KakaoSendPage() {
       ...prev,
       { id: Date.now(), manager: '', room: '' },
     ]);
+  };
+
+  const handleSaveRoomSettings = () => {
+    const normalized = (roomSettings || [])
+      .map((row) => ({
+        id: row.id || Date.now(),
+        manager: String(row.manager || '').trim(),
+        room: String(row.room || '').trim(),
+      }))
+      .filter((row) => row.manager || row.room);
+    const nextRows = normalized.length > 0 ? normalized : DEFAULT_ROOM_ROWS;
+    setRoomSettings(nextRows);
+    try {
+      window.localStorage.setItem(ROOM_SETTINGS_KEY, JSON.stringify(nextRows));
+    } catch {}
+    setRoomModalOpen(false);
+  };
+
+  const handleEntryManagerChange = (entryId, value) => {
+    setSplitEntries((prev) =>
+      prev.map((entry) => (entry.id === entryId ? { ...entry, managerId: value } : entry))
+    );
   };
 
   return (
@@ -120,13 +164,14 @@ export default function KakaoSendPage() {
                         <tr>
                           <th style={{ width: '70px' }}>순번</th>
                           <th>업체명</th>
-                          <th style={{ width: '140px' }}>담당자</th>
+                          <th style={{ width: '160px' }}>담당자</th>
+                          <th style={{ width: '180px' }}>채팅방</th>
                         </tr>
                       </thead>
                       <tbody>
                         {splitEntries.length === 0 ? (
                           <tr>
-                            <td colSpan={3} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                            <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                               문자 분리 후 담당자 목록이 표시됩니다.
                             </td>
                           </tr>
@@ -135,7 +180,26 @@ export default function KakaoSendPage() {
                             <tr key={entry.id}>
                               <td>{index + 1}</td>
                               <td>{entry.company}</td>
-                              <td>{entry.manager}</td>
+                              <td>
+                                <select
+                                  className="filter-input"
+                                  value={entry.managerId}
+                                  onChange={(event) => handleEntryManagerChange(entry.id, event.target.value)}
+                                >
+                                  <option value="none">없음</option>
+                                  <option value="exclude">제외</option>
+                                  {managerOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td>
+                                {entry.managerId === 'exclude' || entry.managerId === 'none'
+                                  ? '-'
+                                  : managerOptions.find((row) => String(row.id) === String(entry.managerId))?.room || ''}
+                              </td>
                             </tr>
                           ))
                         )}
@@ -156,7 +220,7 @@ export default function KakaoSendPage() {
         open={roomModalOpen}
         onClose={() => setRoomModalOpen(false)}
         onCancel={() => setRoomModalOpen(false)}
-        onSave={() => setRoomModalOpen(false)}
+        onSave={handleSaveRoomSettings}
         title="담당자 카톡방 설정"
         confirmLabel="저장"
         cancelLabel="닫기"
