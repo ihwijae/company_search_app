@@ -1213,15 +1213,15 @@ export default function AgreementBoardWindow({
     approval: false,
     name: false,
     share: false,
-    credibility: false,
-    status: false,
+    credibility: true,
+    status: true,
     managementBonus: false,
-    performance: false,
+    performance: true,
     technician: false,
     technicianSummary: false,
     technicianAbility: false,
     subcontract: false,
-    sipyung: false,
+    sipyung: true,
   }));
   const ownerKeyUpper = React.useMemo(() => String(ownerId || '').toUpperCase(), [ownerId]);
   const isLHOwner = ownerKeyUpper === 'LH';
