@@ -147,6 +147,12 @@ function Find-ChildWindowByClass([IntPtr]$parent, [string]$className) {
 }
 
 $mainHwnd = Find-MainKakaoWindow
+if ($mainHwnd -eq [IntPtr]::Zero) {
+  try {
+    $proc = Get-Process -Name KakaoTalk -ErrorAction Stop | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+    if ($proc) { $mainHwnd = [IntPtr]$proc.MainWindowHandle }
+  } catch {}
+}
 if ($mainHwnd -eq [IntPtr]::Zero) { throw '카카오톡 창을 찾을 수 없습니다.' }
  [void][Win32]::SetForegroundWindow($mainHwnd)
  Start-Sleep -Milliseconds 200
