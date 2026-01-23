@@ -3,6 +3,7 @@ import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import Modal from '../../../../components/Modal.jsx';
+import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 
 const MENU_ROUTES = {
   search: '#/search',
@@ -22,6 +23,7 @@ const ROOM_SETTINGS_KEY = 'kakaoRoomSettings';
 const DEFAULT_ROOM_ROWS = [{ id: 1, manager: '', room: '' }];
 
 export default function KakaoSendPage() {
+  const { notify } = useFeedback();
   const [draft, setDraft] = React.useState('');
   const [splitEntries, setSplitEntries] = React.useState([]);
   const [roomModalOpen, setRoomModalOpen] = React.useState(false);
@@ -29,6 +31,7 @@ export default function KakaoSendPage() {
   const [messageOverrides, setMessageOverrides] = React.useState({});
   const [messageModal, setMessageModal] = React.useState({ open: false, entryId: null });
   const [messageDraft, setMessageDraft] = React.useState('');
+  const [messageTemplate, setMessageTemplate] = React.useState('');
 
   const handleMenuSelect = React.useCallback((key) => {
     if (!key || key === 'kakao-send') return;
@@ -95,11 +98,13 @@ export default function KakaoSendPage() {
       }
     });
     setSplitEntries(entries);
+    notify({ type: entries.length ? 'success' : 'info', message: entries.length ? `총 ${entries.length}개 업체로 분리되었습니다.` : '분리할 협정문자가 없습니다.' });
   };
 
   const handleClearDraft = () => {
     setDraft('');
     setSplitEntries([]);
+    notify({ type: 'info', message: '협정문자가 초기화되었습니다.' });
   };
 
   const handleRoomSettingChange = (id, field, value) => {
@@ -131,6 +136,7 @@ export default function KakaoSendPage() {
       } else {
         window.localStorage.setItem(ROOM_SETTINGS_KEY, JSON.stringify(nextRows));
       }
+      notify({ type: 'success', message: '담당자 카톡방 설정이 저장되었습니다.' });
     } catch {}
     setRoomModalOpen(false);
   };
@@ -146,12 +152,14 @@ export default function KakaoSendPage() {
     if (!entry) return;
     const existing = messageOverrides[entryId];
     setMessageDraft(existing ?? entry.baseText ?? '');
+    setMessageTemplate('');
     setMessageModal({ open: true, entryId });
   };
 
   const closeMessageModal = () => {
     setMessageModal({ open: false, entryId: null });
     setMessageDraft('');
+    setMessageTemplate('');
   };
 
   const handleSaveMessageOverride = () => {
@@ -160,6 +168,7 @@ export default function KakaoSendPage() {
       ...prev,
       [messageModal.entryId]: messageDraft,
     }));
+    notify({ type: 'success', message: '담당자별 메시지가 저장되었습니다.' });
     closeMessageModal();
   };
 
@@ -172,6 +181,31 @@ export default function KakaoSendPage() {
     });
     const entry = splitEntries.find((item) => item.id === messageModal.entryId);
     setMessageDraft(entry?.baseText || '');
+    setMessageTemplate('');
+    notify({ type: 'info', message: '기본 메시지로 되돌렸습니다.' });
+  };
+
+  const handleTemplateChange = (value) => {
+    if (!messageModal.entryId) return;
+    const entry = splitEntries.find((item) => item.id === messageModal.entryId);
+    const baseText = entry?.baseText || '';
+    const normalizedBase = baseText.replace(/^\[(협정 정정|협정 취소)\]\s*\n?/, '').trim();
+    if (!value) {
+      setMessageDraft(baseText);
+      setMessageTemplate('');
+      return;
+    }
+    if (value === 'fix') {
+      setMessageDraft(`[협정 정정]\n${normalizedBase}`);
+      setMessageTemplate(value);
+      return;
+    }
+    if (value === 'cancel') {
+      setMessageDraft(`[협정 취소]\n${normalizedBase}\n\n사유: `);
+      setMessageTemplate(value);
+      return;
+    }
+    setMessageTemplate(value);
   };
 
   return (
@@ -343,10 +377,14 @@ export default function KakaoSendPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '4px 4px 0' }}>
           <div className="filter-item">
             <label>템플릿 선택</label>
-            <select className="filter-input" defaultValue="">
+            <select
+              className="filter-input"
+              value={messageTemplate}
+              onChange={(event) => handleTemplateChange(event.target.value)}
+            >
               <option value="">직접 입력</option>
               <option value="fix">[협정 정정] 템플릿</option>
-              <option value="request">협정 요청 템플릿</option>
+              <option value="cancel">[협정 취소] 템플릿</option>
             </select>
           </div>
           <div className="filter-item">
