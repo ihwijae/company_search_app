@@ -4,6 +4,7 @@ import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
+import { extractManagerNames, getCandidateTextField } from '../../../../utils/companyIndicators.js';
 
 const MENU_ROUTES = {
   search: '#/search',
@@ -22,6 +23,50 @@ const MENU_ROUTES = {
 const ROOM_SETTINGS_KEY = 'kakaoRoomSettings';
 const DEFAULT_ROOM_ROWS = [{ id: 1, manager: '', room: '' }];
 
+const COMPANY_NAME_FIELDS = ['업체명', '회사명', '상호', '법인명', 'companyName', 'company', 'name'];
+const FILE_TYPE_LABELS = [
+  { key: 'eung', match: /전기/ },
+  { key: 'tongsin', match: /통신/ },
+  { key: 'sobang', match: /소방/ },
+];
+
+const normalizeCompanyName = (name) => {
+  if (!name) return '';
+  return String(name)
+    .replace(/\(주\)|㈜|주식회사|유한회사/g, '')
+    .replace(/\s+/g, '')
+    .replace(/[\[\]\(\)\.\-·]/g, '')
+    .toLowerCase();
+};
+
+const extractCompanyNameFromLine = (line) => {
+  if (!line) return '';
+  let cleaned = String(line).replace(/\[.*?\]/g, '');
+  cleaned = cleaned.replace(/\d+(?:\.\d+)?\s*%.*$/g, '');
+  return cleaned.trim();
+};
+
+const detectFileTypeFromBlock = (blockText) => {
+  const text = String(blockText || '');
+  const match = FILE_TYPE_LABELS.find((item) => item.match.test(text));
+  return match ? match.key : null;
+};
+
+const getCandidateName = (candidate) => {
+  const raw = getCandidateTextField(candidate, COMPANY_NAME_FIELDS);
+  return String(raw || '').trim();
+};
+
+const getCandidateFileType = (candidate) => {
+  const raw = candidate?._file_type || candidate?.file_type || candidate?.fileType || candidate?.snapshot?._file_type;
+  if (!raw) return null;
+  const text = String(raw).toLowerCase();
+  if (text.includes('eung') || text.includes('전기')) return 'eung';
+  if (text.includes('tongsin') || text.includes('통신')) return 'tongsin';
+  if (text.includes('sobang') || text.includes('소방')) return 'sobang';
+  return null;
+};
+
 export default function KakaoSendPage() {
   const { notify } = useFeedback();
   const [draft, setDraft] = React.useState('');
@@ -32,6 +77,7 @@ export default function KakaoSendPage() {
   const [messageModal, setMessageModal] = React.useState({ open: false, entryId: null });
   const [messageDraft, setMessageDraft] = React.useState('');
   const [messageTemplate, setMessageTemplate] = React.useState('');
+  const [industryFilter, setIndustryFilter] = React.useState('auto');
 
   const handleMenuSelect = React.useCallback((key) => {
     if (!key || key === 'kakao-send') return;
@@ -67,13 +113,68 @@ export default function KakaoSendPage() {
       .filter((row) => row.label);
   }, [roomSettings]);
 
-  const handleSplitMessages = () => {
+  const autoMatchManagers = async (entries, overrideFileType) => {
+    if (!window?.electronAPI?.searchManyCompanies) return entries;
+    const availableManagers = managerOptions.map((item) => ({
+      id: item.id,
+      label: String(item.label || '').trim(),
+      normalized: String(item.label || '').replace(/\s+/g, '').toLowerCase(),
+    }));
+    if (availableManagers.length === 0) return entries;
+    const nameSet = new Set();
+    entries.forEach((entry) => {
+      if (entry.companyName) nameSet.add(entry.companyName);
+    });
+    if (nameSet.size === 0) return entries;
+    const searchFileType = overrideFileType && overrideFileType !== 'auto' ? overrideFileType : 'all';
+    const response = await window.electronAPI.searchManyCompanies(Array.from(nameSet), searchFileType);
+    if (!response?.success) {
+      notify({ type: 'warning', message: '업체 담당자 자동 매칭에 실패했습니다.' });
+      return entries;
+    }
+    const candidates = Array.isArray(response.data) ? response.data : [];
+    const map = new Map();
+    candidates.forEach((candidate) => {
+      const name = getCandidateName(candidate);
+      const normalized = normalizeCompanyName(name);
+      if (!normalized) return;
+      if (!map.has(normalized)) map.set(normalized, []);
+      map.get(normalized).push(candidate);
+    });
+    const nextEntries = entries.map(entry => {
+      const normalizedName = normalizeCompanyName(entry.companyName);
+      const list = map.get(normalizedName) || [];
+      const targetType = overrideFileType && overrideFileType !== 'auto' ? overrideFileType : entry.fileType;
+      const filtered = targetType
+        ? list.filter((candidate) => getCandidateFileType(candidate) === targetType)
+        : list;
+      const pool = filtered.length > 0 ? filtered : list;
+      let matchedId = 'none';
+      for (const candidate of pool) {
+        const managers = extractManagerNames(candidate);
+        for (const manager of managers) {
+          const normalizedManager = String(manager || '').replace(/\s+/g, '').toLowerCase();
+          const option = availableManagers.find((item) => item.normalized === normalizedManager);
+          if (option) {
+            matchedId = option.id;
+            break;
+          }
+        }
+        if (matchedId !== 'none') break;
+      }
+      return matchedId === 'none' ? entry : { ...entry, managerId: matchedId };
+    });
+    return nextEntries;
+  };
+
+  const handleSplitMessages = async () => {
     const blocks = String(draft || '')
       .split(/-{5,}/)
       .map((block) => block.trim())
       .filter(Boolean);
     const entries = [];
     blocks.forEach((block, blockIndex) => {
+      const fileType = industryFilter === 'auto' ? detectFileTypeFromBlock(block) : industryFilter;
       const lines = block
         .split('\n')
         .map((line) => line.trim())
@@ -83,28 +184,58 @@ export default function KakaoSendPage() {
         entries.push({
           id: `${blockIndex}-0`,
           company: `협정안 ${blockIndex + 1}`,
+          companyName: '',
           managerId: 'none',
           baseText: block,
+          fileType,
         });
       } else {
         companyLines.forEach((line, lineIndex) => {
           entries.push({
             id: `${blockIndex}-${lineIndex}`,
             company: line,
+            companyName: extractCompanyNameFromLine(line),
             managerId: 'none',
             baseText: block,
+            fileType,
           });
         });
       }
     });
-    setSplitEntries(entries);
-    notify({ type: entries.length ? 'success' : 'info', message: entries.length ? `총 ${entries.length}개 업체로 분리되었습니다.` : '분리할 협정문자가 없습니다.' });
+    if (entries.length === 0) {
+      setSplitEntries([]);
+      notify({ type: 'info', message: '분리할 협정문자가 없습니다.' });
+      return;
+    }
+    notify({ type: 'info', message: '업체 담당자를 자동 매칭 중입니다.' });
+    const matchedEntries = await autoMatchManagers(entries, industryFilter);
+    setSplitEntries(matchedEntries);
+    const matchedCount = matchedEntries.filter((entry) => entry.managerId !== 'none').length;
+    notify({
+      type: 'success',
+      message: `총 ${matchedEntries.length}개 업체로 분리되었습니다. 담당자 매칭 ${matchedCount}건.`,
+    });
   };
 
   const handleClearDraft = () => {
     setDraft('');
     setSplitEntries([]);
     notify({ type: 'info', message: '협정문자가 초기화되었습니다.' });
+  };
+
+  const handleAutoMatchClick = async () => {
+    if (splitEntries.length === 0) {
+      notify({ type: 'info', message: '먼저 협정문자를 분리해 주세요.' });
+      return;
+    }
+    notify({ type: 'info', message: '업체 담당자를 자동 매칭 중입니다.' });
+    const matchedEntries = await autoMatchManagers(splitEntries, industryFilter);
+    setSplitEntries(matchedEntries);
+    const matchedCount = matchedEntries.filter((entry) => entry.managerId !== 'none').length;
+    notify({
+      type: 'success',
+      message: `담당자 매칭 ${matchedCount}건 완료.`,
+    });
   };
 
   const handleRoomSettingChange = (id, field, value) => {
@@ -254,7 +385,21 @@ export default function KakaoSendPage() {
                 <div className="panel" style={{ background: '#f8fafc' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                     <h2 className="section-title" style={{ marginTop: 0 }}>업체별 담당자 목록</h2>
-                    <button className="secondary" type="button" onClick={() => setRoomModalOpen(true)}>담당자 카톡방 설정</button>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <select
+                        className="filter-input"
+                        value={industryFilter}
+                        onChange={(event) => setIndustryFilter(event.target.value)}
+                        style={{ minWidth: '120px' }}
+                      >
+                        <option value="auto">공종 자동</option>
+                        <option value="eung">전기</option>
+                        <option value="tongsin">통신</option>
+                        <option value="sobang">소방</option>
+                      </select>
+                      <button className="secondary" type="button" onClick={handleAutoMatchClick}>담당자 자동매칭</button>
+                      <button className="secondary" type="button" onClick={() => setRoomModalOpen(true)}>담당자 카톡방 설정</button>
+                    </div>
                   </div>
                   <div className="table-wrap" style={{ maxHeight: '320px' }}>
                     <table className="data-table">
