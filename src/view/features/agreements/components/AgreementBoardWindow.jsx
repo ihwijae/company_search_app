@@ -3283,35 +3283,37 @@ export default function AgreementBoardWindow({
             qualityPoints = resolveQualityPoints(qualityTotal, selectedRangeOption?.key);
           }
         }
+        const summaryPayload = summaryEntry ? {
+          shareSum: summaryEntry.shareSum ?? null,
+          shareComplete: Boolean(summaryEntry.shareComplete),
+          shareReady: Boolean(summaryEntry.shareReady),
+          managementScore: summaryEntry.managementScore ?? null,
+          performanceScore: summaryEntry.performanceScore ?? null,
+          performanceAmount: summaryEntry.performanceAmount ?? null,
+          performanceBase: summaryEntry.performanceBase ?? null,
+          credibilityScore: summaryEntry.credibilityScore ?? null,
+          credibilityMax: summaryEntry.credibilityMax ?? null,
+          totalScoreBase: summaryEntry.totalScoreBase ?? null,
+          totalScoreWithCred: summaryEntry.totalScoreWithCred ?? null,
+          totalScore: summaryEntry.totalScoreWithCred ?? null,
+          bidScore: summaryEntry.bidScore ?? null,
+          managementMax: summaryEntry.managementMax ?? null,
+          performanceMax: summaryEntry.performanceMax ?? null,
+          totalMaxBase: summaryEntry.totalMaxBase ?? null,
+          totalMaxWithCred: summaryEntry.totalMaxWithCred ?? null,
+          totalMax: summaryEntry.totalMaxBase ?? null,
+          netCostBonusScore: resolvedNetCostBonus,
+          subcontractScore: summaryEntry.subcontractScore ?? null,
+          materialScore: summaryEntry.materialScore ?? null,
+          qualityPoints,
+          managementBonusApplied: Boolean(groupManagementBonus[groupIndex]),
+        } : (resolvedNetCostBonus != null ? { netCostBonusScore: resolvedNetCostBonus } : null);
+
         const payload = {
           index: exportIndex,
           approval: approvalValue,
           members,
-          summary: summaryEntry ? {
-            shareSum: summaryEntry.shareSum ?? null,
-            shareComplete: Boolean(summaryEntry.shareComplete),
-            shareReady: Boolean(summaryEntry.shareReady),
-            managementScore: summaryEntry.managementScore ?? null,
-            performanceScore: summaryEntry.performanceScore ?? null,
-            performanceAmount: summaryEntry.performanceAmount ?? null,
-            performanceBase: summaryEntry.performanceBase ?? null,
-            credibilityScore: summaryEntry.credibilityScore ?? null,
-            credibilityMax: summaryEntry.credibilityMax ?? null,
-            totalScoreBase: summaryEntry.totalScoreBase ?? null,
-            totalScoreWithCred: summaryEntry.totalScoreWithCred ?? null,
-            totalScore: summaryEntry.totalScoreWithCred ?? null,
-            bidScore: summaryEntry.bidScore ?? null,
-            managementMax: summaryEntry.managementMax ?? null,
-            performanceMax: summaryEntry.performanceMax ?? null,
-            totalMaxBase: summaryEntry.totalMaxBase ?? null,
-            totalMaxWithCred: summaryEntry.totalMaxWithCred ?? null,
-            totalMax: summaryEntry.totalMaxBase ?? null,
-            netCostBonusScore: resolvedNetCostBonus,
-            subcontractScore: summaryEntry.subcontractScore ?? null,
-            materialScore: summaryEntry.materialScore ?? null,
-            qualityPoints,
-            managementBonusApplied: Boolean(groupManagementBonus[groupIndex]),
-          } : null,
+          summary: summaryPayload,
         };
         exportIndex += 1;
         return payload;
