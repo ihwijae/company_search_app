@@ -2163,6 +2163,25 @@ export default function AgreementBoardWindow({
     );
   }, [collapsedColumns, toggleColumnCollapse]);
 
+  const columnSpans = React.useMemo(() => {
+    const nameSpan = collapsedColumns.name ? 1 : slotLabels.length;
+    const shareSpan = collapsedColumns.share ? 1 : slotLabels.length;
+    const credibilitySpan = credibilityEnabled ? (collapsedColumns.credibility ? 1 : slotLabels.length) : 0;
+    const statusSpan = collapsedColumns.status ? 1 : slotLabels.length;
+    const performanceSpan = collapsedColumns.performance ? 1 : slotLabels.length;
+    const technicianSpan = technicianEnabled ? (collapsedColumns.technician ? 1 : slotLabels.length) : 0;
+    const sipyungSpan = collapsedColumns.sipyung ? 1 : slotLabels.length;
+    return {
+      nameSpan,
+      shareSpan,
+      credibilitySpan,
+      statusSpan,
+      performanceSpan,
+      technicianSpan,
+      sipyungSpan,
+    };
+  }, [collapsedColumns, slotLabels.length, credibilityEnabled, technicianEnabled]);
+
   const tableMinWidth = React.useMemo(() => {
     const nameWidth = columnSpans.nameSpan * (collapsedColumns.name ? COLLAPSED_COLUMN_WIDTHS.name : COLUMN_WIDTHS.name);
     const shareWidth = columnSpans.shareSpan * (collapsedColumns.share ? COLLAPSED_COLUMN_WIDTHS.share : COLUMN_WIDTHS.share);
@@ -4508,25 +4527,6 @@ export default function AgreementBoardWindow({
       showHeaderAlert('복사에 실패했습니다. 다시 시도해 주세요.');
     }
   }, [groups, showHeaderAlert]);
-
-  const columnSpans = React.useMemo(() => {
-    const nameSpan = collapsedColumns.name ? 1 : slotLabels.length;
-    const shareSpan = collapsedColumns.share ? 1 : slotLabels.length;
-    const credibilitySpan = credibilityEnabled ? (collapsedColumns.credibility ? 1 : slotLabels.length) : 0;
-    const statusSpan = collapsedColumns.status ? 1 : slotLabels.length;
-    const performanceSpan = collapsedColumns.performance ? 1 : slotLabels.length;
-    const technicianSpan = technicianEnabled ? (collapsedColumns.technician ? 1 : slotLabels.length) : 0;
-    const sipyungSpan = collapsedColumns.sipyung ? 1 : slotLabels.length;
-    return {
-      nameSpan,
-      shareSpan,
-      credibilitySpan,
-      statusSpan,
-      performanceSpan,
-      technicianSpan,
-      sipyungSpan,
-    };
-  }, [collapsedColumns, slotLabels.length, credibilityEnabled, technicianEnabled]);
 
   const tableColumnCount = React.useMemo(() => {
     const baseColumns = 12
