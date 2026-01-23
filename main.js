@@ -208,7 +208,9 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       fgColor: { argb: 'FFFFFF00' },
       bgColor: { indexed: 64 },
     },
-    summaryColumns: {},
+    summaryColumns: {
+      netCostBonus: 'AG',
+    },
   },
   'mois-30to50': {
     label: '행안부 30억~50억',
@@ -241,7 +243,9 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
       baseAmount: 'D1',
       estimatedAmount: 'D2',
     },
-    summaryColumns: {},
+    summaryColumns: {
+      netCostBonus: 'AG',
+    },
   },
   'pps-under50': {
     label: '조달청 50억 미만',
