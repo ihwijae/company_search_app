@@ -1149,41 +1149,90 @@ button.primary:hover { background: var(--accent-2); }
   display: none;
 }
 .excel-board-table.is-collapsed-select td.select-cell {
-  padding: 2px 0;
+  padding: 0;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 .excel-board-table.is-collapsed-order td.order-cell {
   color: transparent;
+  padding: 0;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 .excel-board-table.is-collapsed-approval td.approval-cell select {
   display: none;
 }
 .excel-board-table.is-collapsed-approval td.approval-cell {
-  padding: 2px 0;
+  padding: 0;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 .excel-board-table.is-collapsed-name td.excel-name-cell > * {
   display: none;
+}
+.excel-board-table.is-collapsed-name td.excel-name-cell {
+  padding: 0;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 .excel-board-table.is-collapsed-share td.excel-share-cell input {
   display: none;
 }
 .excel-board-table.is-collapsed-share td.excel-share-cell {
-  padding: 2px 0;
+  padding: 0;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 .excel-board-table.is-collapsed-credibility td.excel-credibility-cell input,
 .excel-board-table.is-collapsed-credibility td.excel-credibility-cell .excel-hint {
   display: none;
 }
+.excel-board-table.is-collapsed-credibility td.excel-credibility-cell {
+  padding: 0;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
+}
 .excel-board-table.is-collapsed-status td.excel-status-cell .excel-status {
   display: none;
+}
+.excel-board-table.is-collapsed-status td.excel-status-cell {
+  padding: 0;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 .excel-board-table.is-collapsed-performance td.excel-perf-cell .excel-performance {
   display: none;
 }
+.excel-board-table.is-collapsed-performance td.excel-perf-cell {
+  padding: 0;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
+}
 .excel-board-table.is-collapsed-technician td.excel-technician-cell input {
   display: none;
 }
+.excel-board-table.is-collapsed-technician td.excel-technician-cell {
+  padding: 0;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
+}
 .excel-board-table.is-collapsed-sipyung td.excel-sipyung-cell .excel-performance {
   display: none;
+}
+.excel-board-table.is-collapsed-sipyung td.excel-sipyung-cell {
+  padding: 0;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 .excel-board-table.is-collapsed-managementBonus td.management-bonus-cell {
   color: transparent;
@@ -1199,8 +1248,11 @@ button.primary:hover { background: var(--accent-2); }
 .excel-board-table.is-collapsed-technician th.subheader-technician,
 .excel-board-table.is-collapsed-sipyung th.subheader-sipyung {
   font-size: 0;
-  padding: 2px 0;
+  padding: 0;
   color: transparent;
+  border-top: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 
 .excel-cell {
