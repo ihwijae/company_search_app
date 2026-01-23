@@ -268,6 +268,7 @@ async function exportAgreementExcel({
   const bidAmountCell = headerCells.bidAmount || null;
   const ratioBaseAmountCell = headerCells.ratioBaseAmount || null;
   const entryAmountCell = headerCells.entryAmount || null;
+  const netCostPenaltyNoticeCell = headerCells.netCostPenaltyNotice || null;
   const memoCell = headerCells.memo || null;
 
   const estimatedValue = toExcelNumber(header.estimatedAmount);
@@ -306,6 +307,18 @@ async function exportAgreementExcel({
   const dutyCell = headerCells.dutySummary || 'W2';
   worksheet.getCell(deadlineCell).value = deadlineText ? String(deadlineText) : '';
   worksheet.getCell(dutyCell).value = header.dutySummary || '';
+  if (netCostPenaltyNoticeCell) {
+    const noticeText = header.netCostPenaltyNotice ? '올라탈수록 점수 깎임' : '';
+    const noticeCell = worksheet.getCell(netCostPenaltyNoticeCell);
+    noticeCell.value = noticeText;
+    if (noticeText) {
+      const baseStyle = noticeCell.style ? { ...noticeCell.style } : {};
+      noticeCell.style = {
+        ...baseStyle,
+        font: { ...(baseStyle.font || {}), bold: true },
+      };
+    }
+  }
   if (memoCell) {
     const memoText = header.memoText
       ? String(header.memoText).trim()
@@ -487,6 +500,27 @@ async function exportAgreementExcel({
       const bonusValue = toExcelNumber(summary.netCostBonusScore);
       if (bonusValue != null) {
         bonusCell.value = bonusValue;
+      }
+    }
+    if (summaryColumns.subcontract && summary?.subcontractScore != null) {
+      const subcontractCell = worksheet.getCell(`${summaryColumns.subcontract}${rowIndex}`);
+      const subcontractValue = toExcelNumber(summary.subcontractScore);
+      if (subcontractValue != null) {
+        subcontractCell.value = subcontractValue;
+      }
+    }
+    if (summaryColumns.material && summary?.materialScore != null) {
+      const materialCell = worksheet.getCell(`${summaryColumns.material}${rowIndex}`);
+      const materialValue = toExcelNumber(summary.materialScore);
+      if (materialValue != null) {
+        materialCell.value = materialValue;
+      }
+    }
+    if (summaryColumns.bid && summary?.bidScore != null) {
+      const bidCell = worksheet.getCell(`${summaryColumns.bid}${rowIndex}`);
+      const bidValue = toExcelNumber(summary.bidScore);
+      if (bidValue != null) {
+        bidCell.value = bidValue;
       }
     }
     if (summaryColumns.qualityPoints) {

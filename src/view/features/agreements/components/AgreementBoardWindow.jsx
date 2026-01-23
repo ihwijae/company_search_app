@@ -289,6 +289,10 @@ const resolveTemplateKey = (ownerId, rangeId, fileType) => {
   if (ownerKey === 'MOIS' && rangeKey === MOIS_30_TO_50_KEY) return 'mois-30to50';
   if (ownerKey === 'PPS' && rangeKey === PPS_UNDER_50_KEY) return 'pps-under50';
   if (ownerKey === 'LH' && rangeKey === LH_UNDER_50_KEY) return 'lh-under50';
+  if (ownerKey === 'LH' && rangeKey === LH_50_TO_100_KEY) {
+    if (normalizedType === 'sobang') return 'lh-50to100-sobang';
+    return 'lh-50to100-et';
+  }
   if (ownerKey === 'KRAIL' && rangeKey === KRAIL_UNDER_50_KEY) {
     if (normalizedType === 'eung' || normalizedType === 'tongsin') return 'krail-under50';
     return null;
@@ -3303,6 +3307,7 @@ export default function AgreementBoardWindow({
             totalMax: summaryEntry.totalMaxBase ?? null,
             netCostBonusScore: summaryEntry.netCostBonusScore ?? null,
             subcontractScore: summaryEntry.subcontractScore ?? null,
+            materialScore: summaryEntry.materialScore ?? null,
             qualityPoints,
             managementBonusApplied: Boolean(groupManagementBonus[groupIndex]),
           } : null,
@@ -3337,6 +3342,7 @@ export default function AgreementBoardWindow({
           teamSize: safeGroupSize,
           summary,
           memoHtml,
+          netCostPenaltyNotice: Boolean(netCostPenaltyNotice),
         },
         groups: groupPayloads,
       };
