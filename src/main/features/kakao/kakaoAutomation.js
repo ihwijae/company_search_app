@@ -76,6 +76,7 @@ $delayMs = if ($payload.delayMs) { [int]$payload.delayMs } else { 250 }
 $results = @()
 
 try { Add-Type -AssemblyName System.Windows.Forms } catch {}
+$wshell = New-Object -ComObject WScript.Shell
 
 Add-Type @\"
 using System;
@@ -94,6 +95,8 @@ public static class Win32 {
   public static extern int GetWindowTextLength(IntPtr hWnd);
   [DllImport(\"user32.dll\")]
   public static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport(\"user32.dll\")]
+  public static extern IntPtr SetFocus(IntPtr hWnd);
   [DllImport(\"user32.dll\", CharSet=CharSet.Auto)]
   public static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, string lParam);
   [DllImport(\"user32.dll\")]
@@ -194,28 +197,46 @@ foreach ($item in $items) {
     if ($onlineView -eq [IntPtr]::Zero) {
       $onlineView = Find-DescendantByClassContains $mainHwnd 'OnlineMainView'
     }
-    if ($onlineView -eq [IntPtr]::Zero) { throw 'OnlineMainView를 찾을 수 없습니다.' }
+    if ($onlineView -eq [IntPtr]::Zero) {
+      $onlineView = $mainHwnd
+    }
 
-    $chatList = Find-ChildWindowByText $onlineView 'ChatRoomListView'
-    if ($chatList -eq [IntPtr]::Zero) {
+    $chatType = [string]$item.chatType
+    if ([string]::IsNullOrWhiteSpace($chatType)) { throw 'chatType is required' }
+
+    if ($chatType -eq 'friend') {
       $chatList = Find-ChildWindowByText $onlineView 'ContactListView'
-    }
-    if ($chatList -eq [IntPtr]::Zero) {
-      $chatList = Find-ChildWindowByClassContains $onlineView 'ChatRoomListView'
-    }
-    if ($chatList -eq [IntPtr]::Zero) {
-      $chatList = Find-ChildWindowByClassContains $onlineView 'ContactListView'
-    }
-    if ($chatList -eq [IntPtr]::Zero) {
-      $chatList = Find-DescendantByClassContains $onlineView 'ChatRoomListView'
-    }
-    if ($chatList -eq [IntPtr]::Zero) {
-      $chatList = Find-DescendantByClassContains $onlineView 'ContactListView'
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-ChildWindowByClassContains $onlineView 'ContactListView'
+      }
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-DescendantByClassContains $onlineView 'ContactListView'
+      }
+    } else {
+      $chatList = Find-ChildWindowByText $onlineView 'ChatRoomListView'
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-ChildWindowByClassContains $onlineView 'ChatRoomListView'
+      }
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-DescendantByClassContains $onlineView 'ChatRoomListView'
+      }
     }
     if ($chatList -eq [IntPtr]::Zero) { throw '채팅 목록을 찾을 수 없습니다.' }
 
     $edit = Find-ChildWindowByClass $chatList 'Edit'
     if ($edit -eq [IntPtr]::Zero) { throw '채팅 검색창(Edit)을 찾을 수 없습니다.' }
+
+    [void][Win32]::SetForegroundWindow($mainHwnd)
+    Start-Sleep -Milliseconds 120
+    [void][Win32]::SetFocus($edit)
+    Start-Sleep -Milliseconds 80
+    if ($chatType -eq 'open') {
+      $wshell.SendKeys('^{RIGHT}')
+      Start-Sleep -Milliseconds 160
+    } elseif ($chatType -eq 'chat') {
+      $wshell.SendKeys('^{LEFT}')
+      Start-Sleep -Milliseconds 160
+    }
 
     [void][Win32]::SendMessage($edit, $WM_SETTEXT, [IntPtr]::Zero, $room)
     Start-Sleep -Milliseconds 120
