@@ -887,7 +887,7 @@ export default function ExcelHelperPage() {
   const [sheetNames, setSheetNames] = React.useState([]);
   const [selectedSheet, setSelectedSheet] = React.useState('');
   const [pendingAgreementContext, setPendingAgreementContext] = React.useState(null);
-  const [companyConflictSelections, setCompanyConflictSelections] = React.useState(() => getPersisted('companyConflictSelections', {}));
+  const [companyConflictSelections, setCompanyConflictSelections] = React.useState({});
   const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
 
   React.useEffect(() => {
@@ -907,7 +907,6 @@ export default function ExcelHelperPage() {
       messagePreview,
       selectedRegions,
       technicianEntries,
-      companyConflictSelections,
     });
   }, [
     ownerId,
@@ -925,7 +924,6 @@ export default function ExcelHelperPage() {
     messagePreview,
     selectedRegions,
     technicianEntries,
-    companyConflictSelections,
   ]);
 
   const resetAgreementContext = React.useCallback(() => {
@@ -1436,6 +1434,7 @@ export default function ExcelHelperPage() {
   const handleCompanyConflictCancel = React.useCallback(() => {
     setCompanyConflictModal({ open: false, entries: [], isResolving: false });
     setPendingAgreementContext(null);
+    setCompanyConflictSelections({});
   }, []);
 
   const handleCompanyConflictConfirm = React.useCallback(async () => {
@@ -1461,9 +1460,11 @@ export default function ExcelHelperPage() {
       await continueAgreementGeneration(pendingAgreementContext, companyConflictSelections);
       setCompanyConflictModal({ open: false, entries: [], isResolving: false });
       setPendingAgreementContext(null);
+      setCompanyConflictSelections({});
     } catch (err) {
       alert(err.message || '협정 문자 생성에 실패했습니다.');
       setCompanyConflictModal((prev) => ({ ...prev, isResolving: false }));
+      setCompanyConflictSelections({});
     } finally {
       setIsGeneratingAgreement(false);
     }
@@ -1473,6 +1474,7 @@ export default function ExcelHelperPage() {
     setIsGeneratingAgreement(true); // 로딩 시작
     setPendingAgreementContext(null);
     setCompanyConflictModal({ open: false, entries: [], isResolving: false });
+    setCompanyConflictSelections({});
     // 0. Validation
     if (!ownerId) {
       setIsGeneratingAgreement(false);

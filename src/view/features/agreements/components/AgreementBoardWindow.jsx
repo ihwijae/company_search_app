@@ -21,6 +21,9 @@ import { sanitizeHtml } from '../../../../shared/sanitizeHtml.js';
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
 const BID_SCORE_DEFAULT = 65;
+const LH_50_TO_100_BID_SCORE = 45;
+const LH_50_TO_100_SUBCONTRACT_SCORE = 10;
+const LH_50_TO_100_MATERIAL_SCORE = 10;
 const EX_50_TO_100_BID_SCORE = 45;
 const EX_50_TO_100_SUBCONTRACT_SCORE = 20;
 const SUBCONTRACT_SCORE = 5;
@@ -124,6 +127,7 @@ const COLUMN_WIDTHS = {
   credibility: 55,
   bid: 32,
   subcontract: 55,
+  material: 55,
   netCostBonus: 55,
   total: 55,
   sipyungCell: 90,
@@ -149,6 +153,7 @@ const COLLAPSED_COLUMN_WIDTHS = {
   credibility: 28,
   bid: 28,
   subcontract: 28,
+  material: 28,
   netCostBonus: 28,
   total: 28,
   sipyungCell: 26,
@@ -1244,6 +1249,7 @@ export default function AgreementBoardWindow({
   const isPpsUnder50 = ownerKeyUpper === 'PPS' && selectedRangeKey === PPS_UNDER_50_KEY;
   const isKrailUnder50 = ownerKeyUpper === 'KRAIL' && selectedRangeKey === KRAIL_UNDER_50_KEY;
   const isKrail50To100 = ownerKeyUpper === 'KRAIL' && selectedRangeKey === KRAIL_50_TO_100_KEY;
+  const isLh50To100 = isLHOwner && selectedRangeKey === LH_50_TO_100_KEY;
   const isExUnder50 = isExOwner && selectedRangeKey === EX_UNDER_50_KEY;
   const isEx50To100 = isExOwner && selectedRangeKey === EX_50_TO_100_KEY;
   const technicianEnabled = isKrailOwner;
@@ -1313,6 +1319,7 @@ export default function AgreementBoardWindow({
       if (kind === 'technician') return technicianEnabled ? 2 : 3;
       if (kind === 'bid') return 0;
       if (kind === 'subcontract') return 0;
+      if (kind === 'material') return 0;
       if (isPpsUnder50) return 2;
       if (isKrailUnder50) return 2;
       if (isMoisUnderOr30To50 && kind === 'management') return 4;
@@ -2226,6 +2233,7 @@ export default function AgreementBoardWindow({
       + ((isMois30To50 || isEx50To100)
         ? (collapsedColumns.subcontract ? COLLAPSED_COLUMN_WIDTHS.subcontract : COLUMN_WIDTHS.subcontract)
         : 0)
+      + (isLh50To100 ? (COLUMN_WIDTHS.subcontract + COLUMN_WIDTHS.material) : 0)
       + COLUMN_WIDTHS.bid
       + COLUMN_WIDTHS.netCostBonus
       + COLUMN_WIDTHS.total
@@ -2239,6 +2247,7 @@ export default function AgreementBoardWindow({
     isLHOwner,
     isMois30To50,
     isEx50To100,
+    isLh50To100,
     technicianEnabled,
     collapsedColumns,
   ]);
@@ -3756,10 +3765,17 @@ export default function AgreementBoardWindow({
         const credibilityMax = (credibilityEnabled && Number.isFinite(ownerCredibilityMax)) ? ownerCredibilityMax : null;
         const hasMembers = metric.memberCount > 0;
         const subcontractScore = hasMembers
-          ? (isMois30To50 ? SUBCONTRACT_SCORE : (isEx50To100 ? EX_50_TO_100_SUBCONTRACT_SCORE : null))
+          ? (isMois30To50
+            ? SUBCONTRACT_SCORE
+            : (isEx50To100
+              ? EX_50_TO_100_SUBCONTRACT_SCORE
+              : (isLh50To100 ? LH_50_TO_100_SUBCONTRACT_SCORE : null)))
           : null;
+        const materialScore = hasMembers && isLh50To100 ? LH_50_TO_100_MATERIAL_SCORE : null;
         const bidScoreValue = hasMembers
-          ? (isEx50To100 ? EX_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT)
+          ? (isEx50To100
+            ? EX_50_TO_100_BID_SCORE
+            : (isLh50To100 ? LH_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT))
           : null;
         const technicianScoreForTotal = (technicianEnabled && technicianAbilityScore != null)
           ? technicianAbilityScore
@@ -3767,15 +3783,18 @@ export default function AgreementBoardWindow({
         const technicianRequired = technicianEnabled && technicianEditable;
         const technicianReady = !technicianRequired || technicianScoreForTotal != null;
         let totalScoreBase = (managementScore != null && performanceScore != null && technicianReady)
-          ? managementScore + performanceScore + (technicianScoreForTotal || 0) + (bidScoreValue || 0) + netCostBonusScore + (subcontractScore || 0)
+          ? managementScore + performanceScore + (technicianScoreForTotal || 0) + (bidScoreValue || 0) + netCostBonusScore + (subcontractScore || 0) + (materialScore || 0)
           : null;
         let totalScoreWithCred = (totalScoreBase != null)
           ? totalScoreBase + (credibilityScore != null ? credibilityScore : 0)
           : null;
         totalScoreBase = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreBase));
         totalScoreWithCred = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreWithCred));
-        const totalMaxBase = managementMax + performanceMax + (isEx50To100 ? EX_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT) + netCostBonusScore
-          + (isMois30To50 ? SUBCONTRACT_SCORE : (isEx50To100 ? EX_50_TO_100_SUBCONTRACT_SCORE : 0))
+        const totalMaxBase = managementMax + performanceMax
+          + (isEx50To100 ? EX_50_TO_100_BID_SCORE : (isLh50To100 ? LH_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT))
+          + netCostBonusScore
+          + (isMois30To50 ? SUBCONTRACT_SCORE : (isEx50To100 ? EX_50_TO_100_SUBCONTRACT_SCORE : (isLh50To100 ? LH_50_TO_100_SUBCONTRACT_SCORE : 0)))
+          + (isLh50To100 ? LH_50_TO_100_MATERIAL_SCORE : 0)
           + (technicianRequired && technicianAbilityMax ? technicianAbilityMax : 0);
         const totalMaxWithCred = credibilityEnabled ? totalMaxBase + (credibilityMax || 0) : totalMaxBase;
 
@@ -3804,6 +3823,7 @@ export default function AgreementBoardWindow({
         bidScore: bidScoreValue,
         netCostBonusScore,
         subcontractScore,
+        materialScore,
         managementMax,
         performanceMax,
         totalMax: totalMaxBase,
@@ -3825,7 +3845,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax]);
+  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, isLh50To100, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -4549,7 +4569,8 @@ export default function AgreementBoardWindow({
       + (credibilityEnabled ? 1 : 0)
       + (technicianEnabled ? 2 : 0)
       + (isLHOwner ? 1 : 0)
-      + ((isMois30To50 || isEx50To100) ? 1 : 0);
+      + ((isMois30To50 || isEx50To100) ? 1 : 0)
+      + (isLh50To100 ? 2 : 0);
     const variableColumns = columnSpans.nameSpan
       + columnSpans.shareSpan
       + columnSpans.credibilitySpan
@@ -4563,6 +4584,7 @@ export default function AgreementBoardWindow({
     isLHOwner,
     isMois30To50,
     isEx50To100,
+    isLh50To100,
     technicianEnabled,
     columnSpans,
   ]);
@@ -4996,8 +5018,11 @@ export default function AgreementBoardWindow({
       ? (qualityPoints != null ? formatScore(qualityPoints, resolveSummaryDigits('quality')) : '-')
       : null;
     const qualityPointsState = (isLHOwner && qualityPoints != null && qualityPoints < 2) ? 'warn' : '';
-        const subcontractDisplay = (isMois30To50 || isEx50To100)
+    const subcontractDisplay = (isMois30To50 || isEx50To100 || isLh50To100)
       ? (summaryInfo?.subcontractScore != null ? formatScore(summaryInfo.subcontractScore, resolveSummaryDigits('subcontract')) : '-')
+      : null;
+    const materialDisplay = isLh50To100
+      ? (summaryInfo?.materialScore != null ? formatScore(summaryInfo.materialScore, resolveSummaryDigits('material')) : '-')
       : null;
     const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore, resolveSummaryDigits('bid')) : '-';
     const netCostBonusDisplay = summaryInfo?.netCostBonusScore != null
@@ -5129,6 +5154,12 @@ export default function AgreementBoardWindow({
           >
             {qualityPointsDisplay}
           </td>
+        )}
+        {isLh50To100 && (
+          <td className="excel-cell total-cell subcontract-cell" rowSpan={rightRowSpan}>{subcontractDisplay}</td>
+        )}
+        {isLh50To100 && (
+          <td className="excel-cell total-cell material-cell" rowSpan={rightRowSpan}>{materialDisplay}</td>
         )}
         {(isMois30To50 || isEx50To100) && (
           <td className="excel-cell total-cell subcontract-cell" rowSpan={rightRowSpan}>{subcontractDisplay}</td>
@@ -5565,6 +5596,8 @@ export default function AgreementBoardWindow({
                 />
               )}
               {isLHOwner && <col className="col-quality-points" style={{ width: `${COLUMN_WIDTHS.qualityPoints}px` }} />}
+              {isLh50To100 && <col className="col-subcontract" style={{ width: `${COLUMN_WIDTHS.subcontract}px` }} />}
+              {isLh50To100 && <col className="col-material" style={{ width: `${COLUMN_WIDTHS.material}px` }} />}
               {(isMois30To50 || isEx50To100) && (
                 <col className="col-subcontract" style={{ width: resolveColWidth('subcontract') }} />
               )}
@@ -5679,6 +5712,16 @@ export default function AgreementBoardWindow({
                 {isLHOwner && (
                   <th rowSpan="2" className="col-header quality-points-header">
                     품질점수
+                  </th>
+                )}
+                {isLh50To100 && (
+                  <th rowSpan="2" className="col-header subcontract-header">
+                    하도급
+                  </th>
+                )}
+                {isLh50To100 && (
+                  <th rowSpan="2" className="col-header material-header">
+                    자재
                   </th>
                 )}
                 {isMois30To50 && (

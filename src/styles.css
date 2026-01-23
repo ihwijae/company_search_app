@@ -1112,6 +1112,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-credibility { width: 55px; }
 .col-bid { width: 55px; }
 .col-subcontract { width: 55px; }
+.col-material { width: 55px; }
 .col-total { width: 55px; }
 .col-quality-points { width: 55px; }
 .col-sipyung { width: 90px; }
