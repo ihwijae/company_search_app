@@ -1123,6 +1123,7 @@ button.primary:hover { background: var(--accent-2); }
   align-items: center;
   justify-content: center;
   gap: 4px;
+  text-align: center;
   padding: 2px 6px;
   border: 0;
   border-radius: 999px;
@@ -1141,7 +1142,6 @@ button.primary:hover { background: var(--accent-2); }
   align-items: center;
   gap: 4px;
   text-align: center;
-  width: 100%;
   justify-content: center;
 }
 .col-toggle-caret {
