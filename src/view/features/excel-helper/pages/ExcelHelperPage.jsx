@@ -612,6 +612,15 @@ const cleanCompanyName = (rawName) => {
   return result;
 };
 
+const normalizeExcelCellValue = (value) => {
+  if (value == null) return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object' && Array.isArray(value.richText)) {
+    return value.richText.map((part) => part?.text || '').join('');
+  }
+  return String(value);
+};
+
 const buildRerunNameCandidates = (name) => {
   if (!name) return [];
   const base = String(name).trim();
@@ -1533,7 +1542,7 @@ export default function ExcelHelperPage() {
         if (isUploadedFileSource) {
           const sheet = sourceWorkbook.Sheets[sourceWorksheet];
           const cellAddress = XLSX.utils.encode_cell({ r: currentRow - 1, c: 0 }); // Column A
-          cellValue = sheet[cellAddress] ? XLSX.utils.format_cell(sheet[cellAddress]) : null;
+          cellValue = sheet[cellAddress] ? normalizeExcelCellValue(XLSX.utils.format_cell(sheet[cellAddress])) : null;
           console.log(`[generateAgreementMessages] Uploaded File - Row ${currentRow}, Column A (check cell):`, cellValue);
 
           if (cellValue) {
@@ -1542,8 +1551,8 @@ export default function ExcelHelperPage() {
               const nameCellAddress = XLSX.utils.encode_cell({ r: currentRow - 1, c: col - 1 }); // C column is index 2, D is 3
               const shareCellAddress = XLSX.utils.encode_cell({ r: currentRow - 1, c: col + 6 - 1 }); // colOffset 6
               
-              const nameItem = sheet[nameCellAddress] ? XLSX.utils.format_cell(sheet[nameCellAddress]) : '';
-              const shareItem = sheet[shareCellAddress] ? XLSX.utils.format_cell(sheet[shareCellAddress]) : null;
+              const nameItem = sheet[nameCellAddress] ? normalizeExcelCellValue(XLSX.utils.format_cell(sheet[nameCellAddress])) : '';
+              const shareItem = sheet[shareCellAddress] ? normalizeExcelCellValue(XLSX.utils.format_cell(sheet[shareCellAddress])) : null;
               
               console.log(`[generateAgreementMessages] Uploaded File - Row ${currentRow}, Slot ${i}: Name Cell: ${nameCellAddress}, Value: "${nameItem}" | Share Cell: ${shareCellAddress}, Value: "${shareItem}"`);
 
@@ -1565,6 +1574,7 @@ export default function ExcelHelperPage() {
             requests: [{ key: 'check', rowOffset: 0, colOffset: 0 }],
           });
           cellValue = checkCellResponse?.items?.[0]?.text || checkCellResponse?.items?.[0]?.value;
+          cellValue = normalizeExcelCellValue(cellValue);
           console.log(`[generateAgreementMessages] Live Excel - Row ${currentRow}, Column A (check cell):`, cellValue);
 
           if (cellValue) {
@@ -1597,7 +1607,7 @@ export default function ExcelHelperPage() {
           if (slotResponse.success && slotResponse.items) {
             const nameItem = slotResponse.items.find(item => item.key === 'name');
             const shareItem = slotResponse.items.find(item => item.key === 'share');
-            const rawName = nameItem?.text ?? nameItem?.value ?? '';
+            const rawName = normalizeExcelCellValue(nameItem?.text ?? nameItem?.value ?? '');
             const cleanedName = cleanCompanyName(rawName);
             if (cleanedName) {
               allCompanyNames.add(cleanedName);
@@ -1607,7 +1617,7 @@ export default function ExcelHelperPage() {
               }
               rowParticipants.push({
                 name: cleanedName,
-                share: shareItem?.value ?? null,
+                share: normalizeExcelCellValue(shareItem?.value ?? null),
               });
             }
           }
