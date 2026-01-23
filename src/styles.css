@@ -1132,8 +1132,8 @@ button.primary:hover { background: var(--accent-2); }
   cursor: pointer;
 }
 .col-toggle.collapsed {
-  background: #e2e8f0;
-  color: #334155;
+  background: #fde68a;
+  color: #7c2d12;
 }
 .col-toggle-label {
   display: inline-flex;
