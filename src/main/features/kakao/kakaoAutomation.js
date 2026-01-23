@@ -27,13 +27,13 @@ class KakaoAutomationService {
     }
   }
 
-  runPowerShell(script, args = [], { timeoutMs } = {}) {
+  runPowerShell(script, args = [], { timeoutMs, env } = {}) {
     this.ensureSupported();
     return new Promise((resolve, reject) => {
       const ps = spawn(
         this.powershellCommand,
         ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-Command', script, ...args],
-        { windowsHide: true }
+        { windowsHide: true, env: env ? { ...process.env, ...env } : process.env }
       );
       let stdout = '';
       let stderr = '';
@@ -64,9 +64,10 @@ class KakaoAutomationService {
     }
     const script = `
 & {
-param([string]$payloadBase64)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$payloadBase64 = $env:KAKAO_PAYLOAD
+if (-not $payloadBase64) { throw 'payload base64가 없습니다.' }
 $payloadJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBase64))
 $payload = $payloadJson | ConvertFrom-Json
 if (-not $payload) { throw 'payload 파싱에 실패했습니다.' }
@@ -118,7 +119,7 @@ foreach ($item in $items) {
 }
 `;
     try {
-      const raw = await this.runPowerShell(script, [this.encodePayload(payload)]);
+      const raw = await this.runPowerShell(script, [], { env: { KAKAO_PAYLOAD: this.encodePayload(payload) } });
       const data = raw ? JSON.parse(raw) : null;
       if (!data?.success) {
         return { success: false, message: '카카오톡 전송에 실패했습니다.' };
