@@ -26,6 +26,9 @@ export default function KakaoSendPage() {
   const [splitEntries, setSplitEntries] = React.useState([]);
   const [roomModalOpen, setRoomModalOpen] = React.useState(false);
   const [roomSettings, setRoomSettings] = React.useState(DEFAULT_ROOM_ROWS);
+  const [messageOverrides, setMessageOverrides] = React.useState({});
+  const [messageModal, setMessageModal] = React.useState({ open: false, entryId: null });
+  const [messageDraft, setMessageDraft] = React.useState('');
 
   const handleMenuSelect = React.useCallback((key) => {
     if (!key || key === 'kakao-send') return;
@@ -78,6 +81,7 @@ export default function KakaoSendPage() {
           id: `${blockIndex}-0`,
           company: `협정안 ${blockIndex + 1}`,
           managerId: 'none',
+          baseText: block,
         });
       } else {
         companyLines.forEach((line, lineIndex) => {
@@ -85,6 +89,7 @@ export default function KakaoSendPage() {
             id: `${blockIndex}-${lineIndex}`,
             company: line,
             managerId: 'none',
+            baseText: block,
           });
         });
       }
@@ -136,6 +141,39 @@ export default function KakaoSendPage() {
     );
   };
 
+  const openMessageModal = (entryId) => {
+    const entry = splitEntries.find((item) => item.id === entryId);
+    if (!entry) return;
+    const existing = messageOverrides[entryId];
+    setMessageDraft(existing ?? entry.baseText ?? '');
+    setMessageModal({ open: true, entryId });
+  };
+
+  const closeMessageModal = () => {
+    setMessageModal({ open: false, entryId: null });
+    setMessageDraft('');
+  };
+
+  const handleSaveMessageOverride = () => {
+    if (!messageModal.entryId) return;
+    setMessageOverrides((prev) => ({
+      ...prev,
+      [messageModal.entryId]: messageDraft,
+    }));
+    closeMessageModal();
+  };
+
+  const handleResetMessageOverride = () => {
+    if (!messageModal.entryId) return;
+    setMessageOverrides((prev) => {
+      const next = { ...prev };
+      delete next[messageModal.entryId];
+      return next;
+    });
+    const entry = splitEntries.find((item) => item.id === messageModal.entryId);
+    setMessageDraft(entry?.baseText || '');
+  };
+
   return (
     <div className="app-shell">
       <Sidebar active="kakao-send" onSelect={handleMenuSelect} collapsed={true} />
@@ -177,12 +215,13 @@ export default function KakaoSendPage() {
                           <th>업체명</th>
                           <th style={{ width: '160px' }}>담당자</th>
                           <th style={{ width: '180px' }}>채팅방</th>
+                          <th style={{ width: '140px' }}>메시지</th>
                         </tr>
                       </thead>
                       <tbody>
                         {splitEntries.length === 0 ? (
                           <tr>
-                            <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                            <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                               문자 분리 후 담당자 목록이 표시됩니다.
                             </td>
                           </tr>
@@ -214,6 +253,11 @@ export default function KakaoSendPage() {
                                     {managerOptions.find((row) => String(row.id) === String(entry.managerId))?.room || '채팅방 미지정'}
                                   </span>
                                 )}
+                              </td>
+                              <td>
+                                <button className="secondary" type="button" onClick={() => openMessageModal(entry.id)}>
+                                  {messageOverrides[entry.id] ? '수정됨' : '기본'}
+                                </button>
                               </td>
                             </tr>
                           ))
@@ -281,6 +325,53 @@ export default function KakaoSendPage() {
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button className="secondary" type="button" onClick={handleAddRoomRow}>행 추가</button>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        open={messageModal.open}
+        onClose={closeMessageModal}
+        onCancel={closeMessageModal}
+        onSave={handleSaveMessageOverride}
+        title="담당자별 메시지 편집"
+        confirmLabel="저장"
+        cancelLabel="닫기"
+        size="lg"
+        disableBackdropClose={false}
+        disableEscClose={false}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '4px 4px 0' }}>
+          <div className="filter-item">
+            <label>템플릿 선택</label>
+            <select className="filter-input" defaultValue="">
+              <option value="">직접 입력</option>
+              <option value="fix">[협정 정정] 템플릿</option>
+              <option value="request">협정 요청 템플릿</option>
+            </select>
+          </div>
+          <div className="filter-item">
+            <label>기본 메시지</label>
+            <textarea
+              className="filter-input"
+              style={{ width: '100%', minHeight: '140px', resize: 'vertical', background: '#f8fafc' }}
+              value={splitEntries.find((item) => item.id === messageModal.entryId)?.baseText || ''}
+              readOnly
+            />
+          </div>
+          <div className="filter-item">
+            <label>담당자 전용 메시지</label>
+            <textarea
+              className="filter-input"
+              style={{ width: '100%', minHeight: '180px', resize: 'vertical' }}
+              value={messageDraft}
+              onChange={(event) => setMessageDraft(event.target.value)}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button className="secondary" type="button" onClick={handleResetMessageOverride}>
+              기본으로 되돌리기
+            </button>
+            <span style={{ color: '#94a3b8', fontSize: '12px' }}>전송 시 담당자 전용 메시지가 우선 적용됩니다.</span>
           </div>
         </div>
       </Modal>
