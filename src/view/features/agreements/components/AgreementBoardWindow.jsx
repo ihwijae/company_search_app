@@ -3198,6 +3198,7 @@ export default function AgreementBoardWindow({
         const hasMembers = Array.isArray(memberIds) && memberIds.some((uid) => Boolean(uid));
         if (!hasMembers) return [];
         const summaryEntry = summaryByGroup.get(groupIndex) || null;
+        const resolvedNetCostBonus = summaryEntry?.netCostBonusScore ?? netCostBonusScore ?? null;
         const approvalValue = String(groupApprovals[groupIndex] || '').trim();
         const members = memberIds.map((uid, slotIndex) => {
           if (!uid) {
@@ -3305,7 +3306,7 @@ export default function AgreementBoardWindow({
             totalMaxBase: summaryEntry.totalMaxBase ?? null,
             totalMaxWithCred: summaryEntry.totalMaxWithCred ?? null,
             totalMax: summaryEntry.totalMaxBase ?? null,
-            netCostBonusScore: summaryEntry.netCostBonusScore ?? null,
+            netCostBonusScore: resolvedNetCostBonus,
             subcontractScore: summaryEntry.subcontractScore ?? null,
             materialScore: summaryEntry.materialScore ?? null,
             qualityPoints,
