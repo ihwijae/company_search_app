@@ -1115,7 +1115,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-total { width: 55px; }
 .col-quality-points { width: 55px; }
 .col-sipyung { width: 90px; }
-.col-sipyung-summary { width: 90px; }
+.col-sipyung-summary { width: 120px; }
 
 .col-toggle {
   width: 100%;

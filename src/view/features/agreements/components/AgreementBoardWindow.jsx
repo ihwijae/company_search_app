@@ -127,7 +127,7 @@ const COLUMN_WIDTHS = {
   netCostBonus: 55,
   total: 55,
   sipyungCell: 90,
-  sipyungSummary: 60,
+  sipyungSummary: 120,
 };
 const COLLAPSED_COLUMN_WIDTHS = {
   select: 24,
