@@ -32,11 +32,27 @@ const FILE_TYPE_LABELS = [
 
 const normalizeCompanyName = (name) => {
   if (!name) return '';
-  return String(name)
-    .replace(/\(주\)|㈜|주식회사|유한회사/g, '')
-    .replace(/\s+/g, '')
-    .replace(/[\[\]\(\)\.\-·]/g, '')
-    .toLowerCase();
+  let normalized = String(name || '').replace(/\s+/g, '').toLowerCase();
+  normalized = normalized.replace(/^(주|\(주\)|㈜|주\)|\(합\))/, '');
+  normalized = normalized.replace(/(주|\(주\)|㈜|주\)|\(합\))$/, '');
+  normalized = normalized.replace(/이앤/g, '이엔');
+  normalized = normalized.replace(/앤/g, '엔');
+  normalized = normalized.replace(/[^a-z0-9가-힣]/g, '');
+  return normalized;
+};
+
+const buildNameVariants = (name) => {
+  if (!name) return [];
+  const base = String(name).trim();
+  if (!base) return [];
+  const variants = new Set([base]);
+  const noSpace = base.replace(/\s+/g, '');
+  if (noSpace) variants.add(noSpace);
+  const swapToAen = base.replace(/이엔/g, '이앤');
+  if (swapToAen !== base) variants.add(swapToAen);
+  const swapToEn = base.replace(/이앤/g, '이엔');
+  if (swapToEn !== base) variants.add(swapToEn);
+  return Array.from(variants);
 };
 
 const extractCompanyNameFromLine = (line) => {
@@ -123,7 +139,8 @@ export default function KakaoSendPage() {
     if (availableManagers.length === 0) return entries;
     const nameSet = new Set();
     entries.forEach((entry) => {
-      if (entry.companyName) nameSet.add(entry.companyName);
+      if (!entry.companyName) return;
+      buildNameVariants(entry.companyName).forEach((variant) => nameSet.add(variant));
     });
     if (nameSet.size === 0) return entries;
     const searchFileType = overrideFileType && overrideFileType !== 'auto' ? overrideFileType : 'all';
@@ -143,7 +160,17 @@ export default function KakaoSendPage() {
     });
     const nextEntries = entries.map(entry => {
       const normalizedName = normalizeCompanyName(entry.companyName);
-      const list = map.get(normalizedName) || [];
+      let list = map.get(normalizedName) || [];
+      if (list.length === 0) {
+        const variants = buildNameVariants(entry.companyName).map((variant) => normalizeCompanyName(variant));
+        for (const variantKey of variants) {
+          const fallback = map.get(variantKey);
+          if (fallback && fallback.length > 0) {
+            list = fallback;
+            break;
+          }
+        }
+      }
       const targetType = overrideFileType && overrideFileType !== 'auto' ? overrideFileType : entry.fileType;
       const filtered = targetType
         ? list.filter((candidate) => getCandidateFileType(candidate) === targetType)
