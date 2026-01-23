@@ -1933,6 +1933,7 @@ export default function AgreementBoardWindow({
     const expectedMin = roundUpThousand(base * 0.988);
     const expectedMax = roundUpThousand(base * 1.012);
     if (!expectedMin || !expectedMax) return 0;
+    if (rangeKey === LH_50_TO_100_KEY && expectedMax >= 10000000000) return 0;
     if (expectedMin <= aValueNumber || expectedMax <= aValueNumber) return 0;
     const bidMin = netCost * (expectedMin / base) * 0.98;
     const bidMax = netCost * (expectedMax / base) * 0.98;
@@ -1955,6 +1956,19 @@ export default function AgreementBoardWindow({
     return truncated != null ? clampScore(truncated, 999) : 0;
   }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
 
+  const netCostBonusNotice = React.useMemo(() => {
+    if (!isLHOwner) return '';
+    const rangeKey = selectedRangeOption?.key;
+    if (rangeKey !== LH_50_TO_100_KEY) return '';
+    const base = toNumber(baseAmount);
+    const netCost = toNumber(netCostAmount);
+    if (!base || !netCost) return '';
+    const expectedMax = roundUpThousand(base * 1.012);
+    if (!expectedMax) return '';
+    if (expectedMax >= 10000000000) return '예정가격 100억 초과로 순공사원가 적용 안됨';
+    return '';
+  }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount]);
+
   const netCostPenaltyNotice = React.useMemo(() => {
     if (!isLHOwner) return false;
     const rangeKey = selectedRangeOption?.key;
@@ -1966,6 +1980,7 @@ export default function AgreementBoardWindow({
     const expectedMin = roundUpThousand(base * 0.988);
     const expectedMax = roundUpThousand(base * 1.012);
     if (!expectedMin || !expectedMax) return false;
+    if (rangeKey === LH_50_TO_100_KEY && expectedMax >= 10000000000) return false;
     if (expectedMin <= aValueNumber || expectedMax <= aValueNumber) return false;
     const bidMin = netCost * (expectedMin / base) * 0.98;
     const bidMax = netCost * (expectedMax / base) * 0.98;
@@ -5268,6 +5283,9 @@ export default function AgreementBoardWindow({
             <div className="excel-field-block size-xs readonly">
               <span className="field-label">순공사원가가점</span>
               <div className="readonly-value">{formatScore(netCostBonusScore, 2)}</div>
+              {netCostBonusNotice && (
+                <div className="readonly-note">{netCostBonusNotice}</div>
+              )}
               {netCostPenaltyNotice && (
                 <div className="readonly-note">올라탈수록 점수 깎임</div>
               )}
