@@ -607,6 +607,22 @@ async function exportAgreementExcel({
       ...targetWorkbook.calcProperties,
       fullCalcOnLoad: true,
     };
+
+    const layoutSnapshot = new Map();
+    targetWorkbook.worksheets.forEach((sheet) => {
+      const columns = sheet.columns.map((column) => ({
+        width: column?.width,
+        hidden: column?.hidden,
+      }));
+      const rowHeights = new Map();
+      sheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+        if (row && row.height != null) {
+          rowHeights.set(rowNumber, row.height);
+        }
+      });
+      layoutSnapshot.set(sheet.name, { columns, rowHeights });
+    });
+
     const resolvedName = ensureUniqueSheetName(targetWorkbook, worksheet.name);
     const targetSheet = targetWorkbook.addWorksheet(resolvedName);
     if (sheetColor) {
@@ -614,6 +630,30 @@ async function exportAgreementExcel({
     }
     copyWorksheet(worksheet, targetSheet);
     clearHoverArtifacts(targetSheet);
+
+    layoutSnapshot.forEach((layout, name) => {
+      const sheet = targetWorkbook.getWorksheet(name);
+      if (!sheet) return;
+      if (sheet.name === resolvedName) return;
+      if (Array.isArray(layout.columns)) {
+        sheet.columns.forEach((column, index) => {
+          const preset = layout.columns[index];
+          if (!preset) return;
+          if (preset.width != null) {
+            column.width = preset.width;
+            column.customWidth = true;
+          }
+          if (preset.hidden != null) column.hidden = preset.hidden;
+        });
+      }
+      if (layout.rowHeights instanceof Map) {
+        layout.rowHeights.forEach((height, rowIdx) => {
+          const row = sheet.getRow(rowIdx);
+          if (row) row.height = height;
+        });
+      }
+    });
+
     await targetWorkbook.xlsx.writeFile(appendToPath);
     return { path: appendToPath, sheetName: resolvedName };
   }
