@@ -143,13 +143,16 @@ export default function KakaoSendPage() {
       buildNameVariants(entry.companyName).forEach((variant) => nameSet.add(variant));
     });
     if (nameSet.size === 0) return entries;
+    console.log('[kakao-auto-match] query names:', Array.from(nameSet));
     const searchFileType = overrideFileType && overrideFileType !== 'auto' ? overrideFileType : 'all';
+    console.log('[kakao-auto-match] fileType:', searchFileType);
     const response = await window.electronAPI.searchManyCompanies(Array.from(nameSet), searchFileType);
     if (!response?.success) {
       notify({ type: 'warning', message: '업체 담당자 자동 매칭에 실패했습니다.' });
       return entries;
     }
     const candidates = Array.isArray(response.data) ? response.data : [];
+    console.log('[kakao-auto-match] candidates:', candidates.length);
     const map = new Map();
     candidates.forEach((candidate) => {
       const name = getCandidateName(candidate);
@@ -171,6 +174,7 @@ export default function KakaoSendPage() {
           }
         }
       }
+      console.log('[kakao-auto-match] match for', entry.companyName, '->', list.length);
       const targetType = overrideFileType && overrideFileType !== 'auto' ? overrideFileType : entry.fileType;
       const filtered = targetType
         ? list.filter((candidate) => getCandidateFileType(candidate) === targetType)
@@ -189,6 +193,7 @@ export default function KakaoSendPage() {
         }
         if (matchedId !== 'none') break;
       }
+      console.log('[kakao-auto-match] manager result:', entry.companyName, matchedId);
       return matchedId === 'none' ? entry : { ...entry, managerId: matchedId };
     });
     return nextEntries;
@@ -394,7 +399,7 @@ export default function KakaoSendPage() {
               <p className="subtext" style={{ marginBottom: '18px' }}>
                 협정문자를 입력하면 건별로 분리하고, 업체 담당자에게 전송할 수 있도록 준비 중입니다.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 0.9fr)', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.9fr) minmax(0, 1.1fr)', gap: '16px' }}>
                 <div className="panel" style={{ background: '#f8fafc' }}>
                   <h2 className="section-title" style={{ marginTop: 0 }}>협정문자 입력</h2>
                   <textarea
