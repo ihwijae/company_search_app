@@ -171,6 +171,23 @@ function Find-ChildWindowByClass([IntPtr]$parent, [string]$className) {
   return [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $className, $null)
 }
 
+function Find-DescendantByClassContainsWithChildClass([IntPtr]$parent, [string]$classToken, [string]$childClass) {
+  $child = [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $null, $null)
+  while ($child -ne [IntPtr]::Zero) {
+    $className = Get-ClassName $child
+    if ($className -and $className -like (\"*\" + $classToken + \"*\")) {
+      $childMatch = Find-ChildWindowByClass $child $childClass
+      if ($childMatch -ne [IntPtr]::Zero) { return $child }
+      $deepChildMatch = Find-DescendantByClassContains $child $childClass
+      if ($deepChildMatch -ne [IntPtr]::Zero) { return $child }
+    }
+    $found = Find-DescendantByClassContainsWithChildClass $child $classToken $childClass
+    if ($found -ne [IntPtr]::Zero) { return $found }
+    $child = [Win32]::FindWindowEx($parent, $child, $null, $null)
+  }
+  return [IntPtr]::Zero
+}
+
 $mainHwnd = Find-MainKakaoWindow
 if ($mainHwnd -eq [IntPtr]::Zero) {
   try {
@@ -212,6 +229,18 @@ foreach ($item in $items) {
       if ($chatList -eq [IntPtr]::Zero) {
         $chatList = Find-DescendantByClassContains $onlineView 'ContactListView'
       }
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-DescendantByClassContainsWithChildClass $onlineView 'ContactListView' 'Edit'
+      }
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-DescendantByClassContainsWithChildClass $mainHwnd 'ContactListView' 'Edit'
+      }
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-DescendantByClassContainsWithChildClass $onlineView 'ListView' 'Edit'
+      }
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-DescendantByClassContainsWithChildClass $mainHwnd 'ListView' 'Edit'
+      }
     } else {
       $chatList = Find-ChildWindowByText $onlineView 'ChatRoomListView'
       if ($chatList -eq [IntPtr]::Zero) {
@@ -219,6 +248,18 @@ foreach ($item in $items) {
       }
       if ($chatList -eq [IntPtr]::Zero) {
         $chatList = Find-DescendantByClassContains $onlineView 'ChatRoomListView'
+      }
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-DescendantByClassContainsWithChildClass $onlineView 'ChatRoomListView' 'Edit'
+      }
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-DescendantByClassContainsWithChildClass $mainHwnd 'ChatRoomListView' 'Edit'
+      }
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-DescendantByClassContainsWithChildClass $onlineView 'ListView' 'Edit'
+      }
+      if ($chatList -eq [IntPtr]::Zero) {
+        $chatList = Find-DescendantByClassContainsWithChildClass $mainHwnd 'ListView' 'Edit'
       }
     }
     if ($chatList -eq [IntPtr]::Zero) { throw '채팅 목록을 찾을 수 없습니다.' }
