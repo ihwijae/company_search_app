@@ -51,7 +51,7 @@ class KakaoAutomationService {
 
   runHelper(inputPath, outputPath) {
     return new Promise((resolve, reject) => {
-      const proc = spawn(this.helperPath, [inputPath, outputPath], { windowsHide: true });
+      const proc = spawn(this.helperPath, [inputPath, outputPath], { windowsHide: true, shell: false });
       let stderr = '';
       const timer = setTimeout(() => {
         proc.kill();
