@@ -110,6 +110,21 @@ public static class Win32 {
   public static extern bool SetForegroundWindow(IntPtr hWnd);
   [DllImport(\"user32.dll\")]
   public static extern IntPtr SetFocus(IntPtr hWnd);
+  [StructLayout(LayoutKind.Sequential)]
+  public struct INPUT {
+    public uint type;
+    public KEYBDINPUT ki;
+  }
+  [StructLayout(LayoutKind.Sequential)]
+  public struct KEYBDINPUT {
+    public ushort wVk;
+    public ushort wScan;
+    public uint dwFlags;
+    public uint time;
+    public IntPtr dwExtraInfo;
+  }
+  [DllImport(\"user32.dll\", SetLastError=true)]
+  public static extern uint SendInput(uint nInputs, ref INPUT pInputs, int cbSize);
   [DllImport(\"user32.dll\", CharSet=CharSet.Auto)]
   public static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, string lParam);
   [DllImport(\"user32.dll\")]
@@ -120,6 +135,15 @@ public static class Win32 {
 $WM_SETTEXT = 0x000C
 $WM_KEYDOWN = 0x0100
 $VK_RETURN = 0x0D
+$VK_CONTROL = 0x11
+$VK_SHIFT = 0x10
+$VK_ALT = 0x12
+$VK_BACK = 0x08
+$VK_A = 0x41
+$VK_F = 0x46
+
+$INPUT_KEYBOARD = 1
+$KEYEVENTF_KEYUP = 0x0002
 
 function EscapeSendKeys([string]$text) {
   if ($null -eq $text) { return '' }
@@ -164,6 +188,21 @@ function Ensure-KakaoForeground([IntPtr]$mainHwnd, $proc) {
   $title = Get-ForegroundTitle
   if ($title -and ($title -match '카카오톡|KakaoTalk')) { return $true }
   return $false
+}
+
+function Send-Key([ushort]$vk, [bool]$isKeyUp=$false) {
+  $input = New-Object Win32+INPUT
+  $input.type = $INPUT_KEYBOARD
+  $input.ki.wVk = $vk
+  $input.ki.dwFlags = $isKeyUp ? $KEYEVENTF_KEYUP : 0
+  [void][Win32]::SendInput(1, [ref]$input, [System.Runtime.InteropServices.Marshal]::SizeOf([Win32+INPUT]))
+}
+
+function Send-KeyCombo([ushort[]]$modifiers, [ushort]$key) {
+  foreach ($m in $modifiers) { Send-Key $m $false }
+  Send-Key $key $false
+  Send-Key $key $true
+  for ($i = $modifiers.Length - 1; $i -ge 0; $i--) { Send-Key $modifiers[$i] $true }
 }
 
 function Get-ClassName([IntPtr]$hWnd) {
@@ -366,19 +405,26 @@ foreach ($item in $items) {
     $roomLine = ($room -split \"\\r?\\n\")[0]
     if ([string]::IsNullOrWhiteSpace($roomLine)) { throw 'room or message missing' }
     if (-not (Ensure-KakaoForeground $mainHwnd $proc)) { throw '카카오톡 창 포커스에 실패했습니다.' }
-    $wshell.SendKeys('^f')
+    Send-KeyCombo @($VK_CONTROL) $VK_F
     Start-Sleep -Milliseconds 180
-    $wshell.SendKeys('^a{BACKSPACE}')
+    Send-KeyCombo @($VK_CONTROL) $VK_A
     Start-Sleep -Milliseconds 80
-    $wshell.SendKeys((EscapeSendKeys $roomLine))
+    Send-Key $VK_BACK $false
+    Send-Key $VK_BACK $true
+    Start-Sleep -Milliseconds 80
+    [System.Windows.Forms.Clipboard]::SetText($roomLine)
+    Start-Sleep -Milliseconds 80
+    Send-KeyCombo @($VK_CONTROL) 0x56
     Start-Sleep -Milliseconds 150
-    $wshell.SendKeys('{ENTER}')
+    Send-Key $VK_RETURN $false
+    Send-Key $VK_RETURN $true
     Start-Sleep -Milliseconds 350
     [System.Windows.Forms.Clipboard]::SetText($msg)
     Start-Sleep -Milliseconds 120
-    $wshell.SendKeys('^v')
+    Send-KeyCombo @($VK_CONTROL) 0x56
     Start-Sleep -Milliseconds 120
-    $wshell.SendKeys('{ENTER}')
+    Send-Key $VK_RETURN $false
+    Send-Key $VK_RETURN $true
     Start-Sleep -Milliseconds 150
     $results += [pscustomobject]@{ room = $room; success = $true }
   } catch {
