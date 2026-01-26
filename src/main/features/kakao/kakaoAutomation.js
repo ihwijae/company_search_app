@@ -93,6 +93,8 @@ public static class Win32 {
   public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
   [DllImport(\"user32.dll\", SetLastError=true)]
   public static extern int GetWindowTextLength(IntPtr hWnd);
+  [DllImport(\"user32.dll\")]
+  public static extern IntPtr GetForegroundWindow();
   [DllImport(\"user32.dll\", SetLastError=true)]
   public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
   public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
@@ -130,6 +132,25 @@ function Get-WindowText([IntPtr]$hWnd) {
   $sb = New-Object System.Text.StringBuilder ($length + 1)
   [void][Win32]::GetWindowText($hWnd, $sb, $sb.Capacity)
   return $sb.ToString()
+}
+
+function Get-ForegroundTitle {
+  $fg = [Win32]::GetForegroundWindow()
+  if ($fg -eq [IntPtr]::Zero) { return '' }
+  return Get-WindowText $fg
+}
+
+function Ensure-KakaoForeground([IntPtr]$mainHwnd, $proc) {
+  [void][Win32]::SetForegroundWindow($mainHwnd)
+  Start-Sleep -Milliseconds 120
+  try {
+    if ($proc -and $proc.Id) { [void]$wshell.AppActivate([int]$proc.Id) }
+    else { [void]$wshell.AppActivate('카카오톡') }
+  } catch {}
+  Start-Sleep -Milliseconds 120
+  $title = Get-ForegroundTitle
+  if ($title -and ($title -match '카카오톡|KakaoTalk')) { return $true }
+  return $false
 }
 
 function Get-ClassName([IntPtr]$hWnd) {
@@ -401,21 +422,17 @@ foreach ($item in $items) {
       $edit = Find-DescendantByClassAny $mainHwnd $editClasses
     }
     if ($edit -eq [IntPtr]::Zero) {
-      [void][Win32]::SetForegroundWindow($mainHwnd)
-      Start-Sleep -Milliseconds 120
-      try { [void]$wshell.AppActivate('카카오톡') } catch {}
-      Start-Sleep -Milliseconds 120
+      if (-not (Ensure-KakaoForeground $mainHwnd $proc)) { throw '카카오톡 창 포커스에 실패했습니다.' }
       $wshell.SendKeys('^f')
       Start-Sleep -Milliseconds 160
+      $wshell.SendKeys('^a{BACKSPACE}')
+      Start-Sleep -Milliseconds 80
       $wshell.SendKeys((EscapeSendKeys $roomLine))
       Start-Sleep -Milliseconds 120
       $wshell.SendKeys('{ENTER}')
       Start-Sleep -Milliseconds 300
     } else {
-      [void][Win32]::SetForegroundWindow($mainHwnd)
-      Start-Sleep -Milliseconds 120
-      try { [void]$wshell.AppActivate('카카오톡') } catch {}
-      Start-Sleep -Milliseconds 120
+      if (-not (Ensure-KakaoForeground $mainHwnd $proc)) { throw '카카오톡 창 포커스에 실패했습니다.' }
       [void][Win32]::SetFocus($edit)
       Start-Sleep -Milliseconds 80
       if ($chatType -eq 'open') {
@@ -436,47 +453,13 @@ foreach ($item in $items) {
     if ($chatHwnd -eq [IntPtr]::Zero) {
       $chatHwnd = Find-TopLevelWindowByTitleContains 'KakaoTalk' $roomLine
     }
-    if ($chatHwnd -eq [IntPtr]::Zero) {
-      try {
-        [void][Win32]::SetForegroundWindow($mainHwnd)
-        Start-Sleep -Milliseconds 120
-        try { [void]$wshell.AppActivate('카카오톡') } catch {}
-        Start-Sleep -Milliseconds 120
-        if ($msg) {
-          [System.Windows.Forms.Clipboard]::SetText($msg)
-          Start-Sleep -Milliseconds 80
-          $wshell.SendKeys('^v')
-          Start-Sleep -Milliseconds 120
-          $wshell.SendKeys('{ENTER}')
-          Start-Sleep -Milliseconds 120
-          $results += [pscustomobject]@{ room = $room; success = $true; note = 'fallback keyboard send' }
-          continue
-        }
-      } catch {}
-      throw '채팅방 창을 찾지 못했습니다.'
-    }
+    if ($chatHwnd -eq [IntPtr]::Zero) { throw '채팅방 창을 찾지 못했습니다.' }
 
     $richEdit = Find-ChildWindowByClass $chatHwnd 'RichEdit50W'
     if ($richEdit -eq [IntPtr]::Zero) {
       $richEdit = Find-ChildWindowByClass $chatHwnd 'Edit'
     }
-    if ($richEdit -eq [IntPtr]::Zero) {
-      try {
-        [void][Win32]::SetForegroundWindow($chatHwnd)
-        Start-Sleep -Milliseconds 120
-        if ($msg) {
-          [System.Windows.Forms.Clipboard]::SetText($msg)
-          Start-Sleep -Milliseconds 80
-          $wshell.SendKeys('^v')
-          Start-Sleep -Milliseconds 120
-          $wshell.SendKeys('{ENTER}')
-          Start-Sleep -Milliseconds 120
-          $results += [pscustomobject]@{ room = $room; success = $true; note = 'fallback keyboard send in chat' }
-          continue
-        }
-      } catch {}
-      throw '메시지 입력창을 찾지 못했습니다.'
-    }
+    if ($richEdit -eq [IntPtr]::Zero) { throw '메시지 입력창을 찾지 못했습니다.' }
 
     [void][Win32]::SetForegroundWindow($chatHwnd)
     Start-Sleep -Milliseconds 80
