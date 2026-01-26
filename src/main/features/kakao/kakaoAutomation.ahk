@@ -36,16 +36,16 @@ if (roomLine = "") {
   ExitApp 3
 }
 
-if WinExist("카카오톡") {
-  WinActivate "카카오톡"
-  WinWaitActive "카카오톡", , 3
-} else if WinExist("ahk_exe KakaoTalk.exe") {
-  WinActivate "ahk_exe KakaoTalk.exe"
-  WinWaitActive "ahk_exe KakaoTalk.exe", , 3
-} else {
+winId := WinExist("ahk_exe KakaoTalk.exe")
+if !winId {
+  winId := WinExist("카카오톡")
+}
+if !winId {
   ExitApp 4
 }
-if !WinActive("ahk_exe KakaoTalk.exe") && !WinActive("카카오톡") {
+WinRestore "ahk_id " winId
+WinActivate "ahk_id " winId
+if !WinWaitActive("ahk_id " winId, , 3) {
   ExitApp 4
 }
 
