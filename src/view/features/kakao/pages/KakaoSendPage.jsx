@@ -344,6 +344,7 @@ export default function KakaoSendPage() {
         debugDump: true,
       });
       hideLoading();
+      console.log('[kakao-send] response:', response);
       if (!response?.success) {
         notify({ type: 'error', message: response?.message || '카카오톡 전송에 실패했습니다.' });
         return;
