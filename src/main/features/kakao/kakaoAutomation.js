@@ -25,6 +25,7 @@ class KakaoAutomationService {
     if (!Array.isArray(payload.items) || payload.items.length === 0) {
       return { success: false, message: '전송할 항목이 없습니다.' };
     }
+    console.log('[KAKAO] helperPath:', this.helperPath);
     if (!this.helperPath) {
       return {
         success: false,
