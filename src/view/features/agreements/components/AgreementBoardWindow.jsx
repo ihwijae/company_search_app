@@ -3198,8 +3198,9 @@ export default function AgreementBoardWindow({
         const hasMembers = Array.isArray(memberIds) && memberIds.some((uid) => Boolean(uid));
         if (!hasMembers) return [];
         const summaryEntry = summaryByGroup.get(groupIndex) || null;
-        const resolvedNetCostBonus = summaryEntry?.netCostBonusScore
-          ?? (isLHOwner ? (netCostBonusScore ?? null) : null);
+        const resolvedNetCostBonus = isLHOwner
+          ? (summaryEntry?.netCostBonusScore ?? (netCostBonusScore ?? null))
+          : null;
         const approvalValue = String(groupApprovals[groupIndex] || '').trim();
         const members = memberIds.map((uid, slotIndex) => {
           if (!uid) {
