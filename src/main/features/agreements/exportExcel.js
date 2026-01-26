@@ -503,7 +503,7 @@ async function exportAgreementExcel({
         }
       }
     }
-    if (summaryColumns.netCostBonus && summary?.netCostBonusScore != null) {
+    if (summaryColumns.netCostBonus && summary?.netCostBonusScore != null && Number(summary.netCostBonusScore) !== 0) {
       const bonusCell = worksheet.getCell(`${summaryColumns.netCostBonus}${rowIndex}`);
       const bonusValue = toExcelNumber(summary.netCostBonusScore);
       if (bonusValue != null) {
