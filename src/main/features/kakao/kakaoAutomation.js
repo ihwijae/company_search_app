@@ -187,9 +187,9 @@ function Get-TopLevelWindowsForProcess([string]$processName) {
   $pids = $procs | ForEach-Object { $_.Id }
   $callback = [Win32+EnumWindowsProc]{
     param([IntPtr]$hWnd, [IntPtr]$lParam)
-    $pid = 0
-    [void][Win32]::GetWindowThreadProcessId($hWnd, [ref]$pid)
-    if ($pid -ne 0 -and $pids -contains [int]$pid) {
+    $procId = 0
+    [void][Win32]::GetWindowThreadProcessId($hWnd, [ref]$procId)
+    if ($procId -ne 0 -and $pids -contains [int]$procId) {
       if ([Win32]::IsWindowVisible($hWnd)) {
         $handles.Add($hWnd) | Out-Null
       }
