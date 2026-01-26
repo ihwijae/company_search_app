@@ -294,7 +294,8 @@ if ($debugDump) {
     $cls = Get-ClassName $hwnd
     $ttl = Get-WindowText $hwnd
     $childCount = Get-ChildCount $hwnd
-    [void]$lines.Append(\"TOP | {0} | {1} | child:{2} | 0x{3:X}\" -f $cls, $ttl, $childCount, $hwnd.ToInt64())
+    $hex = '0x{0:X}' -f $hwnd.ToInt64()
+    [void]$lines.Append(\"TOP | $cls | $ttl | child:$childCount | $hex\")
     [void]$lines.Append([Environment]::NewLine)
   }
   [void]$lines.Append([Environment]::NewLine)
