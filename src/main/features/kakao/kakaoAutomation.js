@@ -93,6 +93,8 @@ public static class Win32 {
   public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
   [DllImport(\"user32.dll\", SetLastError=true)]
   public static extern int GetWindowTextLength(IntPtr hWnd);
+  [DllImport(\"user32.dll\", SetLastError=true)]
+  public static extern IntPtr GetParent(IntPtr hWnd);
   [DllImport(\"user32.dll\")]
   public static extern bool SetForegroundWindow(IntPtr hWnd);
   [DllImport(\"user32.dll\")]
@@ -169,6 +171,18 @@ function Find-DescendantByClassContains([IntPtr]$parent, [string]$classToken) {
 
 function Find-ChildWindowByClass([IntPtr]$parent, [string]$className) {
   return [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $className, $null)
+}
+
+function Find-DescendantByClass([IntPtr]$parent, [string]$className) {
+  $child = [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $null, $null)
+  while ($child -ne [IntPtr]::Zero) {
+    $childClass = Get-ClassName $child
+    if ($childClass -eq $className) { return $child }
+    $found = Find-DescendantByClass $child $className
+    if ($found -ne [IntPtr]::Zero) { return $found }
+    $child = [Win32]::FindWindowEx($parent, $child, $null, $null)
+  }
+  return [IntPtr]::Zero
 }
 
 function Find-DescendantByClassContainsWithChildClass([IntPtr]$parent, [string]$classToken, [string]$childClass) {
@@ -262,9 +276,19 @@ foreach ($item in $items) {
         $chatList = Find-DescendantByClassContainsWithChildClass $mainHwnd 'ListView' 'Edit'
       }
     }
-    if ($chatList -eq [IntPtr]::Zero) { throw '채팅 목록을 찾을 수 없습니다.' }
-
-    $edit = Find-ChildWindowByClass $chatList 'Edit'
+    $edit = [IntPtr]::Zero
+    if ($chatList -ne [IntPtr]::Zero) {
+      $edit = Find-ChildWindowByClass $chatList 'Edit'
+      if ($edit -eq [IntPtr]::Zero) {
+        $edit = Find-DescendantByClass $chatList 'Edit'
+      }
+    }
+    if ($edit -eq [IntPtr]::Zero) {
+      $edit = Find-DescendantByClass $onlineView 'Edit'
+    }
+    if ($edit -eq [IntPtr]::Zero) {
+      $edit = Find-DescendantByClass $mainHwnd 'Edit'
+    }
     if ($edit -eq [IntPtr]::Zero) { throw '채팅 검색창(Edit)을 찾을 수 없습니다.' }
 
     [void][Win32]::SetForegroundWindow($mainHwnd)
