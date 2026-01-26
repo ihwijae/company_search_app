@@ -1,14 +1,36 @@
 const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 class KakaoAutomationService {
   constructor(options = {}) {
     this.powershellCommand = this.resolvePowerShellCommand();
     this.commandTimeoutMs = options.commandTimeoutMs || 60000;
+    this.autoHotkeyPath = this.resolveAutoHotkeyPath();
   }
 
   resolvePowerShellCommand() {
     if (process.platform === 'win32') return 'powershell.exe';
     if (process.env.WSL_DISTRO_NAME) return 'powershell.exe';
+    return null;
+  }
+
+  resolveAutoHotkeyPath() {
+    if (process.platform !== 'win32' && !process.env.WSL_DISTRO_NAME) return null;
+    const envPath = process.env.AHK_PATH;
+    const candidates = [
+      envPath,
+      'C:\\Program Files\\AutoHotkey\\AutoHotkey.exe',
+      'C:\\Program Files\\AutoHotkey\\AutoHotkeyU64.exe',
+      'C:\\Program Files (x86)\\AutoHotkey\\AutoHotkey.exe',
+      'C:\\Program Files (x86)\\AutoHotkey\\AutoHotkeyU64.exe',
+    ].filter(Boolean);
+    for (const candidate of candidates) {
+      try {
+        if (candidate && fs.existsSync(candidate)) return candidate;
+      } catch {}
+    }
     return null;
   }
 
@@ -58,9 +80,68 @@ class KakaoAutomationService {
     });
   }
 
+  runAutoHotkey(room, message) {
+    this.ensureSupported();
+    if (!this.autoHotkeyPath) {
+      return Promise.reject(new Error('AutoHotkey가 설치되어 있지 않습니다. AutoHotkey v1을 설치하거나 AHK_PATH를 설정하세요.'));
+    }
+    const scriptPath = path.join(__dirname, 'kakaoAutomation.ahk');
+    if (!fs.existsSync(scriptPath)) {
+      return Promise.reject(new Error('kakaoAutomation.ahk 파일을 찾을 수 없습니다.'));
+    }
+    const stamp = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const roomFile = path.join(os.tmpdir(), `kakao_room_${stamp}.txt`);
+    const msgFile = path.join(os.tmpdir(), `kakao_msg_${stamp}.txt`);
+    fs.writeFileSync(roomFile, String(room || ''), 'utf8');
+    fs.writeFileSync(msgFile, String(message || ''), 'utf8');
+    return new Promise((resolve, reject) => {
+      const ahk = spawn(this.autoHotkeyPath, [scriptPath, roomFile, msgFile], {
+        windowsHide: true,
+      });
+      let stderr = '';
+      const timer = setTimeout(() => {
+        ahk.kill();
+        reject(new Error('AutoHotkey 실행이 시간 초과되었습니다.'));
+      }, this.commandTimeoutMs);
+      ahk.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+      ahk.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+      ahk.on('close', (code) => {
+        clearTimeout(timer);
+        try { fs.unlinkSync(roomFile); } catch {}
+        try { fs.unlinkSync(msgFile); } catch {}
+        if (code !== 0) {
+          reject(new Error(stderr.trim() || `AutoHotkey 실패 (code ${code})`));
+          return;
+        }
+        resolve(true);
+      });
+    });
+  }
+
   async sendBatch(payload = {}) {
     if (!Array.isArray(payload.items) || payload.items.length === 0) {
       return { success: false, message: '전송할 항목이 없습니다.' };
+    }
+    if (this.autoHotkeyPath) {
+      const results = [];
+      for (const item of payload.items) {
+        const room = String(item?.room || '');
+        const message = String(item?.message || '');
+        if (!room || !message) {
+          results.push({ room, success: false, error: 'room or message missing' });
+          continue;
+        }
+        try {
+          await this.runAutoHotkey(room, message);
+          results.push({ room, success: true });
+        } catch (err) {
+          results.push({ room, success: false, error: err?.message || String(err) });
+        }
+      }
+      return { success: true, results };
     }
     const script = `
 & {
