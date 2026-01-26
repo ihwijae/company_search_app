@@ -190,7 +190,7 @@ function Ensure-KakaoForeground([IntPtr]$mainHwnd, $proc) {
   return $false
 }
 
-function Send-Key([ushort]$vk, [bool]$isKeyUp=$false) {
+function Send-Key([UInt16]$vk, [bool]$isKeyUp=$false) {
   $input = New-Object Win32+INPUT
   $input.type = $INPUT_KEYBOARD
   $input.ki.wVk = $vk
@@ -198,7 +198,7 @@ function Send-Key([ushort]$vk, [bool]$isKeyUp=$false) {
   [void][Win32]::SendInput(1, [ref]$input, [System.Runtime.InteropServices.Marshal]::SizeOf([Win32+INPUT]))
 }
 
-function Send-KeyCombo([ushort[]]$modifiers, [ushort]$key) {
+function Send-KeyCombo([UInt16[]]$modifiers, [UInt16]$key) {
   foreach ($m in $modifiers) { Send-Key $m $false }
   Send-Key $key $false
   Send-Key $key $true
