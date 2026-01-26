@@ -54,7 +54,14 @@ class KakaoAutomationService {
 
   runHelper(inputPath, outputPath) {
     return new Promise((resolve, reject) => {
-      const proc = spawn(this.helperPath, [inputPath, outputPath], { windowsHide: true, shell: false });
+      const spawnHelper = (useCmdFallback = false) => {
+        if (!useCmdFallback) {
+          return spawn(this.helperPath, [inputPath, outputPath], { windowsHide: true, shell: false });
+        }
+        const quoted = `"${this.helperPath}" "${inputPath}" "${outputPath}"`;
+        return spawn('cmd.exe', ['/c', quoted], { windowsHide: true, shell: false });
+      };
+      let proc = spawnHelper(false);
       let stderr = '';
       const timer = setTimeout(() => {
         proc.kill();
@@ -62,6 +69,31 @@ class KakaoAutomationService {
       }, this.commandTimeoutMs);
       proc.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
       proc.on('error', (err) => {
+        if (err && err.code === 'ENOENT') {
+          try {
+            proc = spawnHelper(true);
+            proc.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+            proc.on('error', (fallbackErr) => {
+              clearTimeout(timer);
+              reject(fallbackErr);
+            });
+            proc.on('close', (code) => {
+              clearTimeout(timer);
+              if (code !== 0) {
+                reject(new Error(stderr.trim() || `KakaoSendHelper 실패 (code ${code})`));
+                return;
+              }
+              try {
+                const raw = fs.readFileSync(outputPath, 'utf8');
+                const data = JSON.parse(raw);
+                resolve({ success: true, results: data?.results || [] });
+              } catch (readErr) {
+                reject(readErr);
+              }
+            });
+            return;
+          } catch {}
+        }
         clearTimeout(timer);
         reject(err);
       });
