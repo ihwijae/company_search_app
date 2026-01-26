@@ -226,7 +226,8 @@ function Dump-WindowTree([IntPtr]$parent, [int]$depth = 0, [int]$maxDepth = 4, [
   $indent = (' ' * ($depth * 2))
   $className = Get-ClassName $parent
   $title = Get-WindowText $parent
-  $line = \"{0}{1} | {2} | 0x{3:X}`n\" -f $indent, $className, $title, $parent.ToInt64()
+  $line = \"{0}{1} | {2} | 0x{3:X}\" -f $indent, $className, $title, $parent.ToInt64()
+  $line = $line + [Environment]::NewLine
   $countRef.Value++
   if ($depth -ge $maxDepth -or $countRef.Value -ge $maxNodes) { return $line }
   $child = [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $null, $null)
