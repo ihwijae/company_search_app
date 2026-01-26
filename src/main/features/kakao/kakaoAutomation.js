@@ -125,6 +125,131 @@ class KakaoAutomationService {
     if (!Array.isArray(payload.items) || payload.items.length === 0) {
       return { success: false, message: '전송할 항목이 없습니다.' };
     }
+    if (payload.useUia === true) {
+      const script = `
+& {
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$payloadBase64 = $env:KAKAO_PAYLOAD
+if (-not $payloadBase64) { throw 'payload base64가 없습니다.' }
+$payloadJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBase64))
+$payload = $payloadJson | ConvertFrom-Json
+if (-not $payload) { throw 'payload 파싱에 실패했습니다.' }
+$items = $payload.items
+$delayMs = if ($payload.delayMs) { [int]$payload.delayMs } else { 250 }
+$results = @()
+
+try { Add-Type -AssemblyName System.Windows.Forms } catch {}
+try { Add-Type -AssemblyName UIAutomationClient } catch { throw 'UIAutomationClient 로드에 실패했습니다.' }
+$wshell = New-Object -ComObject WScript.Shell
+
+$proc = $null
+try { $proc = Get-Process -Name KakaoTalk -ErrorAction Stop | Select-Object -First 1 } catch {}
+if (-not $proc) { throw '카카오톡 프로세스를 찾을 수 없습니다.' }
+
+$main = $null
+try { $main = [System.Windows.Automation.AutomationElement]::FromHandle($proc.MainWindowHandle) } catch {}
+if (-not $main) {
+  $root = [System.Windows.Automation.AutomationElement]::RootElement
+  $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $proc.Id)
+  $main = $root.FindFirst([System.Windows.Automation.TreeScope]::Children, $cond)
+}
+if (-not $main) { throw '카카오톡 메인 창(UIA)을 찾을 수 없습니다.' }
+
+$paneCond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Pane)
+$allPanes = $main.FindAll([System.Windows.Automation.TreeScope]::Descendants, $paneCond)
+$chatPane = $null
+foreach ($p in $allPanes) {
+  $name = $p.Current.Name
+  if ($name -and $name -like 'ChatRoomListView*') { $chatPane = $p; break }
+}
+
+foreach ($item in $items) {
+  $room = [string]$item.room
+  $msg = [string]$item.message
+  if ([string]::IsNullOrWhiteSpace($room) -or [string]::IsNullOrWhiteSpace($msg)) {
+    $results += [pscustomobject]@{ room = $room; success = $false; error = 'room or message missing' }
+    continue
+  }
+  try {
+    $roomLine = ($room -split \"\\r?\\n\")[0]
+    if ([string]::IsNullOrWhiteSpace($roomLine)) { throw 'room or message missing' }
+
+    # focus main window
+    try { $main.SetFocus() } catch {}
+    try { [void]$wshell.AppActivate($proc.Id) } catch {}
+    Start-Sleep -Milliseconds 120
+
+    # find search edit inside chat pane
+    $searchEdit = $null
+    if ($chatPane) {
+      $editCond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)
+      $edits = $chatPane.FindAll([System.Windows.Automation.TreeScope]::Descendants, $editCond)
+      foreach ($e in $edits) {
+        if ($e.Current.IsKeyboardFocusable) { $searchEdit = $e; break }
+      }
+    }
+
+    if (-not $searchEdit) { throw '검색창(UIA Edit)을 찾지 못했습니다.' }
+    try { $searchEdit.SetFocus() } catch {}
+    Start-Sleep -Milliseconds 80
+    try {
+      $vp = $searchEdit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+      $vp.SetValue('')
+      $vp.SetValue($roomLine)
+    } catch {
+      [System.Windows.Forms.Clipboard]::SetText('')
+      Start-Sleep -Milliseconds 40
+      $wshell.SendKeys('^a{BACKSPACE}')
+      Start-Sleep -Milliseconds 80
+      [System.Windows.Forms.Clipboard]::SetText($roomLine)
+      Start-Sleep -Milliseconds 80
+      $wshell.SendKeys('^v')
+    }
+    Start-Sleep -Milliseconds 120
+    $wshell.SendKeys('{ENTER}')
+    Start-Sleep -Milliseconds 300
+
+    # find message input
+    $docCond = New-Object System.Windows.Automation.AndCondition(
+      (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Document)),
+      (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'RichEdit Control'))
+    )
+    $msgDoc = $main.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $docCond)
+    if (-not $msgDoc) { throw '메시지 입력창(UIA Document)을 찾지 못했습니다.' }
+    try { $msgDoc.SetFocus() } catch {}
+    Start-Sleep -Milliseconds 80
+    [System.Windows.Forms.Clipboard]::SetText($msg)
+    Start-Sleep -Milliseconds 80
+    $wshell.SendKeys('^v')
+    Start-Sleep -Milliseconds 80
+    $wshell.SendKeys('{ENTER}')
+
+    $results += [pscustomobject]@{ room = $room; success = $true }
+  } catch {
+    $results += [pscustomobject]@{ room = $room; success = $false; error = $_.Exception.Message }
+  }
+  Start-Sleep -Milliseconds $delayMs
+}
+
+[pscustomobject]@{ success = $true; results = $results } | ConvertTo-Json -Depth 5 -Compress
+}
+`;
+      try {
+        const raw = await this.runPowerShell(script, [], { env: { KAKAO_PAYLOAD: this.encodePayload(payload) } });
+        const data = raw ? JSON.parse(raw) : null;
+        if (!data?.success) {
+          return { success: false, message: '카카오톡(UIA) 전송에 실패했습니다.' };
+        }
+        return { success: true, results: data.results || [] };
+      } catch (err) {
+        return { success: false, message: err?.message || String(err) };
+      }
+    }
+    const preferAhk = payload.useAhk === true;
+    if (preferAhk && !this.autoHotkeyPath) {
+      return { success: false, message: 'AutoHotkey가 설치되어 있지 않습니다. AutoHotkey v1 설치 후 AHK_PATH를 설정하세요.' };
+    }
     if (this.autoHotkeyPath) {
       const results = [];
       for (const item of payload.items) {

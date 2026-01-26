@@ -343,6 +343,8 @@ export default function KakaoSendPage() {
         items,
         delayMs: 300,
         debugDump: true,
+        useAhk: true,
+        useUia: true,
       });
       hideLoading();
       console.log('[kakao-send] response:', response);
