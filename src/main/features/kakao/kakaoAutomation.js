@@ -297,8 +297,8 @@ if ($debugDump) {
     [void]$lines.Append(\"TOP | {0} | {1} | child:{2} | 0x{3:X}\" -f $cls, $ttl, $childCount, $hwnd.ToInt64())
     [void]$lines.Append([Environment]::NewLine)
   }
-  $lines.Append([Environment]::NewLine) | Out-Null
-  $lines.Append(Dump-WindowTree $mainHwnd 0 5 600 ([ref]$cnt)) | Out-Null
+  [void]$lines.Append([Environment]::NewLine)
+  [void]$lines.Append((Dump-WindowTree $mainHwnd 0 5 600 ([ref]$cnt)))
   $dumpText = $lines.ToString()
   $dumpCount = $cnt
 }
