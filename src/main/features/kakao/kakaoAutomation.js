@@ -242,9 +242,11 @@ function Dump-WindowTree([IntPtr]$parent, [int]$depth = 0, [int]$maxDepth = 4, [
 $debugDump = $false
 if ($payload.debugDump -eq $true) { $debugDump = $true }
 $dumpText = $null
+$dumpCount = 0
 if ($debugDump) {
   $cnt = 0
   $dumpText = Dump-WindowTree $mainHwnd 0 5 600 ([ref]$cnt)
+  $dumpCount = $cnt
 }
 
 foreach ($item in $items) {
@@ -365,7 +367,13 @@ foreach ($item in $items) {
   Start-Sleep -Milliseconds $delayMs
 }
 
-[pscustomobject]@{ success = $true; results = $results; debugDump = $dumpText } | ConvertTo-Json -Depth 5 -Compress
+[pscustomobject]@{
+  success = $true
+  results = $results
+  debugDump = $dumpText
+  debugDumpCount = $dumpCount
+  debugDumpEnabled = $debugDump
+} | ConvertTo-Json -Depth 5 -Compress
 }
 `;
     try {
