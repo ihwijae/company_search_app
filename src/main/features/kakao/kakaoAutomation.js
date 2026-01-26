@@ -29,6 +29,11 @@ class KakaoAutomationService {
     }
     console.log('[KAKAO] helperPath:', this.helperPath);
     console.log('[KAKAO] helperPath raw:', JSON.stringify(this.helperPath), 'len:', this.helperPath ? this.helperPath.length : 0, 'cwd:', process.cwd());
+    try {
+      console.log('[KAKAO] helper exists:', fs.existsSync(this.helperPath), 'isFile:', fs.statSync(this.helperPath).isFile());
+    } catch (err) {
+      console.log('[KAKAO] helper stat failed:', err?.message || err);
+    }
     if (!this.helperPath) {
       return {
         success: false,
@@ -40,11 +45,14 @@ class KakaoAutomationService {
     const inputPath = path.join(os.tmpdir(), `kakao_send_${stamp}.json`);
     const outputPath = path.join(os.tmpdir(), `kakao_send_${stamp}_out.json`);
     fs.writeFileSync(inputPath, JSON.stringify({ items: payload.items }), 'utf8');
+    console.log('[KAKAO] inputPath:', inputPath);
+    console.log('[KAKAO] outputPath:', outputPath);
 
     try {
       const result = await this.runHelper(inputPath, outputPath);
       return result;
     } catch (err) {
+      console.log('[KAKAO] runHelper error:', err?.message || err);
       return { success: false, message: err?.message || String(err) };
     } finally {
       try { fs.unlinkSync(inputPath); } catch {}
@@ -61,24 +69,31 @@ class KakaoAutomationService {
         const quoted = `"${this.helperPath}" "${inputPath}" "${outputPath}"`;
         return spawn('cmd.exe', ['/c', quoted], { windowsHide: true, shell: false });
       };
+      console.log('[KAKAO] spawn helper (direct) args:', [inputPath, outputPath]);
       let proc = spawnHelper(false);
       let stderr = '';
+      let stdout = '';
       const timer = setTimeout(() => {
         proc.kill();
         reject(new Error('KakaoSendHelper 실행이 시간 초과되었습니다.'));
       }, this.commandTimeoutMs);
+      proc.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
       proc.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
       proc.on('error', (err) => {
         if (err && err.code === 'ENOENT') {
           try {
+            console.log('[KAKAO] direct spawn ENOENT -> fallback cmd.exe');
             proc = spawnHelper(true);
             proc.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+            proc.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
             proc.on('error', (fallbackErr) => {
               clearTimeout(timer);
+              console.log('[KAKAO] fallback spawn error:', fallbackErr?.message || fallbackErr);
               reject(fallbackErr);
             });
             proc.on('close', (code) => {
               clearTimeout(timer);
+              console.log('[KAKAO] fallback close code:', code, 'stdout:', stdout.trim(), 'stderr:', stderr.trim());
               if (code !== 0) {
                 reject(new Error(stderr.trim() || `KakaoSendHelper 실패 (code ${code})`));
                 return;
@@ -95,10 +110,12 @@ class KakaoAutomationService {
           } catch {}
         }
         clearTimeout(timer);
+        console.log('[KAKAO] direct spawn error:', err?.message || err);
         reject(err);
       });
       proc.on('close', (code) => {
         clearTimeout(timer);
+        console.log('[KAKAO] direct close code:', code, 'stdout:', stdout.trim(), 'stderr:', stderr.trim());
         if (code !== 0) {
           reject(new Error(stderr.trim() || `KakaoSendHelper 실패 (code ${code})`));
           return;
