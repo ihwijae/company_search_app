@@ -161,7 +161,7 @@ $allPanes = $main.FindAll([System.Windows.Automation.TreeScope]::Descendants, $p
 $chatPane = $null
 foreach ($p in $allPanes) {
   $name = $p.Current.Name
-  if ($name -and $name -like 'ChatRoomListView*') { $chatPane = $p; break }
+  if ($name -and ($name -like 'ChatRoomListCtrl*' -or $name -like 'ChatRoomListView*')) { $chatPane = $p; break }
 }
 
 foreach ($item in $items) {
