@@ -180,17 +180,36 @@ foreach ($item in $items) {
     try { [void]$wshell.AppActivate($proc.Id) } catch {}
     Start-Sleep -Milliseconds 120
 
-    # find search edit inside chat pane
+    # find search edit (focusable Edit near top, within chat pane if possible)
     $searchEdit = $null
-    if ($chatPane) {
-      $editCond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)
-      $edits = $chatPane.FindAll([System.Windows.Automation.TreeScope]::Descendants, $editCond)
-      foreach ($e in $edits) {
-        if ($e.Current.IsKeyboardFocusable) { $searchEdit = $e; break }
+    $editCond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)
+    $allEdits = $main.FindAll([System.Windows.Automation.TreeScope]::Descendants, $editCond)
+    $paneRect = $null
+    if ($chatPane) { $paneRect = $chatPane.Current.BoundingRectangle }
+    foreach ($e in $allEdits) {
+      if (-not $e.Current.IsKeyboardFocusable) { continue }
+      $r = $e.Current.BoundingRectangle
+      $height = $r.Bottom - $r.Top
+      if ($height -le 0 -or $height -gt 45) { continue }
+      if ($paneRect) {
+        $inside = ($r.Left -ge $paneRect.Left) -and ($r.Right -le $paneRect.Right) -and ($r.Top -ge $paneRect.Top) -and ($r.Bottom -le $paneRect.Bottom)
+        if (-not $inside) { continue }
+      }
+      $searchEdit = $e
+      break
+    }
+    if (-not $searchEdit -and $allEdits.Count -gt 0) {
+      foreach ($e in $allEdits) {
+        if (-not $e.Current.IsKeyboardFocusable) { continue }
+        $r = $e.Current.BoundingRectangle
+        $height = $r.Bottom - $r.Top
+        if ($height -le 0 -or $height -gt 45) { continue }
+        $searchEdit = $e
+        break
       }
     }
 
-    if (-not $searchEdit) { throw '검색창(UIA Edit)을 찾지 못했습니다.' }
+    if (-not $searchEdit) { throw ('검색창(UIA Edit)을 찾지 못했습니다. edits=' + $allEdits.Count) }
     try { $searchEdit.SetFocus() } catch {}
     Start-Sleep -Milliseconds 80
     try {
