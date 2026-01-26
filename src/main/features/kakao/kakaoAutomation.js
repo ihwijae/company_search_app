@@ -117,6 +117,13 @@ $WM_SETTEXT = 0x000C
 $WM_KEYDOWN = 0x0100
 $VK_RETURN = 0x0D
 
+function Escape-SendKeys([string]$text) {
+  if ($null -eq $text) { return '' }
+  $escaped = $text
+  $escaped = $escaped -replace '([\+\^\%\~\(\)\[\]\{\}])', '{$1}'
+  return $escaped
+}
+
 function Get-WindowText([IntPtr]$hWnd) {
   $length = [Win32]::GetWindowTextLength($hWnd)
   if ($length -le 0) { return \"\" }
@@ -381,24 +388,33 @@ foreach ($item in $items) {
     if ($edit -eq [IntPtr]::Zero) {
       $edit = Find-DescendantByClassAny $mainHwnd $editClasses
     }
-    if ($edit -eq [IntPtr]::Zero) { throw '채팅 검색창(Edit)을 찾을 수 없습니다.' }
+    if ($edit -eq [IntPtr]::Zero) {
+      [void][Win32]::SetForegroundWindow($mainHwnd)
+      Start-Sleep -Milliseconds 120
+      $wshell.SendKeys('^f')
+      Start-Sleep -Milliseconds 160
+      $wshell.SendKeys(Escape-SendKeys $room)
+      Start-Sleep -Milliseconds 120
+      $wshell.SendKeys('{ENTER}')
+      Start-Sleep -Milliseconds 300
+    } else {
+      [void][Win32]::SetForegroundWindow($mainHwnd)
+      Start-Sleep -Milliseconds 120
+      [void][Win32]::SetFocus($edit)
+      Start-Sleep -Milliseconds 80
+      if ($chatType -eq 'open') {
+        $wshell.SendKeys('^{RIGHT}')
+        Start-Sleep -Milliseconds 160
+      } elseif ($chatType -eq 'chat') {
+        $wshell.SendKeys('^{LEFT}')
+        Start-Sleep -Milliseconds 160
+      }
 
-    [void][Win32]::SetForegroundWindow($mainHwnd)
-    Start-Sleep -Milliseconds 120
-    [void][Win32]::SetFocus($edit)
-    Start-Sleep -Milliseconds 80
-    if ($chatType -eq 'open') {
-      $wshell.SendKeys('^{RIGHT}')
-      Start-Sleep -Milliseconds 160
-    } elseif ($chatType -eq 'chat') {
-      $wshell.SendKeys('^{LEFT}')
-      Start-Sleep -Milliseconds 160
+      [void][Win32]::SendMessage($edit, $WM_SETTEXT, [IntPtr]::Zero, $room)
+      Start-Sleep -Milliseconds 120
+      [void][Win32]::PostMessage($edit, $WM_KEYDOWN, [IntPtr]$VK_RETURN, [IntPtr]::Zero)
+      Start-Sleep -Milliseconds 300
     }
-
-    [void][Win32]::SendMessage($edit, $WM_SETTEXT, [IntPtr]::Zero, $room)
-    Start-Sleep -Milliseconds 120
-    [void][Win32]::PostMessage($edit, $WM_KEYDOWN, [IntPtr]$VK_RETURN, [IntPtr]::Zero)
-    Start-Sleep -Milliseconds 300
 
     $chatHwnd = [Win32]::FindWindow($null, $room)
     if ($chatHwnd -eq [IntPtr]::Zero) { throw '채팅방 창을 찾지 못했습니다.' }
