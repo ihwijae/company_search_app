@@ -12,7 +12,9 @@ class KakaoAutomationService {
   resolveHelperPath() {
     const envPath = process.env.KAKAO_HELPER_PATH;
     const localPath = path.join(__dirname, 'KakaoSendHelper.exe');
-    const candidates = [envPath, localPath].filter(Boolean);
+    const candidates = [envPath, localPath]
+      .filter(Boolean)
+      .map((candidate) => String(candidate).trim());
     for (const candidate of candidates) {
       try {
         if (candidate && fs.existsSync(candidate)) return candidate;
@@ -26,6 +28,7 @@ class KakaoAutomationService {
       return { success: false, message: '전송할 항목이 없습니다.' };
     }
     console.log('[KAKAO] helperPath:', this.helperPath);
+    console.log('[KAKAO] helperPath raw:', JSON.stringify(this.helperPath), 'len:', this.helperPath ? this.helperPath.length : 0, 'cwd:', process.cwd());
     if (!this.helperPath) {
       return {
         success: false,
