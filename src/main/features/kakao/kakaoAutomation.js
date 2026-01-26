@@ -382,7 +382,13 @@ foreach ($item in $items) {
       if (!data?.success) {
         return { success: false, message: '카카오톡 전송에 실패했습니다.' };
       }
-      return { success: true, results: data.results || [] };
+      return {
+        success: true,
+        results: data.results || [],
+        debugDump: data.debugDump,
+        debugDumpCount: data.debugDumpCount,
+        debugDumpEnabled: data.debugDumpEnabled,
+      };
     } catch (err) {
       return { success: false, message: err?.message || String(err) };
     }
