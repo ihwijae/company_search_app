@@ -117,7 +117,7 @@ $WM_SETTEXT = 0x000C
 $WM_KEYDOWN = 0x0100
 $VK_RETURN = 0x0D
 
-function Escape-SendKeys([string]$text) {
+function EscapeSendKeys([string]$text) {
   if ($null -eq $text) { return '' }
   $escaped = $text
   $escaped = $escaped -replace '([\+\^\%\~\(\)\[\]\{\}])', '{$1}'
@@ -393,7 +393,7 @@ foreach ($item in $items) {
       Start-Sleep -Milliseconds 120
       $wshell.SendKeys('^f')
       Start-Sleep -Milliseconds 160
-      $wshell.SendKeys(Escape-SendKeys $room)
+      $wshell.SendKeys((EscapeSendKeys $room))
       Start-Sleep -Milliseconds 120
       $wshell.SendKeys('{ENTER}')
       Start-Sleep -Milliseconds 300
