@@ -21,8 +21,12 @@ class KakaoAutomationService {
     const envPath = process.env.AHK_PATH;
     const candidates = [
       envPath,
+      'C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe',
+      'C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey.exe',
       'C:\\Program Files\\AutoHotkey\\AutoHotkey.exe',
       'C:\\Program Files\\AutoHotkey\\AutoHotkeyU64.exe',
+      'C:\\Program Files (x86)\\AutoHotkey\\v2\\AutoHotkey.exe',
+      'C:\\Program Files (x86)\\AutoHotkey\\v2\\AutoHotkeyU64.exe',
       'C:\\Program Files (x86)\\AutoHotkey\\AutoHotkey.exe',
       'C:\\Program Files (x86)\\AutoHotkey\\AutoHotkeyU64.exe',
     ].filter(Boolean);
