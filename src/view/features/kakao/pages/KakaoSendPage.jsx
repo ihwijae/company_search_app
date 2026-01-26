@@ -21,7 +21,7 @@ const MENU_ROUTES = {
 };
 
 const ROOM_SETTINGS_KEY = 'kakaoRoomSettings';
-const DEFAULT_ROOM_ROWS = [{ id: 1, manager: '', room: '', chatType: '' }];
+const DEFAULT_ROOM_ROWS = [{ id: 1, manager: '', room: '' }];
 
 const COMPANY_NAME_FIELDS = [
   '검색된 회사',
@@ -133,7 +133,6 @@ export default function KakaoSendPage() {
         id: row.id,
         label: String(row.manager || '').trim(),
         room: String(row.room || '').trim(),
-        chatType: String(row.chatType || '').trim(),
       }))
       .filter((row) => row.label);
   }, [roomSettings]);
@@ -226,14 +225,15 @@ export default function KakaoSendPage() {
         .filter(Boolean);
       const companyLines = lines.filter((line) => line.includes('%'));
       if (companyLines.length === 0) {
-        entries.push({
-          id: `${blockIndex}-0`,
-          company: `협정안 ${blockIndex + 1}`,
-          companyName: '',
-          managerId: 'none',
-          baseText: block,
-          fileType,
-        });
+          entries.push({
+            id: `${blockIndex}-0`,
+            company: `협정안 ${blockIndex + 1}`,
+            companyName: '',
+            managerId: 'none',
+            chatType: 'chat',
+            baseText: block,
+            fileType,
+          });
       } else {
         companyLines.forEach((line, lineIndex) => {
           entries.push({
@@ -241,6 +241,7 @@ export default function KakaoSendPage() {
             company: line,
             companyName: extractCompanyNameFromLine(line),
             managerId: 'none',
+            chatType: 'chat',
             baseText: block,
             fileType,
           });
@@ -298,12 +299,8 @@ export default function KakaoSendPage() {
       }
       const manager = managerMap.get(String(entry.managerId));
       const room = manager?.room || '';
-      const chatType = manager?.chatType || '';
+      const chatType = entry.chatType || 'chat';
       if (!room) {
-        skipped += 1;
-        return;
-      }
-      if (!chatType) {
         skipped += 1;
         return;
       }
@@ -338,24 +335,14 @@ export default function KakaoSendPage() {
       if (!window?.electronAPI?.kakao?.sendBatch) {
         throw new Error('카카오톡 전송 기능이 준비되지 않았습니다.');
       }
-      console.log('[kakao-send] items:', items);
       const response = await window.electronAPI.kakao.sendBatch({
         items,
         delayMs: 300,
-        debugDump: true,
-        useAhk: true,
       });
       hideLoading();
-      console.log('[kakao-send] response:', response);
       if (!response?.success) {
         notify({ type: 'error', message: response?.message || '카카오톡 전송에 실패했습니다.' });
         return;
-      }
-      if (response?.debugDumpEnabled) {
-        console.log('[kakao-send] debugDumpEnabled:', response.debugDumpEnabled, 'count:', response.debugDumpCount);
-      }
-      if (response?.debugDump) {
-        console.log('[kakao-send] window dump:\n' + response.debugDump);
       }
       const results = Array.isArray(response.results) ? response.results : [];
       const okCount = results.filter((r) => r.success).length;
@@ -379,7 +366,7 @@ export default function KakaoSendPage() {
   const handleAddRoomRow = () => {
     setRoomSettings((prev) => [
       ...prev,
-      { id: Date.now(), manager: '', room: '', chatType: '' },
+      { id: Date.now(), manager: '', room: '' },
     ]);
   };
 
@@ -389,9 +376,8 @@ export default function KakaoSendPage() {
         id: row.id || Date.now(),
         manager: String(row.manager || '').trim(),
         room: String(row.room || '').trim(),
-        chatType: String(row.chatType || '').trim(),
       }))
-      .filter((row) => row.manager || row.room || row.chatType);
+      .filter((row) => row.manager || row.room);
     const nextRows = normalized.length > 0 ? normalized : DEFAULT_ROOM_ROWS;
     setRoomSettings(nextRows);
     try {
@@ -408,6 +394,12 @@ export default function KakaoSendPage() {
   const handleEntryManagerChange = (entryId, value) => {
     setSplitEntries((prev) =>
       prev.map((entry) => (entry.id === entryId ? { ...entry, managerId: value } : entry))
+    );
+  };
+
+  const handleEntryChatTypeChange = (entryId, value) => {
+    setSplitEntries((prev) =>
+      prev.map((entry) => (entry.id === entryId ? { ...entry, chatType: value } : entry))
     );
   };
 
@@ -541,6 +533,7 @@ export default function KakaoSendPage() {
                           <th style={{ width: '70px' }}>순번</th>
                           <th>업체명</th>
                           <th style={{ width: '160px' }}>담당자</th>
+                          <th style={{ width: '120px' }}>채팅 타입</th>
                           <th style={{ width: '180px' }}>채팅방</th>
                           <th style={{ width: '140px' }}>메시지</th>
                           <th style={{ width: '90px' }}>제거</th>
@@ -549,7 +542,7 @@ export default function KakaoSendPage() {
                       <tbody>
                         {splitEntries.length === 0 ? (
                           <tr>
-                            <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                            <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                               문자 분리 후 담당자 목록이 표시됩니다.
                             </td>
                           </tr>
@@ -571,6 +564,17 @@ export default function KakaoSendPage() {
                                       {option.label}
                                     </option>
                                   ))}
+                                </select>
+                              </td>
+                              <td>
+                                <select
+                                  className="filter-input"
+                                  value={entry.chatType || 'chat'}
+                                  onChange={(event) => handleEntryChatTypeChange(entry.id, event.target.value)}
+                                >
+                                  <option value="friend">친구</option>
+                                  <option value="chat">채팅</option>
+                                  <option value="open">오픈채팅</option>
                                 </select>
                               </td>
                               <td>
@@ -629,7 +633,6 @@ export default function KakaoSendPage() {
               <thead>
                 <tr>
                   <th style={{ width: '120px' }}>담당자</th>
-                  <th style={{ width: '140px' }}>채팅 타입</th>
                   <th>채팅방 이름</th>
                 </tr>
               </thead>
@@ -643,18 +646,6 @@ export default function KakaoSendPage() {
                         value={row.manager}
                         onChange={(event) => handleRoomSettingChange(row.id, 'manager', event.target.value)}
                       />
-                    </td>
-                    <td>
-                      <select
-                        className="filter-input"
-                        value={row.chatType || ''}
-                        onChange={(event) => handleRoomSettingChange(row.id, 'chatType', event.target.value)}
-                      >
-                        <option value="">선택</option>
-                        <option value="friend">친구</option>
-                        <option value="chat">채팅</option>
-                        <option value="open">오픈채팅</option>
-                      </select>
                     </td>
                     <td>
                       <input
