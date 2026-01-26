@@ -185,6 +185,14 @@ function Find-DescendantByClass([IntPtr]$parent, [string]$className) {
   return [IntPtr]::Zero
 }
 
+function Find-DescendantByClassAny([IntPtr]$parent, [string[]]$classNames) {
+  foreach ($name in $classNames) {
+    $found = Find-DescendantByClass $parent $name
+    if ($found -ne [IntPtr]::Zero) { return $found }
+  }
+  return [IntPtr]::Zero
+}
+
 function Find-DescendantByClassContainsWithChildClass([IntPtr]$parent, [string]$classToken, [string]$childClass) {
   $child = [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $null, $null)
   while ($child -ne [IntPtr]::Zero) {
@@ -212,6 +220,31 @@ if ($mainHwnd -eq [IntPtr]::Zero) {
 if ($mainHwnd -eq [IntPtr]::Zero) { throw '카카오톡 창을 찾을 수 없습니다.' }
  [void][Win32]::SetForegroundWindow($mainHwnd)
  Start-Sleep -Milliseconds 200
+
+function Dump-WindowTree([IntPtr]$parent, [int]$depth = 0, [int]$maxDepth = 4, [int]$maxNodes = 400, [ref]$countRef) {
+  if ($countRef.Value -ge $maxNodes) { return \"\" }
+  $indent = (' ' * ($depth * 2))
+  $className = Get-ClassName $parent
+  $title = Get-WindowText $parent
+  $line = \"{0}{1} | {2} | 0x{3:X}`n\" -f $indent, $className, $title, $parent.ToInt64()
+  $countRef.Value++
+  if ($depth -ge $maxDepth -or $countRef.Value -ge $maxNodes) { return $line }
+  $child = [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $null, $null)
+  $result = $line
+  while ($child -ne [IntPtr]::Zero -and $countRef.Value -lt $maxNodes) {
+    $result += Dump-WindowTree $child ($depth + 1) $maxDepth $maxNodes $countRef
+    $child = [Win32]::FindWindowEx($parent, $child, $null, $null)
+  }
+  return $result
+}
+
+$debugDump = $false
+if ($payload.debugDump -eq $true) { $debugDump = $true }
+$dumpText = $null
+if ($debugDump) {
+  $cnt = 0
+  $dumpText = Dump-WindowTree $mainHwnd 0 5 600 ([ref]$cnt)
+}
 
 foreach ($item in $items) {
   $room = [string]$item.room
@@ -277,17 +310,18 @@ foreach ($item in $items) {
       }
     }
     $edit = [IntPtr]::Zero
+    $editClasses = @('Edit', 'RichEdit50W', 'RICHEDIT50W', 'RichEdit20W', 'RICHEDIT20W')
     if ($chatList -ne [IntPtr]::Zero) {
       $edit = Find-ChildWindowByClass $chatList 'Edit'
       if ($edit -eq [IntPtr]::Zero) {
-        $edit = Find-DescendantByClass $chatList 'Edit'
+        $edit = Find-DescendantByClassAny $chatList $editClasses
       }
     }
     if ($edit -eq [IntPtr]::Zero) {
-      $edit = Find-DescendantByClass $onlineView 'Edit'
+      $edit = Find-DescendantByClassAny $onlineView $editClasses
     }
     if ($edit -eq [IntPtr]::Zero) {
-      $edit = Find-DescendantByClass $mainHwnd 'Edit'
+      $edit = Find-DescendantByClassAny $mainHwnd $editClasses
     }
     if ($edit -eq [IntPtr]::Zero) { throw '채팅 검색창(Edit)을 찾을 수 없습니다.' }
 
@@ -330,7 +364,7 @@ foreach ($item in $items) {
   Start-Sleep -Milliseconds $delayMs
 }
 
-[pscustomobject]@{ success = $true; results = $results } | ConvertTo-Json -Depth 5 -Compress
+[pscustomobject]@{ success = $true; results = $results; debugDump = $dumpText } | ConvertTo-Json -Depth 5 -Compress
 }
 `;
     try {

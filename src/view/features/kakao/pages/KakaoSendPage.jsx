@@ -341,11 +341,15 @@ export default function KakaoSendPage() {
       const response = await window.electronAPI.kakao.sendBatch({
         items,
         delayMs: 300,
+        debugDump: true,
       });
       hideLoading();
       if (!response?.success) {
         notify({ type: 'error', message: response?.message || '카카오톡 전송에 실패했습니다.' });
         return;
+      }
+      if (response?.debugDump) {
+        console.log('[kakao-send] window dump:\n' + response.debugDump);
       }
       const results = Array.isArray(response.results) ? response.results : [];
       const okCount = results.filter((r) => r.success).length;
