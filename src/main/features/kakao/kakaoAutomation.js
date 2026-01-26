@@ -352,121 +352,21 @@ foreach ($item in $items) {
   try {
     $roomLine = ($room -split \"\\r?\\n\")[0]
     if ([string]::IsNullOrWhiteSpace($roomLine)) { throw 'room or message missing' }
-    $onlineView = Find-ChildWindowByText $mainHwnd 'OnlineMainView'
-    if ($onlineView -eq [IntPtr]::Zero) {
-      $onlineView = Find-ChildWindowByClassContains $mainHwnd 'OnlineMainView'
-    }
-    if ($onlineView -eq [IntPtr]::Zero) {
-      $onlineView = Find-DescendantByClassContains $mainHwnd 'OnlineMainView'
-    }
-    if ($onlineView -eq [IntPtr]::Zero) {
-      $onlineView = $mainHwnd
-    }
-
-    $chatType = [string]$item.chatType
-    if ([string]::IsNullOrWhiteSpace($chatType)) { throw 'chatType is required' }
-
-    if ($chatType -eq 'friend') {
-      $chatList = Find-ChildWindowByText $onlineView 'ContactListView'
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-ChildWindowByClassContains $onlineView 'ContactListView'
-      }
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-DescendantByClassContains $onlineView 'ContactListView'
-      }
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-DescendantByClassContainsWithChildClass $onlineView 'ContactListView' 'Edit'
-      }
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-DescendantByClassContainsWithChildClass $mainHwnd 'ContactListView' 'Edit'
-      }
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-DescendantByClassContainsWithChildClass $onlineView 'ListView' 'Edit'
-      }
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-DescendantByClassContainsWithChildClass $mainHwnd 'ListView' 'Edit'
-      }
-    } else {
-      $chatList = Find-ChildWindowByText $onlineView 'ChatRoomListView'
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-ChildWindowByClassContains $onlineView 'ChatRoomListView'
-      }
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-DescendantByClassContains $onlineView 'ChatRoomListView'
-      }
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-DescendantByClassContainsWithChildClass $onlineView 'ChatRoomListView' 'Edit'
-      }
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-DescendantByClassContainsWithChildClass $mainHwnd 'ChatRoomListView' 'Edit'
-      }
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-DescendantByClassContainsWithChildClass $onlineView 'ListView' 'Edit'
-      }
-      if ($chatList -eq [IntPtr]::Zero) {
-        $chatList = Find-DescendantByClassContainsWithChildClass $mainHwnd 'ListView' 'Edit'
-      }
-    }
-    $edit = [IntPtr]::Zero
-    $editClasses = @('Edit', 'RichEdit50W', 'RICHEDIT50W', 'RichEdit20W', 'RICHEDIT20W')
-    if ($chatList -ne [IntPtr]::Zero) {
-      $edit = Find-ChildWindowByClass $chatList 'Edit'
-      if ($edit -eq [IntPtr]::Zero) {
-        $edit = Find-DescendantByClassAny $chatList $editClasses
-      }
-    }
-    if ($edit -eq [IntPtr]::Zero) {
-      $edit = Find-DescendantByClassAny $onlineView $editClasses
-    }
-    if ($edit -eq [IntPtr]::Zero) {
-      $edit = Find-DescendantByClassAny $mainHwnd $editClasses
-    }
-    if ($edit -eq [IntPtr]::Zero) {
-      if (-not (Ensure-KakaoForeground $mainHwnd $proc)) { throw '카카오톡 창 포커스에 실패했습니다.' }
-      $wshell.SendKeys('^f')
-      Start-Sleep -Milliseconds 160
-      $wshell.SendKeys('^a{BACKSPACE}')
-      Start-Sleep -Milliseconds 80
-      $wshell.SendKeys((EscapeSendKeys $roomLine))
-      Start-Sleep -Milliseconds 120
-      $wshell.SendKeys('{ENTER}')
-      Start-Sleep -Milliseconds 300
-    } else {
-      if (-not (Ensure-KakaoForeground $mainHwnd $proc)) { throw '카카오톡 창 포커스에 실패했습니다.' }
-      [void][Win32]::SetFocus($edit)
-      Start-Sleep -Milliseconds 80
-      if ($chatType -eq 'open') {
-        $wshell.SendKeys('^{RIGHT}')
-        Start-Sleep -Milliseconds 160
-      } elseif ($chatType -eq 'chat') {
-        $wshell.SendKeys('^{LEFT}')
-        Start-Sleep -Milliseconds 160
-      }
-
-      [void][Win32]::SendMessage($edit, $WM_SETTEXT, [IntPtr]::Zero, $roomLine)
-      Start-Sleep -Milliseconds 120
-      [void][Win32]::PostMessage($edit, $WM_KEYDOWN, [IntPtr]$VK_RETURN, [IntPtr]::Zero)
-      Start-Sleep -Milliseconds 300
-    }
-
-    $chatHwnd = [Win32]::FindWindow($null, $roomLine)
-    if ($chatHwnd -eq [IntPtr]::Zero) {
-      $chatHwnd = Find-TopLevelWindowByTitleContains 'KakaoTalk' $roomLine
-    }
-    if ($chatHwnd -eq [IntPtr]::Zero) { throw '채팅방 창을 찾지 못했습니다.' }
-
-    $richEdit = Find-ChildWindowByClass $chatHwnd 'RichEdit50W'
-    if ($richEdit -eq [IntPtr]::Zero) {
-      $richEdit = Find-ChildWindowByClass $chatHwnd 'Edit'
-    }
-    if ($richEdit -eq [IntPtr]::Zero) { throw '메시지 입력창을 찾지 못했습니다.' }
-
-    [void][Win32]::SetForegroundWindow($chatHwnd)
+    if (-not (Ensure-KakaoForeground $mainHwnd $proc)) { throw '카카오톡 창 포커스에 실패했습니다.' }
+    $wshell.SendKeys('^f')
+    Start-Sleep -Milliseconds 180
+    $wshell.SendKeys('^a{BACKSPACE}')
     Start-Sleep -Milliseconds 80
-    [void][Win32]::SendMessage($richEdit, $WM_SETTEXT, [IntPtr]::Zero, $msg)
-    Start-Sleep -Milliseconds 80
-    [void][Win32]::PostMessage($chatHwnd, $WM_KEYDOWN, [IntPtr]$VK_RETURN, [IntPtr]::Zero)
+    $wshell.SendKeys((EscapeSendKeys $roomLine))
+    Start-Sleep -Milliseconds 150
+    $wshell.SendKeys('{ENTER}')
+    Start-Sleep -Milliseconds 350
+    [System.Windows.Forms.Clipboard]::SetText($msg)
     Start-Sleep -Milliseconds 120
+    $wshell.SendKeys('^v')
+    Start-Sleep -Milliseconds 120
+    $wshell.SendKeys('{ENTER}')
+    Start-Sleep -Milliseconds 150
     $results += [pscustomobject]@{ room = $room; success = $true }
   } catch {
     $results += [pscustomobject]@{ room = $room; success = $false; error = $_.Exception.Message }
