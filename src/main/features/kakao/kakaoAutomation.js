@@ -94,6 +94,13 @@ public static class Win32 {
   [DllImport(\"user32.dll\", SetLastError=true)]
   public static extern int GetWindowTextLength(IntPtr hWnd);
   [DllImport(\"user32.dll\", SetLastError=true)]
+  public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+  public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+  [DllImport(\"user32.dll\", SetLastError=true)]
+  public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+  [DllImport(\"user32.dll\", SetLastError=true)]
+  public static extern bool IsWindowVisible(IntPtr hWnd);
+  [DllImport(\"user32.dll\", SetLastError=true)]
   public static extern IntPtr GetParent(IntPtr hWnd);
   [DllImport(\"user32.dll\")]
   public static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -173,6 +180,36 @@ function Find-ChildWindowByClass([IntPtr]$parent, [string]$className) {
   return [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $className, $null)
 }
 
+function Get-TopLevelWindowsForProcess([string]$processName) {
+  $handles = New-Object System.Collections.Generic.List[System.IntPtr]
+  $procs = @(Get-Process -Name $processName -ErrorAction SilentlyContinue)
+  if ($procs.Count -eq 0) { return $handles }
+  $pids = $procs | ForEach-Object { $_.Id }
+  $callback = [Win32+EnumWindowsProc]{
+    param([IntPtr]$hWnd, [IntPtr]$lParam)
+    $pid = 0
+    [void][Win32]::GetWindowThreadProcessId($hWnd, [ref]$pid)
+    if ($pid -ne 0 -and $pids -contains [int]$pid) {
+      if ([Win32]::IsWindowVisible($hWnd)) {
+        $handles.Add($hWnd) | Out-Null
+      }
+    }
+    return $true
+  }
+  [void][Win32]::EnumWindows($callback, [IntPtr]::Zero)
+  return $handles
+}
+
+function Get-ChildCount([IntPtr]$parent) {
+  $count = 0
+  $child = [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $null, $null)
+  while ($child -ne [IntPtr]::Zero) {
+    $count++
+    $child = [Win32]::FindWindowEx($parent, $child, $null, $null)
+  }
+  return $count
+}
+
 function Find-DescendantByClass([IntPtr]$parent, [string]$className) {
   $child = [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $null, $null)
   while ($child -ne [IntPtr]::Zero) {
@@ -217,6 +254,12 @@ if ($mainHwnd -eq [IntPtr]::Zero) {
     if ($proc) { $mainHwnd = [IntPtr]$proc.MainWindowHandle }
   } catch {}
 }
+if ($mainHwnd -eq [IntPtr]::Zero) {
+  $candidates = Get-TopLevelWindowsForProcess 'KakaoTalk'
+  if ($candidates.Count -gt 0) {
+    $mainHwnd = $candidates[0]
+  }
+}
 if ($mainHwnd -eq [IntPtr]::Zero) { throw '카카오톡 창을 찾을 수 없습니다.' }
  [void][Win32]::SetForegroundWindow($mainHwnd)
  Start-Sleep -Milliseconds 200
@@ -245,7 +288,18 @@ $dumpText = $null
 $dumpCount = 0
 if ($debugDump) {
   $cnt = 0
-  $dumpText = Dump-WindowTree $mainHwnd 0 5 600 ([ref]$cnt)
+  $topWindows = Get-TopLevelWindowsForProcess 'KakaoTalk'
+  $lines = New-Object System.Text.StringBuilder
+  foreach ($hwnd in $topWindows) {
+    $cls = Get-ClassName $hwnd
+    $ttl = Get-WindowText $hwnd
+    $childCount = Get-ChildCount $hwnd
+    [void]$lines.Append(\"TOP | {0} | {1} | child:{2} | 0x{3:X}\" -f $cls, $ttl, $childCount, $hwnd.ToInt64())
+    [void]$lines.Append([Environment]::NewLine)
+  }
+  $lines.Append([Environment]::NewLine) | Out-Null
+  $lines.Append(Dump-WindowTree $mainHwnd 0 5 600 ([ref]$cnt)) | Out-Null
+  $dumpText = $lines.ToString()
   $dumpCount = $cnt
 }
 
