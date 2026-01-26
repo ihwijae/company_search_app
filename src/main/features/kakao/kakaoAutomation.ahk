@@ -2,10 +2,11 @@
 #NoTrayIcon
 #SingleInstance Force
 #Warn
-SendMode "Input"
+SendMode "Event"
 SetTitleMatchMode 2
 SetWorkingDir A_ScriptDir
 FileEncoding "UTF-8"
+SetKeyDelay 30, 10
 
 if (A_Args.Length < 2) {
   ExitApp 2
@@ -28,24 +29,30 @@ if (roomLine = "") {
   ExitApp 3
 }
 
-if WinExist("ahk_exe KakaoTalk.exe") {
-  WinActivate
+if WinExist("카카오톡") {
+  WinActivate "카카오톡"
+  WinWaitActive "카카오톡", , 3
+} else if WinExist("ahk_exe KakaoTalk.exe") {
+  WinActivate "ahk_exe KakaoTalk.exe"
   WinWaitActive "ahk_exe KakaoTalk.exe", , 3
 } else {
   ExitApp 4
 }
+if !WinActive("ahk_exe KakaoTalk.exe") {
+  ExitApp 4
+}
 
-Send "^f"
+SendEvent "^f"
 Sleep 200
-Send "^a{Backspace}"
+SendEvent "^a{Backspace}"
 Sleep 80
 A_Clipboard := roomLine
-Send "^v"
+SendEvent "^v"
 Sleep 120
-Send "{Enter}"
+SendEvent "{Enter}"
 Sleep 350
 A_Clipboard := msgText
-Send "^v"
+SendEvent "^v"
 Sleep 120
-Send "{Enter}"
+SendEvent "{Enter}"
 ExitApp 0
