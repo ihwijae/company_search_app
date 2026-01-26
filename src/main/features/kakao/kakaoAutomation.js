@@ -194,7 +194,7 @@ function Send-Key([ushort]$vk, [bool]$isKeyUp=$false) {
   $input = New-Object Win32+INPUT
   $input.type = $INPUT_KEYBOARD
   $input.ki.wVk = $vk
-  $input.ki.dwFlags = $isKeyUp ? $KEYEVENTF_KEYUP : 0
+  if ($isKeyUp) { $input.ki.dwFlags = $KEYEVENTF_KEYUP } else { $input.ki.dwFlags = 0 }
   [void][Win32]::SendInput(1, [ref]$input, [System.Runtime.InteropServices.Marshal]::SizeOf([Win32+INPUT]))
 }
 
