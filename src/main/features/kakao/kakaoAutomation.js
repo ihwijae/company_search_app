@@ -207,6 +207,16 @@ function Get-TopLevelWindowsForProcess([string]$processName) {
   return $handles
 }
 
+function Find-TopLevelWindowByTitleContains([string]$processName, [string]$text) {
+  if ([string]::IsNullOrWhiteSpace($text)) { return [IntPtr]::Zero }
+  $wins = Get-TopLevelWindowsForProcess $processName
+  foreach ($hwnd in $wins) {
+    $title = Get-WindowText $hwnd
+    if ($title -and $title -like (\"*\" + $text + \"*\")) { return $hwnd }
+  }
+  return [IntPtr]::Zero
+}
+
 function Get-ChildCount([IntPtr]$parent) {
   $count = 0
   $child = [Win32]::FindWindowEx($parent, [IntPtr]::Zero, $null, $null)
@@ -417,13 +427,48 @@ foreach ($item in $items) {
     }
 
     $chatHwnd = [Win32]::FindWindow($null, $room)
-    if ($chatHwnd -eq [IntPtr]::Zero) { throw '채팅방 창을 찾지 못했습니다.' }
+    if ($chatHwnd -eq [IntPtr]::Zero) {
+      $chatHwnd = Find-TopLevelWindowByTitleContains 'KakaoTalk' $room
+    }
+    if ($chatHwnd -eq [IntPtr]::Zero) {
+      try {
+        [void][Win32]::SetForegroundWindow($mainHwnd)
+        Start-Sleep -Milliseconds 120
+        if ($msg) {
+          [System.Windows.Forms.Clipboard]::SetText($msg)
+          Start-Sleep -Milliseconds 80
+          $wshell.SendKeys('^v')
+          Start-Sleep -Milliseconds 120
+          $wshell.SendKeys('{ENTER}')
+          Start-Sleep -Milliseconds 120
+          $results += [pscustomobject]@{ room = $room; success = $true; note = 'fallback keyboard send' }
+          continue
+        }
+      } catch {}
+      throw '채팅방 창을 찾지 못했습니다.'
+    }
 
     $richEdit = Find-ChildWindowByClass $chatHwnd 'RichEdit50W'
     if ($richEdit -eq [IntPtr]::Zero) {
       $richEdit = Find-ChildWindowByClass $chatHwnd 'Edit'
     }
-    if ($richEdit -eq [IntPtr]::Zero) { throw '메시지 입력창을 찾지 못했습니다.' }
+    if ($richEdit -eq [IntPtr]::Zero) {
+      try {
+        [void][Win32]::SetForegroundWindow($chatHwnd)
+        Start-Sleep -Milliseconds 120
+        if ($msg) {
+          [System.Windows.Forms.Clipboard]::SetText($msg)
+          Start-Sleep -Milliseconds 80
+          $wshell.SendKeys('^v')
+          Start-Sleep -Milliseconds 120
+          $wshell.SendKeys('{ENTER}')
+          Start-Sleep -Milliseconds 120
+          $results += [pscustomobject]@{ room = $room; success = $true; note = 'fallback keyboard send in chat' }
+          continue
+        }
+      } catch {}
+      throw '메시지 입력창을 찾지 못했습니다.'
+    }
 
     [void][Win32]::SetForegroundWindow($chatHwnd)
     Start-Sleep -Milliseconds 80
