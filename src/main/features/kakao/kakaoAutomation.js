@@ -77,6 +77,8 @@ $results = @()
 
 try { Add-Type -AssemblyName System.Windows.Forms } catch {}
 $wshell = New-Object -ComObject WScript.Shell
+$kakaoProc = $null
+try { $kakaoProc = Get-Process -Name KakaoTalk -ErrorAction Stop | Select-Object -First 1 } catch {}
 
 Add-Type @\"
 using System;
@@ -140,6 +142,14 @@ function Get-ForegroundTitle {
   return Get-WindowText $fg
 }
 
+function Get-ForegroundPid {
+  $fg = [Win32]::GetForegroundWindow()
+  if ($fg -eq [IntPtr]::Zero) { return 0 }
+  $pid = 0
+  [void][Win32]::GetWindowThreadProcessId($fg, [ref]$pid)
+  return $pid
+}
+
 function Ensure-KakaoForeground([IntPtr]$mainHwnd, $proc) {
   [void][Win32]::SetForegroundWindow($mainHwnd)
   Start-Sleep -Milliseconds 120
@@ -148,6 +158,9 @@ function Ensure-KakaoForeground([IntPtr]$mainHwnd, $proc) {
     else { [void]$wshell.AppActivate('카카오톡') }
   } catch {}
   Start-Sleep -Milliseconds 120
+  $fgPid = Get-ForegroundPid
+  if ($proc -and $fgPid -eq [int]$proc.Id) { return $true }
+  if ($kakaoProc -and $fgPid -eq [int]$kakaoProc.Id) { return $true }
   $title = Get-ForegroundTitle
   if ($title -and ($title -match '카카오톡|KakaoTalk')) { return $true }
   return $false
