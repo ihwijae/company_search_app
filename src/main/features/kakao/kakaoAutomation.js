@@ -145,9 +145,9 @@ function Get-ForegroundTitle {
 function Get-ForegroundPid {
   $fg = [Win32]::GetForegroundWindow()
   if ($fg -eq [IntPtr]::Zero) { return 0 }
-  $pid = 0
-  [void][Win32]::GetWindowThreadProcessId($fg, [ref]$pid)
-  return $pid
+  $fgProcId = 0
+  [void][Win32]::GetWindowThreadProcessId($fg, [ref]$fgProcId)
+  return $fgProcId
 }
 
 function Ensure-KakaoForeground([IntPtr]$mainHwnd, $proc) {
