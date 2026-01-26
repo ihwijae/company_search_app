@@ -338,6 +338,7 @@ export default function KakaoSendPage() {
       if (!window?.electronAPI?.kakao?.sendBatch) {
         throw new Error('카카오톡 전송 기능이 준비되지 않았습니다.');
       }
+      console.log('[kakao-send] items:', items);
       const response = await window.electronAPI.kakao.sendBatch({
         items,
         delayMs: 300,

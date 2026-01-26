@@ -329,6 +329,8 @@ foreach ($item in $items) {
     continue
   }
   try {
+    $roomLine = ($room -split \"\\r?\\n\")[0]
+    if ([string]::IsNullOrWhiteSpace($roomLine)) { throw 'room or message missing' }
     $onlineView = Find-ChildWindowByText $mainHwnd 'OnlineMainView'
     if ($onlineView -eq [IntPtr]::Zero) {
       $onlineView = Find-ChildWindowByClassContains $mainHwnd 'OnlineMainView'
@@ -401,14 +403,18 @@ foreach ($item in $items) {
     if ($edit -eq [IntPtr]::Zero) {
       [void][Win32]::SetForegroundWindow($mainHwnd)
       Start-Sleep -Milliseconds 120
+      try { [void]$wshell.AppActivate('카카오톡') } catch {}
+      Start-Sleep -Milliseconds 120
       $wshell.SendKeys('^f')
       Start-Sleep -Milliseconds 160
-      $wshell.SendKeys((EscapeSendKeys $room))
+      $wshell.SendKeys((EscapeSendKeys $roomLine))
       Start-Sleep -Milliseconds 120
       $wshell.SendKeys('{ENTER}')
       Start-Sleep -Milliseconds 300
     } else {
       [void][Win32]::SetForegroundWindow($mainHwnd)
+      Start-Sleep -Milliseconds 120
+      try { [void]$wshell.AppActivate('카카오톡') } catch {}
       Start-Sleep -Milliseconds 120
       [void][Win32]::SetFocus($edit)
       Start-Sleep -Milliseconds 80
@@ -420,19 +426,21 @@ foreach ($item in $items) {
         Start-Sleep -Milliseconds 160
       }
 
-      [void][Win32]::SendMessage($edit, $WM_SETTEXT, [IntPtr]::Zero, $room)
+      [void][Win32]::SendMessage($edit, $WM_SETTEXT, [IntPtr]::Zero, $roomLine)
       Start-Sleep -Milliseconds 120
       [void][Win32]::PostMessage($edit, $WM_KEYDOWN, [IntPtr]$VK_RETURN, [IntPtr]::Zero)
       Start-Sleep -Milliseconds 300
     }
 
-    $chatHwnd = [Win32]::FindWindow($null, $room)
+    $chatHwnd = [Win32]::FindWindow($null, $roomLine)
     if ($chatHwnd -eq [IntPtr]::Zero) {
-      $chatHwnd = Find-TopLevelWindowByTitleContains 'KakaoTalk' $room
+      $chatHwnd = Find-TopLevelWindowByTitleContains 'KakaoTalk' $roomLine
     }
     if ($chatHwnd -eq [IntPtr]::Zero) {
       try {
         [void][Win32]::SetForegroundWindow($mainHwnd)
+        Start-Sleep -Milliseconds 120
+        try { [void]$wshell.AppActivate('카카오톡') } catch {}
         Start-Sleep -Milliseconds 120
         if ($msg) {
           [System.Windows.Forms.Clipboard]::SetText($msg)
