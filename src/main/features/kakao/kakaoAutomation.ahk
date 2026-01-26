@@ -7,6 +7,13 @@ SetTitleMatchMode 2
 SetWorkingDir A_ScriptDir
 FileEncoding "UTF-8"
 SetKeyDelay 30, 10
+CoordMode "Mouse", "Screen"
+
+; UIA 기반 좌표(화면 좌표) - 필요 시 사용자 환경에 맞게 수정
+searchX := 965
+searchY := 289
+inputX := 772
+inputY := 955
 
 if (A_Args.Length < 2) {
   ExitApp 2
@@ -38,12 +45,12 @@ if WinExist("카카오톡") {
 } else {
   ExitApp 4
 }
-if !WinActive("ahk_exe KakaoTalk.exe") {
+if !WinActive("ahk_exe KakaoTalk.exe") && !WinActive("카카오톡") {
   ExitApp 4
 }
 
-SendEvent "^f"
-Sleep 200
+Click searchX, searchY
+Sleep 120
 SendEvent "^a{Backspace}"
 Sleep 80
 A_Clipboard := roomLine
@@ -51,6 +58,8 @@ SendEvent "^v"
 Sleep 120
 SendEvent "{Enter}"
 Sleep 350
+Click inputX, inputY
+Sleep 120
 A_Clipboard := msgText
 SendEvent "^v"
 Sleep 120
