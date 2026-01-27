@@ -1259,6 +1259,17 @@ export default function AgreementBoardWindow({
   const technicianEnabled = isKrailOwner;
   const technicianEditable = technicianEnabled && String(fileType || '').toLowerCase() !== 'sobang';
   const technicianAbilityMax = technicianEnabled ? KRAIL_TECHNICIAN_ABILITY_MAX : null;
+  React.useEffect(() => {
+    if (!isKrailOwner) return;
+    setCollapsedColumns((prev) => {
+      if (!prev.technicianSummary && !prev.technicianAbility) return prev;
+      return {
+        ...prev,
+        technicianSummary: false,
+        technicianAbility: false,
+      };
+    });
+  }, [isKrailOwner]);
   const managementScale = isMois30To50 ? (10 / 15) : 1;
   const roundForKrailUnder50 = React.useCallback(
     (value) => (isKrailUnder50 ? roundTo(value, 2) : value),
@@ -5708,16 +5719,20 @@ export default function AgreementBoardWindow({
                 )}
                 {technicianEnabled && (
                   <th rowSpan="2" className="col-header technician-summary-header">
-                    {renderColToggle('technicianSummary', '기술자합산')}
+                    {isKrailOwner ? '기술자합산' : renderColToggle('technicianSummary', '기술자합산')}
                   </th>
                 )}
                 {technicianEnabled && (
                   <th rowSpan="2" className="col-header technician-ability-header">
-                    {renderColToggle(
-                      'technicianAbility',
-                      technicianAbilityMax != null ? `기술능력(${formatScore(technicianAbilityMax, 0)}점)` : '기술능력',
-                      { collapsedLabel: '기술능력' },
-                    )}
+                    {isKrailOwner
+                      ? (technicianAbilityMax != null
+                        ? `기술능력(${formatScore(technicianAbilityMax, 0)}점)`
+                        : '기술능력')
+                      : renderColToggle(
+                        'technicianAbility',
+                        technicianAbilityMax != null ? `기술능력(${formatScore(technicianAbilityMax, 0)}점)` : '기술능력',
+                        { collapsedLabel: '기술능력' },
+                      )}
                   </th>
                 )}
                 {isLHOwner && (

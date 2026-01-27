@@ -531,7 +531,7 @@ export default function KakaoSendPage() {
                     </table>
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <span style={{ color: '#64748b', fontSize: '12px' }}>
+                    <span style={{ color: '#64748b', fontSize: '14px', fontWeight: 700 }}>
                       자동 전송 기능은 제거되었습니다. 카카오톡에서 수동으로 전송해 주세요.
                     </span>
                   </div>
