@@ -61,22 +61,22 @@ const LH_FULL_SCORE = 95;
 const PPS_FULL_SCORE = 95;
 const INDUSTRY_OPTIONS = ['전기', '통신', '소방'];
 const TECHNICIAN_GRADE_OPTIONS = [
-  { value: 'special', label: '특급', points: 1.0 },
-  { value: 'advanced', label: '고급', points: 0.75 },
-  { value: 'intermediate', label: '중급', points: 0.5 },
-  { value: 'entry', label: '초급', points: 0.25 },
+  { value: 'special', label: '특급 (1)', points: 1.0 },
+  { value: 'advanced', label: '고급 (0.75)', points: 0.75 },
+  { value: 'intermediate', label: '중급 (0.5)', points: 0.5 },
+  { value: 'entry', label: '초급 (0.25)', points: 0.25 },
 ];
 const TECHNICIAN_CAREER_OPTIONS = [
-  { value: 'none', label: '없음', multiplier: 1.0 },
-  { value: '5plus', label: '5년 이상', multiplier: 1.1 },
-  { value: '9plus', label: '9년 이상', multiplier: 1.15 },
-  { value: '12plus', label: '12년 이상', multiplier: 1.2 },
+  { value: 'none', label: '없음 (1.0)', multiplier: 1.0 },
+  { value: '5plus', label: '5년 이상 (1.1)', multiplier: 1.1 },
+  { value: '9plus', label: '9년 이상 (1.15)', multiplier: 1.15 },
+  { value: '12plus', label: '12년 이상 (1.2)', multiplier: 1.2 },
 ];
 const TECHNICIAN_MANAGEMENT_OPTIONS = [
-  { value: 'none', label: '없음', multiplier: 1.0 },
-  { value: '3plus', label: '3년 이상', multiplier: 1.1 },
-  { value: '6plus', label: '6년 이상', multiplier: 1.15 },
-  { value: '9plus', label: '9년 이상', multiplier: 1.2 },
+  { value: 'none', label: '없음 (1.0)', multiplier: 1.0 },
+  { value: '3plus', label: '3년 이상 (1.1)', multiplier: 1.1 },
+  { value: '6plus', label: '6년 이상 (1.15)', multiplier: 1.15 },
+  { value: '9plus', label: '9년 이상 (1.2)', multiplier: 1.2 },
 ];
 const getTechnicianGradePoints = (value) => {
   const target = TECHNICIAN_GRADE_OPTIONS.find((option) => option.value === value);
@@ -99,6 +99,11 @@ const computeTechnicianScore = (entry) => {
   const management = getTechnicianMultiplier(entry.managementCoeff, TECHNICIAN_MANAGEMENT_OPTIONS);
   const count = getTechnicianCount(entry.count);
   return base * career * management * count;
+};
+const formatTechnicianScore = (value, digits = 3) => {
+  const truncated = truncateScore(value, digits);
+  if (truncated == null) return '-';
+  return truncated.toFixed(digits);
 };
 const industryToFileType = (label) => {
   const normalized = String(label || '').trim();
@@ -2995,7 +3000,7 @@ export default function AgreementBoardWindow({
   const applyTechnicianScoreToTarget = React.useCallback(() => {
     if (!technicianEditable) return;
     if (!technicianTargetOptions.length) return;
-    const resolved = roundTo(technicianScoreTotal, 2);
+    const resolved = truncateScore(technicianScoreTotal, 3);
     if (resolved == null) return;
     setGroupTechnicianScores((prev) => {
       const next = prev.map((row) => row.slice());
@@ -6073,7 +6078,7 @@ export default function AgreementBoardWindow({
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontSize: 12, color: '#475569' }}>총점</span>
-              <strong style={{ fontSize: 18, color: '#0f172a' }}>{roundTo(technicianScoreTotal, 2).toFixed(2)}점</strong>
+              <strong style={{ fontSize: 18, color: '#0f172a' }}>{formatTechnicianScore(technicianScoreTotal)}점</strong>
             </div>
             <button
               type="button"
@@ -6092,6 +6097,26 @@ export default function AgreementBoardWindow({
           {technicianEntries.length === 0 && (
             <div style={{ padding: 12, border: '1px dashed #cbd5f5', borderRadius: 10, color: '#64748b' }}>
               추가된 기술자가 없습니다. "기술자 추가" 버튼을 눌러 입력을 시작하세요.
+            </div>
+          )}
+          {technicianEntries.length > 0 && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '120px 120px 120px 80px 1fr auto',
+                gap: 10,
+                alignItems: 'center',
+                fontSize: 12,
+                color: '#64748b',
+                fontWeight: 600,
+              }}
+            >
+              <div>등급계수</div>
+              <div>경력계수</div>
+              <div>관리능력계수</div>
+              <div>인원</div>
+              <div>점수</div>
+              <div />
             </div>
           )}
           {technicianEntries.map((entry) => (
@@ -6139,7 +6164,7 @@ export default function AgreementBoardWindow({
                 placeholder="인원"
               />
               <div style={{ fontSize: 13, color: '#0f172a' }}>
-                점수 {computeTechnicianScore(entry).toFixed(2)}
+                점수 {formatTechnicianScore(computeTechnicianScore(entry))}
               </div>
               <button type="button" className="excel-btn" onClick={() => removeTechnicianEntry(entry.id)}>삭제</button>
             </div>
