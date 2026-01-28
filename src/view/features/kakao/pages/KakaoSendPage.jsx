@@ -21,7 +21,7 @@ const MENU_ROUTES = {
 };
 
 const ROOM_SETTINGS_KEY = 'kakaoRoomSettings';
-const DEFAULT_ROOM_ROWS = [{ id: 1, manager: '', room: '' }];
+const DEFAULT_ROOM_ROWS = [{ id: 1, manager: '' }];
 
 const COMPANY_NAME_FIELDS = [
   '검색된 회사',
@@ -102,6 +102,7 @@ export default function KakaoSendPage() {
   const [messageDraft, setMessageDraft] = React.useState('');
   const [messageTemplate, setMessageTemplate] = React.useState('');
   const [industryFilter, setIndustryFilter] = React.useState('auto');
+  const [selectedManagerId, setSelectedManagerId] = React.useState('');
 
   const handleMenuSelect = React.useCallback((key) => {
     if (!key || key === 'kakao-send') return;
@@ -132,10 +133,39 @@ export default function KakaoSendPage() {
       .map((row) => ({
         id: row.id,
         label: String(row.manager || '').trim(),
-        room: String(row.room || '').trim(),
       }))
       .filter((row) => row.label);
   }, [roomSettings]);
+
+  const managerBuckets = React.useMemo(() => {
+    const map = new Map();
+    const order = [];
+    (splitEntries || []).forEach((entry) => {
+      if (!entry) return;
+      if (entry.managerId === 'exclude') return;
+      const key = entry.managerId && entry.managerId !== 'exclude' ? entry.managerId : 'none';
+      if (!map.has(key)) {
+        let label = '없음';
+        if (key !== 'none') {
+          label = managerOptions.find((option) => String(option.id) === String(key))?.label || '미지정';
+        }
+        map.set(key, { id: key, label, entries: [] });
+        order.push(key);
+      }
+      map.get(key).entries.push(entry);
+    });
+    return order.map((key) => map.get(key));
+  }, [splitEntries, managerOptions]);
+
+  React.useEffect(() => {
+    if (managerBuckets.length === 0) {
+      setSelectedManagerId('');
+      return;
+    }
+    if (!managerBuckets.find((bucket) => bucket.id === selectedManagerId)) {
+      setSelectedManagerId(managerBuckets[0].id);
+    }
+  }, [managerBuckets, selectedManagerId]);
 
   const autoMatchManagers = async (entries, overrideFileType) => {
     if (!window?.electronAPI?.searchManyCompanies) return entries;
@@ -230,7 +260,6 @@ export default function KakaoSendPage() {
             company: `협정안 ${blockIndex + 1}`,
             companyName: '',
             managerId: 'none',
-            chatType: 'chat',
             baseText: block,
             fileType,
           });
@@ -241,7 +270,6 @@ export default function KakaoSendPage() {
             company: line,
             companyName: extractCompanyNameFromLine(line),
             managerId: 'none',
-            chatType: 'chat',
             baseText: block,
             fileType,
           });
@@ -294,7 +322,7 @@ export default function KakaoSendPage() {
   const handleAddRoomRow = () => {
     setRoomSettings((prev) => [
       ...prev,
-      { id: Date.now(), manager: '', room: '' },
+      { id: Date.now(), manager: '' },
     ]);
   };
 
@@ -303,9 +331,8 @@ export default function KakaoSendPage() {
       .map((row) => ({
         id: row.id || Date.now(),
         manager: String(row.manager || '').trim(),
-        room: String(row.room || '').trim(),
       }))
-      .filter((row) => row.manager || row.room);
+      .filter((row) => row.manager);
     const nextRows = normalized.length > 0 ? normalized : DEFAULT_ROOM_ROWS;
     setRoomSettings(nextRows);
     try {
@@ -314,7 +341,7 @@ export default function KakaoSendPage() {
       } else {
         window.localStorage.setItem(ROOM_SETTINGS_KEY, JSON.stringify(nextRows));
       }
-      notify({ type: 'success', message: '담당자 카톡방 설정이 저장되었습니다.' });
+      notify({ type: 'success', message: '담당자 목록이 저장되었습니다.' });
     } catch {}
     setRoomModalOpen(false);
   };
@@ -322,12 +349,6 @@ export default function KakaoSendPage() {
   const handleEntryManagerChange = (entryId, value) => {
     setSplitEntries((prev) =>
       prev.map((entry) => (entry.id === entryId ? { ...entry, managerId: value } : entry))
-    );
-  };
-
-  const handleEntryChatTypeChange = (entryId, value) => {
-    setSplitEntries((prev) =>
-      prev.map((entry) => (entry.id === entryId ? { ...entry, chatType: value } : entry))
     );
   };
 
@@ -378,6 +399,19 @@ export default function KakaoSendPage() {
     setMessageDraft(entry?.baseText || '');
     setMessageTemplate('');
     notify({ type: 'info', message: '기본 메시지로 되돌렸습니다.' });
+  };
+
+  const handleCopyManagerMessages = async (text) => {
+    if (!text) {
+      notify({ type: 'info', message: '복사할 메시지가 없습니다.' });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      notify({ type: 'success', message: '담당자별 메시지를 복사했습니다.' });
+    } catch {
+      notify({ type: 'warning', message: '복사에 실패했습니다. 텍스트를 직접 선택해 주세요.' });
+    }
   };
 
   const handleTemplateChange = (value) => {
@@ -451,7 +485,7 @@ export default function KakaoSendPage() {
                         <option value="sobang">소방</option>
                       </select>
                       <button className="secondary" type="button" onClick={handleAutoMatchClick}>담당자 자동매칭</button>
-                      <button className="secondary" type="button" onClick={() => setRoomModalOpen(true)}>담당자 카톡방 설정</button>
+                      <button className="secondary" type="button" onClick={() => setRoomModalOpen(true)}>담당자 목록 설정</button>
                     </div>
                   </div>
                   <div className="table-wrap" style={{ maxHeight: '320px' }}>
@@ -461,8 +495,6 @@ export default function KakaoSendPage() {
                           <th style={{ width: '70px' }}>순번</th>
                           <th>업체명</th>
                           <th style={{ width: '160px' }}>담당자</th>
-                          <th style={{ width: '120px' }}>채팅 타입</th>
-                          <th style={{ width: '180px' }}>채팅방</th>
                           <th style={{ width: '140px' }}>메시지</th>
                           <th style={{ width: '90px' }}>제거</th>
                         </tr>
@@ -470,7 +502,7 @@ export default function KakaoSendPage() {
                       <tbody>
                         {splitEntries.length === 0 ? (
                           <tr>
-                            <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                            <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                               문자 분리 후 담당자 목록이 표시됩니다.
                             </td>
                           </tr>
@@ -494,26 +526,6 @@ export default function KakaoSendPage() {
                                   ))}
                                 </select>
                               </td>
-                              <td>
-                                <select
-                                  className="filter-input"
-                                  value={entry.chatType || 'chat'}
-                                  onChange={(event) => handleEntryChatTypeChange(entry.id, event.target.value)}
-                                >
-                                  <option value="friend">친구</option>
-                                  <option value="chat">채팅</option>
-                                  <option value="open">오픈채팅</option>
-                                </select>
-                              </td>
-                              <td>
-                                {entry.managerId === 'exclude' || entry.managerId === 'none' ? (
-                                  <span style={{ color: '#94a3b8' }}>-</span>
-                                ) : (
-                                  <span className="chip" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                    {managerOptions.find((row) => String(row.id) === String(entry.managerId))?.room || '채팅방 미지정'}
-                                  </span>
-                                )}
-                              </td>
                               <td style={{ textAlign: 'center' }}>
                                 <button className="secondary" type="button" onClick={() => openMessageModal(entry.id)}>
                                   {messageOverrides[entry.id] ? '수정됨' : '기본'}
@@ -535,6 +547,82 @@ export default function KakaoSendPage() {
                       자동 전송 기능은 제거되었습니다. 카카오톡에서 수동으로 전송해 주세요.
                     </span>
                   </div>
+                  <div className="panel" style={{ marginTop: '16px', background: '#f8fafc' }}>
+                    <h3 className="section-title" style={{ marginTop: 0 }}>담당자별 전송 묶음</h3>
+                    {managerBuckets.length === 0 ? (
+                      <p className="subtext" style={{ margin: 0 }}>
+                        담당자 매칭 후 담당자별 전송 묶음이 표시됩니다.
+                      </p>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {managerBuckets.map((bucket) => (
+                            <button
+                              key={bucket.id}
+                              className={bucket.id === selectedManagerId ? 'primary' : 'secondary'}
+                              type="button"
+                              onClick={() => setSelectedManagerId(bucket.id)}
+                            >
+                              {bucket.label} ({bucket.entries.length})
+                            </button>
+                          ))}
+                        </div>
+                        {managerBuckets.filter((bucket) => bucket.id === selectedManagerId).map((bucket) => {
+                          const combinedText = bucket.entries
+                            .map((entry) => messageOverrides[entry.id] || entry.baseText)
+                            .filter(Boolean)
+                            .join('\n-------------\n');
+                          return (
+                            <div key={bucket.id} style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                                <span style={{ fontWeight: 700, color: '#1f2937' }}>{bucket.label} 전송 목록</span>
+                                <button
+                                  className="secondary"
+                                  type="button"
+                                  onClick={() => handleCopyManagerMessages(combinedText)}
+                                >
+                                  전체 복사
+                                </button>
+                              </div>
+                              <textarea
+                                className="filter-input"
+                                style={{ width: '100%', minHeight: '200px', resize: 'vertical', background: '#ffffff' }}
+                                value={combinedText}
+                                readOnly
+                              />
+                              <div className="table-wrap" style={{ maxHeight: '240px' }}>
+                                <table className="data-table">
+                                  <thead>
+                                    <tr>
+                                      <th style={{ width: '70px' }}>순번</th>
+                                      <th>업체명</th>
+                                      <th style={{ width: '120px' }}>편집</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {bucket.entries.map((entry, index) => (
+                                      <tr key={entry.id}>
+                                        <td>{index + 1}</td>
+                                        <td>{entry.company}</td>
+                                        <td style={{ textAlign: 'center' }}>
+                                          <button className="secondary" type="button" onClick={() => openMessageModal(entry.id)}>
+                                            {messageOverrides[entry.id] ? '수정됨' : '편집'}
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <p className="subtext" style={{ margin: 0 }}>
+                                메시지는 \"-------------\" 구분선으로 나뉘어 표시됩니다.
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -546,7 +634,7 @@ export default function KakaoSendPage() {
         onClose={() => setRoomModalOpen(false)}
         onCancel={() => setRoomModalOpen(false)}
         onSave={handleSaveRoomSettings}
-        title="담당자 카톡방 설정"
+        title="담당자 목록 설정"
         confirmLabel="저장"
         cancelLabel="닫기"
         size="md"
@@ -555,14 +643,13 @@ export default function KakaoSendPage() {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '4px 4px 0' }}>
           <p className="subtext" style={{ margin: 0 }}>
-            담당자별 카카오톡 채팅방 이름을 설정하세요.
+            담당자 이름을 관리합니다.
           </p>
           <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: '120px' }}>담당자</th>
-                  <th>채팅방 이름</th>
+                  <th>담당자</th>
                 </tr>
               </thead>
               <tbody>
@@ -574,14 +661,6 @@ export default function KakaoSendPage() {
                         placeholder="담당자 이름"
                         value={row.manager}
                         onChange={(event) => handleRoomSettingChange(row.id, 'manager', event.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="filter-input"
-                        placeholder="채팅방 이름"
-                        value={row.room}
-                        onChange={(event) => handleRoomSettingChange(row.id, 'room', event.target.value)}
                       />
                     </td>
                   </tr>
