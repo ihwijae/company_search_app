@@ -137,11 +137,21 @@ export default function KakaoSendPage() {
       }
       map.get(key).entries.push(entry);
     });
-    const teamLeadEntries = (splitEntries || []).filter((entry) => {
-      if (!entry || entry.managerId === 'exclude') return false;
-      if (entry.managerId === 'none') return true;
+    const teamLeadEntries = [];
+    const seenNoneBlocks = new Set();
+    (splitEntries || []).forEach((entry) => {
+      if (!entry || entry.managerId === 'exclude') return;
+      if (entry.managerId === 'none') {
+        const key = String(entry.baseText || '').trim() || entry.id;
+        if (seenNoneBlocks.has(key)) return;
+        seenNoneBlocks.add(key);
+        teamLeadEntries.push(entry);
+        return;
+      }
       const normalized = normalizeManagerName(entry.managerId);
-      return !TEAM_LEAD_EXCLUDE.some((name) => normalizeManagerName(name) === normalized);
+      if (!TEAM_LEAD_EXCLUDE.some((name) => normalizeManagerName(name) === normalized)) {
+        teamLeadEntries.push(entry);
+      }
     });
     if (teamLeadEntries.length > 0) {
       map.set(TEAM_LEAD_BUCKET_ID, { id: TEAM_LEAD_BUCKET_ID, label: '[팀장님]', entries: teamLeadEntries });
