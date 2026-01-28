@@ -138,7 +138,8 @@ export default function KakaoSendPage() {
       map.get(key).entries.push(entry);
     });
     const teamLeadEntries = (splitEntries || []).filter((entry) => {
-      if (!entry || entry.managerId === 'none' || entry.managerId === 'exclude') return false;
+      if (!entry || entry.managerId === 'exclude') return false;
+      if (entry.managerId === 'none') return true;
       const normalized = normalizeManagerName(entry.managerId);
       return !TEAM_LEAD_EXCLUDE.some((name) => normalizeManagerName(name) === normalized);
     });
