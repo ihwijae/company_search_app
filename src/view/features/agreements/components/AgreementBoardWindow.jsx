@@ -101,9 +101,9 @@ const computeTechnicianScore = (entry) => {
   return base * career * management * count;
 };
 const formatTechnicianScore = (value, digits = 3) => {
-  const truncated = truncateScore(value, digits);
-  if (truncated == null) return '-';
-  return truncated.toFixed(digits);
+  const rounded = roundTo(value, digits);
+  if (rounded == null) return '-';
+  return rounded.toFixed(digits);
 };
 const industryToFileType = (label) => {
   const normalized = String(label || '').trim();
@@ -3000,7 +3000,7 @@ export default function AgreementBoardWindow({
   const applyTechnicianScoreToTarget = React.useCallback(() => {
     if (!technicianEditable) return;
     if (!technicianTargetOptions.length) return;
-    const resolved = truncateScore(technicianScoreTotal, 3);
+    const resolved = roundTo(technicianScoreTotal, 3);
     if (resolved == null) return;
     setGroupTechnicianScores((prev) => {
       const next = prev.map((row) => row.slice());
