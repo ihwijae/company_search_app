@@ -531,12 +531,28 @@ export default function KakaoSendPage() {
                                   전체 복사
                                 </button>
                               </div>
-                              <textarea
-                                className="filter-input"
-                                style={{ width: '100%', minHeight: '180px', resize: 'vertical', background: '#ffffff' }}
-                                value={combinedText}
-                                readOnly
-                              />
+                              <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', background: '#ffffff', padding: '10px', maxHeight: '360px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {bucket.entries.map((entry, index) => {
+                                  const entryText = (messageOverrides[entry.id] || entry.baseText || '').trim();
+                                  return (
+                                    <div key={entry.id} style={{ border: '1px solid #e5e7eb', borderRadius: '10px', padding: '10px', background: '#fdfdfd', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '13px', color: '#1f2937' }}>
+                                        {entryText || '(비어있음)'}
+                                      </pre>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>{index + 1} / {bucket.entries.length}</span>
+                                        <button
+                                          className="secondary"
+                                          type="button"
+                                          onClick={() => handleCopyManagerMessages(entryText)}
+                                        >
+                                          복사
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                               <p className="subtext" style={{ margin: 0 }}>
                                 메시지는 \"-------------\" 구분선으로 나뉘어 표시됩니다.
                               </p>
