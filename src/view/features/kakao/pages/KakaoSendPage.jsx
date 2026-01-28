@@ -590,30 +590,6 @@ export default function KakaoSendPage() {
                                 value={combinedText}
                                 readOnly
                               />
-                              <div className="table-wrap" style={{ maxHeight: '220px' }}>
-                                <table className="data-table">
-                                  <thead>
-                                    <tr>
-                                      <th style={{ width: '70px' }}>순번</th>
-                                      <th>업체명</th>
-                                      <th style={{ width: '120px' }}>편집</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {bucket.entries.map((entry, index) => (
-                                      <tr key={entry.id}>
-                                        <td>{index + 1}</td>
-                                        <td>{entry.company}</td>
-                                        <td style={{ textAlign: 'center' }}>
-                                          <button className="secondary" type="button" onClick={() => openMessageModal(entry.id)}>
-                                            {messageOverrides[entry.id] ? '수정됨' : '편집'}
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
                               <p className="subtext" style={{ margin: 0 }}>
                                 메시지는 \"-------------\" 구분선으로 나뉘어 표시됩니다.
                               </p>
