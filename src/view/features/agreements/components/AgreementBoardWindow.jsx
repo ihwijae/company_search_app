@@ -100,7 +100,7 @@ const computeTechnicianScore = (entry) => {
   const count = getTechnicianCount(entry.count);
   return base * career * management * count;
 };
-const formatTechnicianScore = (value, digits = 3) => {
+const formatTechnicianScore = (value, digits = 2) => {
   const rounded = roundTo(value, digits);
   if (rounded == null) return '-';
   return rounded.toFixed(digits);
@@ -3000,7 +3000,7 @@ export default function AgreementBoardWindow({
   const applyTechnicianScoreToTarget = React.useCallback(() => {
     if (!technicianEditable) return;
     if (!technicianTargetOptions.length) return;
-    const resolved = roundTo(technicianScoreTotal, 3);
+    const resolved = roundTo(technicianScoreTotal, 2);
     if (resolved == null) return;
     setGroupTechnicianScores((prev) => {
       const next = prev.map((row) => row.slice());
