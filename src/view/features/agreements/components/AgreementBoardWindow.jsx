@@ -6103,7 +6103,7 @@ export default function AgreementBoardWindow({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '120px 120px 120px 80px 1fr auto',
+                gridTemplateColumns: '120px 160px 160px 80px 1fr auto',
                 gap: 10,
                 alignItems: 'center',
                 fontSize: 12,
@@ -6124,7 +6124,7 @@ export default function AgreementBoardWindow({
               key={entry.id}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '120px 120px 120px 80px 1fr auto',
+                gridTemplateColumns: '120px 160px 160px 80px 1fr auto',
                 gap: 10,
                 alignItems: 'center',
               }}
