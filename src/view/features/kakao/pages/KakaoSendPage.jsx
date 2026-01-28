@@ -126,6 +126,7 @@ export default function KakaoSendPage() {
   const managerBuckets = React.useMemo(() => {
     const map = new Map();
     const order = [];
+    const blockMap = new Map();
     (splitEntries || []).forEach((entry) => {
       if (!entry) return;
       if (entry.managerId === 'exclude') return;
@@ -136,29 +137,30 @@ export default function KakaoSendPage() {
         order.push(key);
       }
       map.get(key).entries.push(entry);
+      const blockKey = String(entry.baseText || '').trim() || entry.id;
+      if (!blockMap.has(blockKey)) {
+        blockMap.set(blockKey, []);
+      }
+      blockMap.get(blockKey).push(entry);
     });
     const teamLeadEntries = [];
-    const seenNoneBlocks = new Set();
-    (splitEntries || []).forEach((entry) => {
-      if (!entry || entry.managerId === 'exclude') return;
-      if (entry.managerId === 'none') {
-        const key = String(entry.baseText || '').trim() || entry.id;
-        if (seenNoneBlocks.has(key)) return;
-        seenNoneBlocks.add(key);
-        teamLeadEntries.push(entry);
-        return;
-      }
-      const normalized = normalizeManagerName(entry.managerId);
-      if (!TEAM_LEAD_EXCLUDE.some((name) => normalizeManagerName(name) === normalized)) {
-        teamLeadEntries.push(entry);
-      }
+    blockMap.forEach((entries) => {
+      const shouldInclude = entries.some((entry) => {
+        if (entry.managerId === 'exclude') return false;
+        if (entry.managerId === 'none') return true;
+        const normalized = normalizeManagerName(entry.managerId);
+        return !TEAM_LEAD_EXCLUDE.some((name) => normalizeManagerName(name) === normalized);
+      });
+      if (!shouldInclude) return;
+      const overrideEntry = entries.find((entry) => messageOverrides[entry.id]);
+      teamLeadEntries.push(overrideEntry || entries[0]);
     });
     if (teamLeadEntries.length > 0) {
       map.set(TEAM_LEAD_BUCKET_ID, { id: TEAM_LEAD_BUCKET_ID, label: '[팀장님]', entries: teamLeadEntries });
       order.push(TEAM_LEAD_BUCKET_ID);
     }
     return order.map((key) => map.get(key));
-  }, [splitEntries]);
+  }, [splitEntries, messageOverrides]);
 
   React.useEffect(() => {
     if (managerBuckets.length === 0) {
