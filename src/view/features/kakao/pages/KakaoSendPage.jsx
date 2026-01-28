@@ -455,7 +455,7 @@ export default function KakaoSendPage() {
                 협정문자를 건별로 분리하고 담당자를 자동 매칭합니다. 전송은 수동으로 진행하세요.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.9fr) minmax(0, 1.1fr)', gap: '16px' }}>
-                <div className="panel" style={{ background: '#f8fafc' }}>
+                <div className="panel" style={{ background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0, overflow: 'hidden' }}>
                   <h2 className="section-title" style={{ marginTop: 0 }}>협정문자 입력</h2>
                   <textarea
                     className="filter-input"
@@ -542,13 +542,13 @@ export default function KakaoSendPage() {
                       </tbody>
                     </table>
                   </div>
-                  <div style={{ marginTop: '12px' }}>
+                  <div style={{ marginTop: '4px' }}>
                     <span style={{ color: '#64748b', fontSize: '14px', fontWeight: 700 }}>
                       자동 전송 기능은 제거되었습니다. 카카오톡에서 수동으로 전송해 주세요.
                     </span>
                   </div>
-                  <div className="panel" style={{ marginTop: '16px', background: '#f8fafc' }}>
-                    <h3 className="section-title" style={{ marginTop: 0 }}>담당자별 전송 묶음</h3>
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
+                    <h3 className="section-title" style={{ margin: 0 }}>담당자별 전송 묶음</h3>
                     {managerBuckets.length === 0 ? (
                       <p className="subtext" style={{ margin: 0 }}>
                         담당자 매칭 후 담당자별 전송 묶음이 표시됩니다.
@@ -573,7 +573,7 @@ export default function KakaoSendPage() {
                             .filter(Boolean)
                             .join('\n-------------\n');
                           return (
-                            <div key={bucket.id} style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div key={bucket.id} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                                 <span style={{ fontWeight: 700, color: '#1f2937' }}>{bucket.label} 전송 목록</span>
                                 <button
@@ -586,11 +586,11 @@ export default function KakaoSendPage() {
                               </div>
                               <textarea
                                 className="filter-input"
-                                style={{ width: '100%', minHeight: '200px', resize: 'vertical', background: '#ffffff' }}
+                                style={{ width: '100%', minHeight: '180px', resize: 'vertical', background: '#ffffff' }}
                                 value={combinedText}
                                 readOnly
                               />
-                              <div className="table-wrap" style={{ maxHeight: '240px' }}>
+                              <div className="table-wrap" style={{ maxHeight: '220px' }}>
                                 <table className="data-table">
                                   <thead>
                                     <tr>

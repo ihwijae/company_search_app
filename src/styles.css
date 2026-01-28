@@ -134,6 +134,11 @@ button.primary:hover { background: var(--accent-2); }
 .table-soft th, .table-soft td { padding: 8px; border-bottom: 1px solid #eef2f6; }
 .table-soft thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; }
 .table-soft tr:hover td { background: #f9fafb; }
+.table-wrap { border: 1px solid #e2e8f0; border-radius: 10px; overflow: auto; background: #fff; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th, .data-table td { padding: 8px 10px; border-bottom: 1px solid #eef2f6; text-align: left; vertical-align: middle; }
+.data-table thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; color: #475569; font-weight: 700; }
+.data-table tbody tr:hover td { background: #f9fafb; }
 .details-table { width: 100%; border-collapse: collapse; table-layout: auto; }
 .details-table th, .details-table td { padding: 12px 12px; border-bottom: 1px solid #eef2f6; text-align: left; vertical-align: middle; text-indent: 0; overflow: visible; }
 .details-table thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; color: #475569; font-weight: 700; font-size: 13px; }
