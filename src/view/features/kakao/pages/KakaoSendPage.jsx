@@ -535,7 +535,7 @@ export default function KakaoSendPage() {
                           const combinedText = bucket.entries
                             .map((entry) => messageOverrides[entry.id] || entry.baseText)
                             .filter(Boolean)
-                            .join('\n-------------\n');
+                            .join('\n\n---------------------\n\n');
                           return (
                             <div key={bucket.id} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
