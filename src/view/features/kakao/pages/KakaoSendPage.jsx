@@ -20,8 +20,8 @@ const MENU_ROUTES = {
   upload: '#/upload',
 };
 
-const ROOM_SETTINGS_KEY = 'kakaoRoomSettings';
-const DEFAULT_ROOM_ROWS = [{ id: 1, manager: '' }];
+const TEAM_LEAD_BUCKET_ID = 'team-lead';
+const TEAM_LEAD_EXCLUDE = ['윤명숙', '이동훈', '김희준', '김대열'];
 
 const COMPANY_NAME_FIELDS = [
   '검색된 회사',
@@ -76,6 +76,8 @@ const detectFileTypeFromBlock = (blockText) => {
   return match ? match.key : null;
 };
 
+const normalizeManagerName = (name) => String(name || '').replace(/\s+/g, '').toLowerCase();
+
 const getCandidateName = (candidate) => {
   const raw = getCandidateTextField(candidate, COMPANY_NAME_FIELDS);
   return String(raw || '').trim();
@@ -95,8 +97,6 @@ export default function KakaoSendPage() {
   const { notify } = useFeedback();
   const [draft, setDraft] = React.useState('');
   const [splitEntries, setSplitEntries] = React.useState([]);
-  const [roomModalOpen, setRoomModalOpen] = React.useState(false);
-  const [roomSettings, setRoomSettings] = React.useState(DEFAULT_ROOM_ROWS);
   const [messageOverrides, setMessageOverrides] = React.useState({});
   const [messageModal, setMessageModal] = React.useState({ open: false, entryId: null });
   const [messageDraft, setMessageDraft] = React.useState('');
@@ -110,32 +110,18 @@ export default function KakaoSendPage() {
     if (target) window.location.hash = target;
   }, []);
 
-  React.useEffect(() => {
-    try {
-      if (window?.electronAPI?.stateLoadSync) {
-        const saved = window.electronAPI.stateLoadSync(ROOM_SETTINGS_KEY);
-        if (saved && !saved.__companySearchStateMissing && Array.isArray(saved) && saved.length > 0) {
-          setRoomSettings(saved);
-        }
-        return;
-      }
-      const saved = window.localStorage.getItem(ROOM_SETTINGS_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setRoomSettings(parsed);
-      }
-    } catch {}
-  }, []);
-
   const managerOptions = React.useMemo(() => {
-    return (roomSettings || [])
-      .map((row) => ({
-        id: row.id,
-        label: String(row.manager || '').trim(),
-      }))
-      .filter((row) => row.label);
-  }, [roomSettings]);
+    const order = [];
+    const seen = new Set();
+    (splitEntries || []).forEach((entry) => {
+      if (!entry || entry.managerId === 'none' || entry.managerId === 'exclude') return;
+      const label = String(entry.managerId || '').trim();
+      if (!label || seen.has(label)) return;
+      seen.add(label);
+      order.push({ id: label, label });
+    });
+    return order;
+  }, [splitEntries]);
 
   const managerBuckets = React.useMemo(() => {
     const map = new Map();
@@ -145,17 +131,23 @@ export default function KakaoSendPage() {
       if (entry.managerId === 'exclude') return;
       const key = entry.managerId && entry.managerId !== 'exclude' ? entry.managerId : 'none';
       if (!map.has(key)) {
-        let label = '없음';
-        if (key !== 'none') {
-          label = managerOptions.find((option) => String(option.id) === String(key))?.label || '미지정';
-        }
+        const label = key === 'none' ? '없음' : String(key);
         map.set(key, { id: key, label, entries: [] });
         order.push(key);
       }
       map.get(key).entries.push(entry);
     });
+    const teamLeadEntries = (splitEntries || []).filter((entry) => {
+      if (!entry || entry.managerId === 'none' || entry.managerId === 'exclude') return false;
+      const normalized = normalizeManagerName(entry.managerId);
+      return !TEAM_LEAD_EXCLUDE.some((name) => normalizeManagerName(name) === normalized);
+    });
+    if (teamLeadEntries.length > 0) {
+      map.set(TEAM_LEAD_BUCKET_ID, { id: TEAM_LEAD_BUCKET_ID, label: '[팀장님]', entries: teamLeadEntries });
+      order.push(TEAM_LEAD_BUCKET_ID);
+    }
     return order.map((key) => map.get(key));
-  }, [splitEntries, managerOptions]);
+  }, [splitEntries]);
 
   React.useEffect(() => {
     if (managerBuckets.length === 0) {
@@ -169,12 +161,6 @@ export default function KakaoSendPage() {
 
   const autoMatchManagers = async (entries, overrideFileType) => {
     if (!window?.electronAPI?.searchManyCompanies) return entries;
-    const availableManagers = managerOptions.map((item) => ({
-      id: item.id,
-      label: String(item.label || '').trim(),
-      normalized: String(item.label || '').replace(/\s+/g, '').toLowerCase(),
-    }));
-    if (availableManagers.length === 0) return entries;
     const nameSet = new Set();
     entries.forEach((entry) => {
       if (!entry.companyName) return;
@@ -225,15 +211,10 @@ export default function KakaoSendPage() {
       let matchedId = 'none';
       for (const candidate of pool) {
         const managers = extractManagerNames(candidate);
-        for (const manager of managers) {
-          const normalizedManager = String(manager || '').replace(/\s+/g, '').toLowerCase();
-          const option = availableManagers.find((item) => item.normalized === normalizedManager);
-          if (option) {
-            matchedId = option.id;
-            break;
-          }
+        if (managers.length > 0) {
+          matchedId = String(managers[0] || '').trim() || 'none';
+          break;
         }
-        if (matchedId !== 'none') break;
       }
       console.log('[kakao-auto-match] manager result:', entry.companyName, matchedId);
       return matchedId === 'none' ? entry : { ...entry, managerId: matchedId };
@@ -312,39 +293,6 @@ export default function KakaoSendPage() {
     });
   };
 
-
-  const handleRoomSettingChange = (id, field, value) => {
-    setRoomSettings((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
-    );
-  };
-
-  const handleAddRoomRow = () => {
-    setRoomSettings((prev) => [
-      ...prev,
-      { id: Date.now(), manager: '' },
-    ]);
-  };
-
-  const handleSaveRoomSettings = async () => {
-    const normalized = (roomSettings || [])
-      .map((row) => ({
-        id: row.id || Date.now(),
-        manager: String(row.manager || '').trim(),
-      }))
-      .filter((row) => row.manager);
-    const nextRows = normalized.length > 0 ? normalized : DEFAULT_ROOM_ROWS;
-    setRoomSettings(nextRows);
-    try {
-      if (window?.electronAPI?.stateSave) {
-        await window.electronAPI.stateSave(ROOM_SETTINGS_KEY, nextRows);
-      } else {
-        window.localStorage.setItem(ROOM_SETTINGS_KEY, JSON.stringify(nextRows));
-      }
-      notify({ type: 'success', message: '담당자 목록이 저장되었습니다.' });
-    } catch {}
-    setRoomModalOpen(false);
-  };
 
   const handleEntryManagerChange = (entryId, value) => {
     setSplitEntries((prev) =>
@@ -485,7 +433,6 @@ export default function KakaoSendPage() {
                         <option value="sobang">소방</option>
                       </select>
                       <button className="secondary" type="button" onClick={handleAutoMatchClick}>담당자 자동매칭</button>
-                      <button className="secondary" type="button" onClick={() => setRoomModalOpen(true)}>담당자 목록 설정</button>
                     </div>
                   </div>
                   <div className="table-wrap" style={{ maxHeight: '320px' }}>
@@ -605,50 +552,6 @@ export default function KakaoSendPage() {
           </div>
         </div>
       </div>
-      <Modal
-        open={roomModalOpen}
-        onClose={() => setRoomModalOpen(false)}
-        onCancel={() => setRoomModalOpen(false)}
-        onSave={handleSaveRoomSettings}
-        title="담당자 목록 설정"
-        confirmLabel="저장"
-        cancelLabel="닫기"
-        size="md"
-        disableBackdropClose={false}
-        disableEscClose={false}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '4px 4px 0' }}>
-          <p className="subtext" style={{ margin: 0 }}>
-            담당자 이름을 관리합니다.
-          </p>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>담당자</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roomSettings.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      <input
-                        className="filter-input"
-                        placeholder="담당자 이름"
-                        value={row.manager}
-                        onChange={(event) => handleRoomSettingChange(row.id, 'manager', event.target.value)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button className="secondary" type="button" onClick={handleAddRoomRow}>행 추가</button>
-          </div>
-        </div>
-      </Modal>
       <Modal
         open={messageModal.open}
         onClose={closeMessageModal}
