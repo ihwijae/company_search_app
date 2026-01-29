@@ -99,7 +99,7 @@ const normalizeNoteItem = (item) => {
 
 export default function CompanyNotesPage() {
   const [activeMenu, setActiveMenu] = React.useState('company-notes');
-  const { confirm } = useFeedback();
+  const { confirm, notify } = useFeedback();
   const [draftFilters, setDraftFilters] = React.useState(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState(DEFAULT_FILTERS);
   const [regionOptions, setRegionOptions] = React.useState(['전체']);
@@ -332,22 +332,22 @@ export default function CompanyNotesPage() {
 
   const handleExport = async () => {
     if (!window?.electronAPI?.companyNotesExport) {
-      alert('내보내기 기능을 사용할 수 없습니다.');
+      notify({ type: 'error', message: '내보내기 기능을 사용할 수 없습니다.' });
       return;
     }
     try {
       const payload = { version: 1, exportedAt: Date.now(), items: rows };
       const result = await window.electronAPI.companyNotesExport(payload);
       if (!result?.success) throw new Error(result?.message || '내보내기 실패');
-      alert('업체 특이사항을 내보냈습니다.');
+      notify({ type: 'success', message: '업체 특이사항을 내보냈습니다.' });
     } catch (err) {
-      alert(err?.message || '내보내기에 실패했습니다.');
+      notify({ type: 'error', message: err?.message || '내보내기에 실패했습니다.' });
     }
   };
 
   const handleImport = async () => {
     if (!window?.electronAPI?.companyNotesImport) {
-      alert('가져오기 기능을 사용할 수 없습니다.');
+      notify({ type: 'error', message: '가져오기 기능을 사용할 수 없습니다.' });
       return;
     }
     const confirmed = window.confirm('가져오기를 실행하면 현재 특이사항이 덮어써집니다. 계속할까요?');
@@ -359,9 +359,9 @@ export default function CompanyNotesPage() {
       if (!Array.isArray(items)) throw new Error('가져온 데이터 형식이 올바르지 않습니다.');
       const normalized = items.map(normalizeNoteItem).filter(Boolean);
       setRows(normalized);
-      alert('업체 특이사항을 가져왔습니다.');
+      notify({ type: 'success', message: '업체 특이사항을 가져왔습니다.' });
     } catch (err) {
-      alert(err?.message || '가져오기에 실패했습니다.');
+      notify({ type: 'error', message: err?.message || '가져오기에 실패했습니다.' });
     }
   };
 
