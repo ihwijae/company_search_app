@@ -96,7 +96,13 @@ export default function CompanyNotesPage() {
         const result = await window.electronAPI.getRegions(draftFilters.industry);
         const regions = Array.isArray(result?.data) ? result.data : [];
         if (!mounted) return;
-        const unique = Array.from(new Set(regions.map((name) => String(name || '').trim()).filter(Boolean)));
+        const unique = Array.from(
+          new Set(
+            regions
+              .map((name) => String(name || '').trim())
+              .filter((name) => name && name !== '전체')
+          )
+        );
         setRegionOptions(['전체', ...unique]);
       } catch {
         if (mounted) setRegionOptions(['전체']);
