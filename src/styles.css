@@ -229,7 +229,7 @@ button.primary:hover { background: var(--accent-2); }
   gap: 16px;
   padding: 18px;
   background: #f5f6fa;
-  font-size: 18px;
+  font-size: 22px;
 }
 .company-notes-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .company-notes-header h2 { margin: 0 0 6px; font-size: 20px; color: #1f2937; }
