@@ -393,9 +393,9 @@ export default function CompanyNotesPage() {
       notify({ type: 'error', message: '업체 조회 기능을 사용할 수 없습니다.' });
       return;
     }
-    const targets = rows.filter((row) => !Array.isArray(row.managerNames) || row.managerNames.length === 0);
+    const targets = rows;
     if (targets.length === 0) {
-      notify({ type: 'info', message: '갱신할 담당자 배지가 없습니다.' });
+      notify({ type: 'info', message: '갱신할 항목이 없습니다.' });
       return;
     }
     showLoading({ title: '담당자 배지 갱신 중', message: '업체 DB를 확인하고 있습니다.' });
@@ -417,11 +417,15 @@ export default function CompanyNotesPage() {
             if (matched) picked = matched;
           }
           const managers = extractManagerNames(picked || {});
-          if (managers.length === 0) continue;
           const index = updatedRows.findIndex((item) => item.id === row.id);
           if (index >= 0) {
-            updatedRows[index] = { ...updatedRows[index], managerNames: managers };
-            updatedCount += 1;
+            const prevManagers = Array.isArray(updatedRows[index].managerNames) ? updatedRows[index].managerNames : [];
+            const nextManagers = managers.length > 0 ? managers : prevManagers;
+            const changed = JSON.stringify(prevManagers) !== JSON.stringify(nextManagers);
+            if (changed) {
+              updatedRows[index] = { ...updatedRows[index], managerNames: nextManagers };
+              updatedCount += 1;
+            }
           }
         } catch {}
       }
