@@ -22,7 +22,7 @@ const SOLO_OPTIONS = [
   { value: 'allow', label: '단독이여도가능' },
 ];
 
-const DEFAULT_FILTERS = { industry: 'all', region: '전체', name: '', bizNo: '' };
+const DEFAULT_FILTERS = { industry: 'all', region: '전체', name: '', bizNo: '', ownerOnly: false };
 const STORAGE_KEY = 'company-notes:data';
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
@@ -75,6 +75,7 @@ const normalizeNoteItem = (item) => {
     bizNo: String(item.bizNo || '').trim(),
     soloStatus: SOLO_OPTIONS.some((opt) => opt.value === item.soloStatus) ? item.soloStatus : 'none',
     memo: String(item.memo || '').trim(),
+    ownerManaged: Boolean(item.ownerManaged),
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
   };
@@ -96,6 +97,7 @@ export default function CompanyNotesPage() {
     bizNo: '',
     soloStatus: 'none',
     memo: '',
+    ownerManaged: false,
   });
   const [companyPickerOpen, setCompanyPickerOpen] = React.useState(false);
   const saveTimerRef = React.useRef(null);
@@ -150,11 +152,14 @@ export default function CompanyNotesPage() {
   const filteredRows = React.useMemo(() => {
     const nameKey = normalizeText(filters.name);
     const bizKey = normalizeDigits(filters.bizNo);
-    return rows.filter((row) => {
-    if (filters.industry !== 'all' && row.industry !== INDUSTRY_OPTIONS.find((i) => i.value === filters.industry)?.label) {
-      return false;
-    }
+    const filtered = rows.filter((row) => {
+      if (filters.industry !== 'all' && row.industry !== INDUSTRY_OPTIONS.find((i) => i.value === filters.industry)?.label) {
+        return false;
+      }
       if (filters.region && filters.region !== '전체' && row.region !== filters.region) {
+        return false;
+      }
+      if (filters.ownerOnly && !row.ownerManaged) {
         return false;
       }
       if (nameKey && !normalizeText(row.name).includes(nameKey)) {
@@ -165,6 +170,15 @@ export default function CompanyNotesPage() {
       }
       return true;
     });
+    const sorted = [...filtered].sort((a, b) => {
+      const aOwner = a.ownerManaged ? 1 : 0;
+      const bOwner = b.ownerManaged ? 1 : 0;
+      if (aOwner !== bOwner) return bOwner - aOwner;
+      const aTime = a.updatedAt || a.createdAt || 0;
+      const bTime = b.updatedAt || b.createdAt || 0;
+      return bTime - aTime;
+    });
+    return sorted;
   }, [filters, rows]);
 
   const editorRegionOptions = React.useMemo(() => {
@@ -199,6 +213,7 @@ export default function CompanyNotesPage() {
       bizNo: '',
       soloStatus: 'none',
       memo: '',
+      ownerManaged: false,
     });
     setEditorOpen(true);
   };
@@ -212,6 +227,7 @@ export default function CompanyNotesPage() {
       bizNo: row.bizNo || '',
       soloStatus: row.soloStatus || 'none',
       memo: row.memo || '',
+      ownerManaged: Boolean(row.ownerManaged),
       id: row.id,
     });
     setEditorOpen(true);
@@ -233,6 +249,7 @@ export default function CompanyNotesPage() {
         bizNo: editorForm.bizNo,
         soloStatus: editorForm.soloStatus,
         memo: editorForm.memo,
+        ownerManaged: Boolean(editorForm.ownerManaged),
         createdAt: now,
         updatedAt: now,
       };
@@ -248,6 +265,7 @@ export default function CompanyNotesPage() {
             bizNo: editorForm.bizNo,
             soloStatus: editorForm.soloStatus,
             memo: editorForm.memo,
+            ownerManaged: Boolean(editorForm.ownerManaged),
             updatedAt: now,
           }
           : row
@@ -390,6 +408,17 @@ export default function CompanyNotesPage() {
                   <input type="text" value={draftFilters.bizNo} onChange={handleFilterChange('bizNo')} className="filter-input" placeholder="사업자번호 입력" />
                 </div>
                 <div className="filter-item">
+                  <label>대표님업체</label>
+                  <label className={`notes-owner-filter ${draftFilters.ownerOnly ? 'active' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={draftFilters.ownerOnly}
+                      onChange={(e) => setDraftFilters((prev) => ({ ...prev, ownerOnly: e.target.checked }))}
+                    />
+                    대표님업체만 보기
+                  </label>
+                </div>
+                <div className="filter-item">
                   <label>&nbsp;</label>
                   <button type="button" className="search-button" onClick={applyFilters}>검색</button>
                 </div>
@@ -418,9 +447,12 @@ export default function CompanyNotesPage() {
                   </thead>
                   <tbody>
                     {filteredRows.map((row, idx) => (
-                      <tr key={row.id}>
+                      <tr key={row.id} className={row.ownerManaged ? 'notes-row-owner' : ''}>
                         <td>{idx + 1}</td>
-                        <td className="notes-name-cell">{row.name}</td>
+                        <td className="notes-name-cell">
+                          <span>{row.name}</span>
+                          {row.ownerManaged && <span className="notes-owner-badge">대표님업체</span>}
+                        </td>
                         <td>
                           <span className={`notes-industry notes-industry-${String(row.industry || '').trim()}`}>
                             {row.industry}
@@ -445,7 +477,7 @@ export default function CompanyNotesPage() {
                     ))}
                     {filteredRows.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="notes-empty">등록된 특이사항이 없습니다.</td>
+                        <td colSpan={9} className="notes-empty">등록된 특이사항이 없습니다.</td>
                       </tr>
                     )}
                   </tbody>
@@ -545,6 +577,17 @@ export default function CompanyNotesPage() {
                       {option.label}
                     </label>
                   ))}
+                </div>
+                <div className="notes-owner-toggle">
+                  <label className={`notes-owner-chip ${editorForm.ownerManaged ? 'active' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={editorForm.ownerManaged}
+                      onChange={(e) => setEditorForm((prev) => ({ ...prev, ownerManaged: e.target.checked }))}
+                    />
+                    대표님업체
+                  </label>
+                  <span className="notes-owner-help">대표님이 관리하는 업체는 강조 표시됩니다.</span>
                 </div>
               </div>
 

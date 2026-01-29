@@ -243,6 +243,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 .company-notes-table { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .notes-name-cell { font-weight: 700; color: #111827; }
+.notes-name-cell { display: flex; align-items: center; gap: 8px; }
 .notes-region-cell { font-weight: 700; color: #1f2937; }
 .notes-industry {
   display: inline-flex;
@@ -259,12 +260,14 @@ button.primary:hover { background: var(--accent-2); }
 .notes-industry-통신 { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
 .notes-industry-소방 { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
 .notes-memo {
-  max-width: 320px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 380px;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: initial;
   color: #475569;
   font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
 }
 .notes-empty { text-align: center; padding: 28px 12px; color: #94a3b8; }
 .notes-badge {
@@ -279,6 +282,24 @@ button.primary:hover { background: var(--accent-2); }
 .notes-badge-exclude { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 .notes-badge-allow { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
 .notes-badge-none { background: #e2e8f0; color: #475569; border: 1px solid #cbd5f5; }
+.notes-owner-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #fde68a;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+.notes-row-owner td {
+  background: #fff7ed;
+}
+.notes-row-owner:hover td {
+  background: #ffedd5;
+}
 
 .notes-modal-backdrop {
   position: fixed;
@@ -378,6 +399,53 @@ button.primary:hover { background: var(--accent-2); }
 .notes-textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16); }
 .notes-input-inline { display: flex; gap: 8px; align-items: center; }
 .notes-input-inline .filter-input { flex: 1; }
+.notes-owner-toggle {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.notes-owner-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #fcd34d;
+  background: #fff7ed;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.notes-owner-chip input { display: none; }
+.notes-owner-chip.active {
+  background: #fde68a;
+  border-color: #f59e0b;
+}
+.notes-owner-help {
+  font-size: 12px;
+  color: #6b7280;
+}
+.notes-owner-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #fde68a;
+  background: #fff7ed;
+  color: #92400e;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.notes-owner-filter input { display: none; }
+.notes-owner-filter.active {
+  background: #fde68a;
+  border-color: #f59e0b;
+}
 
 @keyframes notes-modal-in {
   from { transform: translateY(16px) scale(0.98); opacity: 0; }
