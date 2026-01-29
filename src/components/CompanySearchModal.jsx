@@ -12,6 +12,24 @@ const FILE_TYPE_LABELS = {
   sobang: '소방',
 };
 
+const normalizeFileType = (value) => {
+  const token = String(value ?? '').trim();
+  if (!token) return '';
+  const direct = ({
+    eung: 'eung',
+    전기: 'eung',
+    tongsin: 'tongsin',
+    통신: 'tongsin',
+    sobang: 'sobang',
+    소방: 'sobang',
+    all: 'all',
+    전체: 'all',
+  })[token];
+  if (direct) return direct;
+  const lowered = token.toLowerCase();
+  return ({ eung: 'eung', tongsin: 'tongsin', sobang: 'sobang', all: 'all' })[lowered] || '';
+};
+
 export default function CompanySearchModal({
   open,
   fileType,
@@ -38,7 +56,8 @@ export default function CompanySearchModal({
     try {
       const query = overrideQuery !== undefined ? String(overrideQuery) : q;
       const criteria = { name: String(query || '').trim() };
-      const effectiveType = fileType || (allowAll ? 'all' : '');
+      const normalizedType = normalizeFileType(fileType);
+      const effectiveType = normalizedType || (allowAll ? 'all' : '');
       if (!effectiveType) {
         throw new Error('공종을 먼저 선택하세요.');
       }
