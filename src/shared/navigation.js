@@ -6,6 +6,7 @@ export const BASE_ROUTES = {
   settings: '#/settings',
   autoAgreement: '#/auto-agreement',
   bidResult: '#/bid-result',
+  companyNotes: '#/company-notes',
 };
 
 export const AGREEMENT_GROUPS = [

@@ -447,6 +447,7 @@ function AgreementsPageInner() {
           if (k === 'excel-helper') { window.location.hash = '#/excel-helper'; return; }
           if (k === 'bid-result') { window.location.hash = '#/bid-result'; return; }
           if (k === 'kakao-send') { window.location.hash = '#/kakao-send'; return; }
+          if (k === 'company-notes') { window.location.hash = '#/company-notes'; return; }
           if (k === 'search') window.location.hash = '#/search';
           if (k === 'settings') window.location.hash = '#/settings';
         }}

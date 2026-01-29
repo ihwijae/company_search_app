@@ -5,6 +5,7 @@ import emailIcon from '../assets/email.png';
 import autoIcon from '../assets/auto.png';
 import exchangeIcon from '../assets/교환.png';
 import kakaoIcon from '../assets/kakao.png';
+import notesIcon from '../../특이사항아이콘.png';
 
 export default function Sidebar({ active, onSelect, fileStatuses, collapsed = true }) {
   const anyLoaded = !!(fileStatuses?.eung || fileStatuses?.tongsin || fileStatuses?.sobang);
@@ -15,6 +16,17 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
 
   const navItems = [
     { key: 'search', label: '검색', icon: '🔍' },
+    {
+      key: 'company-notes',
+      label: '업체별특이사항',
+      icon: (
+        <img
+          src={notesIcon}
+          alt="업체별특이사항"
+          style={{ width: 22, height: 22, objectFit: 'contain' }}
+        />
+      ),
+    },
     { key: 'records', label: '실적', icon: '📊' },
     {
       key: 'mail',

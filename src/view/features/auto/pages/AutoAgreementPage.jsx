@@ -16,6 +16,7 @@ const ROUTE_HASHES = {
   'excel-helper': '#/excel-helper',
   'bid-result': '#/bid-result',
   'kakao-send': '#/kakao-send',
+  'company-notes': '#/company-notes',
   settings: BASE_ROUTES.settings,
   upload: '#/upload',
 };

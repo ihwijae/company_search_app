@@ -461,6 +461,8 @@ function MailAutomationPageInner() {
       window.location.hash = '#/bid-result';
     } else if (key === 'kakao-send') {
       window.location.hash = '#/kakao-send';
+    } else if (key === 'company-notes') {
+      window.location.hash = '#/company-notes';
     } else if (key === 'settings') {
       window.location.hash = '#/settings';
     } else if (key === 'mail') {

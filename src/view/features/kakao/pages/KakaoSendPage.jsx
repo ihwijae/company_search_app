@@ -16,6 +16,7 @@ const MENU_ROUTES = {
   mail: '#/mail',
   'excel-helper': '#/excel-helper',
   'bid-result': '#/bid-result',
+  'company-notes': '#/company-notes',
   settings: '#/settings',
   upload: '#/upload',
 };

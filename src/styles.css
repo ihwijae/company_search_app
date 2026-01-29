@@ -218,6 +218,96 @@ button.primary:hover { background: var(--accent-2); }
 .excel-helper-stage .excel-helper-shell { height: 100%; }
 .excel-helper-section { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
 .excel-helper-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
+
+/* --- 업체별 특이사항 --- */
+.company-notes-stage { overflow: hidden; }
+.company-notes-shell {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  background: #f5f6fa;
+}
+.company-notes-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.company-notes-header h2 { margin: 0 0 6px; font-size: 20px; color: #1f2937; }
+.company-notes-header p { margin: 0; color: #6b7280; font-size: 13px; }
+.company-notes-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.company-notes-filters {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.company-notes-table { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.notes-name-cell { font-weight: 700; color: #111827; }
+.notes-memo {
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #475569;
+  font-size: 13px;
+}
+.notes-empty { text-align: center; padding: 28px 12px; color: #94a3b8; }
+.notes-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.notes-badge-exclude { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+.notes-badge-allow { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.notes-badge-none { background: #e2e8f0; color: #475569; border: 1px solid #cbd5f5; }
+
+.notes-editor {
+  max-width: 760px;
+  width: min(92vw, 760px);
+  border-radius: 16px;
+  padding: 18px;
+}
+.notes-editor-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.notes-editor-header h3 { margin: 0; font-size: 18px; }
+.notes-editor-body { margin-top: 12px; display: flex; flex-direction: column; gap: 16px; }
+.notes-editor-actions { margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; }
+.notes-section { display: flex; flex-direction: column; gap: 8px; }
+.notes-solo-options { display: flex; gap: 8px; flex-wrap: wrap; }
+.notes-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+}
+.notes-radio input { display: none; }
+.notes-radio.active {
+  border-color: #2563eb;
+  background: #e0ecff;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+.notes-textarea {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  padding: 10px 12px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 14px;
+}
+.notes-textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16); }
+.notes-input-inline { display: flex; gap: 8px; align-items: center; }
+.notes-input-inline .filter-input { flex: 1; }
 .excel-helper-search-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .excel-helper-selected { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
 .excel-helper-share-input { min-width: 150px; }
