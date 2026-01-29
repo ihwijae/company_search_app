@@ -448,13 +448,14 @@ export default function CompanyNotesPage() {
         </div>
       )}
 
-        <CompanySearchModal
-          open={companyPickerOpen}
+      <CompanySearchModal
+        open={companyPickerOpen}
         fileType={normalizeIndustryValue(editorForm.industry)}
-          onClose={() => setCompanyPickerOpen(false)}
-          onPick={handleCompanyPick}
+        initialQuery={editorForm.name}
+        onClose={() => setCompanyPickerOpen(false)}
+        onPick={handleCompanyPick}
         allowAll={false}
-        />
+      />
     </div>
   );
 }
