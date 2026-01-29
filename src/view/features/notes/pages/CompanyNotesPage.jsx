@@ -92,6 +92,7 @@ const normalizeNoteItem = (item) => {
     memo: String(item.memo || '').trim(),
     inquiryStatus: INQUIRY_OPTIONS.some((opt) => opt.value === item.inquiryStatus) ? item.inquiryStatus : 'none',
     ownerManaged: Boolean(item.ownerManaged),
+    ownerBulkAppend: Boolean(item.ownerBulkAppend),
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
   };
@@ -115,6 +116,7 @@ export default function CompanyNotesPage() {
     memo: '',
     inquiryStatus: 'none',
     ownerManaged: false,
+    ownerBulkAppend: false,
   });
   const [companyPickerOpen, setCompanyPickerOpen] = React.useState(false);
   const [lastEditorDefaults, setLastEditorDefaults] = React.useState({
@@ -236,6 +238,7 @@ export default function CompanyNotesPage() {
       memo: '',
       inquiryStatus: 'none',
       ownerManaged: false,
+      ownerBulkAppend: false,
     });
     setEditorOpen(true);
   };
@@ -251,6 +254,7 @@ export default function CompanyNotesPage() {
       memo: row.memo || '',
       inquiryStatus: row.inquiryStatus || 'none',
       ownerManaged: Boolean(row.ownerManaged),
+      ownerBulkAppend: false,
       id: row.id,
     });
     setEditorOpen(true);
@@ -267,6 +271,16 @@ export default function CompanyNotesPage() {
       industry: editorForm.industry,
       region: editorForm.region,
     });
+    const bulkText = String(editorForm.memo || '').trim();
+    const shouldBulkAppend = editorForm.ownerBulkAppend && bulkText;
+    const appendMemo = (memo) => {
+      const base = String(memo || '').trim();
+      if (!bulkText) return base;
+      if (base.includes(bulkText)) return base;
+      if (!base) return bulkText;
+      return `${base}\n${bulkText}`;
+    };
+
     if (editorMode === 'create') {
       const next = {
         id: `note-${now}-${Math.random().toString(36).slice(2, 7)}`,
@@ -281,25 +295,41 @@ export default function CompanyNotesPage() {
         createdAt: now,
         updatedAt: now,
       };
-      setRows((prev) => [next, ...prev]);
+      setRows((prev) => {
+        const base = [next, ...prev];
+        if (!shouldBulkAppend) return base;
+        return base.map((row) => (
+          row.ownerManaged
+            ? { ...row, memo: appendMemo(row.memo), updatedAt: now }
+            : row
+        ));
+      });
       notify({ type: 'success', message: '특이사항을 등록했습니다.' });
     } else {
-      setRows((prev) => prev.map((row) => (
-        row.id === editorForm.id
-          ? {
-            ...row,
-            name: editorForm.name,
-            industry: industryLabel,
-            region: editorForm.region,
-            bizNo: editorForm.bizNo,
-            soloStatus: editorForm.soloStatus,
-            memo: editorForm.memo,
-            inquiryStatus: editorForm.inquiryStatus,
-            ownerManaged: Boolean(editorForm.ownerManaged),
-            updatedAt: now,
-          }
-          : row
-      )));
+      setRows((prev) => {
+        const updated = prev.map((row) => (
+          row.id === editorForm.id
+            ? {
+              ...row,
+              name: editorForm.name,
+              industry: industryLabel,
+              region: editorForm.region,
+              bizNo: editorForm.bizNo,
+              soloStatus: editorForm.soloStatus,
+              memo: editorForm.memo,
+              inquiryStatus: editorForm.inquiryStatus,
+              ownerManaged: Boolean(editorForm.ownerManaged),
+              updatedAt: now,
+            }
+            : row
+        ));
+        if (!shouldBulkAppend) return updated;
+        return updated.map((row) => (
+          row.ownerManaged
+            ? { ...row, memo: appendMemo(row.memo), updatedAt: now }
+            : row
+        ));
+      });
       notify({ type: 'success', message: '특이사항을 수정했습니다.' });
     }
     setEditorOpen(false);
@@ -650,6 +680,14 @@ export default function CompanyNotesPage() {
                     대표님업체
                   </label>
                   <span className="notes-owner-help">대표님이 관리하는 업체는 강조 표시됩니다.</span>
+                  <label className={`notes-owner-chip ${editorForm.ownerBulkAppend ? 'active' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={editorForm.ownerBulkAppend}
+                      onChange={(e) => setEditorForm((prev) => ({ ...prev, ownerBulkAppend: e.target.checked }))}
+                    />
+                    대표님업체 공통 수정
+                  </label>
                 </div>
               </div>
 
