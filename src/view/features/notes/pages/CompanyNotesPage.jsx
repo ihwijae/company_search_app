@@ -26,6 +26,7 @@ const INQUIRY_OPTIONS = [
   { value: 'ask', label: '물어보고 사용' },
   { value: 'free', label: '안물어보고 사용가능' },
 ];
+const COMMON_PREFIX = '공통: ';
 
 const DEFAULT_FILTERS = { industry: 'all', region: '전체', name: '', bizNo: '', ownerOnly: false };
 const STORAGE_KEY = 'company-notes:data';
@@ -92,10 +93,28 @@ const normalizeNoteItem = (item) => {
     memo: String(item.memo || '').trim(),
     inquiryStatus: INQUIRY_OPTIONS.some((opt) => opt.value === item.inquiryStatus) ? item.inquiryStatus : 'none',
     ownerManaged: Boolean(item.ownerManaged),
-    ownerBulkAppend: Boolean(item.ownerBulkAppend),
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
   };
+};
+
+const buildCommonLine = (text) => `${COMMON_PREFIX}${text}`;
+
+const removeCommonLine = (memo, text) => {
+  if (!text) return String(memo || '').trim();
+  const target = buildCommonLine(text);
+  const parts = String(memo || '').split('\n').map((line) => line.trim());
+  const filtered = parts.filter((line) => line && line !== target);
+  return filtered.join('\n').trim();
+};
+
+const appendCommonLine = (memo, text) => {
+  if (!text) return String(memo || '').trim();
+  const target = buildCommonLine(text);
+  const base = String(memo || '').trim();
+  if (!base) return target;
+  if (base.split('\n').some((line) => line.trim() === target)) return base;
+  return `${base}\n${target}`;
 };
 
 export default function CompanyNotesPage() {
@@ -116,13 +135,15 @@ export default function CompanyNotesPage() {
     memo: '',
     inquiryStatus: 'none',
     ownerManaged: false,
-    ownerBulkAppend: false,
   });
   const [companyPickerOpen, setCompanyPickerOpen] = React.useState(false);
   const [lastEditorDefaults, setLastEditorDefaults] = React.useState({
     industry: 'eung',
     region: '',
   });
+  const [ownerCommonModalOpen, setOwnerCommonModalOpen] = React.useState(false);
+  const [ownerCommonMemo, setOwnerCommonMemo] = React.useState('');
+  const [ownerCommonDraft, setOwnerCommonDraft] = React.useState('');
   const saveTimerRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -156,21 +177,26 @@ export default function CompanyNotesPage() {
       setRows(normalized);
       return;
     }
-    if (stored && typeof stored === 'object' && Array.isArray(stored.items)) {
-      const normalized = stored.items.map(normalizeNoteItem).filter(Boolean);
-      setRows(normalized);
+    if (stored && typeof stored === 'object') {
+      if (Array.isArray(stored.items)) {
+        const normalized = stored.items.map(normalizeNoteItem).filter(Boolean);
+        setRows(normalized);
+      }
+      if (typeof stored.ownerCommonMemo === 'string') {
+        setOwnerCommonMemo(stored.ownerCommonMemo);
+      }
     }
   }, []);
 
   React.useEffect(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      savePersisted(STORAGE_KEY, { version: 1, updatedAt: Date.now(), items: rows });
+      savePersisted(STORAGE_KEY, { version: 1, updatedAt: Date.now(), items: rows, ownerCommonMemo });
     }, 300);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [rows]);
+  }, [rows, ownerCommonMemo]);
 
   const filteredRows = React.useMemo(() => {
     const nameKey = normalizeText(filters.name);
@@ -238,7 +264,6 @@ export default function CompanyNotesPage() {
       memo: '',
       inquiryStatus: 'none',
       ownerManaged: false,
-      ownerBulkAppend: false,
     });
     setEditorOpen(true);
   };
@@ -254,7 +279,6 @@ export default function CompanyNotesPage() {
       memo: row.memo || '',
       inquiryStatus: row.inquiryStatus || 'none',
       ownerManaged: Boolean(row.ownerManaged),
-      ownerBulkAppend: false,
       id: row.id,
     });
     setEditorOpen(true);
@@ -271,15 +295,6 @@ export default function CompanyNotesPage() {
       industry: editorForm.industry,
       region: editorForm.region,
     });
-    const bulkText = String(editorForm.memo || '').trim();
-    const shouldBulkAppend = editorForm.ownerBulkAppend && bulkText;
-    const appendMemo = (memo) => {
-      const base = String(memo || '').trim();
-      if (!bulkText) return base;
-      if (base.includes(bulkText)) return base;
-      if (!base) return bulkText;
-      return `${base}\n${bulkText}`;
-    };
 
     if (editorMode === 'create') {
       const next = {
@@ -295,41 +310,25 @@ export default function CompanyNotesPage() {
         createdAt: now,
         updatedAt: now,
       };
-      setRows((prev) => {
-        const base = [next, ...prev];
-        if (!shouldBulkAppend) return base;
-        return base.map((row) => (
-          row.ownerManaged
-            ? { ...row, memo: appendMemo(row.memo), updatedAt: now }
-            : row
-        ));
-      });
+      setRows((prev) => [next, ...prev]);
       notify({ type: 'success', message: '특이사항을 등록했습니다.' });
     } else {
-      setRows((prev) => {
-        const updated = prev.map((row) => (
-          row.id === editorForm.id
-            ? {
-              ...row,
-              name: editorForm.name,
-              industry: industryLabel,
-              region: editorForm.region,
-              bizNo: editorForm.bizNo,
-              soloStatus: editorForm.soloStatus,
-              memo: editorForm.memo,
-              inquiryStatus: editorForm.inquiryStatus,
-              ownerManaged: Boolean(editorForm.ownerManaged),
-              updatedAt: now,
-            }
-            : row
-        ));
-        if (!shouldBulkAppend) return updated;
-        return updated.map((row) => (
-          row.ownerManaged
-            ? { ...row, memo: appendMemo(row.memo), updatedAt: now }
-            : row
-        ));
-      });
+      setRows((prev) => prev.map((row) => (
+        row.id === editorForm.id
+          ? {
+            ...row,
+            name: editorForm.name,
+            industry: industryLabel,
+            region: editorForm.region,
+            bizNo: editorForm.bizNo,
+            soloStatus: editorForm.soloStatus,
+            memo: editorForm.memo,
+            inquiryStatus: editorForm.inquiryStatus,
+            ownerManaged: Boolean(editorForm.ownerManaged),
+            updatedAt: now,
+          }
+          : row
+      )));
       notify({ type: 'success', message: '특이사항을 수정했습니다.' });
     }
     setEditorOpen(false);
@@ -346,6 +345,31 @@ export default function CompanyNotesPage() {
     });
     if (!ok) return;
     setRows((prev) => prev.filter((row) => row.id !== rowId));
+  };
+
+  const openOwnerCommonModal = () => {
+    setOwnerCommonDraft(ownerCommonMemo || '');
+    setOwnerCommonModalOpen(true);
+  };
+
+  const applyOwnerCommonMemo = () => {
+    const nextText = String(ownerCommonDraft || '').trim();
+    const prevText = String(ownerCommonMemo || '').trim();
+    const now = Date.now();
+    setRows((prev) => prev.map((row) => {
+      if (!row.ownerManaged) return row;
+      let memo = row.memo;
+      if (prevText) memo = removeCommonLine(memo, prevText);
+      if (nextText) memo = appendCommonLine(memo, nextText);
+      return { ...row, memo, updatedAt: now };
+    }));
+    setOwnerCommonMemo(nextText);
+    setOwnerCommonModalOpen(false);
+    if (!nextText && prevText) {
+      notify({ type: 'success', message: '대표님업체 공통 문구를 삭제했습니다.' });
+      return;
+    }
+    notify({ type: 'success', message: '대표님업체 공통 문구를 적용했습니다.' });
   };
 
   const handleCompanyPick = (payload) => {
@@ -368,7 +392,7 @@ export default function CompanyNotesPage() {
       return;
     }
     try {
-      const payload = { version: 1, exportedAt: Date.now(), items: rows };
+      const payload = { version: 1, exportedAt: Date.now(), items: rows, ownerCommonMemo };
       const result = await window.electronAPI.companyNotesExport(payload);
       if (!result?.success) throw new Error(result?.message || '내보내기 실패');
       notify({ type: 'success', message: '업체 특이사항을 내보냈습니다.' });
@@ -397,6 +421,9 @@ export default function CompanyNotesPage() {
       if (!Array.isArray(items)) throw new Error('가져온 데이터 형식이 올바르지 않습니다.');
       const normalized = items.map(normalizeNoteItem).filter(Boolean);
       setRows(normalized);
+      if (typeof result?.data?.ownerCommonMemo === 'string') {
+        setOwnerCommonMemo(result.data.ownerCommonMemo);
+      }
       notify({ type: 'success', message: '업체 특이사항을 가져왔습니다.' });
     } catch (err) {
       notify({ type: 'error', message: err?.message || '가져오기에 실패했습니다.' });
@@ -443,6 +470,7 @@ export default function CompanyNotesPage() {
               </div>
               <div className="company-notes-actions">
                 <button type="button" className="btn-soft" onClick={openCreate}>특이사항 등록</button>
+                <button type="button" className="btn-soft" onClick={openOwnerCommonModal}>대표님업체 공통수정</button>
                 <button type="button" className="btn-muted" onClick={handleImport}>가져오기</button>
                 <button type="button" className="btn-muted" onClick={handleExport}>내보내기</button>
               </div>
@@ -680,14 +708,6 @@ export default function CompanyNotesPage() {
                     대표님업체
                   </label>
                   <span className="notes-owner-help">대표님이 관리하는 업체는 강조 표시됩니다.</span>
-                  <label className={`notes-owner-chip ${editorForm.ownerBulkAppend ? 'active' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={editorForm.ownerBulkAppend}
-                      onChange={(e) => setEditorForm((prev) => ({ ...prev, ownerBulkAppend: e.target.checked }))}
-                    />
-                    대표님업체 공통 수정
-                  </label>
                 </div>
               </div>
 
@@ -746,6 +766,35 @@ export default function CompanyNotesPage() {
         onPick={handleCompanyPick}
         allowAll={false}
       />
+
+      {ownerCommonModalOpen && (
+        <div className="owner-common-backdrop">
+          <div className="owner-common-modal">
+            <div className="owner-common-header">
+              <div>
+                <h3>대표님업체 공통 수정</h3>
+                <p>대표님업체 전체에 공통 문구를 추가하거나 삭제합니다.</p>
+              </div>
+              <button type="button" className="btn-muted btn-sm" onClick={() => setOwnerCommonModalOpen(false)}>닫기</button>
+            </div>
+            <div className="owner-common-body">
+              <label>공통 문구</label>
+              <textarea
+                className="owner-common-textarea"
+                rows={4}
+                value={ownerCommonDraft}
+                onChange={(e) => setOwnerCommonDraft(e.target.value)}
+                placeholder="공통으로 추가할 문구를 입력하세요. 비우면 공통 문구가 삭제됩니다."
+              />
+              <div className="owner-common-hint">공통 문구는 각 대표님업체 메모에 &quot;공통: ...&quot; 형태로 추가됩니다.</div>
+            </div>
+            <div className="owner-common-actions">
+              <button type="button" className="btn-muted" onClick={() => setOwnerCommonModalOpen(false)}>취소</button>
+              <button type="button" className="primary" onClick={applyOwnerCommonMemo}>적용</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

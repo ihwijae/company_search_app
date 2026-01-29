@@ -451,6 +451,47 @@ button.primary:hover { background: var(--accent-2); }
   font-size: 12px;
   color: #6b7280;
 }
+.owner-common-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1150;
+  padding: 24px;
+}
+.owner-common-modal {
+  width: min(640px, 92vw);
+  border-radius: 20px;
+  padding: 20px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  animation: notes-modal-in 0.25s ease-out;
+}
+.owner-common-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+.owner-common-header h3 { margin: 0 0 6px; font-size: 18px; }
+.owner-common-header p { margin: 0; color: #64748b; font-size: 12px; }
+.owner-common-body { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.owner-common-textarea {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 14px;
+  resize: vertical;
+  font-family: inherit;
+  background: #fff;
+}
+.owner-common-textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16); }
+.owner-common-hint { font-size: 12px; color: #6b7280; }
+.owner-common-actions { margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; }
 .notes-owner-filter {
   display: inline-flex;
   align-items: center;
