@@ -713,14 +713,15 @@ export default function CompanyNotesPage() {
                     />
                   </div>
                 </div>
-                <div className="notes-owner-toggle">
-                  <label className={`notes-owner-chip ${editorForm.isCommon ? 'active' : ''}`}>
+                <div className="notes-common-toggle">
+                  <label className="notes-common-label">기타 등록</label>
+                  <label className="notes-common-check">
                     <input
                       type="checkbox"
                       checked={editorForm.isCommon}
                       onChange={(e) => setEditorForm((prev) => ({ ...prev, isCommon: e.target.checked }))}
                     />
-                    기타 등록
+                    <span>기타로 등록</span>
                   </label>
                 </div>
               </div>

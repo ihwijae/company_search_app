@@ -536,6 +536,34 @@ button.primary:hover { background: var(--accent-2); }
   background: #fde68a;
   border-color: #f59e0b;
 }
+.notes-common-toggle {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.notes-common-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+}
+.notes-common-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #cbd5f5;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.notes-common-check input {
+  accent-color: #2563eb;
+}
 
 @keyframes notes-modal-in {
   from { transform: translateY(16px) scale(0.98); opacity: 0; }
