@@ -51,6 +51,14 @@ const MOCK_ROWS = [
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
 const normalizeDigits = (value) => String(value || '').replace(/[^0-9]/g, '');
+const normalizeIndustryValue = (value) => {
+  const token = String(value || '').trim();
+  if (!token) return 'all';
+  const direct = INDUSTRY_OPTIONS.find((option) => option.value === token);
+  if (direct) return direct.value;
+  const byLabel = INDUSTRY_OPTIONS.find((option) => option.label === token);
+  return byLabel ? byLabel.value : 'all';
+};
 
 const getSoloLabel = (value) => (
   SOLO_OPTIONS.find((option) => option.value === value)?.label || '없음'
@@ -135,7 +143,7 @@ export default function CompanyNotesPage() {
     setEditorMode('create');
     setEditorForm({
       name: '',
-      industry: draftFilters.industry || 'all',
+      industry: normalizeIndustryValue(draftFilters.industry),
       region: '',
       bizNo: '',
       soloStatus: 'none',
@@ -148,7 +156,7 @@ export default function CompanyNotesPage() {
     setEditorMode('edit');
     setEditorForm({
       name: row.name || '',
-      industry: INDUSTRY_OPTIONS.find((option) => option.label === row.industry)?.value || 'all',
+      industry: normalizeIndustryValue(row.industry),
       region: row.region || '',
       bizNo: row.bizNo || '',
       soloStatus: row.soloStatus || 'none',
@@ -202,7 +210,7 @@ export default function CompanyNotesPage() {
       name,
       bizNo,
       region,
-      industry: payload?.fileType || prev.industry,
+      industry: normalizeIndustryValue(payload?.fileType || prev.industry),
     }));
     setCompanyPickerOpen(false);
   };
@@ -301,8 +309,12 @@ export default function CompanyNotesPage() {
                       <tr key={row.id}>
                         <td>{idx + 1}</td>
                         <td className="notes-name-cell">{row.name}</td>
-                        <td>{row.industry}</td>
-                        <td>{row.region}</td>
+                        <td>
+                          <span className={`notes-industry notes-industry-${String(row.industry || '').trim()}`}>
+                            {row.industry}
+                          </span>
+                        </td>
+                        <td className="notes-region-cell">{row.region}</td>
                         <td>{row.bizNo}</td>
                         <td>
                           <span className={getSoloClassName(row.soloStatus)}>{getSoloLabel(row.soloStatus)}</span>
@@ -425,7 +437,7 @@ export default function CompanyNotesPage() {
 
       <CompanySearchModal
         open={companyPickerOpen}
-        fileType={editorForm.industry === 'all' ? 'all' : editorForm.industry}
+        fileType={normalizeIndustryValue(editorForm.industry)}
         onClose={() => setCompanyPickerOpen(false)}
         onPick={handleCompanyPick}
         allowAll={true}

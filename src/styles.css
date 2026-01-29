@@ -243,6 +243,21 @@ button.primary:hover { background: var(--accent-2); }
 }
 .company-notes-table { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .notes-name-cell { font-weight: 700; color: #111827; }
+.notes-region-cell { font-weight: 700; color: #1f2937; }
+.notes-industry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.notes-industry-전기 { background: #fef9c3; color: #92400e; border-color: #fde68a; }
+.notes-industry-통신 { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+.notes-industry-소방 { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
 .notes-memo {
   max-width: 320px;
   white-space: nowrap;
