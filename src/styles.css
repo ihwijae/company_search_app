@@ -233,10 +233,10 @@ button.primary:hover { background: var(--accent-2); }
 }
 .company-notes-shell .filter-item label { font-size: 15px; }
 .company-notes-shell .filter-input { font-size: 15px; height: 40px; }
-.company-notes-shell .details-table { font-size: 17px; }
+.company-notes-shell .details-table { font-size: 16px; }
 .company-notes-shell .details-table thead th { font-size: 15px; }
 .company-notes-shell .btn-sm { font-size: 16px; }
-.company-notes-shell .notes-memo { font-size: 17px; }
+.company-notes-shell .notes-memo { font-size: 16px; }
 .company-notes-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .company-notes-header h2 { margin: 0 0 6px; font-size: 20px; color: #1f2937; }
 .company-notes-header p { margin: 0; color: #6b7280; font-size: 13px; }
