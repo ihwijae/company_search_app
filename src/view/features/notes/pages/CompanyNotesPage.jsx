@@ -131,6 +131,15 @@ export default function CompanyNotesPage() {
     });
   }, [filters, rows]);
 
+  const editorRegionOptions = React.useMemo(() => {
+    const base = (regionOptions || []).filter((region) => region && region !== '전체');
+    const current = String(editorForm.region || '').trim();
+    if (current && !base.includes(current)) {
+      return [current, ...base];
+    }
+    return base;
+  }, [regionOptions, editorForm.region]);
+
   const handleFilterChange = (field) => (event) => {
     setDraftFilters((prev) => ({ ...prev, [field]: event.target.value }));
   };
@@ -359,60 +368,72 @@ export default function CompanyNotesPage() {
         <div className="dialog-overlay" onClick={() => setEditorOpen(false)}>
           <div className="dialog-box notes-editor" onClick={(e) => e.stopPropagation()}>
             <div className="notes-editor-header">
-              <h3>{editorMode === 'create' ? '특이사항 등록' : '특이사항 수정'}</h3>
+              <div className="notes-editor-title">
+                <span className="notes-editor-badge">특이사항</span>
+                <div>
+                  <h3>{editorMode === 'create' ? '특이사항 등록' : '특이사항 수정'}</h3>
+                  <p>업체별 단독 상태와 메모를 관리합니다.</p>
+                </div>
+              </div>
               <button type="button" className="btn-muted btn-sm" onClick={() => setEditorOpen(false)}>닫기</button>
             </div>
             <div className="notes-editor-body">
-              <div className="grid-2">
-                <div className="filter-item">
-                  <label>공종</label>
-                  <select
-                    value={editorForm.industry}
-                    onChange={(e) => setEditorForm((prev) => ({ ...prev, industry: e.target.value }))}
-                    className="filter-input"
-                  >
-                    {INDUSTRY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="filter-item">
-                  <label>지역</label>
-                  <input
-                    type="text"
-                    value={editorForm.region}
-                    onChange={(e) => setEditorForm((prev) => ({ ...prev, region: e.target.value }))}
-                    className="filter-input"
-                    placeholder="지역 입력"
-                  />
-                </div>
-                <div className="filter-item">
-                  <label>업체명</label>
-                  <div className="notes-input-inline">
+              <div className="notes-editor-card">
+                <div className="notes-editor-card-title">업체 기본정보</div>
+                <div className="grid-2">
+                  <div className="filter-item">
+                    <label>공종</label>
+                    <select
+                      value={editorForm.industry}
+                      onChange={(e) => setEditorForm((prev) => ({ ...prev, industry: e.target.value }))}
+                      className="filter-input"
+                    >
+                      {INDUSTRY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="filter-item">
+                    <label>지역</label>
+                    <select
+                      value={editorForm.region}
+                      onChange={(e) => setEditorForm((prev) => ({ ...prev, region: e.target.value }))}
+                      className="filter-input"
+                    >
+                      <option value="">지역 선택</option>
+                      {editorRegionOptions.map((region) => (
+                        <option key={region} value={region}>{region}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="filter-item">
+                    <label>업체명</label>
+                    <div className="notes-input-inline">
+                      <input
+                        type="text"
+                        value={editorForm.name}
+                        onChange={(e) => setEditorForm((prev) => ({ ...prev, name: e.target.value }))}
+                        className="filter-input"
+                        placeholder="업체명 입력"
+                      />
+                      <button type="button" className="btn-soft btn-sm" onClick={openCompanyPicker}>업체 조회</button>
+                    </div>
+                  </div>
+                  <div className="filter-item">
+                    <label>사업자번호</label>
                     <input
                       type="text"
-                      value={editorForm.name}
-                      onChange={(e) => setEditorForm((prev) => ({ ...prev, name: e.target.value }))}
+                      value={editorForm.bizNo}
+                      onChange={(e) => setEditorForm((prev) => ({ ...prev, bizNo: e.target.value }))}
                       className="filter-input"
-                      placeholder="업체명 입력"
+                      placeholder="사업자번호 입력"
                     />
-                    <button type="button" className="btn-soft btn-sm" onClick={openCompanyPicker}>업체 조회</button>
                   </div>
-                </div>
-                <div className="filter-item">
-                  <label>사업자번호</label>
-                  <input
-                    type="text"
-                    value={editorForm.bizNo}
-                    onChange={(e) => setEditorForm((prev) => ({ ...prev, bizNo: e.target.value }))}
-                    className="filter-input"
-                    placeholder="사업자번호 입력"
-                  />
                 </div>
               </div>
 
-              <div className="notes-section">
-                <label>단독 상태</label>
+              <div className="notes-editor-card">
+                <div className="notes-editor-card-title">단독 상태</div>
                 <div className="notes-solo-options">
                   {SOLO_OPTIONS.map((option) => (
                     <label key={option.value} className={`notes-radio ${editorForm.soloStatus === option.value ? 'active' : ''}`}>
@@ -429,8 +450,8 @@ export default function CompanyNotesPage() {
                 </div>
               </div>
 
-              <div className="notes-section">
-                <label>특이사항</label>
+              <div className="notes-editor-card">
+                <div className="notes-editor-card-title">특이사항</div>
                 <textarea
                   className="notes-textarea"
                   rows={4}
