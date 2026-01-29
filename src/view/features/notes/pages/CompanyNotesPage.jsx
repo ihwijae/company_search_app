@@ -413,7 +413,11 @@ export default function CompanyNotesPage() {
                     <input
                       type="checkbox"
                       checked={draftFilters.ownerOnly}
-                      onChange={(e) => setDraftFilters((prev) => ({ ...prev, ownerOnly: e.target.checked }))}
+                      onChange={(e) => {
+                        const next = e.target.checked;
+                        setDraftFilters((prev) => ({ ...prev, ownerOnly: next }));
+                        setFilters((prev) => ({ ...prev, ownerOnly: next }));
+                      }}
                     />
                     대표님업체만 보기
                   </label>
@@ -434,11 +438,10 @@ export default function CompanyNotesPage() {
                 <table className="details-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '6%' }}>No</th>
-                      <th style={{ width: '18%' }}>업체명</th>
-                      <th style={{ width: '10%' }}>공종</th>
-                      <th style={{ width: '10%' }}>지역</th>
-                      <th style={{ width: '16%' }}>사업자번호</th>
+                      <th style={{ width: '20%' }}>업체명</th>
+                      <th style={{ width: '8%' }}>공종</th>
+                      <th style={{ width: '8%' }}>지역</th>
+                      <th style={{ width: '18%' }}>사업자번호</th>
                       <th style={{ width: '12%' }}>단독</th>
                       <th style={{ width: '14%' }}>최근 수정</th>
                       <th>특이사항</th>
@@ -448,7 +451,6 @@ export default function CompanyNotesPage() {
                   <tbody>
                     {filteredRows.map((row, idx) => (
                       <tr key={row.id} className={row.ownerManaged ? 'notes-row-owner' : ''}>
-                        <td>{idx + 1}</td>
                         <td className="notes-name-cell">
                           <span>{row.name}</span>
                           {row.ownerManaged && <span className="notes-owner-badge">대표님업체</span>}
@@ -477,7 +479,7 @@ export default function CompanyNotesPage() {
                     ))}
                     {filteredRows.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="notes-empty">등록된 특이사항이 없습니다.</td>
+                        <td colSpan={8} className="notes-empty">등록된 특이사항이 없습니다.</td>
                       </tr>
                     )}
                   </tbody>
