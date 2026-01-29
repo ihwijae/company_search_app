@@ -5,7 +5,6 @@ import Sidebar from '../../../../components/Sidebar';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 
 const INDUSTRY_OPTIONS = [
-  { value: 'all', label: '전체' },
   { value: 'eung', label: '전기' },
   { value: 'tongsin', label: '통신' },
   { value: 'sobang', label: '소방' },
@@ -17,7 +16,7 @@ const SOLO_OPTIONS = [
   { value: 'allow', label: '단독이여도가능' },
 ];
 
-const DEFAULT_FILTERS = { industry: 'all', region: '전체', name: '', bizNo: '' };
+const DEFAULT_FILTERS = { industry: 'eung', region: '전체', name: '', bizNo: '' };
 
 const MOCK_ROWS = [
   {
@@ -53,11 +52,11 @@ const normalizeText = (value) => String(value || '').trim().toLowerCase();
 const normalizeDigits = (value) => String(value || '').replace(/[^0-9]/g, '');
 const normalizeIndustryValue = (value) => {
   const token = String(value || '').trim();
-  if (!token) return 'all';
+  if (!token) return 'eung';
   const direct = INDUSTRY_OPTIONS.find((option) => option.value === token);
   if (direct) return direct.value;
   const byLabel = INDUSTRY_OPTIONS.find((option) => option.label === token);
-  return byLabel ? byLabel.value : 'all';
+  return byLabel ? byLabel.value : 'eung';
 };
 
 const getSoloLabel = (value) => (
@@ -80,7 +79,7 @@ export default function CompanyNotesPage() {
   const [editorMode, setEditorMode] = React.useState('create');
   const [editorForm, setEditorForm] = React.useState({
     name: '',
-    industry: 'all',
+    industry: 'eung',
     region: '',
     bizNo: '',
     soloStatus: 'none',
@@ -116,9 +115,9 @@ export default function CompanyNotesPage() {
     const nameKey = normalizeText(filters.name);
     const bizKey = normalizeDigits(filters.bizNo);
     return rows.filter((row) => {
-      if (filters.industry !== 'all' && row.industry !== INDUSTRY_OPTIONS.find((i) => i.value === filters.industry)?.label) {
-        return false;
-      }
+    if (row.industry !== INDUSTRY_OPTIONS.find((i) => i.value === filters.industry)?.label) {
+      return false;
+    }
       if (filters.region && filters.region !== '전체' && row.region !== filters.region) {
         return false;
       }
@@ -441,13 +440,13 @@ export default function CompanyNotesPage() {
         </div>
       )}
 
-      <CompanySearchModal
-        open={companyPickerOpen}
+        <CompanySearchModal
+          open={companyPickerOpen}
         fileType={normalizeIndustryValue(editorForm.industry)}
-        onClose={() => setCompanyPickerOpen(false)}
-        onPick={handleCompanyPick}
-        allowAll={true}
-      />
+          onClose={() => setCompanyPickerOpen(false)}
+          onPick={handleCompanyPick}
+        allowAll={false}
+        />
     </div>
   );
 }
