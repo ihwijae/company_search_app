@@ -21,6 +21,11 @@ const SOLO_OPTIONS = [
   { value: 'exclude', label: '단독제외' },
   { value: 'allow', label: '단독이여도가능' },
 ];
+const INQUIRY_OPTIONS = [
+  { value: 'none', label: '없음' },
+  { value: 'ask', label: '물어보고 사용' },
+  { value: 'free', label: '안물어보고 사용가능' },
+];
 
 const DEFAULT_FILTERS = { industry: 'all', region: '전체', name: '', bizNo: '', ownerOnly: false };
 const STORAGE_KEY = 'company-notes:data';
@@ -43,6 +48,16 @@ const getSoloLabel = (value) => (
 const getSoloClassName = (value) => {
   if (value === 'exclude') return 'notes-badge notes-badge-exclude';
   if (value === 'allow') return 'notes-badge notes-badge-allow';
+  return 'notes-badge notes-badge-none';
+};
+
+const getInquiryLabel = (value) => (
+  INQUIRY_OPTIONS.find((option) => option.value === value)?.label || '없음'
+);
+
+const getInquiryClassName = (value) => {
+  if (value === 'ask') return 'notes-badge notes-badge-ask';
+  if (value === 'free') return 'notes-badge notes-badge-free';
   return 'notes-badge notes-badge-none';
 };
 
@@ -75,6 +90,7 @@ const normalizeNoteItem = (item) => {
     bizNo: String(item.bizNo || '').trim(),
     soloStatus: SOLO_OPTIONS.some((opt) => opt.value === item.soloStatus) ? item.soloStatus : 'none',
     memo: String(item.memo || '').trim(),
+    inquiryStatus: INQUIRY_OPTIONS.some((opt) => opt.value === item.inquiryStatus) ? item.inquiryStatus : 'none',
     ownerManaged: Boolean(item.ownerManaged),
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
@@ -97,6 +113,7 @@ export default function CompanyNotesPage() {
     bizNo: '',
     soloStatus: 'none',
     memo: '',
+    inquiryStatus: 'none',
     ownerManaged: false,
   });
   const [companyPickerOpen, setCompanyPickerOpen] = React.useState(false);
@@ -217,6 +234,7 @@ export default function CompanyNotesPage() {
       bizNo: '',
       soloStatus: 'none',
       memo: '',
+      inquiryStatus: 'none',
       ownerManaged: false,
     });
     setEditorOpen(true);
@@ -231,6 +249,7 @@ export default function CompanyNotesPage() {
       bizNo: row.bizNo || '',
       soloStatus: row.soloStatus || 'none',
       memo: row.memo || '',
+      inquiryStatus: row.inquiryStatus || 'none',
       ownerManaged: Boolean(row.ownerManaged),
       id: row.id,
     });
@@ -257,6 +276,7 @@ export default function CompanyNotesPage() {
         bizNo: editorForm.bizNo,
         soloStatus: editorForm.soloStatus,
         memo: editorForm.memo,
+        inquiryStatus: editorForm.inquiryStatus,
         ownerManaged: Boolean(editorForm.ownerManaged),
         createdAt: now,
         updatedAt: now,
@@ -273,6 +293,7 @@ export default function CompanyNotesPage() {
             bizNo: editorForm.bizNo,
             soloStatus: editorForm.soloStatus,
             memo: editorForm.memo,
+            inquiryStatus: editorForm.inquiryStatus,
             ownerManaged: Boolean(editorForm.ownerManaged),
             updatedAt: now,
           }
@@ -451,6 +472,7 @@ export default function CompanyNotesPage() {
                       <th style={{ width: '8%' }}>지역</th>
                       <th style={{ width: '18%' }}>사업자번호</th>
                       <th style={{ width: '12%' }}>단독</th>
+                      <th style={{ width: '14%' }}>여부묻기</th>
                       <th style={{ width: '14%' }}>최근 수정</th>
                       <th>특이사항</th>
                       <th style={{ width: '10%' }} />
@@ -473,9 +495,19 @@ export default function CompanyNotesPage() {
                         <td>
                           <span className={getSoloClassName(row.soloStatus)}>{getSoloLabel(row.soloStatus)}</span>
                         </td>
+                        <td>
+                          <span className={getInquiryClassName(row.inquiryStatus)}>{getInquiryLabel(row.inquiryStatus)}</span>
+                        </td>
                         <td>{formatDateTime(row.updatedAt || row.createdAt)}</td>
                         <td>
-                          <div className="notes-memo">{row.memo}</div>
+                          <div className="notes-memo">
+                            {row.inquiryStatus !== 'none' && (
+                              <span className={getInquiryClassName(row.inquiryStatus)}>
+                                {getInquiryLabel(row.inquiryStatus)}
+                              </span>
+                            )}
+                            <span>{row.memo}</span>
+                          </div>
                         </td>
                         <td>
                           <div className="details-actions">
@@ -487,7 +519,7 @@ export default function CompanyNotesPage() {
                     ))}
                     {filteredRows.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="notes-empty">등록된 특이사항이 없습니다.</td>
+                        <td colSpan={9} className="notes-empty">등록된 특이사항이 없습니다.</td>
                       </tr>
                     )}
                   </tbody>
@@ -598,6 +630,34 @@ export default function CompanyNotesPage() {
                     대표님업체
                   </label>
                   <span className="notes-owner-help">대표님이 관리하는 업체는 강조 표시됩니다.</span>
+                </div>
+              </div>
+
+              <div className="notes-editor-card">
+                <div className="notes-editor-card-title">여부묻기</div>
+                <div className="notes-solo-options">
+                  {INQUIRY_OPTIONS.filter((option) => option.value !== 'none').map((option) => (
+                    <label key={option.value} className={`notes-radio ${editorForm.inquiryStatus === option.value ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="inquiryStatus"
+                        value={option.value}
+                        checked={editorForm.inquiryStatus === option.value}
+                        onChange={(e) => setEditorForm((prev) => ({ ...prev, inquiryStatus: e.target.value }))}
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                  <label className={`notes-radio ${editorForm.inquiryStatus === 'none' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="inquiryStatus"
+                      value="none"
+                      checked={editorForm.inquiryStatus === 'none'}
+                      onChange={(e) => setEditorForm((prev) => ({ ...prev, inquiryStatus: e.target.value }))}
+                    />
+                    없음
+                  </label>
                 </div>
               </div>
 
