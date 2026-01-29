@@ -243,6 +243,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 .company-notes-table { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .notes-name-cell { font-weight: 700; color: #111827; }
+.notes-name-td { vertical-align: middle; }
 .notes-name-cell { display: flex; align-items: center; gap: 8px; height: 100%; }
 .notes-region-cell { font-weight: 700; color: #1f2937; }
 .notes-industry {
@@ -302,11 +303,17 @@ button.primary:hover { background: var(--accent-2); }
   color: #92400e;
   border: 1px solid #f59e0b;
 }
-.details-table tbody tr.notes-row-owner td {
+.details-table tbody tr.notes-row-owner {
   background: #fff7ed;
 }
-.details-table tbody tr.notes-row-owner:hover td {
+.details-table tbody tr.notes-row-owner td {
+  background: inherit;
+}
+.details-table tbody tr.notes-row-owner:hover {
   background: #ffedd5;
+}
+.details-table tbody tr.notes-row-owner:hover td {
+  background: inherit;
 }
 
 .notes-modal-backdrop {

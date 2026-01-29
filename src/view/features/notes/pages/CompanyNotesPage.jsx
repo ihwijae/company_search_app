@@ -480,9 +480,11 @@ export default function CompanyNotesPage() {
                   <tbody>
                     {filteredRows.map((row, idx) => (
                       <tr key={row.id} className={row.ownerManaged ? 'notes-row-owner' : ''}>
-                        <td className="notes-name-cell">
-                          <span>{row.name}</span>
-                          {row.ownerManaged && <span className="notes-owner-badge">대표님업체</span>}
+                        <td className="notes-name-td">
+                          <div className="notes-name-cell">
+                            <span>{row.name}</span>
+                            {row.ownerManaged && <span className="notes-owner-badge">대표님업체</span>}
+                          </div>
                         </td>
                         <td>
                           <span className={`notes-industry notes-industry-${String(row.industry || '').trim()}`}>
