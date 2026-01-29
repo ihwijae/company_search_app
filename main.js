@@ -615,6 +615,7 @@ let AGREEMENT_BOARD_DIR = DEFAULT_AGREEMENT_BOARD_DIR;
 const AGREEMENTS_RULES_PATH = path.join(userDataDir, 'agreements.rules.json');
 const FORMULAS_PATH = path.join(userDataDir, 'formulas.json');
 const RENDERER_STATE_PATH = path.join(userDataDir, 'renderer-state.json');
+const COMPANY_NOTES_PATH = path.join(userDataDir, 'company-notes.json');
 
 const RENDERER_STATE_MISSING = { __companySearchStateMissing: true };
 
@@ -2802,6 +2803,38 @@ try {
       return { success: true, data: payload };
     } catch (e) {
       return { success: false, message: e?.message || '가져오기 실패' };
+    }
+  });
+} catch {}
+
+// Company notes load/save (app data)
+try {
+  if (ipcMain.removeHandler) {
+    try { ipcMain.removeHandler('company-notes-load'); } catch {}
+    try { ipcMain.removeHandler('company-notes-save'); } catch {}
+  }
+
+  ipcMain.handle('company-notes-load', async () => {
+    try {
+      if (fs.existsSync(COMPANY_NOTES_PATH)) {
+        const raw = fs.readFileSync(COMPANY_NOTES_PATH, 'utf-8');
+        if (raw && raw.trim()) {
+          return { success: true, data: JSON.parse(raw) };
+        }
+      }
+      return { success: true, data: null };
+    } catch (e) {
+      return { success: false, message: e?.message || 'load failed' };
+    }
+  });
+
+  ipcMain.handle('company-notes-save', async (_event, payload = {}) => {
+    try {
+      fs.mkdirSync(path.dirname(COMPANY_NOTES_PATH), { recursive: true });
+      fs.writeFileSync(COMPANY_NOTES_PATH, JSON.stringify(payload || {}, null, 2));
+      return { success: true };
+    } catch (e) {
+      return { success: false, message: e?.message || 'save failed' };
     }
   });
 } catch {}

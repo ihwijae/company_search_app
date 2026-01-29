@@ -56,6 +56,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   settingsImport: () => ipcRenderer.invoke('agreements-settings-import'),
   companyNotesExport: (payload) => ipcRenderer.invoke('company-notes-export', payload),
   companyNotesImport: () => ipcRenderer.invoke('company-notes-import'),
+  companyNotesLoad: () => ipcRenderer.invoke('company-notes-load'),
+  companyNotesSave: (payload) => ipcRenderer.invoke('company-notes-save', payload),
   // Agreements: candidates fetch
   fetchCandidates: (params) => ipcRenderer.invoke('agreements-fetch-candidates', params),
   // Clipboard helper: write as 1-column CSV

@@ -4,7 +4,7 @@ import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import { extractManagerNames } from '../../../../utils/companyIndicators.js';
-import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
+import { loadPersisted } from '../../../../shared/persistence.js';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 
 const INDUSTRY_OPTIONS = [
@@ -164,27 +164,56 @@ export default function CompanyNotesPage() {
   }, [draftFilters.industry]);
 
   React.useEffect(() => {
-    const stored = loadPersisted(STORAGE_KEY, null);
-    if (Array.isArray(stored)) {
-      const normalized = stored.map(normalizeNoteItem).filter(Boolean);
-      setRows(normalized);
-      return;
-    }
-    if (stored && typeof stored === 'object') {
-      if (Array.isArray(stored.items)) {
-        const normalized = stored.items.map(normalizeNoteItem).filter(Boolean);
-        setRows(normalized);
+    let mounted = true;
+    const load = async () => {
+      if (window?.electronAPI?.companyNotesLoad) {
+        const result = await window.electronAPI.companyNotesLoad();
+        if (mounted && result?.success) {
+          const payload = result.data;
+          if (Array.isArray(payload)) {
+            setRows(payload.map(normalizeNoteItem).filter(Boolean));
+          } else if (payload && typeof payload === 'object') {
+            if (Array.isArray(payload.items)) {
+              setRows(payload.items.map(normalizeNoteItem).filter(Boolean));
+            }
+            if (typeof payload.ownerCommonMemo === 'string') {
+              setOwnerCommonMemo(payload.ownerCommonMemo);
+            }
+          }
+          return;
+        }
       }
-      if (typeof stored.ownerCommonMemo === 'string') {
-        setOwnerCommonMemo(stored.ownerCommonMemo);
+      const stored = loadPersisted(STORAGE_KEY, null);
+      if (Array.isArray(stored)) {
+        setRows(stored.map(normalizeNoteItem).filter(Boolean));
+        return;
       }
-    }
+      if (stored && typeof stored === 'object') {
+        if (Array.isArray(stored.items)) {
+          setRows(stored.items.map(normalizeNoteItem).filter(Boolean));
+        }
+        if (typeof stored.ownerCommonMemo === 'string') {
+          setOwnerCommonMemo(stored.ownerCommonMemo);
+        }
+      }
+    };
+    load();
+    return () => { mounted = false; };
   }, []);
 
   React.useEffect(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      savePersisted(STORAGE_KEY, { version: 1, updatedAt: Date.now(), items: rows, ownerCommonMemo });
+    saveTimerRef.current = setTimeout(async () => {
+      const payload = { version: 1, updatedAt: Date.now(), items: rows, ownerCommonMemo };
+      if (window?.electronAPI?.companyNotesSave) {
+        await window.electronAPI.companyNotesSave(payload);
+      } else {
+        // fallback to renderer persistence if IPC not available
+        try {
+          const { savePersisted } = await import('../../../../shared/persistence.js');
+          savePersisted(STORAGE_KEY, payload);
+        } catch {}
+      }
     }, 300);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
