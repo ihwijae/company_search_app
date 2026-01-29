@@ -289,7 +289,7 @@ button.primary:hover { background: var(--accent-2); }
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1100;
+  z-index: 900;
   animation: notes-backdrop-in 0.25s ease-out;
 }
 .notes-modal {
