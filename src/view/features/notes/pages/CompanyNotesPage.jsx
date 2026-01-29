@@ -350,8 +350,14 @@ export default function CompanyNotesPage() {
       notify({ type: 'error', message: '가져오기 기능을 사용할 수 없습니다.' });
       return;
     }
-    const confirmed = window.confirm('가져오기를 실행하면 현재 특이사항이 덮어써집니다. 계속할까요?');
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: '가져오기 확인',
+      message: '가져오기를 실행하면 현재 특이사항이 덮어써집니다. 계속할까요?',
+      confirmText: '확인',
+      cancelText: '취소',
+      tone: 'warning',
+    });
+    if (!ok) return;
     try {
       const result = await window.electronAPI.companyNotesImport();
       if (!result?.success) throw new Error(result?.message || '가져오기 실패');
