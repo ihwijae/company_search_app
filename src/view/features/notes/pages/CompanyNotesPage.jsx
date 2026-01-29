@@ -3,11 +3,16 @@ import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
+import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 
 const INDUSTRY_OPTIONS = [
   { value: 'eung', label: '전기' },
   { value: 'tongsin', label: '통신' },
   { value: 'sobang', label: '소방' },
+];
+const FILTER_INDUSTRY_OPTIONS = [
+  { value: 'all', label: '전체' },
+  ...INDUSTRY_OPTIONS,
 ];
 
 const SOLO_OPTIONS = [
@@ -16,37 +21,8 @@ const SOLO_OPTIONS = [
   { value: 'allow', label: '단독이여도가능' },
 ];
 
-const DEFAULT_FILTERS = { industry: 'eung', region: '전체', name: '', bizNo: '' };
-
-const MOCK_ROWS = [
-  {
-    id: 'note-1',
-    name: '한빛이앤씨',
-    industry: '전기',
-    region: '서울',
-    bizNo: '110-12-34567',
-    soloStatus: 'exclude',
-    memo: '최근 협정에서 단독 제외 요청. 담당자 유선 확인 필요.',
-  },
-  {
-    id: 'note-2',
-    name: '청우통신',
-    industry: '통신',
-    region: '경기',
-    bizNo: '215-88-90210',
-    soloStatus: 'allow',
-    memo: '단독이어도 가능. 서류 누락 이슈 없음.',
-  },
-  {
-    id: 'note-3',
-    name: '새빛소방',
-    industry: '소방',
-    region: '부산',
-    bizNo: '621-55-11223',
-    soloStatus: 'none',
-    memo: '특이사항 없음',
-  },
-];
+const DEFAULT_FILTERS = { industry: 'all', region: '전체', name: '', bizNo: '' };
+const STORAGE_KEY = 'company-notes:data';
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
 const normalizeDigits = (value) => String(value || '').replace(/[^0-9]/g, '');
@@ -69,12 +45,46 @@ const getSoloClassName = (value) => {
   return 'notes-badge notes-badge-none';
 };
 
+const formatDateTime = (value) => {
+  if (!value) return '-';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${yyyy}.${mm}.${dd} ${hh}:${min}`;
+};
+
+const normalizeIndustryLabel = (value) => (
+  INDUSTRY_OPTIONS.find((option) => option.value === normalizeIndustryValue(value))?.label || '전기'
+);
+
+const normalizeNoteItem = (item) => {
+  if (!item || typeof item !== 'object') return null;
+  const name = String(item.name || '').trim();
+  if (!name) return null;
+  const now = Date.now();
+  return {
+    id: item.id || `note-${now}-${Math.random().toString(36).slice(2, 7)}`,
+    name,
+    industry: normalizeIndustryLabel(item.industry || item.industryLabel || item.fileType || 'eung'),
+    region: String(item.region || '').trim(),
+    bizNo: String(item.bizNo || '').trim(),
+    soloStatus: SOLO_OPTIONS.some((opt) => opt.value === item.soloStatus) ? item.soloStatus : 'none',
+    memo: String(item.memo || '').trim(),
+    createdAt: item.createdAt || now,
+    updatedAt: item.updatedAt || now,
+  };
+};
+
 export default function CompanyNotesPage() {
   const [activeMenu, setActiveMenu] = React.useState('company-notes');
   const [draftFilters, setDraftFilters] = React.useState(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState(DEFAULT_FILTERS);
   const [regionOptions, setRegionOptions] = React.useState(['전체']);
-  const [rows, setRows] = React.useState(MOCK_ROWS);
+  const [rows, setRows] = React.useState([]);
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [editorMode, setEditorMode] = React.useState('create');
   const [editorForm, setEditorForm] = React.useState({
@@ -86,6 +96,7 @@ export default function CompanyNotesPage() {
     memo: '',
   });
   const [companyPickerOpen, setCompanyPickerOpen] = React.useState(false);
+  const saveTimerRef = React.useRef(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -111,11 +122,34 @@ export default function CompanyNotesPage() {
     return () => { mounted = false; };
   }, [draftFilters.industry]);
 
+  React.useEffect(() => {
+    const stored = loadPersisted(STORAGE_KEY, null);
+    if (Array.isArray(stored)) {
+      const normalized = stored.map(normalizeNoteItem).filter(Boolean);
+      setRows(normalized);
+      return;
+    }
+    if (stored && typeof stored === 'object' && Array.isArray(stored.items)) {
+      const normalized = stored.items.map(normalizeNoteItem).filter(Boolean);
+      setRows(normalized);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      savePersisted(STORAGE_KEY, { version: 1, updatedAt: Date.now(), items: rows });
+    }, 300);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [rows]);
+
   const filteredRows = React.useMemo(() => {
     const nameKey = normalizeText(filters.name);
     const bizKey = normalizeDigits(filters.bizNo);
     return rows.filter((row) => {
-    if (row.industry !== INDUSTRY_OPTIONS.find((i) => i.value === filters.industry)?.label) {
+    if (filters.industry !== 'all' && row.industry !== INDUSTRY_OPTIONS.find((i) => i.value === filters.industry)?.label) {
       return false;
     }
       if (filters.region && filters.region !== '전체' && row.region !== filters.region) {
@@ -134,10 +168,11 @@ export default function CompanyNotesPage() {
   const editorRegionOptions = React.useMemo(() => {
     const base = (regionOptions || []).filter((region) => region && region !== '전체');
     const current = String(editorForm.region || '').trim();
-    if (current && !base.includes(current)) {
-      return [current, ...base];
+    const withCommon = base.includes('공통') ? base : ['공통', ...base];
+    if (current && !withCommon.includes(current)) {
+      return [current, ...withCommon];
     }
-    return base;
+    return withCommon;
   }, [regionOptions, editorForm.region]);
 
   const handleFilterChange = (field) => (event) => {
@@ -185,16 +220,19 @@ export default function CompanyNotesPage() {
       setEditorOpen(true);
       return;
     }
-    const industryLabel = INDUSTRY_OPTIONS.find((option) => option.value === editorForm.industry)?.label || '전체';
+    const industryLabel = INDUSTRY_OPTIONS.find((option) => option.value === editorForm.industry)?.label || '전기';
+    const now = Date.now();
     if (editorMode === 'create') {
       const next = {
-        id: `note-${Date.now()}`,
+        id: `note-${now}-${Math.random().toString(36).slice(2, 7)}`,
         name: editorForm.name,
         industry: industryLabel,
         region: editorForm.region,
         bizNo: editorForm.bizNo,
         soloStatus: editorForm.soloStatus,
         memo: editorForm.memo,
+        createdAt: now,
+        updatedAt: now,
       };
       setRows((prev) => [next, ...prev]);
     } else {
@@ -208,11 +246,19 @@ export default function CompanyNotesPage() {
             bizNo: editorForm.bizNo,
             soloStatus: editorForm.soloStatus,
             memo: editorForm.memo,
+            updatedAt: now,
           }
           : row
       )));
     }
     setEditorOpen(false);
+  };
+
+  const handleDelete = (rowId) => {
+    if (!rowId) return;
+    const confirmed = window.confirm('해당 특이사항을 삭제할까요?');
+    if (!confirmed) return;
+    setRows((prev) => prev.filter((row) => row.id !== rowId));
   };
 
   const handleCompanyPick = (payload) => {
@@ -227,6 +273,41 @@ export default function CompanyNotesPage() {
       industry: normalizeIndustryValue(payload?.fileType || prev.industry),
     }));
     setCompanyPickerOpen(false);
+  };
+
+  const handleExport = async () => {
+    if (!window?.electronAPI?.companyNotesExport) {
+      alert('내보내기 기능을 사용할 수 없습니다.');
+      return;
+    }
+    try {
+      const payload = { version: 1, exportedAt: Date.now(), items: rows };
+      const result = await window.electronAPI.companyNotesExport(payload);
+      if (!result?.success) throw new Error(result?.message || '내보내기 실패');
+      alert('업체 특이사항을 내보냈습니다.');
+    } catch (err) {
+      alert(err?.message || '내보내기에 실패했습니다.');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!window?.electronAPI?.companyNotesImport) {
+      alert('가져오기 기능을 사용할 수 없습니다.');
+      return;
+    }
+    const confirmed = window.confirm('가져오기를 실행하면 현재 특이사항이 덮어써집니다. 계속할까요?');
+    if (!confirmed) return;
+    try {
+      const result = await window.electronAPI.companyNotesImport();
+      if (!result?.success) throw new Error(result?.message || '가져오기 실패');
+      const items = Array.isArray(result?.data?.items) ? result.data.items : result?.data;
+      if (!Array.isArray(items)) throw new Error('가져온 데이터 형식이 올바르지 않습니다.');
+      const normalized = items.map(normalizeNoteItem).filter(Boolean);
+      setRows(normalized);
+      alert('업체 특이사항을 가져왔습니다.');
+    } catch (err) {
+      alert(err?.message || '가져오기에 실패했습니다.');
+    }
   };
 
   const openCompanyPicker = () => {
@@ -269,8 +350,8 @@ export default function CompanyNotesPage() {
               </div>
               <div className="company-notes-actions">
                 <button type="button" className="btn-soft" onClick={openCreate}>특이사항 등록</button>
-                <button type="button" className="btn-muted">가져오기</button>
-                <button type="button" className="btn-muted">내보내기</button>
+                <button type="button" className="btn-muted" onClick={handleImport}>가져오기</button>
+                <button type="button" className="btn-muted" onClick={handleExport}>내보내기</button>
               </div>
             </div>
 
@@ -279,7 +360,7 @@ export default function CompanyNotesPage() {
                 <div className="filter-item">
                   <label>공종</label>
                   <select value={draftFilters.industry} onChange={handleFilterChange('industry')} className="filter-input">
-                    {INDUSTRY_OPTIONS.map((option) => (
+                    {FILTER_INDUSTRY_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
@@ -322,8 +403,9 @@ export default function CompanyNotesPage() {
                       <th style={{ width: '10%' }}>지역</th>
                       <th style={{ width: '16%' }}>사업자번호</th>
                       <th style={{ width: '12%' }}>단독</th>
+                      <th style={{ width: '14%' }}>최근 수정</th>
                       <th>특이사항</th>
-                      <th style={{ width: '8%' }} />
+                      <th style={{ width: '10%' }} />
                     </tr>
                   </thead>
                   <tbody>
@@ -341,12 +423,14 @@ export default function CompanyNotesPage() {
                         <td>
                           <span className={getSoloClassName(row.soloStatus)}>{getSoloLabel(row.soloStatus)}</span>
                         </td>
+                        <td>{formatDateTime(row.updatedAt || row.createdAt)}</td>
                         <td>
                           <div className="notes-memo">{row.memo}</div>
                         </td>
                         <td>
                           <div className="details-actions">
                             <button type="button" className="btn-sm btn-soft" onClick={() => openEdit(row)}>수정</button>
+                            <button type="button" className="btn-sm btn-danger" onClick={() => handleDelete(row.id)}>삭제</button>
                           </div>
                         </td>
                       </tr>
@@ -395,17 +479,17 @@ export default function CompanyNotesPage() {
                   </div>
                   <div className="filter-item">
                     <label>지역</label>
-                    <select
-                      value={editorForm.region}
-                      onChange={(e) => setEditorForm((prev) => ({ ...prev, region: e.target.value }))}
-                      className="filter-input"
-                    >
-                      <option value="">지역 선택</option>
-                      {editorRegionOptions.map((region) => (
-                        <option key={region} value={region}>{region}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <select
+                    value={editorForm.region}
+                    onChange={(e) => setEditorForm((prev) => ({ ...prev, region: e.target.value }))}
+                    className="filter-input"
+                  >
+                    <option value="">지역 선택</option>
+                    {editorRegionOptions.map((region) => (
+                      <option key={region} value={region}>{region}</option>
+                    ))}
+                  </select>
+                </div>
                   <div className="filter-item">
                     <label>업체명</label>
                     <div className="notes-input-inline">

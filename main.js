@@ -2759,6 +2759,52 @@ try {
     }
   });
 } catch {}
+
+// Company notes import/export
+try {
+  if (ipcMain.removeHandler) {
+    try { ipcMain.removeHandler('company-notes-export'); } catch {}
+    try { ipcMain.removeHandler('company-notes-import'); } catch {}
+  }
+
+  ipcMain.handle('company-notes-export', async (_event, payload = {}) => {
+    try {
+      const saveTo = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow(), {
+        title: '업체 특이사항 내보내기',
+        defaultPath: 'company-notes.json',
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+      if (saveTo.canceled || !saveTo.filePath) return { success: false, message: '사용자 취소' };
+
+      const normalized = {
+        version: Number(payload.version) || 1,
+        exportedAt: payload.exportedAt || Date.now(),
+        items: Array.isArray(payload.items) ? payload.items : [],
+      };
+      fs.writeFileSync(saveTo.filePath, JSON.stringify(normalized, null, 2));
+      return { success: true, path: saveTo.filePath };
+    } catch (e) {
+      return { success: false, message: e?.message || '내보내기 실패' };
+    }
+  });
+
+  ipcMain.handle('company-notes-import', async () => {
+    try {
+      const pick = await dialog.showOpenDialog(BrowserWindow.getFocusedWindow(), {
+        title: '업체 특이사항 가져오기',
+        properties: ['openFile'],
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+      if (pick.canceled || !pick.filePaths.length) return { success: false, message: '사용자 취소' };
+      const filePath = pick.filePaths[0];
+      const payload = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      if (!payload || typeof payload !== 'object') throw new Error('JSON 형식이 아닙니다');
+      return { success: true, data: payload };
+    } catch (e) {
+      return { success: false, message: e?.message || '가져오기 실패' };
+    }
+  });
+} catch {}
 const sanitizeIpcPayload = (payload) => {
   if (payload === null || payload === undefined) return payload;
   const type = typeof payload;
