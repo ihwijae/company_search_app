@@ -282,7 +282,7 @@ button.primary:hover { background: var(--accent-2); }
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  align-items: flex-start;
+  align-items: center;
 }
 .notes-empty { text-align: center; padding: 28px 12px; color: #94a3b8; }
 .notes-badge {
@@ -2264,4 +2264,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 @media (max-width: 1200px) {
   .auto-agreement-layout { grid-template-columns: 1fr; }
+}
+.company-notes-table .details-table td {
+  vertical-align: middle;
 }
