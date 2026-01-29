@@ -100,6 +100,10 @@ export default function CompanyNotesPage() {
     ownerManaged: false,
   });
   const [companyPickerOpen, setCompanyPickerOpen] = React.useState(false);
+  const [lastEditorDefaults, setLastEditorDefaults] = React.useState({
+    industry: 'eung',
+    region: '',
+  });
   const saveTimerRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -208,8 +212,8 @@ export default function CompanyNotesPage() {
     setEditorMode('create');
     setEditorForm({
       name: '',
-      industry: normalizeIndustryValue(draftFilters.industry),
-      region: '',
+      industry: normalizeIndustryValue(lastEditorDefaults.industry || draftFilters.industry),
+      region: lastEditorDefaults.region || '',
       bizNo: '',
       soloStatus: 'none',
       memo: '',
@@ -240,6 +244,10 @@ export default function CompanyNotesPage() {
     }
     const industryLabel = INDUSTRY_OPTIONS.find((option) => option.value === editorForm.industry)?.label || '전기';
     const now = Date.now();
+    setLastEditorDefaults({
+      industry: editorForm.industry,
+      region: editorForm.region,
+    });
     if (editorMode === 'create') {
       const next = {
         id: `note-${now}-${Math.random().toString(36).slice(2, 7)}`,
