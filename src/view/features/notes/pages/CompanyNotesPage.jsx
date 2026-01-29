@@ -713,6 +713,16 @@ export default function CompanyNotesPage() {
                     />
                   </div>
                 </div>
+                <div className="notes-owner-toggle">
+                  <label className={`notes-owner-chip ${editorForm.isCommon ? 'active' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={editorForm.isCommon}
+                      onChange={(e) => setEditorForm((prev) => ({ ...prev, isCommon: e.target.checked }))}
+                    />
+                    기타 등록
+                  </label>
+                </div>
               </div>
 
               <div className="notes-editor-card">
@@ -741,14 +751,6 @@ export default function CompanyNotesPage() {
                     대표님업체
                   </label>
                   <span className="notes-owner-help">대표님이 관리하는 업체는 강조 표시됩니다.</span>
-                  <label className={`notes-owner-chip ${editorForm.isCommon ? 'active' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={editorForm.isCommon}
-                      onChange={(e) => setEditorForm((prev) => ({ ...prev, isCommon: e.target.checked }))}
-                    />
-                    기타 등록
-                  </label>
                 </div>
               </div>
 
