@@ -388,6 +388,93 @@ button.primary:hover { background: var(--accent-2); }
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* --- 업체 조회 모달 --- */
+.company-search-backdrop {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.18), transparent 40%),
+    rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  animation: notes-backdrop-in 0.25s ease-out;
+}
+.company-search-modal {
+  width: min(92vw, 920px);
+  border-radius: 22px;
+  padding: 22px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow: 0 26px 70px rgba(15, 23, 42, 0.3);
+  animation: notes-modal-in 0.25s ease-out;
+}
+.company-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.company-search-header h3 { margin: 0 0 6px; font-size: 20px; }
+.company-search-header p { margin: 0; color: #64748b; font-size: 12px; }
+.company-search-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.company-search-badge-eung { background: #fef9c3; color: #92400e; border-color: #fde68a; }
+.company-search-badge-tongsin { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+.company-search-badge-sobang { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+.company-search-badge-all { background: #e2e8f0; color: #475569; border-color: #cbd5f5; }
+
+.company-search-bar { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.company-search-input {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.company-search-input input {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #d0d5dd;
+  padding: 0 14px;
+  background: #ffffff;
+  font-size: 14px;
+}
+.company-search-input input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+.company-search-input .btn-soft {
+  height: 44px;
+  min-width: 90px;
+}
+
+.company-search-table {
+  margin-top: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  max-height: 420px;
+  overflow: auto;
+}
+.company-search-table .details-table thead th {
+  background: #f1f5f9;
+}
+.company-search-footer {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
 .excel-helper-search-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .excel-helper-selected { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
 .excel-helper-share-input { min-width: 150px; }

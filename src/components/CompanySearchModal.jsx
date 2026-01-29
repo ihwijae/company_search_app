@@ -77,26 +77,38 @@ export default function CompanySearchModal({
 
   if (!open) return null;
   return (
-    <div className="dialog-overlay" onClick={onClose}>
-      <div className="dialog-box" style={{ maxWidth: 860, width: '92%' }} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ marginTop: 0, marginBottom: 16, textAlign: 'center' }}>업체 조회</h3>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-          <input
-            style={{ flex: 1, outline: 'none', borderWidth: 2, borderColor: '#e9d5ff', height: 44, borderRadius: 10, padding: '0 12px' }}
-            placeholder="업체명 또는 일부"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e)=>{ if(e.key==='Enter') handleSearch(); }}
-          />
-          <button
-            className="btn-soft"
-            style={{ minWidth: 80, height: 44 }}
-            onClick={() => handleSearch()}
-            disabled={loading || !q.trim()}
-          >검색</button>
+    <div className="company-search-backdrop" onClick={onClose}>
+      <div className="company-search-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="company-search-header">
+          <div>
+            <h3>업체 조회</h3>
+            <p>업체명으로 검색 후 원하는 업체를 선택하세요.</p>
+          </div>
+          {fileType && (
+            <span className={`company-search-badge company-search-badge-${normalizeFileType(fileType)}`}>
+              {FILE_TYPE_LABELS[normalizeFileType(fileType)] || '전체'}
+            </span>
+          )}
         </div>
-        {error && <div className="error-message" style={{ marginBottom: 12 }}>{error}</div>}
-        <div style={{ maxHeight: 420, overflowY: 'auto', overflowX: 'hidden', border: '1px solid #e5e7eb', borderRadius: 10 }}>
+        <div className="company-search-bar">
+          <div className="company-search-input">
+            <input
+              placeholder="업체명 또는 일부"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
+            />
+            <button
+              className="btn-soft"
+              onClick={() => handleSearch()}
+              disabled={loading || !q.trim()}
+            >
+              검색
+            </button>
+          </div>
+          {error && <div className="error-message">{error}</div>}
+        </div>
+        <div className="company-search-table">
           <table className="details-table" style={{ width: '100%' }}>
             <thead>
               <tr>
@@ -182,8 +194,8 @@ export default function CompanySearchModal({
             </tbody>
           </table>
         </div>
-        <div style={{ marginTop: 12, textAlign: 'right' }}>
-          <button className="btn-soft" onClick={onClose}>닫기</button>
+        <div className="company-search-footer">
+          <button className="btn-muted" onClick={onClose}>닫기</button>
         </div>
       </div>
     </div>
