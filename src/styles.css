@@ -243,7 +243,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 .company-notes-table { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .notes-name-cell { font-weight: 700; color: #111827; }
-.notes-name-cell { display: flex; align-items: center; gap: 8px; }
+.notes-name-cell { display: flex; align-items: center; gap: 8px; height: 100%; }
 .notes-region-cell { font-weight: 700; color: #1f2937; }
 .notes-industry {
   display: inline-flex;
@@ -302,10 +302,10 @@ button.primary:hover { background: var(--accent-2); }
   color: #92400e;
   border: 1px solid #f59e0b;
 }
-.notes-row-owner td {
+.details-table tbody tr.notes-row-owner td {
   background: #fff7ed;
 }
-.notes-row-owner:hover td {
+.details-table tbody tr.notes-row-owner:hover td {
   background: #ffedd5;
 }
 
