@@ -282,6 +282,7 @@ export default function CompanyNotesPage() {
         updatedAt: now,
       };
       setRows((prev) => [next, ...prev]);
+      notify({ type: 'success', message: '특이사항을 등록했습니다.' });
     } else {
       setRows((prev) => prev.map((row) => (
         row.id === editorForm.id
@@ -299,6 +300,7 @@ export default function CompanyNotesPage() {
           }
           : row
       )));
+      notify({ type: 'success', message: '특이사항을 수정했습니다.' });
     }
     setEditorOpen(false);
   };
@@ -436,11 +438,25 @@ export default function CompanyNotesPage() {
                 </div>
                 <div className="filter-item">
                   <label>업체명</label>
-                  <input type="text" value={draftFilters.name} onChange={handleFilterChange('name')} className="filter-input" placeholder="업체명을 입력하세요" />
+                  <input
+                    type="text"
+                    value={draftFilters.name}
+                    onChange={handleFilterChange('name')}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyFilters(); } }}
+                    className="filter-input"
+                    placeholder="업체명을 입력하세요"
+                  />
                 </div>
                 <div className="filter-item">
                   <label>사업자번호</label>
-                  <input type="text" value={draftFilters.bizNo} onChange={handleFilterChange('bizNo')} className="filter-input" placeholder="사업자번호 입력" />
+                  <input
+                    type="text"
+                    value={draftFilters.bizNo}
+                    onChange={handleFilterChange('bizNo')}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyFilters(); } }}
+                    className="filter-input"
+                    placeholder="사업자번호 입력"
+                  />
                 </div>
                 <div className="filter-item">
                   <label>대표님업체</label>
