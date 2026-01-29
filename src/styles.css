@@ -251,8 +251,8 @@ button.primary:hover { background: var(--accent-2); }
 .company-notes-table { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .notes-name-cell { font-weight: 700; color: #111827; }
 .notes-name-td { vertical-align: middle; }
-.notes-name-cell { display: flex; align-items: center; gap: 8px; height: 100%; }
-.notes-region-cell { font-weight: 700; color: #1f2937; }
+.notes-name-cell { display: flex; align-items: center; gap: 8px; height: 100%; font-size: 16px; }
+.notes-region-cell { font-weight: 700; color: #1f2937; font-size: 16px; }
 .notes-industry {
   display: inline-flex;
   align-items: center;
