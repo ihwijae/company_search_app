@@ -527,7 +527,7 @@ export default function CompanyNotesPage() {
       </div>
 
       {editorOpen && (
-        <div className="notes-modal-backdrop" onClick={() => setEditorOpen(false)}>
+        <div className="notes-modal-backdrop">
           <div className="notes-modal" onClick={(e) => e.stopPropagation()}>
             <div className="notes-editor-header">
               <div className="notes-editor-title">
