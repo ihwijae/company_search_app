@@ -252,6 +252,12 @@ button.primary:hover { background: var(--accent-2); }
 .notes-name-cell { font-weight: 700; color: #111827; }
 .notes-name-td { vertical-align: middle; }
 .notes-name-cell { display: flex; align-items: center; gap: 8px; height: 100%; font-size: 16px; }
+.notes-manager-badges {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .notes-region-cell { font-weight: 700; color: #1f2937; font-size: 16px; }
 .notes-region-common {
   color: #2563eb;

@@ -3,6 +3,7 @@ import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
+import { extractManagerNames } from '../../../../utils/companyIndicators.js';
 import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 
@@ -93,6 +94,7 @@ const normalizeNoteItem = (item) => {
     inquiryStatus: INQUIRY_OPTIONS.some((opt) => opt.value === item.inquiryStatus) ? item.inquiryStatus : 'none',
     ownerManaged: Boolean(item.ownerManaged),
     isCommon: Boolean(item.isCommon),
+    managerNames: Array.isArray(item.managerNames) ? item.managerNames.filter(Boolean) : [],
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
   };
@@ -124,6 +126,7 @@ export default function CompanyNotesPage() {
     inquiryStatus: 'none',
     ownerManaged: false,
     isCommon: false,
+    managerNames: [],
   });
   const [companyPickerOpen, setCompanyPickerOpen] = React.useState(false);
   const [lastEditorDefaults, setLastEditorDefaults] = React.useState({
@@ -258,6 +261,7 @@ export default function CompanyNotesPage() {
       inquiryStatus: 'none',
       ownerManaged: false,
       isCommon: false,
+      managerNames: [],
     });
     setEditorOpen(true);
   };
@@ -274,6 +278,7 @@ export default function CompanyNotesPage() {
       inquiryStatus: row.inquiryStatus || 'none',
       ownerManaged: Boolean(row.ownerManaged),
       isCommon: Boolean(row.isCommon),
+      managerNames: Array.isArray(row.managerNames) ? row.managerNames : [],
       id: row.id,
     });
     setEditorOpen(true);
@@ -303,6 +308,7 @@ export default function CompanyNotesPage() {
         inquiryStatus: editorForm.inquiryStatus,
         ownerManaged: Boolean(editorForm.ownerManaged),
         isCommon: Boolean(editorForm.isCommon),
+        managerNames: Array.isArray(editorForm.managerNames) ? editorForm.managerNames : [],
         createdAt: now,
         updatedAt: now,
       };
@@ -322,6 +328,7 @@ export default function CompanyNotesPage() {
             inquiryStatus: editorForm.inquiryStatus,
             ownerManaged: Boolean(editorForm.ownerManaged),
             isCommon: Boolean(editorForm.isCommon),
+            managerNames: Array.isArray(editorForm.managerNames) ? editorForm.managerNames : [],
             updatedAt: now,
           }
           : row
@@ -369,12 +376,14 @@ export default function CompanyNotesPage() {
     const name = payload?.name || payload?.snapshot?.['업체명'] || payload?.snapshot?.['회사명'] || '';
     const bizNo = payload?.bizNo || payload?.snapshot?.['사업자번호'] || '';
     const region = payload?.snapshot?.['대표지역'] || payload?.snapshot?.['지역'] || '';
+    const managerNames = extractManagerNames(payload?.snapshot || {});
     setEditorForm((prev) => ({
       ...prev,
       name,
       bizNo,
       region,
       industry: normalizeIndustryValue(payload?.fileType || prev.industry),
+      managerNames,
     }));
     setCompanyPickerOpen(false);
   };
@@ -576,6 +585,13 @@ export default function CompanyNotesPage() {
                             <span>{row.name}</span>
                             {row.ownerManaged && <span className="notes-owner-badge">대표님업체</span>}
                           </div>
+                          {Array.isArray(row.managerNames) && row.managerNames.length > 0 && (
+                            <div className="notes-manager-badges">
+                              {row.managerNames.map((manager) => (
+                                <span key={`${row.id}-${manager}`} className="badge-person">{manager}</span>
+                              ))}
+                            </div>
+                          )}
                         </td>
                         <td>
                           <span className={`notes-industry notes-industry-${String(row.industry || '').trim()}`}>
