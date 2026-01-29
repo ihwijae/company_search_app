@@ -27,7 +27,7 @@ const INQUIRY_OPTIONS = [
   { value: 'free', label: '안물어보고 사용가능' },
 ];
 
-const DEFAULT_FILTERS = { industry: 'all', region: '전체', name: '', bizNo: '', ownerOnly: false };
+const DEFAULT_FILTERS = { industry: 'all', region: '전체', name: '', bizNo: '', ownerOnly: false, commonOnly: false };
 const STORAGE_KEY = 'company-notes:data';
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
@@ -92,6 +92,7 @@ const normalizeNoteItem = (item) => {
     memo: String(item.memo || '').trim(),
     inquiryStatus: INQUIRY_OPTIONS.some((opt) => opt.value === item.inquiryStatus) ? item.inquiryStatus : 'none',
     ownerManaged: Boolean(item.ownerManaged),
+    isCommon: Boolean(item.isCommon),
     createdAt: item.createdAt || now,
     updatedAt: item.updatedAt || now,
   };
@@ -122,6 +123,7 @@ export default function CompanyNotesPage() {
     memo: '',
     inquiryStatus: 'none',
     ownerManaged: false,
+    isCommon: false,
   });
   const [companyPickerOpen, setCompanyPickerOpen] = React.useState(false);
   const [lastEditorDefaults, setLastEditorDefaults] = React.useState({
@@ -189,11 +191,15 @@ export default function CompanyNotesPage() {
   const filteredRows = React.useMemo(() => {
     const nameKey = normalizeText(filters.name);
     const bizKey = normalizeDigits(filters.bizNo);
+    const hasKeyword = !!(nameKey || bizKey);
     const filtered = rows.filter((row) => {
       if (filters.industry !== 'all' && row.industry !== INDUSTRY_OPTIONS.find((i) => i.value === filters.industry)?.label) {
         return false;
       }
-      if (filters.region && filters.region !== '전체' && row.region !== filters.region) {
+      if (!hasKeyword && filters.commonOnly && !row.isCommon) {
+        return false;
+      }
+      if (filters.region && filters.region !== '전체' && !row.isCommon && row.region !== filters.region) {
         return false;
       }
       if (filters.ownerOnly && !row.ownerManaged) {
@@ -221,11 +227,10 @@ export default function CompanyNotesPage() {
   const editorRegionOptions = React.useMemo(() => {
     const base = (regionOptions || []).filter((region) => region && region !== '전체');
     const current = String(editorForm.region || '').trim();
-    const withCommon = base.includes('공통') ? base : ['공통', ...base];
-    if (current && !withCommon.includes(current)) {
-      return [current, ...withCommon];
+    if (current && !base.includes(current)) {
+      return [current, ...base];
     }
-    return withCommon;
+    return base;
   }, [regionOptions, editorForm.region]);
 
   const handleFilterChange = (field) => (event) => {
@@ -252,6 +257,7 @@ export default function CompanyNotesPage() {
       memo: '',
       inquiryStatus: 'none',
       ownerManaged: false,
+      isCommon: false,
     });
     setEditorOpen(true);
   };
@@ -267,6 +273,7 @@ export default function CompanyNotesPage() {
       memo: row.memo || '',
       inquiryStatus: row.inquiryStatus || 'none',
       ownerManaged: Boolean(row.ownerManaged),
+      isCommon: Boolean(row.isCommon),
       id: row.id,
     });
     setEditorOpen(true);
@@ -289,12 +296,13 @@ export default function CompanyNotesPage() {
         id: `note-${now}-${Math.random().toString(36).slice(2, 7)}`,
         name: editorForm.name,
         industry: industryLabel,
-        region: editorForm.region,
+        region: editorForm.isCommon ? '' : editorForm.region,
         bizNo: editorForm.bizNo,
         soloStatus: editorForm.soloStatus,
         memo: editorForm.memo,
         inquiryStatus: editorForm.inquiryStatus,
         ownerManaged: Boolean(editorForm.ownerManaged),
+        isCommon: Boolean(editorForm.isCommon),
         createdAt: now,
         updatedAt: now,
       };
@@ -307,12 +315,13 @@ export default function CompanyNotesPage() {
             ...row,
             name: editorForm.name,
             industry: industryLabel,
-            region: editorForm.region,
+            region: editorForm.isCommon ? '' : editorForm.region,
             bizNo: editorForm.bizNo,
             soloStatus: editorForm.soloStatus,
             memo: editorForm.memo,
             inquiryStatus: editorForm.inquiryStatus,
             ownerManaged: Boolean(editorForm.ownerManaged),
+            isCommon: Boolean(editorForm.isCommon),
             updatedAt: now,
           }
           : row
@@ -343,6 +352,9 @@ export default function CompanyNotesPage() {
   const applyOwnerCommonMemo = () => {
     const nextText = String(ownerCommonDraft || '').trim();
     const prevText = String(ownerCommonMemo || '').trim();
+    setRows((prev) => prev.map((row) => (
+      row.ownerManaged ? { ...row, memo: stripCommonLines(row.memo) } : row
+    )));
     setOwnerCommonMemo(nextText);
     setOwnerCommonModalOpen(false);
     setCommonOpenIds(new Set());
@@ -512,6 +524,21 @@ export default function CompanyNotesPage() {
                   </label>
                 </div>
                 <div className="filter-item">
+                  <label>기타</label>
+                  <label className={`notes-owner-filter ${draftFilters.commonOnly ? 'active' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={draftFilters.commonOnly}
+                      onChange={(e) => {
+                        const next = e.target.checked;
+                        setDraftFilters((prev) => ({ ...prev, commonOnly: next }));
+                        setFilters((prev) => ({ ...prev, commonOnly: next }));
+                      }}
+                    />
+                    기타만 보기
+                  </label>
+                </div>
+                <div className="filter-item">
                   <label>&nbsp;</label>
                   <button type="button" className="search-button" onClick={applyFilters}>검색</button>
                 </div>
@@ -521,7 +548,7 @@ export default function CompanyNotesPage() {
                 </div>
                 <div className="filter-item">
                   <label>&nbsp;</label>
-                  <button type="button" className="btn-soft" onClick={openOwnerCommonModal}>대표님업체 공통사항</button>
+                <button type="button" className="btn-soft" onClick={openOwnerCommonModal}>대표님업체 공통사항</button>
                 </div>
               </div>
             </div>
@@ -555,7 +582,9 @@ export default function CompanyNotesPage() {
                             {row.industry}
                           </span>
                         </td>
-                        <td className="notes-region-cell">{row.region}</td>
+                        <td className="notes-region-cell">
+                          {row.isCommon ? <span className="notes-region-common">기타</span> : row.region}
+                        </td>
                         <td>{row.bizNo}</td>
                         <td>
                           <span className={getSoloClassName(row.soloStatus)}>{getSoloLabel(row.soloStatus)}</span>
@@ -640,12 +669,13 @@ export default function CompanyNotesPage() {
                       ))}
                     </select>
                   </div>
-                  <div className="filter-item">
-                    <label>지역</label>
+                <div className="filter-item">
+                  <label>지역</label>
                   <select
                     value={editorForm.region}
                     onChange={(e) => setEditorForm((prev) => ({ ...prev, region: e.target.value }))}
                     className="filter-input"
+                    disabled={editorForm.isCommon}
                   >
                     <option value="">지역 선택</option>
                     {editorRegionOptions.map((region) => (
@@ -711,6 +741,14 @@ export default function CompanyNotesPage() {
                     대표님업체
                   </label>
                   <span className="notes-owner-help">대표님이 관리하는 업체는 강조 표시됩니다.</span>
+                  <label className={`notes-owner-chip ${editorForm.isCommon ? 'active' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={editorForm.isCommon}
+                      onChange={(e) => setEditorForm((prev) => ({ ...prev, isCommon: e.target.checked }))}
+                    />
+                    기타 등록
+                  </label>
                 </div>
               </div>
 
@@ -775,7 +813,7 @@ export default function CompanyNotesPage() {
           <div className="owner-common-modal">
             <div className="owner-common-header">
               <div>
-                <h3>대표님업체 공통 수정</h3>
+                <h3>대표님업체 공통 사항</h3>
                 <p>대표님업체 전체에 공통 문구를 추가하거나 삭제합니다.</p>
               </div>
               <button type="button" className="btn-muted btn-sm" onClick={() => setOwnerCommonModalOpen(false)}>닫기</button>
