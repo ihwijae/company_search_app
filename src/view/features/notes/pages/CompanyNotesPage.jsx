@@ -365,8 +365,8 @@ export default function CompanyNotesPage() {
       </div>
 
       {editorOpen && (
-        <div className="dialog-overlay" onClick={() => setEditorOpen(false)}>
-          <div className="dialog-box notes-editor" onClick={(e) => e.stopPropagation()}>
+        <div className="notes-modal-backdrop" onClick={() => setEditorOpen(false)}>
+          <div className="notes-modal" onClick={(e) => e.stopPropagation()}>
             <div className="notes-editor-header">
               <div className="notes-editor-title">
                 <span className="notes-editor-badge">특이사항</span>
