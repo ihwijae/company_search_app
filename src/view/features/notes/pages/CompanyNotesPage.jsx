@@ -220,6 +220,14 @@ export default function CompanyNotesPage() {
     setCompanyPickerOpen(false);
   };
 
+  const openCompanyPicker = () => {
+    setEditorForm((prev) => ({
+      ...prev,
+      industry: normalizeIndustryValue(prev.industry || draftFilters.industry || filters.industry),
+    }));
+    setCompanyPickerOpen(true);
+  };
+
   const handleMenuSelect = (key) => {
     setActiveMenu(key);
     if (key === 'upload') return;
@@ -388,7 +396,7 @@ export default function CompanyNotesPage() {
                       className="filter-input"
                       placeholder="업체명 입력"
                     />
-                    <button type="button" className="btn-soft btn-sm" onClick={() => setCompanyPickerOpen(true)}>업체 조회</button>
+                    <button type="button" className="btn-soft btn-sm" onClick={openCompanyPicker}>업체 조회</button>
                   </div>
                 </div>
                 <div className="filter-item">
