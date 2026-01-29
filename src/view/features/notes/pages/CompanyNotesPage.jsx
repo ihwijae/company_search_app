@@ -472,7 +472,6 @@ export default function CompanyNotesPage() {
                       <th style={{ width: '8%' }}>지역</th>
                       <th style={{ width: '18%' }}>사업자번호</th>
                       <th style={{ width: '12%' }}>단독</th>
-                      <th style={{ width: '14%' }}>여부묻기</th>
                       <th style={{ width: '14%' }}>최근 수정</th>
                       <th>특이사항</th>
                       <th style={{ width: '10%' }} />
@@ -495,9 +494,6 @@ export default function CompanyNotesPage() {
                         <td>
                           <span className={getSoloClassName(row.soloStatus)}>{getSoloLabel(row.soloStatus)}</span>
                         </td>
-                        <td>
-                          <span className={getInquiryClassName(row.inquiryStatus)}>{getInquiryLabel(row.inquiryStatus)}</span>
-                        </td>
                         <td>{formatDateTime(row.updatedAt || row.createdAt)}</td>
                         <td>
                           <div className="notes-memo">
@@ -519,7 +515,7 @@ export default function CompanyNotesPage() {
                     ))}
                     {filteredRows.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="notes-empty">등록된 특이사항이 없습니다.</td>
+                        <td colSpan={8} className="notes-empty">등록된 특이사항이 없습니다.</td>
                       </tr>
                     )}
                   </tbody>
