@@ -890,13 +890,13 @@ function createWindow() {
     y: bounds.y,
     width: bounds.width,
     height: bounds.height,
-    backgroundColor: '#e0ecff',
+    backgroundColor: '#1f2937',
     title: APP_DISPLAY_NAME,
     icon: APP_ICON_PATH || undefined,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#e0ecff',
-      symbolColor: '#1f2937',
+      color: '#1f2937',
+      symbolColor: '#e2e8f0',
       height: 32,
     },
     webPreferences: {
