@@ -26,7 +26,6 @@ const INQUIRY_OPTIONS = [
   { value: 'ask', label: '물어보고 사용' },
   { value: 'free', label: '안물어보고 사용가능' },
 ];
-const COMMON_PREFIX = '공통: ';
 
 const DEFAULT_FILTERS = { industry: 'all', region: '전체', name: '', bizNo: '', ownerOnly: false };
 const STORAGE_KEY = 'company-notes:data';
@@ -98,24 +97,12 @@ const normalizeNoteItem = (item) => {
   };
 };
 
-const buildCommonLine = (text) => `${COMMON_PREFIX}${text}`;
-
-const removeCommonLine = (memo, text) => {
-  if (!text) return String(memo || '').trim();
-  const target = buildCommonLine(text);
-  const parts = String(memo || '').split('\n').map((line) => line.trim());
-  const filtered = parts.filter((line) => line && line !== target);
-  return filtered.join('\n').trim();
-};
-
-const appendCommonLine = (memo, text) => {
-  if (!text) return String(memo || '').trim();
-  const target = buildCommonLine(text);
-  const base = String(memo || '').trim();
-  if (!base) return target;
-  if (base.split('\n').some((line) => line.trim() === target)) return base;
-  return `${base}\n${target}`;
-};
+const stripCommonLines = (memo) => String(memo || '')
+  .split('\n')
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith('공통:'))
+  .join('\n')
+  .trim();
 
 export default function CompanyNotesPage() {
   const [activeMenu, setActiveMenu] = React.useState('company-notes');
@@ -144,6 +131,7 @@ export default function CompanyNotesPage() {
   const [ownerCommonModalOpen, setOwnerCommonModalOpen] = React.useState(false);
   const [ownerCommonMemo, setOwnerCommonMemo] = React.useState('');
   const [ownerCommonDraft, setOwnerCommonDraft] = React.useState('');
+  const [commonOpenIds, setCommonOpenIds] = React.useState(() => new Set());
   const saveTimerRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -355,16 +343,9 @@ export default function CompanyNotesPage() {
   const applyOwnerCommonMemo = () => {
     const nextText = String(ownerCommonDraft || '').trim();
     const prevText = String(ownerCommonMemo || '').trim();
-    const now = Date.now();
-    setRows((prev) => prev.map((row) => {
-      if (!row.ownerManaged) return row;
-      let memo = row.memo;
-      if (prevText) memo = removeCommonLine(memo, prevText);
-      if (nextText) memo = appendCommonLine(memo, nextText);
-      return { ...row, memo, updatedAt: now };
-    }));
     setOwnerCommonMemo(nextText);
     setOwnerCommonModalOpen(false);
+    setCommonOpenIds(new Set());
     if (!nextText && prevText) {
       notify({ type: 'success', message: '대표님업체 공통 문구를 삭제했습니다.' });
       return;
@@ -558,7 +539,7 @@ export default function CompanyNotesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((row, idx) => (
+                    {filteredRows.map((row) => (
                       <tr key={row.id} className={row.ownerManaged ? 'notes-row-owner' : ''}>
                         <td className="notes-name-td">
                           <div className="notes-name-cell">
@@ -584,7 +565,26 @@ export default function CompanyNotesPage() {
                                 {getInquiryLabel(row.inquiryStatus)}
                               </span>
                             )}
-                            <span>{row.memo}</span>
+                            {row.ownerManaged && ownerCommonMemo && (
+                              <button
+                                type="button"
+                                className="notes-common-badge"
+                                onClick={() => {
+                                  setCommonOpenIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(row.id)) next.delete(row.id);
+                                    else next.add(row.id);
+                                    return next;
+                                  });
+                                }}
+                              >
+                                공통
+                              </button>
+                            )}
+                            <span>{stripCommonLines(row.memo)}</span>
+                            {row.ownerManaged && ownerCommonMemo && commonOpenIds.has(row.id) && (
+                              <div className="notes-common-text">{ownerCommonMemo}</div>
+                            )}
                           </div>
                         </td>
                         <td>
