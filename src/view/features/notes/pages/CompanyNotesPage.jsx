@@ -451,7 +451,6 @@ export default function CompanyNotesPage() {
               </div>
               <div className="company-notes-actions">
                 <button type="button" className="btn-soft" onClick={openCreate}>특이사항 등록</button>
-                <button type="button" className="btn-soft" onClick={openOwnerCommonModal}>대표님업체 공통수정</button>
                 <button type="button" className="btn-muted" onClick={handleImport}>가져오기</button>
                 <button type="button" className="btn-muted" onClick={handleExport}>내보내기</button>
               </div>
@@ -519,6 +518,10 @@ export default function CompanyNotesPage() {
                 <div className="filter-item">
                   <label>&nbsp;</label>
                   <button type="button" className="reset-button" onClick={resetFilters}>필터 초기화</button>
+                </div>
+                <div className="filter-item">
+                  <label>&nbsp;</label>
+                  <button type="button" className="btn-soft" onClick={openOwnerCommonModal}>대표님업체 공통사항</button>
                 </div>
               </div>
             </div>
