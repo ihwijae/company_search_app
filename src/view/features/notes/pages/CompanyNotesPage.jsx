@@ -433,7 +433,7 @@ export default function CompanyNotesPage() {
         setRows(updatedRows);
         notify({ type: 'success', message: `담당자 배지 ${updatedCount}건을 갱신했습니다.` });
       } else {
-        notify({ type: 'info', message: '추가할 담당자 배지가 없습니다.' });
+        notify({ type: 'info', message: '갱신할 자료가 없습니다.' });
       }
     } finally {
       hideLoading();
@@ -625,7 +625,6 @@ export default function CompanyNotesPage() {
                       <th style={{ width: '8%' }}>지역</th>
                       <th style={{ width: '18%' }}>사업자번호</th>
                       <th style={{ width: '12%' }}>단독</th>
-                      <th style={{ width: '14%' }}>최근 수정</th>
                       <th>특이사항</th>
                       <th style={{ width: '10%' }} />
                     </tr>
@@ -658,7 +657,6 @@ export default function CompanyNotesPage() {
                         <td>
                           <span className={getSoloClassName(row.soloStatus)}>{getSoloLabel(row.soloStatus)}</span>
                         </td>
-                        <td>{formatDateTime(row.updatedAt || row.createdAt)}</td>
                         <td>
                           <div className="notes-memo">
                             {row.inquiryStatus !== 'none' && (
@@ -697,8 +695,8 @@ export default function CompanyNotesPage() {
                       </tr>
                     ))}
                     {filteredRows.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="notes-empty">등록된 특이사항이 없습니다.</td>
+                     <tr>
+                        <td colSpan={7} className="notes-empty">등록된 특이사항이 없습니다.</td>
                       </tr>
                     )}
                   </tbody>

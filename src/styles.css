@@ -278,8 +278,8 @@ button.primary:hover { background: var(--accent-2); }
 .notes-industry-통신 { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
 .notes-industry-소방 { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
 .notes-memo {
-  min-width: 320px;
-  max-width: 420px;
+  min-width: 420px;
+  max-width: 620px;
   width: 100%;
   white-space: normal;
   overflow: visible;
