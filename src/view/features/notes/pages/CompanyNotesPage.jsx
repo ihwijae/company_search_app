@@ -413,6 +413,12 @@ export default function CompanyNotesPage() {
                         type="text"
                         value={editorForm.name}
                         onChange={(e) => setEditorForm((prev) => ({ ...prev, name: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            openCompanyPicker();
+                          }
+                        }}
                         className="filter-input"
                         placeholder="업체명 입력"
                       />

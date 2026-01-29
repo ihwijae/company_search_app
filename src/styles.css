@@ -285,7 +285,6 @@ button.primary:hover { background: var(--accent-2); }
   inset: 0;
   background: radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.14), transparent 45%),
     rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -395,7 +394,6 @@ button.primary:hover { background: var(--accent-2); }
   inset: 0;
   background: radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.18), transparent 40%),
     rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
