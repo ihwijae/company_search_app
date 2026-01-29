@@ -4,6 +4,7 @@ import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
+import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 
 const INDUSTRY_OPTIONS = [
   { value: 'eung', label: '전기' },
@@ -81,6 +82,7 @@ const normalizeNoteItem = (item) => {
 
 export default function CompanyNotesPage() {
   const [activeMenu, setActiveMenu] = React.useState('company-notes');
+  const { confirm } = useFeedback();
   const [draftFilters, setDraftFilters] = React.useState(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState(DEFAULT_FILTERS);
   const [regionOptions, setRegionOptions] = React.useState(['전체']);
@@ -254,10 +256,16 @@ export default function CompanyNotesPage() {
     setEditorOpen(false);
   };
 
-  const handleDelete = (rowId) => {
+  const handleDelete = async (rowId) => {
     if (!rowId) return;
-    const confirmed = window.confirm('해당 특이사항을 삭제할까요?');
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: '특이사항 삭제',
+      message: '해당 특이사항을 삭제할까요?',
+      confirmText: '삭제',
+      cancelText: '취소',
+      tone: 'warning',
+    });
+    if (!ok) return;
     setRows((prev) => prev.filter((row) => row.id !== rowId));
   };
 
