@@ -109,7 +109,7 @@ const stripCommonLines = (memo) => String(memo || '')
 
 export default function CompanyNotesPage() {
   const [activeMenu, setActiveMenu] = React.useState('company-notes');
-  const { confirm, notify } = useFeedback();
+  const { confirm, notify, showLoading, hideLoading } = useFeedback();
   const [draftFilters, setDraftFilters] = React.useState(DEFAULT_FILTERS);
   const [filters, setFilters] = React.useState(DEFAULT_FILTERS);
   const [regionOptions, setRegionOptions] = React.useState(['전체']);
@@ -388,6 +388,54 @@ export default function CompanyNotesPage() {
     setCompanyPickerOpen(false);
   };
 
+  const refreshManagerBadges = async () => {
+    if (!window?.electronAPI?.searchCompanies) {
+      notify({ type: 'error', message: '업체 조회 기능을 사용할 수 없습니다.' });
+      return;
+    }
+    const targets = rows.filter((row) => !Array.isArray(row.managerNames) || row.managerNames.length === 0);
+    if (targets.length === 0) {
+      notify({ type: 'info', message: '갱신할 담당자 배지가 없습니다.' });
+      return;
+    }
+    showLoading({ title: '담당자 배지 갱신 중', message: '업체 DB를 확인하고 있습니다.' });
+    let updatedCount = 0;
+    try {
+      const updatedRows = [...rows];
+      for (let i = 0; i < targets.length; i += 1) {
+        const row = targets[i];
+        const name = String(row.name || '').trim();
+        if (!name) continue;
+        const typeKey = normalizeIndustryValue(row.industry);
+        try {
+          const result = await window.electronAPI.searchCompanies({ name }, typeKey);
+          if (!result?.success || !Array.isArray(result.data)) continue;
+          let picked = result.data[0];
+          const bizKey = normalizeDigits(row.bizNo);
+          if (bizKey) {
+            const matched = result.data.find((item) => normalizeDigits(item?.['사업자번호']) === bizKey);
+            if (matched) picked = matched;
+          }
+          const managers = extractManagerNames(picked || {});
+          if (managers.length === 0) continue;
+          const index = updatedRows.findIndex((item) => item.id === row.id);
+          if (index >= 0) {
+            updatedRows[index] = { ...updatedRows[index], managerNames: managers };
+            updatedCount += 1;
+          }
+        } catch {}
+      }
+      if (updatedCount > 0) {
+        setRows(updatedRows);
+        notify({ type: 'success', message: `담당자 배지 ${updatedCount}건을 갱신했습니다.` });
+      } else {
+        notify({ type: 'info', message: '추가할 담당자 배지가 없습니다.' });
+      }
+    } finally {
+      hideLoading();
+    }
+  };
+
   const handleExport = async () => {
     if (!window?.electronAPI?.companyNotesExport) {
       notify({ type: 'error', message: '내보내기 기능을 사용할 수 없습니다.' });
@@ -472,6 +520,7 @@ export default function CompanyNotesPage() {
               </div>
               <div className="company-notes-actions">
                 <button type="button" className="btn-soft" onClick={openCreate}>특이사항 등록</button>
+                <button type="button" className="btn-muted" onClick={refreshManagerBadges}>담당자 배지 갱신</button>
                 <button type="button" className="btn-muted" onClick={handleImport}>가져오기</button>
                 <button type="button" className="btn-muted" onClick={handleExport}>내보내기</button>
               </div>
