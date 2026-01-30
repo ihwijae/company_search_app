@@ -3,6 +3,9 @@ Option Explicit
 Private gStep As String
 Public gDbPath As String
 Public gFileType As String
+Private gTargetWorkbook As String
+Private gTargetSheet As String
+Private gTargetAddress As String
 
 ' 협정보드 MOIS 30억 미만 템플릿용 PoC 매크로
 ' - 로컬 업체 DB(시트=지역)에서 업체명 검색 후 값 채움
@@ -20,15 +23,19 @@ Private ABILITY_COLS As Variant
 Public Sub ApplyMoisUnder30()
   Dim dbPath As String
   gStep = "select-db"
-  dbPath = GetDbPath()
+  dbPath = gDbPath
+  If dbPath = "" Then dbPath = GetDbPath()
   If dbPath = "" Then Exit Sub
+  gDbPath = dbPath
 
   InitColumns
 
   Dim fileType As String
   gStep = "select-filetype"
-  fileType = AskFileType()
+  fileType = gFileType
+  If fileType = "" Then fileType = AskFileType()
   If fileType = "" Then Exit Sub
+  gFileType = fileType
 
   Dim dbWb As Workbook
   On Error GoTo ErrHandler
@@ -74,13 +81,27 @@ ErrHandler:
   MsgBox "Error " & Err.Number & ": " & Err.Description & vbCrLf & "Step: " & gStep, vbExclamation
 End Sub
 
-' 업체 검색 UI (UserForm)
-Public Sub OpenCompanySearchUI()
-  gDbPath = GetDbPath()
-  If gDbPath = "" Then Exit Sub
-  gFileType = AskFileType()
-  If gFileType = "" Then Exit Sub
-  CompanySearchForm.Show
+Public Sub OpenCompanySearchSheet()
+  Dim dbPath As String
+  dbPath = gDbPath
+  If dbPath = "" Then dbPath = GetDbPath()
+  If dbPath = "" Then Exit Sub
+  gDbPath = dbPath
+
+  Dim fileType As String
+  fileType = gFileType
+  If fileType = "" Then fileType = AskFileType()
+  If fileType = "" Then Exit Sub
+  gFileType = fileType
+
+  gTargetWorkbook = ActiveWorkbook.Name
+  gTargetSheet = ActiveSheet.Name
+  gTargetAddress = ActiveCell.Address(False, False)
+
+  Dim ws As Worksheet
+  Set ws = EnsureSearchSheet()
+  ws.Activate
+  ws.Range("B2").Select
 End Sub
 
 Private Sub InitColumns()
@@ -404,6 +425,103 @@ NextSheet:
 
   Set SearchCompaniesInWorkbook = results
 End Function
+
+Public Sub SearchCompaniesSheet()
+  If gDbPath = "" Then
+    gDbPath = GetDbPath()
+    If gDbPath = "" Then Exit Sub
+  End If
+  Dim ws As Worksheet
+  Set ws = EnsureSearchSheet()
+  Dim query As String
+  query = Trim(CStr(ws.Range("B2").Value))
+  If query = "" Then
+    MsgBox "검색어를 입력하세요.", vbExclamation
+    Exit Sub
+  End If
+
+  Dim dbWb As Workbook
+  On Error GoTo ErrHandler
+  Set dbWb = Workbooks.Open(gDbPath, ReadOnly:=True)
+
+  ws.Range("A5:C2000").ClearContents
+  Dim results As Collection
+  Set results = SearchCompaniesInWorkbook(dbWb, query)
+
+  Dim i As Long
+  For i = 1 To results.Count
+    Dim item As Variant
+    item = results(i)
+    ws.Cells(4 + i, 1).Value = item(0)
+    ws.Cells(4 + i, 2).Value = item(1)
+    ws.Cells(4 + i, 3).Value = item(2)
+  Next i
+
+  dbWb.Close False
+  Exit Sub
+
+ErrHandler:
+  On Error Resume Next
+  If Not dbWb Is Nothing Then dbWb.Close False
+  MsgBox "Search error: " & Err.Description, vbExclamation
+End Sub
+
+Public Sub ApplySelectedCompany()
+  Dim ws As Worksheet
+  Set ws = EnsureSearchSheet()
+  Dim row As Long
+  row = ActiveCell.Row
+  If row < 5 Then Exit Sub
+  Dim nameText As String
+  nameText = Trim(CStr(ws.Cells(row, 1).Value))
+  If nameText = "" Then Exit Sub
+
+  Dim targetWb As Workbook
+  Set targetWb = Workbooks(gTargetWorkbook)
+  Dim targetWs As Worksheet
+  Set targetWs = targetWb.Worksheets(gTargetSheet)
+  targetWs.Range(gTargetAddress).Value = nameText
+  targetWs.Activate
+  targetWs.Range(gTargetAddress).Select
+End Sub
+
+Private Function EnsureSearchSheet() As Worksheet
+  Dim ws As Worksheet
+  On Error Resume Next
+  Set ws = ActiveWorkbook.Worksheets("업체검색")
+  On Error GoTo 0
+  If ws Is Nothing Then
+    Set ws = ActiveWorkbook.Worksheets.Add
+    ws.Name = "업체검색"
+  End If
+
+  ws.Range("A1").Value = "업체 검색"
+  ws.Range("A2").Value = "검색어"
+  ws.Range("B2").Value = ws.Range("B2").Value
+  ws.Range("A4").Value = "업체명"
+  ws.Range("B4").Value = "지역"
+  ws.Range("C4").Value = "사업자번호"
+  ws.Range("A1:C4").Font.Bold = True
+  ws.Columns("A:C").ColumnWidth = 20
+
+  AddButton ws, "btnSearch", "검색", "SearchCompaniesSheet", 220, 20, 80, 24
+  AddButton ws, "btnApply", "선택적용", "ApplySelectedCompany", 320, 20, 80, 24
+
+  Set EnsureSearchSheet = ws
+End Function
+
+Private Sub AddButton(ws As Worksheet, name As String, caption As String, macroName As String, left As Double, top As Double, width As Double, height As Double)
+  Dim shp As Shape
+  On Error Resume Next
+  Set shp = ws.Shapes(name)
+  On Error GoTo 0
+  If shp Is Nothing Then
+    Set shp = ws.Shapes.AddShape(msoShapeRoundedRectangle, left, top, width, height)
+    shp.Name = name
+    shp.TextFrame.Characters.Text = caption
+    shp.OnAction = macroName
+  End If
+End Sub
 
 Private Function Nz(value As Variant) As Double
   If IsEmpty(value) Then

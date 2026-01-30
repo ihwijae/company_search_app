@@ -1,0 +1,15 @@
+{
+  "dbPath": "db/업체DB.xlsx",
+  "industryAverages": {
+    "eung": { "debtRatio": 124.41, "currentRatio": 142.58 },
+    "tongsin": { "debtRatio": 124.03, "currentRatio": 140.06 },
+    "sobang": { "debtRatio": 110.08, "currentRatio": 139.32 }
+  },
+  "mois_under30": {
+    "nameCols": ["C", "D", "E", "F", "G"],
+    "managementCols": ["P", "Q", "R", "S", "T"],
+    "performanceCols": ["W", "X", "Y", "Z", "AA"],
+    "startRow": 5,
+    "maxRows": 68
+  }
+}
