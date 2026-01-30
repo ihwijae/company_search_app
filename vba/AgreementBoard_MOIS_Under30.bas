@@ -1,5 +1,9 @@
 Option Explicit
 
+Private gStep As String
+Public gDbPath As String
+Public gFileType As String
+
 ' 협정보드 MOIS 30억 미만 템플릿용 PoC 매크로
 ' - 로컬 업체 DB(시트=지역)에서 업체명 검색 후 값 채움
 ' - 경영점수는 formulas.defaults.json (행안부 30억 미만) 기준으로 계산
@@ -15,20 +19,24 @@ Private ABILITY_COLS As Variant
 
 Public Sub ApplyMoisUnder30()
   Dim dbPath As String
+  gStep = "select-db"
   dbPath = GetDbPath()
   If dbPath = "" Then Exit Sub
 
   InitColumns
 
   Dim fileType As String
+  gStep = "select-filetype"
   fileType = AskFileType()
   If fileType = "" Then Exit Sub
 
   Dim dbWb As Workbook
   On Error GoTo ErrHandler
+  gStep = "open-db"
   Set dbWb = Workbooks.Open(dbPath, ReadOnly:=True)
 
   Dim ws As Worksheet
+  gStep = "scan-target-sheet"
   Set ws = ActiveSheet
 
   Dim r As Long, slot As Long
@@ -38,13 +46,16 @@ Public Sub ApplyMoisUnder30()
       nameText = Trim(CStr(ws.Range(NAME_COLS(slot) & r).Value))
       If nameText <> "" Then
         Dim data As Object
+        gStep = "lookup-company"
         Set data = FindCompanyData(dbWb, nameText)
         If Not data Is Nothing Then
           Dim mgmtScore As Variant
+          gStep = "compute-management"
           mgmtScore = ComputeManagementScore_MoisUnder30(data, fileType)
           If Not IsEmpty(mgmtScore) Then ws.Range(MGMT_COLS(slot) & r).Value = mgmtScore
 
           Dim perfAmount As Variant
+          gStep = "read-performance"
           perfAmount = GetNumber(data, "5년 실적")
           If Not IsEmpty(perfAmount) Then ws.Range(PERF_COLS(slot) & r).Value = perfAmount
 
@@ -60,7 +71,16 @@ Public Sub ApplyMoisUnder30()
 ErrHandler:
   On Error Resume Next
   If Not dbWb Is Nothing Then dbWb.Close False
-  MsgBox "실행 중 오류: " & Err.Description, vbExclamation
+  MsgBox "Error " & Err.Number & ": " & Err.Description & vbCrLf & "Step: " & gStep, vbExclamation
+End Sub
+
+' 업체 검색 UI (UserForm)
+Public Sub OpenCompanySearchUI()
+  gDbPath = GetDbPath()
+  If gDbPath = "" Then Exit Sub
+  gFileType = AskFileType()
+  If gFileType = "" Then Exit Sub
+  CompanySearchForm.Show
 End Sub
 
 Private Sub InitColumns()
@@ -301,7 +321,7 @@ End Function
 
 Private Function AskFileType() As String
   Dim inputVal As String
-  inputVal = InputBox("공종을 입력하세요: 전기 / 통신 / 소방", "공종 선택", "전기")
+  inputVal = InputBox("Enter file type: 전기 / 통신 / 소방", "File Type", "전기")
   inputVal = Trim(inputVal)
   If inputVal = "" Then
     AskFileType = ""
@@ -315,7 +335,7 @@ Private Function AskFileType() As String
     Case "소방", "sobang"
       AskFileType = "sobang"
     Case Else
-      MsgBox "공종은 전기/통신/소방 중 하나로 입력하세요.", vbExclamation
+      MsgBox "Invalid file type. Use 전기/통신/소방.", vbExclamation
       AskFileType = ""
   End Select
 End Function
@@ -336,6 +356,54 @@ Private Sub GetIndustryAverages(fileType As String, ByRef debtAvg As Double, ByR
       currentAvg = 100#
   End Select
 End Sub
+
+Public Function SearchCompaniesInWorkbook(dbWb As Workbook, query As String, Optional maxResults As Long = 200) As Collection
+  Dim results As New Collection
+  Dim q As String
+  q = NormalizeCompanyName(query)
+  If q = "" Then
+    Set SearchCompaniesInWorkbook = results
+    Exit Function
+  End If
+
+  Dim sheet As Worksheet
+  For Each sheet In dbWb.Worksheets
+    Dim headerRow As Long
+    headerRow = FindHeaderRow(sheet)
+    If headerRow = 0 Then GoTo NextSheet
+
+    Dim lastCol As Long
+    lastCol = sheet.Cells(headerRow, sheet.Columns.Count).End(xlToLeft).Column
+
+    Dim c As Long
+    For c = 2 To lastCol
+      Dim rawName As String
+      rawName = Trim(CStr(sheet.Cells(headerRow, c).Value))
+      If rawName <> "" Then
+        Dim normName As String
+        normName = NormalizeCompanyName(rawName)
+        If normName <> "" Then
+          If InStr(1, normName, q, vbTextCompare) > 0 Or InStr(1, q, normName, vbTextCompare) > 0 Then
+            Dim data As Object
+            Set data = BuildCompanyData(sheet, headerRow, c)
+            Dim item(0 To 2) As String
+            item(0) = normName
+            item(1) = CStr(data("대표지역"))
+            item(2) = CStr(data("사업자번호"))
+            results.Add item
+            If results.Count >= maxResults Then
+              Set SearchCompaniesInWorkbook = results
+              Exit Function
+            End If
+          End If
+        End If
+      End If
+    Next c
+NextSheet:
+  Next sheet
+
+  Set SearchCompaniesInWorkbook = results
+End Function
 
 Private Function Nz(value As Variant) As Double
   If IsEmpty(value) Then
