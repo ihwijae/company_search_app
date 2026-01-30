@@ -59,7 +59,6 @@
       "src/shared/**",
       "utils/**",
       "config.js",
-      "defaults/**",
       "template/**",
       "템플릿/**"
     ],

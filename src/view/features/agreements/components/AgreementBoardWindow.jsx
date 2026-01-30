@@ -17,6 +17,7 @@ import { isWomenOwnedCompany, getQualityBadgeText, extractManagerNames } from '.
 import { generateMany } from '../../../../shared/agreements/generator.js';
 import { AGREEMENT_GROUPS } from '../../../../shared/navigation.js';
 import { sanitizeHtml } from '../../../../shared/sanitizeHtml.js';
+import { AGREEMENT_BAN_CONFIG } from '../../../../shared/agreements/banConfig.js';
 
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
@@ -117,6 +118,7 @@ const COLUMN_WIDTHS = {
   order: 40,
   approval: 90,
   name: 100,
+  remark: 180,
   share: 65,
   status: 45,
   management: 55,
@@ -522,61 +524,13 @@ const getCandidateManagerName = (candidate) => {
   return '';
 };
 
-const resolveBoardConstraintRules = (doc, { ownerId, rangeId, fileType, regionNames }) => {
-  if (!doc || typeof doc !== 'object') return null;
-  const normalizedType = String(fileType || 'eung').toLowerCase();
-  const normalizeRegionKey = (value) => String(value || '').replace(/\s+/g, '').trim().toLowerCase();
-  const regionTargets = (Array.isArray(regionNames) ? regionNames : [])
-    .map((entry) => normalizeRegionKey(entry))
-    .filter(Boolean);
-
-  const pickKindRules = (kinds = []) => {
-    const match = kinds.find((k) => (k?.id || '').toLowerCase() === normalizedType)
-      || kinds.find((k) => (k?.id || '').toLowerCase() === 'eung')
-      || kinds[0];
-    return match?.rules || null;
-  };
-
-  const fragments = [];
-  const globalKinds = Array.isArray(doc.globalRules?.kinds) ? doc.globalRules.kinds : [];
-  const globalRules = pickKindRules(globalKinds);
-  if (globalRules) fragments.push(globalRules);
-
-  const owners = Array.isArray(doc.owners) ? doc.owners : [];
-  const owner = owners.find((o) => (o?.id || '').toUpperCase() === String(ownerId || '').toUpperCase());
-  if (owner && Array.isArray(owner.kinds)) {
-    const ownerRules = pickKindRules(owner.kinds);
-    if (ownerRules) fragments.push(ownerRules);
-  }
-  if (owner && Array.isArray(owner.ranges)) {
-    const range = owner.ranges.find((r) => r?.id === rangeId) || owner.ranges[0] || null;
-    if (range && Array.isArray(range.kinds)) {
-      const rangeRules = pickKindRules(range.kinds);
-      if (rangeRules) fragments.push(rangeRules);
-    }
-  }
-
-  if (regionTargets.length > 0 && Array.isArray(doc.regions)) {
-    doc.regions.forEach((region) => {
-      const key = normalizeRegionKey(region?.id || region?.label || region?.region);
-      if (!key || !regionTargets.includes(key)) return;
-      const regionRules = pickKindRules(region?.kinds || []);
-      if (regionRules) fragments.push(regionRules);
-    });
-  }
-
+const resolveBoardConstraintRules = (rawRules) => {
+  const base = rawRules && typeof rawRules === 'object' ? rawRules : {};
   const merged = {
-    banSameManager: false,
-    banManagerPairs: [],
-    banPairs: [],
+    banSameManager: Boolean(base.banSameManager),
+    banManagerPairs: Array.isArray(base.banManagerPairs) ? base.banManagerPairs.slice() : [],
+    banPairs: Array.isArray(base.banPairs) ? base.banPairs.slice() : [],
   };
-
-  fragments.forEach((rules) => {
-    if (!rules || typeof rules !== 'object') return;
-    if (rules.banSameManager) merged.banSameManager = true;
-    if (Array.isArray(rules.banManagerPairs)) merged.banManagerPairs.push(...rules.banManagerPairs);
-    if (Array.isArray(rules.banPairs)) merged.banPairs.push(...rules.banPairs);
-  });
 
   const dedupePairs = (pairs, keyFn) => {
     const seen = new Set();
@@ -1292,7 +1246,6 @@ export default function AgreementBoardWindow({
     Array.isArray(initialGroupQualityScores) ? initialGroupQualityScores.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
   ));
   const [formulasDoc, setFormulasDoc] = React.useState(null);
-  const [agreementConstraintRules, setAgreementConstraintRules] = React.useState(null);
   const [memoOpen, setMemoOpen] = React.useState(false);
   const [memoDraft, setMemoDraft] = React.useState('');
   const memoEditorRef = React.useRef(null);
@@ -2138,37 +2091,10 @@ export default function AgreementBoardWindow({
     };
   }, [open]);
 
-  React.useEffect(() => {
-    let canceled = false;
-    const load = async () => {
-      if (!open) return;
-      const api = typeof window !== 'undefined' ? window.electronAPI : null;
-      if (!api?.agreementsRulesLoad) {
-        setAgreementConstraintRules(null);
-        return;
-      }
-      try {
-        const response = await api.agreementsRulesLoad();
-        if (canceled) return;
-        if (response?.data) {
-          const resolved = resolveBoardConstraintRules(response.data, {
-            ownerId,
-            rangeId,
-            fileType,
-            regionNames: dutyRegions,
-          });
-          setAgreementConstraintRules(resolved);
-        }
-      } catch (err) {
-        console.warn('[AgreementBoard] agreements rules load failed:', err?.message || err);
-        if (!canceled) setAgreementConstraintRules(null);
-      }
-    };
-    load();
-    return () => {
-      canceled = true;
-    };
-  }, [open, ownerId, rangeId, fileType, dutyRegions]);
+  const agreementConstraintRules = React.useMemo(
+    () => resolveBoardConstraintRules(AGREEMENT_BAN_CONFIG),
+    [],
+  );
   const safeGroupSize = React.useMemo(() => {
     const parsed = Number(groupSize);
     if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_GROUP_SIZE;
@@ -2370,6 +2296,7 @@ export default function AgreementBoardWindow({
       + COLUMN_WIDTHS.management
       + (collapsedColumns.managementBonus ? COLLAPSED_COLUMN_WIDTHS.managementBonus : COLUMN_WIDTHS.managementBonus)
       + COLUMN_WIDTHS.shareTotal
+      + COLUMN_WIDTHS.remark
       + (isLHOwner ? COLUMN_WIDTHS.qualityPoints : 0)
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
@@ -4831,7 +4758,7 @@ export default function AgreementBoardWindow({
   }, [groups, showHeaderAlert]);
 
   const tableColumnCount = React.useMemo(() => {
-    const baseColumns = 12
+    const baseColumns = 13
       + (credibilityEnabled ? 1 : 0)
       + (technicianEnabled ? 2 : 0)
       + (isLHOwner ? 1 : 0)
@@ -4912,8 +4839,6 @@ export default function AgreementBoardWindow({
     const technicianStored = groupTechnicianScores[groupIndex]?.[slotIndex];
     const technicianValue = technicianStored != null ? String(technicianStored) : '';
     const technicianNumeric = parseNumeric(technicianValue);
-    const conflictNotes = conflictNotesByGroup.get(groupIndex)?.get(uid) || [];
-
     return {
       empty: false,
       slotIndex,
@@ -4938,7 +4863,6 @@ export default function AgreementBoardWindow({
       credibilityProduct: credibilityProduct != null ? `${credibilityProduct.toFixed(2)}점` : '',
       technicianValue,
       technicianNumeric,
-      remarks: conflictNotes,
     };
   };
 
@@ -4996,18 +4920,6 @@ export default function AgreementBoardWindow({
             {meta.overLimit && (
               <div className="excel-member-warning">참여업체수 초과</div>
             )}
-            <div className="excel-member-remark">
-              <span className="remark-label">비고</span>
-              <div className="remark-lines">
-                {Array.isArray(meta.remarks) && meta.remarks.length > 0 ? (
-                  meta.remarks.map((note, index) => (
-                    <div key={`${meta.uid}-remark-${index}`} className="remark-line">{note}</div>
-                  ))
-                ) : (
-                  <div className="remark-line remark-empty">없음</div>
-                )}
-              </div>
-            </div>
           </div>
         )}
       </td>
@@ -5167,7 +5079,7 @@ export default function AgreementBoardWindow({
     const nameSpan = columnSpans.nameSpan;
     const shareSpan = columnSpans.shareSpan;
     const guideSpan = 1 + nameSpan;
-    const usedColumns = 4 + nameSpan + shareSpan;
+    const usedColumns = 5 + nameSpan + shareSpan;
     const fillerSpan = Math.max(tableColumnCount - usedColumns, 0);
     const resolvedQualityTotal = qualityTotal ?? slotMetas.reduce((acc, meta) => {
       if (meta.empty) return acc;
@@ -5186,6 +5098,7 @@ export default function AgreementBoardWindow({
         <td className="excel-cell quality-guide" colSpan={guideSpan}>
           {qualityGuide}
         </td>
+        <td className="excel-cell quality-remark" />
         {collapsedColumns.share ? (
           <td className="excel-cell collapsed-stub-cell share-stub" />
         ) : (
@@ -5317,6 +5230,20 @@ export default function AgreementBoardWindow({
     const approvalValue = groupApprovals[groupIndex] || '';
     const rightRowSpan = isLHOwner ? 2 : undefined;
     const bonusChecked = Boolean(groupManagementBonus[groupIndex]);
+    const remarkLines = [];
+    const groupRemarks = conflictNotesByGroup.get(groupIndex) || null;
+    if (groupRemarks) {
+      const nameByUid = new Map();
+      slotMetasWithLimit.forEach((meta) => {
+        if (!meta.uid) return;
+        nameByUid.set(meta.uid, meta.companyName || meta.managerName || meta.uid);
+      });
+      for (const [uid, notes] of groupRemarks.entries()) {
+        if (!Array.isArray(notes) || notes.length === 0) continue;
+        const label = nameByUid.get(uid) || uid;
+        remarkLines.push(`${label}: ${notes.join(' / ')}`);
+      }
+    }
 
     const managementState = summaryInfo?.managementScore != null
       ? (summaryInfo.managementScore >= ((summaryInfo.managementMax ?? managementMax) - 0.01) ? 'ok' : 'warn')
@@ -5369,6 +5296,15 @@ export default function AgreementBoardWindow({
         {collapsedColumns.name
           ? renderCollapsedStubCell('name')
           : slotMetasWithLimit.map((meta) => renderNameCell(meta))}
+        <td className="excel-cell excel-remark-cell" rowSpan={rightRowSpan}>
+          {remarkLines.length > 0 ? (
+            remarkLines.map((line, index) => (
+              <div key={`${group.id}-remark-${index}`} className="excel-remark-line">{line}</div>
+            ))
+          ) : (
+            <div className="excel-remark-empty">없음</div>
+          )}
+        </td>
         {collapsedColumns.share
           ? renderCollapsedStubCell('share')
           : slotMetasWithLimit.map(renderShareCell)}
@@ -5799,6 +5735,7 @@ export default function AgreementBoardWindow({
                   <col key={`col-name-${index}`} className="col-name" style={{ width: resolveColWidth('name') }} />
                 ))
               )}
+              <col className="col-remark" style={{ width: `${COLUMN_WIDTHS.remark}px` }} />
                 {collapsedColumns.share ? (
                   <col className="col-share col-collapsed-stub" style={{ width: resolveColWidth('share') }} />
                 ) : (
@@ -5912,6 +5849,7 @@ export default function AgreementBoardWindow({
                 >
                   {renderColToggle('name', '업체명')}
                 </th>
+                <th rowSpan="2" className="col-header remark-header">비고</th>
                 <th
                   colSpan={collapsedColumns.share ? 1 : slotLabels.length}
                   rowSpan={collapsedColumns.share ? 2 : undefined}
