@@ -1945,6 +1945,22 @@ button.primary:hover { background: var(--accent-2); }
   color: #b91c1c;
   font-weight: 700;
 }
+.excel-member-remark {
+  font-size: 11px;
+  color: #991b1b;
+  background: #fee2e2;
+  border-radius: 6px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.excel-member-remark .remark-label {
+  font-weight: 700;
+}
+.excel-member-remark .remark-line {
+  word-break: break-word;
+}
 .excel-warning {
   margin-top: 4px;
   font-size: 11px;

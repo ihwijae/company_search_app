@@ -452,6 +452,8 @@ const sanitizeCompanyName = (value) => {
   return result;
 };
 
+const normalizeCompanyKey = (value) => sanitizeCompanyName(value).toLowerCase();
+
 const MANAGER_KEYS = [
   '담당자명', '담당자', '담당', '주담당자', '부담당자', '협력담당자', '현장담당자', '사무담당자',
   'manager', 'managerName', 'manager_name', 'contactPerson', 'contact_person', 'contact',
@@ -491,6 +493,12 @@ const extractManagerNameFromText = (text) => {
   return '';
 };
 
+const normalizeManagerKey = (value) => {
+  if (!value) return '';
+  const token = extractManagerNameToken(value) || extractManagerNameFromText(value);
+  return (token || String(value)).replace(/\s+/g, '').trim();
+};
+
 const getCandidateManagerName = (candidate) => {
   if (!candidate || typeof candidate !== 'object') return '';
   const sources = [candidate, candidate.snapshot].filter(Boolean);
@@ -512,6 +520,92 @@ const getCandidateManagerName = (candidate) => {
     }
   }
   return '';
+};
+
+const resolveBoardConstraintRules = (doc, { ownerId, rangeId, fileType, regionNames }) => {
+  if (!doc || typeof doc !== 'object') return null;
+  const normalizedType = String(fileType || 'eung').toLowerCase();
+  const normalizeRegionKey = (value) => String(value || '').replace(/\s+/g, '').trim().toLowerCase();
+  const regionTargets = (Array.isArray(regionNames) ? regionNames : [])
+    .map((entry) => normalizeRegionKey(entry))
+    .filter(Boolean);
+
+  const pickKindRules = (kinds = []) => {
+    const match = kinds.find((k) => (k?.id || '').toLowerCase() === normalizedType)
+      || kinds.find((k) => (k?.id || '').toLowerCase() === 'eung')
+      || kinds[0];
+    return match?.rules || null;
+  };
+
+  const fragments = [];
+  const globalKinds = Array.isArray(doc.globalRules?.kinds) ? doc.globalRules.kinds : [];
+  const globalRules = pickKindRules(globalKinds);
+  if (globalRules) fragments.push(globalRules);
+
+  const owners = Array.isArray(doc.owners) ? doc.owners : [];
+  const owner = owners.find((o) => (o?.id || '').toUpperCase() === String(ownerId || '').toUpperCase());
+  if (owner && Array.isArray(owner.kinds)) {
+    const ownerRules = pickKindRules(owner.kinds);
+    if (ownerRules) fragments.push(ownerRules);
+  }
+  if (owner && Array.isArray(owner.ranges)) {
+    const range = owner.ranges.find((r) => r?.id === rangeId) || owner.ranges[0] || null;
+    if (range && Array.isArray(range.kinds)) {
+      const rangeRules = pickKindRules(range.kinds);
+      if (rangeRules) fragments.push(rangeRules);
+    }
+  }
+
+  if (regionTargets.length > 0 && Array.isArray(doc.regions)) {
+    doc.regions.forEach((region) => {
+      const key = normalizeRegionKey(region?.id || region?.label || region?.region);
+      if (!key || !regionTargets.includes(key)) return;
+      const regionRules = pickKindRules(region?.kinds || []);
+      if (regionRules) fragments.push(regionRules);
+    });
+  }
+
+  const merged = {
+    banSameManager: false,
+    banManagerPairs: [],
+    banPairs: [],
+  };
+
+  fragments.forEach((rules) => {
+    if (!rules || typeof rules !== 'object') return;
+    if (rules.banSameManager) merged.banSameManager = true;
+    if (Array.isArray(rules.banManagerPairs)) merged.banManagerPairs.push(...rules.banManagerPairs);
+    if (Array.isArray(rules.banPairs)) merged.banPairs.push(...rules.banPairs);
+  });
+
+  const dedupePairs = (pairs, keyFn) => {
+    const seen = new Set();
+    const list = [];
+    pairs.forEach((pair) => {
+      const key = keyFn(pair);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      list.push(pair);
+    });
+    return list;
+  };
+
+  merged.banManagerPairs = dedupePairs(
+    merged.banManagerPairs.filter((pair) => Array.isArray(pair) && pair.length >= 2),
+    (pair) => `${normalizeManagerKey(pair[0])}:${normalizeManagerKey(pair[1])}`,
+  );
+  merged.banPairs = dedupePairs(
+    merged.banPairs.filter((pair) => Array.isArray(pair) && pair.length >= 2),
+    (pair) => {
+      const left = pair[0] || {};
+      const right = pair[1] || {};
+      const leftKey = `${normalizeBizNo(left.bizNo)}|${normalizeCompanyKey(left.name)}|${left.entityType || left.type || ''}`;
+      const rightKey = `${normalizeBizNo(right.bizNo)}|${normalizeCompanyKey(right.name)}|${right.entityType || right.type || ''}`;
+      return `${leftKey}::${rightKey}`;
+    },
+  );
+
+  return merged;
 };
 
 const SHARE_DIRECT_KEYS = ['_share', '_pct', 'candidateShare', 'share', '지분', '기본지분'];
@@ -1198,6 +1292,7 @@ export default function AgreementBoardWindow({
     Array.isArray(initialGroupQualityScores) ? initialGroupQualityScores.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
   ));
   const [formulasDoc, setFormulasDoc] = React.useState(null);
+  const [agreementConstraintRules, setAgreementConstraintRules] = React.useState(null);
   const [memoOpen, setMemoOpen] = React.useState(false);
   const [memoDraft, setMemoDraft] = React.useState('');
   const memoEditorRef = React.useRef(null);
@@ -2042,6 +2137,38 @@ export default function AgreementBoardWindow({
       canceled = true;
     };
   }, [open]);
+
+  React.useEffect(() => {
+    let canceled = false;
+    const load = async () => {
+      if (!open) return;
+      const api = typeof window !== 'undefined' ? window.electronAPI : null;
+      if (!api?.agreementsRulesLoad) {
+        setAgreementConstraintRules(null);
+        return;
+      }
+      try {
+        const response = await api.agreementsRulesLoad();
+        if (canceled) return;
+        if (response?.data) {
+          const resolved = resolveBoardConstraintRules(response.data, {
+            ownerId,
+            rangeId,
+            fileType,
+            regionNames: dutyRegions,
+          });
+          setAgreementConstraintRules(resolved);
+        }
+      } catch (err) {
+        console.warn('[AgreementBoard] agreements rules load failed:', err?.message || err);
+        if (!canceled) setAgreementConstraintRules(null);
+      }
+    };
+    load();
+    return () => {
+      canceled = true;
+    };
+  }, [open, ownerId, rangeId, fileType, dutyRegions]);
   const safeGroupSize = React.useMemo(() => {
     const parsed = Number(groupSize);
     if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_GROUP_SIZE;
@@ -3150,6 +3277,118 @@ export default function AgreementBoardWindow({
     regionTotal: regionEntries.length,
     groups: groupAssignments.length,
   }), [representativeEntries.length, regionEntries.length, groupAssignments.length]);
+
+  const conflictNotesByGroup = React.useMemo(() => {
+    const result = new Map();
+    const rules = agreementConstraintRules;
+    if (!rules) return result;
+
+    const resolveEntryType = (entry) => String(entry?.entityType || entry?.type || 'company').toLowerCase();
+    const resolveEntryName = (entry) => (entry?.name ? String(entry.name).trim() : '');
+    const resolveEntryBiz = (entry) => normalizeBizNo(entry?.bizNo);
+
+    const matchesEntry = (member, entry) => {
+      if (!member || !entry) return false;
+      const entryType = resolveEntryType(entry);
+      const entryName = resolveEntryName(entry);
+      const entryBiz = resolveEntryBiz(entry);
+      const entryCompanyKey = entryName ? normalizeCompanyKey(entryName) : '';
+      const entryManagerKey = entryName ? normalizeManagerKey(entryName) : '';
+      const matchesCompany = Boolean(
+        (entryBiz && member.bizNo && entryBiz === member.bizNo)
+        || (entryCompanyKey && member.companyKey && entryCompanyKey === member.companyKey),
+      );
+      const matchesManager = Boolean(entryManagerKey && member.managerKey && entryManagerKey === member.managerKey);
+      if (entryType === 'manager') return matchesManager;
+      if (entryType === 'any') return matchesManager || matchesCompany;
+      return matchesCompany;
+    };
+
+    const resolveEntryLabel = (entry, members) => {
+      const entryName = resolveEntryName(entry);
+      if (entryName) return entryName;
+      const entryType = resolveEntryType(entry);
+      const fallback = members && members.length > 0 ? members[0] : null;
+      if (entryType === 'manager') return fallback?.managerName || '담당자';
+      return fallback?.companyName || '업체';
+    };
+
+    groupAssignments.forEach((memberIds, groupIndex) => {
+      const members = [];
+      memberIds.forEach((uid) => {
+        if (!uid) return;
+        const entry = participantMap.get(uid);
+        if (!entry?.candidate) return;
+        const candidate = entry.candidate;
+        const managerName = getCandidateManagerName(candidate);
+        const managerKey = normalizeManagerKey(managerName);
+        const companyName = getCompanyName(candidate);
+        members.push({
+          uid,
+          managerName,
+          managerKey,
+          companyName,
+          companyKey: normalizeCompanyKey(companyName),
+          bizNo: normalizeBizNo(getBizNo(candidate)),
+        });
+      });
+
+      if (members.length === 0) return;
+      const notesByUid = new Map();
+      const addMessage = (uid, message) => {
+        if (!uid || !message) return;
+        const list = notesByUid.get(uid) || [];
+        if (!list.includes(message)) list.push(message);
+        notesByUid.set(uid, list);
+      };
+
+      if (rules.banSameManager) {
+        const managerMap = new Map();
+        members.forEach((member) => {
+          if (!member.managerKey) return;
+          const list = managerMap.get(member.managerKey) || [];
+          list.push(member);
+          managerMap.set(member.managerKey, list);
+        });
+        managerMap.forEach((list, key) => {
+          if (list.length < 2) return;
+          const label = list[0]?.managerName || key;
+          const message = `동일 담당자 중복: ${label}`;
+          list.forEach((member) => addMessage(member.uid, message));
+        });
+      }
+
+      (rules.banManagerPairs || []).forEach((pair) => {
+        const left = pair?.[0];
+        const right = pair?.[1];
+        const leftKey = normalizeManagerKey(left);
+        const rightKey = normalizeManagerKey(right);
+        if (!leftKey || !rightKey) return;
+        const leftMembers = members.filter((member) => member.managerKey && member.managerKey === leftKey);
+        const rightMembers = members.filter((member) => member.managerKey && member.managerKey === rightKey);
+        if (leftMembers.length === 0 || rightMembers.length === 0) return;
+        const message = `담당자 조합 금지: ${left} + ${right}`;
+        leftMembers.forEach((member) => addMessage(member.uid, message));
+        rightMembers.forEach((member) => addMessage(member.uid, message));
+      });
+
+      (rules.banPairs || []).forEach((pair) => {
+        const left = pair?.[0];
+        const right = pair?.[1];
+        if (!left || !right) return;
+        const leftMembers = members.filter((member) => matchesEntry(member, left));
+        const rightMembers = members.filter((member) => matchesEntry(member, right));
+        if (leftMembers.length === 0 || rightMembers.length === 0) return;
+        const message = `협정 금지 조합: ${resolveEntryLabel(left, leftMembers)} + ${resolveEntryLabel(right, rightMembers)}`;
+        leftMembers.forEach((member) => addMessage(member.uid, message));
+        rightMembers.forEach((member) => addMessage(member.uid, message));
+      });
+
+      if (notesByUid.size > 0) result.set(groupIndex, notesByUid);
+    });
+
+    return result;
+  }, [agreementConstraintRules, groupAssignments, participantMap]);
 
   React.useEffect(() => {
     setGroupApprovals((prev) => (
@@ -4673,6 +4912,7 @@ export default function AgreementBoardWindow({
     const technicianStored = groupTechnicianScores[groupIndex]?.[slotIndex];
     const technicianValue = technicianStored != null ? String(technicianStored) : '';
     const technicianNumeric = parseNumeric(technicianValue);
+    const conflictNotes = conflictNotesByGroup.get(groupIndex)?.get(uid) || [];
 
     return {
       empty: false,
@@ -4698,6 +4938,7 @@ export default function AgreementBoardWindow({
       credibilityProduct: credibilityProduct != null ? `${credibilityProduct.toFixed(2)}점` : '',
       technicianValue,
       technicianNumeric,
+      remarks: conflictNotes,
     };
   };
 
@@ -4754,6 +4995,16 @@ export default function AgreementBoardWindow({
             )}
             {meta.overLimit && (
               <div className="excel-member-warning">참여업체수 초과</div>
+            )}
+            {Array.isArray(meta.remarks) && meta.remarks.length > 0 && (
+              <div className="excel-member-remark">
+                <span className="remark-label">비고</span>
+                <div className="remark-lines">
+                  {meta.remarks.map((note, index) => (
+                    <div key={`${meta.uid}-remark-${index}`} className="remark-line">{note}</div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}
