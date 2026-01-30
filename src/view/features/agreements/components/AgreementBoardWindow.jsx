@@ -3261,13 +3261,7 @@ export default function AgreementBoardWindow({
       });
 
       if (members.length === 0) return;
-      const notesByUid = new Map();
-      const addMessage = (uid, message) => {
-        if (!uid || !message) return;
-        const list = notesByUid.get(uid) || [];
-        if (!list.includes(message)) list.push(message);
-        notesByUid.set(uid, list);
-      };
+      const messages = new Set();
 
       if (rules.banSameManager) {
         const managerMap = new Map();
@@ -3280,8 +3274,7 @@ export default function AgreementBoardWindow({
         managerMap.forEach((list, key) => {
           if (list.length < 2) return;
           const label = list[0]?.managerName || key;
-          const message = `동일 담당자 중복: ${label}`;
-          list.forEach((member) => addMessage(member.uid, message));
+          messages.add(`동일담당자중복: ${label}`);
         });
       }
 
@@ -3294,9 +3287,7 @@ export default function AgreementBoardWindow({
         const leftMembers = members.filter((member) => member.managerKey && member.managerKey === leftKey);
         const rightMembers = members.filter((member) => member.managerKey && member.managerKey === rightKey);
         if (leftMembers.length === 0 || rightMembers.length === 0) return;
-        const message = `담당자 조합 금지: ${left} + ${right}`;
-        leftMembers.forEach((member) => addMessage(member.uid, message));
-        rightMembers.forEach((member) => addMessage(member.uid, message));
+        messages.add(`담당자조합금지: ${left} + ${right}`);
       });
 
       (rules.banPairs || []).forEach((pair) => {
@@ -3306,12 +3297,10 @@ export default function AgreementBoardWindow({
         const leftMembers = members.filter((member) => matchesEntry(member, left));
         const rightMembers = members.filter((member) => matchesEntry(member, right));
         if (leftMembers.length === 0 || rightMembers.length === 0) return;
-        const message = `협정 금지 조합: ${resolveEntryLabel(left, leftMembers)} + ${resolveEntryLabel(right, rightMembers)}`;
-        leftMembers.forEach((member) => addMessage(member.uid, message));
-        rightMembers.forEach((member) => addMessage(member.uid, message));
+        messages.add(`협정금지조합: ${resolveEntryLabel(left, leftMembers)} + ${resolveEntryLabel(right, rightMembers)}`);
       });
 
-      if (notesByUid.size > 0) result.set(groupIndex, notesByUid);
+      if (messages.size > 0) result.set(groupIndex, Array.from(messages));
     });
 
     return result;
@@ -5230,20 +5219,9 @@ export default function AgreementBoardWindow({
     const approvalValue = groupApprovals[groupIndex] || '';
     const rightRowSpan = isLHOwner ? 2 : undefined;
     const bonusChecked = Boolean(groupManagementBonus[groupIndex]);
-    const remarkLines = [];
-    const groupRemarks = conflictNotesByGroup.get(groupIndex) || null;
-    if (groupRemarks) {
-      const nameByUid = new Map();
-      slotMetasWithLimit.forEach((meta) => {
-        if (!meta.uid) return;
-        nameByUid.set(meta.uid, meta.companyName || meta.managerName || meta.uid);
-      });
-      for (const [uid, notes] of groupRemarks.entries()) {
-        if (!Array.isArray(notes) || notes.length === 0) continue;
-        const label = nameByUid.get(uid) || uid;
-        remarkLines.push(`${label}: ${notes.join(' / ')}`);
-      }
-    }
+    const remarkLines = Array.isArray(conflictNotesByGroup.get(groupIndex))
+      ? conflictNotesByGroup.get(groupIndex)
+      : [];
 
     const managementState = summaryInfo?.managementScore != null
       ? (summaryInfo.managementScore >= ((summaryInfo.managementMax ?? managementMax) - 0.01) ? 'ok' : 'warn')
