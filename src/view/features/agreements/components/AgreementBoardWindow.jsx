@@ -5092,7 +5092,7 @@ export default function AgreementBoardWindow({
       ? formatScore(resolvedQualityTotal, 2)
       : '-';
     return (
-      <tr key={`${group.id}-quality`} className={`excel-board-row quality-row${entryFailed ? ' entry-failed' : ''}`}>
+      <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
         <td className="excel-cell quality-empty" />
         <td className="excel-cell order-cell quality-label">품질</td>
         <td className="excel-cell quality-guide" colSpan={guideSpan}>
@@ -5240,6 +5240,15 @@ export default function AgreementBoardWindow({
     const entryFailed = summaryInfo?.entryLimit != null
       && summaryInfo.entryMode !== 'none'
       && summaryInfo.entrySatisfied === false;
+    const entryFailedRemark = entryFailed ? '참가자격 미달(시평액)' : '';
+    const slotMetasWithRemarks = entryFailedRemark
+      ? slotMetasWithLimit.map((meta) => ({
+        ...meta,
+        remarks: Array.isArray(meta.remarks)
+          ? (meta.remarks.includes(entryFailedRemark) ? meta.remarks : [...meta.remarks, entryFailedRemark])
+          : [entryFailedRemark],
+      }))
+      : slotMetasWithLimit;
 
     const renderCollapsedStubCell = (key, rowSpan) => (
       <td
@@ -5251,7 +5260,7 @@ export default function AgreementBoardWindow({
 
     return (
       <React.Fragment key={group.id}>
-        <tr className={`excel-board-row${entryFailed ? ' entry-failed' : ''}`}>
+        <tr className="excel-board-row">
         <td className={`excel-cell select-cell${collapsedColumns.select ? ' collapsed-stub-cell select-stub' : ''}`}>
           {!collapsedColumns.select && (
             <input
@@ -5280,7 +5289,7 @@ export default function AgreementBoardWindow({
         </td>
         {collapsedColumns.name
           ? renderCollapsedStubCell('name')
-          : slotMetasWithLimit.map((meta) => renderNameCell(meta))}
+          : slotMetasWithRemarks.map((meta) => renderNameCell(meta))}
         {collapsedColumns.share
           ? renderCollapsedStubCell('share')
           : slotMetasWithLimit.map(renderShareCell)}

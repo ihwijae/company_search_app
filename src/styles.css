@@ -1445,9 +1445,7 @@ button.primary:hover { background: var(--accent-2); }
   color: #15803d;
   font-weight: 700;
 }
-.excel-board-row.entry-failed td {
-  background: #fee2e2 !important;
-}
+/* entry-failed styling removed; issues are shown in remark text instead */
 .memo-btn.active {
   background: #ecfeff;
   border-color: #67e8f9;
