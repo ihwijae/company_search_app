@@ -347,9 +347,9 @@ button.primary:hover { background: var(--accent-2); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   background: #e0f2fe;
   color: #075985;
