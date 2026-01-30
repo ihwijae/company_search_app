@@ -88,6 +88,7 @@ const normalizeNoteItem = (item) => {
     name,
     industry: normalizeIndustryLabel(item.industry || item.industryLabel || item.fileType || 'eung'),
     region: String(item.region || '').trim(),
+    companyRegion: String(item.companyRegion || item.actualRegion || '').trim(),
     bizNo: String(item.bizNo || '').trim(),
     soloStatus: SOLO_OPTIONS.some((opt) => opt.value === item.soloStatus) ? item.soloStatus : 'none',
     memo: String(item.memo || '').trim(),
@@ -120,6 +121,7 @@ export default function CompanyNotesPage() {
     name: '',
     industry: 'eung',
     region: '',
+    companyRegion: '',
     bizNo: '',
     soloStatus: 'none',
     memo: '',
@@ -228,10 +230,12 @@ export default function CompanyNotesPage() {
       if (filters.industry !== 'all' && row.industry !== INDUSTRY_OPTIONS.find((i) => i.value === filters.industry)?.label) {
         return false;
       }
-      if (!hasKeyword && filters.commonOnly && !row.isCommon) {
+      if (filters.commonOnly) {
+        if (!row.isCommon) return false;
+      } else if (row.isCommon) {
         return false;
       }
-      if (filters.region && filters.region !== '전체' && !row.isCommon && row.region !== filters.region) {
+      if (!filters.commonOnly && filters.region && filters.region !== '전체' && row.region !== filters.region) {
         return false;
       }
       if (filters.ownerOnly && !row.ownerManaged) {
@@ -301,6 +305,7 @@ export default function CompanyNotesPage() {
       name: row.name || '',
       industry: normalizeIndustryValue(row.industry),
       region: row.region || '',
+      companyRegion: row.companyRegion || '',
       bizNo: row.bizNo || '',
       soloStatus: row.soloStatus || 'none',
       memo: row.memo || '',
@@ -331,6 +336,7 @@ export default function CompanyNotesPage() {
         name: editorForm.name,
         industry: industryLabel,
         region: editorForm.isCommon ? '' : editorForm.region,
+        companyRegion: editorForm.companyRegion || '',
         bizNo: editorForm.bizNo,
         soloStatus: editorForm.soloStatus,
         memo: editorForm.memo,
@@ -351,6 +357,7 @@ export default function CompanyNotesPage() {
             name: editorForm.name,
             industry: industryLabel,
             region: editorForm.isCommon ? '' : editorForm.region,
+            companyRegion: editorForm.companyRegion || '',
             bizNo: editorForm.bizNo,
             soloStatus: editorForm.soloStatus,
             memo: editorForm.memo,
@@ -405,12 +412,14 @@ export default function CompanyNotesPage() {
     const name = payload?.name || payload?.snapshot?.['업체명'] || payload?.snapshot?.['회사명'] || '';
     const bizNo = payload?.bizNo || payload?.snapshot?.['사업자번호'] || '';
     const region = payload?.snapshot?.['대표지역'] || payload?.snapshot?.['지역'] || '';
+    const companyRegion = payload?.snapshot?.['대표지역'] || payload?.snapshot?.['지역'] || '';
     const managerNames = extractManagerNames(payload?.snapshot || {});
     setEditorForm((prev) => ({
       ...prev,
       name,
       bizNo,
       region,
+      companyRegion,
       industry: normalizeIndustryValue(payload?.fileType || prev.industry),
       managerNames,
     }));
@@ -450,9 +459,14 @@ export default function CompanyNotesPage() {
           if (index >= 0) {
             const prevManagers = Array.isArray(updatedRows[index].managerNames) ? updatedRows[index].managerNames : [];
             const nextManagers = managers.length > 0 ? managers : prevManagers;
+            const nextCompanyRegion = String(picked?.['대표지역'] || picked?.['지역'] || '').trim();
             const changed = JSON.stringify(prevManagers) !== JSON.stringify(nextManagers);
-            if (changed) {
-              updatedRows[index] = { ...updatedRows[index], managerNames: nextManagers };
+            if (changed || nextCompanyRegion) {
+              updatedRows[index] = {
+                ...updatedRows[index],
+                managerNames: nextManagers,
+                companyRegion: nextCompanyRegion || updatedRows[index].companyRegion || '',
+              };
               updatedCount += 1;
             }
           }
@@ -665,6 +679,9 @@ export default function CompanyNotesPage() {
                           <div className="notes-name-cell">
                             <span>{row.name}</span>
                             {row.ownerManaged && <span className="notes-owner-badge">대표님업체</span>}
+                            {row.companyRegion && (
+                              <span className="notes-company-region">{row.companyRegion}</span>
+                            )}
                           </div>
                           {Array.isArray(row.managerNames) && row.managerNames.length > 0 && (
                             <div className="notes-manager-badges">
