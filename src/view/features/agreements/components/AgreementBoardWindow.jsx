@@ -5952,6 +5952,7 @@ export default function AgreementBoardWindow({
                 {!collapsedColumns.name && slotLabels.map((label, index) => (
                   <th key={`name-head-${index}`} className="subheader-name">{label}</th>
                 ))}
+                <th className="subheader-remark" />
                 {!collapsedColumns.share && slotLabels.map((label, index) => (
                   <th key={`share-head-${index}`} className="subheader-share">{label}</th>
                 ))}
