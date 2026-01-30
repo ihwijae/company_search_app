@@ -118,7 +118,6 @@ const COLUMN_WIDTHS = {
   order: 40,
   approval: 90,
   name: 100,
-  remark: 180,
   share: 65,
   status: 45,
   management: 55,
@@ -2296,7 +2295,6 @@ export default function AgreementBoardWindow({
       + COLUMN_WIDTHS.management
       + (collapsedColumns.managementBonus ? COLLAPSED_COLUMN_WIDTHS.managementBonus : COLUMN_WIDTHS.managementBonus)
       + COLUMN_WIDTHS.shareTotal
-      + COLUMN_WIDTHS.remark
       + (isLHOwner ? COLUMN_WIDTHS.qualityPoints : 0)
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
@@ -4747,7 +4745,7 @@ export default function AgreementBoardWindow({
   }, [groups, showHeaderAlert]);
 
   const tableColumnCount = React.useMemo(() => {
-    const baseColumns = 13
+    const baseColumns = 12
       + (credibilityEnabled ? 1 : 0)
       + (technicianEnabled ? 2 : 0)
       + (isLHOwner ? 1 : 0)
@@ -4828,6 +4826,8 @@ export default function AgreementBoardWindow({
     const technicianStored = groupTechnicianScores[groupIndex]?.[slotIndex];
     const technicianValue = technicianStored != null ? String(technicianStored) : '';
     const technicianNumeric = parseNumeric(technicianValue);
+    const groupRemarks = conflictNotesByGroup.get(groupIndex);
+    const conflictNotes = Array.isArray(groupRemarks) ? groupRemarks : [];
     return {
       empty: false,
       slotIndex,
@@ -4852,6 +4852,7 @@ export default function AgreementBoardWindow({
       credibilityProduct: credibilityProduct != null ? `${credibilityProduct.toFixed(2)}점` : '',
       technicianValue,
       technicianNumeric,
+      remarks: conflictNotes,
     };
   };
 
@@ -4908,6 +4909,16 @@ export default function AgreementBoardWindow({
             )}
             {meta.overLimit && (
               <div className="excel-member-warning">참여업체수 초과</div>
+            )}
+            {Array.isArray(meta.remarks) && meta.remarks.length > 0 && (
+              <div className="excel-member-remark">
+                <span className="remark-label">비고</span>
+                <div className="remark-lines">
+                  {meta.remarks.map((note, index) => (
+                    <div key={`${meta.uid}-remark-${index}`} className="remark-line">{note}</div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -5068,7 +5079,7 @@ export default function AgreementBoardWindow({
     const nameSpan = columnSpans.nameSpan;
     const shareSpan = columnSpans.shareSpan;
     const guideSpan = 1 + nameSpan;
-    const usedColumns = 5 + nameSpan + shareSpan;
+    const usedColumns = 4 + nameSpan + shareSpan;
     const fillerSpan = Math.max(tableColumnCount - usedColumns, 0);
     const resolvedQualityTotal = qualityTotal ?? slotMetas.reduce((acc, meta) => {
       if (meta.empty) return acc;
@@ -5087,7 +5098,6 @@ export default function AgreementBoardWindow({
         <td className="excel-cell quality-guide" colSpan={guideSpan}>
           {qualityGuide}
         </td>
-        <td className="excel-cell quality-remark" />
         {collapsedColumns.share ? (
           <td className="excel-cell collapsed-stub-cell share-stub" />
         ) : (
@@ -5219,9 +5229,6 @@ export default function AgreementBoardWindow({
     const approvalValue = groupApprovals[groupIndex] || '';
     const rightRowSpan = isLHOwner ? 2 : undefined;
     const bonusChecked = Boolean(groupManagementBonus[groupIndex]);
-    const remarkLines = Array.isArray(conflictNotesByGroup.get(groupIndex))
-      ? conflictNotesByGroup.get(groupIndex)
-      : [];
 
     const managementState = summaryInfo?.managementScore != null
       ? (summaryInfo.managementScore >= ((summaryInfo.managementMax ?? managementMax) - 0.01) ? 'ok' : 'warn')
@@ -5274,15 +5281,6 @@ export default function AgreementBoardWindow({
         {collapsedColumns.name
           ? renderCollapsedStubCell('name')
           : slotMetasWithLimit.map((meta) => renderNameCell(meta))}
-        <td className="excel-cell excel-remark-cell" rowSpan={rightRowSpan}>
-          {remarkLines.length > 0 ? (
-            remarkLines.map((line, index) => (
-              <div key={`${group.id}-remark-${index}`} className="excel-remark-line">{line}</div>
-            ))
-          ) : (
-            <div className="excel-remark-empty">없음</div>
-          )}
-        </td>
         {collapsedColumns.share
           ? renderCollapsedStubCell('share')
           : slotMetasWithLimit.map(renderShareCell)}
@@ -5713,7 +5711,6 @@ export default function AgreementBoardWindow({
                   <col key={`col-name-${index}`} className="col-name" style={{ width: resolveColWidth('name') }} />
                 ))
               )}
-              <col className="col-remark" style={{ width: `${COLUMN_WIDTHS.remark}px` }} />
                 {collapsedColumns.share ? (
                   <col className="col-share col-collapsed-stub" style={{ width: resolveColWidth('share') }} />
                 ) : (
@@ -5827,7 +5824,6 @@ export default function AgreementBoardWindow({
                 >
                   {renderColToggle('name', '업체명')}
                 </th>
-                <th rowSpan="2" className="col-header remark-header">비고</th>
                 <th
                   colSpan={collapsedColumns.share ? 1 : slotLabels.length}
                   rowSpan={collapsedColumns.share ? 2 : undefined}
@@ -5952,7 +5948,6 @@ export default function AgreementBoardWindow({
                 {!collapsedColumns.name && slotLabels.map((label, index) => (
                   <th key={`name-head-${index}`} className="subheader-name">{label}</th>
                 ))}
-                <th className="subheader-remark" />
                 {!collapsedColumns.share && slotLabels.map((label, index) => (
                   <th key={`share-head-${index}`} className="subheader-share">{label}</th>
                 ))}
