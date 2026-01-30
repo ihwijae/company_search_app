@@ -197,6 +197,8 @@ def apply_mois_under30(name_value, row_data, file_type):
 
 
 def open_modal():
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
     cfg = load_config()
     db_path = Path(cfg.get("dbPath", ""))
     if not db_path.is_absolute():
@@ -208,7 +210,6 @@ def open_modal():
 
     data = load_db(db_path)
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     dialog = QtWidgets.QDialog()
     dialog.setWindowTitle("업체 검색")
     dialog.resize(720, 520)
@@ -296,4 +297,3 @@ def open_modal():
     close_btn.clicked.connect(dialog.reject)
 
     dialog.exec()
-
