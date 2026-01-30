@@ -4996,16 +4996,18 @@ export default function AgreementBoardWindow({
             {meta.overLimit && (
               <div className="excel-member-warning">참여업체수 초과</div>
             )}
-            {Array.isArray(meta.remarks) && meta.remarks.length > 0 && (
-              <div className="excel-member-remark">
-                <span className="remark-label">비고</span>
-                <div className="remark-lines">
-                  {meta.remarks.map((note, index) => (
+            <div className="excel-member-remark">
+              <span className="remark-label">비고</span>
+              <div className="remark-lines">
+                {Array.isArray(meta.remarks) && meta.remarks.length > 0 ? (
+                  meta.remarks.map((note, index) => (
                     <div key={`${meta.uid}-remark-${index}`} className="remark-line">{note}</div>
-                  ))}
-                </div>
+                  ))
+                ) : (
+                  <div className="remark-line remark-empty">없음</div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
       </td>

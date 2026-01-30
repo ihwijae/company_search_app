@@ -1961,6 +1961,10 @@ button.primary:hover { background: var(--accent-2); }
 .excel-member-remark .remark-line {
   word-break: break-word;
 }
+.excel-member-remark .remark-empty {
+  color: #9f1239;
+  opacity: 0.7;
+}
 .excel-warning {
   margin-top: 4px;
   font-size: 11px;
