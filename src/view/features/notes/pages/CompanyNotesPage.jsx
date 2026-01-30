@@ -232,8 +232,8 @@ export default function CompanyNotesPage() {
       }
       if (filters.commonOnly) {
         if (!row.isCommon) return false;
-      } else if (row.isCommon) {
-        return false;
+      } else if (filters.region && filters.region !== '전체') {
+        if (row.isCommon) return false;
       }
       if (!filters.commonOnly && filters.region && filters.region !== '전체' && row.region !== filters.region) {
         return false;
