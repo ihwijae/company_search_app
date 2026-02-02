@@ -375,6 +375,7 @@ def open_modal():
     table.itemDoubleClicked.connect(lambda _: apply_selected())
     table.itemChanged.connect(lambda item: enforce_single_check(item.row()) if item.column() == 0 and item.checkState() == QtCore.Qt.Checked else None)
     table.cellClicked.connect(lambda row, col: toggle_check_at(row) if col == 0 else None)
+    table.itemSelectionChanged.connect(lambda: toggle_check_at(table.currentRow()) if table.currentColumn() == 0 else None)
 
     btns = QtWidgets.QHBoxLayout()
     btns.setSpacing(8)
