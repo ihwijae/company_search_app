@@ -82,8 +82,7 @@ def load_db(db_path: Path):
                 return merged_value.get((r, c))
             return v
 
-        header_row = None
-        header_col = None
+        header_positions = []
         for r in range(1, max_row + 1):
             for c in range(1, max_col + 1):
                 cell = get_value(r, c)
@@ -91,52 +90,55 @@ def load_db(db_path: Path):
                     continue
                 val = str(cell)
                 if "회사명" in val:
-                    header_row = r
-                    header_col = c
-                    break
-            if header_row is not None:
-                break
-        if header_row is None:
+                    header_positions.append((r, c))
+
+        if not header_positions:
             continue
 
-        for col in range(header_col + 1, max_col + 1):
-            raw_name = get_value(header_row, col)
-            if raw_name is None:
-                continue
-            raw_name = str(raw_name).strip()
-            if not raw_name:
-                continue
-            name = raw_name.split("\n")[0].strip()
-            if not name:
-                continue
-            entry = {
-                "name": name,
-                "norm": normalize_name(name),
-                "region": sheet_name.strip(),
-                "bizNo": "",
-                "debtRatio": None,
-                "currentRatio": None,
-                "perf5y": None,
-                "creditGrade": "",
-            }
-            for key, offset in relative_offsets.items():
-                r = header_row + offset
-                if r > max_row:
+        seen_keys = set()
+        for header_row, header_col in header_positions:
+            for col in range(header_col + 1, max_col + 1):
+                raw_name = get_value(header_row, col)
+                if raw_name is None:
                     continue
-                val = get_value(r, col)
-                if key in {"부채비율", "유동비율"} and isinstance(val, (int, float)):
-                    val = val * 100
-                if key == "사업자번호":
-                    entry["bizNo"] = "" if val is None else str(val).strip()
-                elif key == "부채비율":
-                    entry["debtRatio"] = _to_number(val)
-                elif key == "유동비율":
-                    entry["currentRatio"] = _to_number(val)
-                elif key == "5년 실적":
-                    entry["perf5y"] = _to_number(val)
-                elif key == "신용평가":
-                    entry["creditGrade"] = "" if val is None else str(val).strip()
-            data.append(entry)
+                raw_name = str(raw_name).strip()
+                if not raw_name:
+                    continue
+                name = raw_name.split("\n")[0].strip()
+                if not name:
+                    continue
+                dedup_key = (sheet_name, header_row, col, name)
+                if dedup_key in seen_keys:
+                    continue
+                seen_keys.add(dedup_key)
+                entry = {
+                    "name": name,
+                    "norm": normalize_name(name),
+                    "region": sheet_name.strip(),
+                    "bizNo": "",
+                    "debtRatio": None,
+                    "currentRatio": None,
+                    "perf5y": None,
+                    "creditGrade": "",
+                }
+                for key, offset in relative_offsets.items():
+                    r = header_row + offset
+                    if r > max_row:
+                        continue
+                    val = get_value(r, col)
+                    if key in {"부채비율", "유동비율"} and isinstance(val, (int, float)):
+                        val = val * 100
+                    if key == "사업자번호":
+                        entry["bizNo"] = "" if val is None else str(val).strip()
+                    elif key == "부채비율":
+                        entry["debtRatio"] = _to_number(val)
+                    elif key == "유동비율":
+                        entry["currentRatio"] = _to_number(val)
+                    elif key == "5년 실적":
+                        entry["perf5y"] = _to_number(val)
+                    elif key == "신용평가":
+                        entry["creditGrade"] = "" if val is None else str(val).strip()
+                data.append(entry)
     return data
 
 
