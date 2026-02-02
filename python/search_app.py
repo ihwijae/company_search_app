@@ -238,6 +238,8 @@ def open_modal():
     dialog.resize(720, 520)
 
     layout = QtWidgets.QVBoxLayout(dialog)
+    status_label = QtWidgets.QLabel(f"DB: {db_path} (로드 {len(data)}건)")
+    layout.addWidget(status_label)
 
     form = QtWidgets.QHBoxLayout()
     industry_box = QtWidgets.QComboBox()
@@ -305,6 +307,7 @@ def open_modal():
         save_config(cfg)
         db_path = Path(path)
         data = load_db(db_path)
+        status_label.setText(f"DB: {db_path} (로드 {len(data)}건)")
 
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)
