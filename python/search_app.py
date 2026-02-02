@@ -75,74 +75,53 @@ def _to_number(val):
         return None
 
 
-def load_db(db_path: Path):
-    wb = load_workbook(db_path, data_only=False)
-    data = []
-    relative_offsets = {
-        "대표자": 1,
-        "사업자번호": 2,
-        "지역": 3,
-        "시평": 4,
-        "3년 실적": 5,
-        "5년 실적": 6,
-        "부채비율": 7,
-        "유동비율": 8,
-        "영업기간": 9,
-        "신용평가": 10,
-        "여성기업": 11,
-        "중소기업": 12,
-        "일자리창출": 13,
-        "품질평가": 14,
-        "비고": 15,
-    }
+def _load_sheet_entries(ws, sheet_name, relative_offsets):
+    max_row = ws.max_row or 0
+    max_col = ws.max_column or 0
 
-    for sheet_name in wb.sheetnames:
-        ws = wb[sheet_name]
-        max_row = ws.max_row or 0
-        max_col = ws.max_column or 0
+    merged_value = {}
+    for merged in ws.merged_cells.ranges:
+        tl = ws.cell(merged.min_row, merged.min_col).value
+        for r in range(merged.min_row, merged.max_row + 1):
+            for c in range(merged.min_col, merged.max_col + 1):
+                merged_value[(r, c)] = tl
 
-        merged_value = {}
-        for merged in ws.merged_cells.ranges:
-            tl = ws.cell(merged.min_row, merged.min_col).value
-            for r in range(merged.min_row, merged.max_row + 1):
-                for c in range(merged.min_col, merged.max_col + 1):
-                    merged_value[(r, c)] = tl
+    def get_value(r, c):
+        v = ws.cell(r, c).value
+        if v is None:
+            return merged_value.get((r, c))
+        return v
 
-        def get_value(r, c):
-            v = ws.cell(r, c).value
-            if v is None:
-                return merged_value.get((r, c))
-            return v
+    header_positions = []
+    for r in range(1, max_row + 1):
+        for c in range(1, max_col + 1):
+            cell = get_value(r, c)
+            if cell is None:
+                continue
+            val = str(cell)
+            if "회사명" in val:
+                header_positions.append((r, c))
 
-        header_positions = []
-        for r in range(1, max_row + 1):
-            for c in range(1, max_col + 1):
-                cell = get_value(r, c)
-                if cell is None:
-                    continue
-                val = str(cell)
-                if "회사명" in val:
-                    header_positions.append((r, c))
+    if not header_positions:
+        return []
 
-        if not header_positions:
-            continue
-
-        seen_keys = set()
-        for header_row, header_col in header_positions:
-            for col in range(header_col + 1, max_col + 1):
-                raw_name = get_value(header_row, col)
-                if raw_name is None:
-                    continue
-                raw_name = str(raw_name).strip()
-                if not raw_name:
-                    continue
-                name = raw_name.split("\n")[0].strip()
-                if not name:
-                    continue
-                dedup_key = (sheet_name, header_row, col, name)
-                if dedup_key in seen_keys:
-                    continue
-                seen_keys.add(dedup_key)
+    entries = []
+    seen_keys = set()
+    for header_row, header_col in header_positions:
+        for col in range(header_col + 1, max_col + 1):
+            raw_name = get_value(header_row, col)
+            if raw_name is None:
+                continue
+            raw_name = str(raw_name).strip()
+            if not raw_name:
+                continue
+            name = raw_name.split("\n")[0].strip()
+            if not name:
+                continue
+            dedup_key = (sheet_name, header_row, col, name)
+            if dedup_key in seen_keys:
+                continue
+            seen_keys.add(dedup_key)
             entry = {
                 "name": name,
                 "norm": normalize_name(name),
@@ -178,8 +157,67 @@ def load_db(db_path: Path):
                 elif key == "비고":
                     entry["notes"] = "" if val is None else str(val).strip()
             entry["managerName"] = extract_manager_name(entry.get("notes", ""))
-            data.append(entry)
+            entries.append(entry)
+    return entries
+
+
+def load_db(db_path: Path):
+    wb = load_workbook(db_path, data_only=False)
+    data = []
+    relative_offsets = {
+        "대표자": 1,
+        "사업자번호": 2,
+        "지역": 3,
+        "시평": 4,
+        "3년 실적": 5,
+        "5년 실적": 6,
+        "부채비율": 7,
+        "유동비율": 8,
+        "영업기간": 9,
+        "신용평가": 10,
+        "여성기업": 11,
+        "중소기업": 12,
+        "일자리창출": 13,
+        "품질평가": 14,
+        "비고": 15,
+    }
+
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        entries = _load_sheet_entries(ws, sheet_name, relative_offsets)
+        data.extend(entries)
     return data
+
+
+def load_db_stats(db_path: Path):
+    wb = load_workbook(db_path, data_only=False)
+    relative_offsets = {
+        "대표자": 1,
+        "사업자번호": 2,
+        "지역": 3,
+        "시평": 4,
+        "3년 실적": 5,
+        "5년 실적": 6,
+        "부채비율": 7,
+        "유동비율": 8,
+        "영업기간": 9,
+        "신용평가": 10,
+        "여성기업": 11,
+        "중소기업": 12,
+        "일자리창출": 13,
+        "품질평가": 14,
+        "비고": 15,
+    }
+    stats = []
+    total = 0
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        entries = _load_sheet_entries(ws, sheet_name, relative_offsets)
+        count = len(entries)
+        total += count
+        if count:
+            stats.append((sheet_name, count))
+    return total, stats
 
 
 def load_db_cached(db_path: Path, force=False):
@@ -350,6 +388,9 @@ def open_modal():
     reload_btn = QtWidgets.QPushButton("DB 재로드")
     form.addWidget(reload_btn)
 
+    diag_btn = QtWidgets.QPushButton("DB 진단")
+    form.addWidget(diag_btn)
+
     layout.addLayout(form)
 
     table = QtWidgets.QTableWidget(0, 3)
@@ -422,11 +463,32 @@ def open_modal():
         status_label.setText(f"DB: {db_path} (로드 {len(data)}건)")
         QtWidgets.QMessageBox.information(dialog, "DB 재로드", f"재로드 완료\n로드 {len(data)}건")
 
+    def run_db_diagnosis():
+        if not db_path.exists():
+            QtWidgets.QMessageBox.warning(dialog, "DB 진단", "DB 파일 경로가 유효하지 않습니다.")
+            return
+        total, stats = load_db_stats(db_path)
+        stats.sort(key=lambda x: x[1], reverse=True)
+        lines = [f"총 {total}건"]
+        preview = stats[:15]
+        for sheet_name, count in preview:
+            lines.append(f"- {sheet_name}: {count}건")
+        if len(stats) > len(preview):
+            lines.append(f"... 그 외 {len(stats) - len(preview)}개 시트")
+        msg = "\n".join(lines)
+        with open(BASE_DIR / "debug_log.txt", "a", encoding="utf-8") as f:
+            f.write(f"[DB 진단] {db_path}\n")
+            for sheet_name, count in stats:
+                f.write(f"{sheet_name}\t{count}\n")
+            f.write("\n")
+        QtWidgets.QMessageBox.information(dialog, "DB 진단", msg)
+
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)
     config_btn.clicked.connect(set_db_path)
     verify_btn.clicked.connect(verify_db_path)
     reload_btn.clicked.connect(reload_db)
+    diag_btn.clicked.connect(run_db_diagnosis)
     table.itemDoubleClicked.connect(lambda _: apply_selected())
 
     btns = QtWidgets.QHBoxLayout()
