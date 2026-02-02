@@ -10,6 +10,9 @@ from mois_under30 import apply_mois_under30
 from text_utils import normalize_name, sanitize_company_name
 
 
+_DIALOG = None
+
+
 def write_to_active_cell(value):
     book = xw.Book.caller()
     rng = book.app.selection
@@ -17,7 +20,13 @@ def write_to_active_cell(value):
 
 
 def open_modal():
+    global _DIALOG
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    if _DIALOG is not None and _DIALOG.isVisible():
+        _DIALOG.activateWindow()
+        _DIALOG.raise_()
+        return
 
     cfg = load_config()
     db_path = Path(cfg.get("dbPath", ""))
@@ -43,10 +52,15 @@ def open_modal():
     dialog = QtWidgets.QDialog()
     dialog.setWindowTitle("업체 검색")
     dialog.resize(720, 520)
+    dialog.setWindowModality(QtCore.Qt.NonModal)
+    dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+    _DIALOG = dialog
 
     layout = QtWidgets.QVBoxLayout(dialog)
     status_label = QtWidgets.QLabel(f"DB: {db_path} (로드 {len(data)}건)")
+    cell_label = QtWidgets.QLabel("셀: -")
     layout.addWidget(status_label)
+    layout.addWidget(cell_label)
 
     form = QtWidgets.QHBoxLayout()
     industry_box = QtWidgets.QComboBox()
@@ -113,7 +127,6 @@ def open_modal():
             "소방": "sobang",
         }[industry_box.currentText()]
         apply_mois_under30(row_data, file_type)
-        dialog.accept()
 
     def set_db_path():
         nonlocal data, db_path
@@ -173,6 +186,15 @@ def open_modal():
             data = latest
             status_label.setText(f"DB: {db_path} (로드 {len(data)}건)")
 
+    def update_active_cell_label():
+        try:
+            book = xw.Book.caller()
+            rng = book.app.selection
+            address = rng.address.replace("$", "")
+            cell_label.setText(f"셀: {address}")
+        except Exception:
+            cell_label.setText("셀: -")
+
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)
     config_btn.clicked.connect(set_db_path)
@@ -190,11 +212,22 @@ def open_modal():
     layout.addLayout(btns)
 
     apply_btn.clicked.connect(apply_selected)
-    close_btn.clicked.connect(dialog.reject)
+    close_btn.clicked.connect(dialog.close)
 
     timer = QtCore.QTimer(dialog)
     timer.setInterval(2000)
     timer.timeout.connect(auto_reload_if_changed)
     timer.start()
 
-    dialog.exec()
+    cell_timer = QtCore.QTimer(dialog)
+    cell_timer.setInterval(300)
+    cell_timer.timeout.connect(update_active_cell_label)
+    cell_timer.start()
+
+    dialog.finished.connect(lambda _: _clear_dialog())
+    dialog.show()
+
+
+def _clear_dialog():
+    global _DIALOG
+    _DIALOG = None

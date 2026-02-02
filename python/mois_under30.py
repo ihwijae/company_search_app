@@ -3,6 +3,7 @@ import re
 import xlwings as xw
 
 from config_store import load_config
+from formulas_store import get_management_rules
 
 
 def _truncate(value, digits=2):
@@ -10,88 +11,96 @@ def _truncate(value, digits=2):
     return int(value * factor) / factor
 
 
-def score_debt_mois_under30(ratio: float):
-    if ratio < 0.5:
-        return 8.0
-    if ratio < 0.75:
-        return 7.2
-    if ratio < 1.0:
-        return 6.4
-    if ratio < 1.25:
-        return 5.6
-    return 4.8
-
-
-def score_current_mois_under30(ratio: float):
-    if ratio >= 1.5:
-        return 7.0
-    if ratio >= 1.2:
-        return 6.3
-    if ratio >= 1.0:
-        return 5.6
-    if ratio >= 0.7:
-        return 4.9
-    return 4.2
-
-
-def score_credit_mois_under30(grade: str):
+def score_credit_from_table(grade: str, grade_table):
     g = str(grade).strip().upper()
     match = re.match(r"^([A-Z]{1,3}[0-9]?(?:[+-])?)", g)
     if match:
         g = match.group(1)
-    if g in {"AAA", "AA+", "AA0", "AA-", "A+", "A0", "A-", "BBB+", "BBB0", "BBB-", "BB+", "BB0"}:
-        return 15
-    if g == "BB-":
-        return 14
-    if g in {"B+", "B0", "B-"}:
-        return 13
-    if g in {"CCC+", "CCC0", "CCC-", "CC", "C", "D"}:
-        return 10
+    for row in grade_table or []:
+        if str(row.get("grade", "")).strip().upper() == g:
+            return row.get("score")
     return None
 
 
-def score_biz_years_mois_under30(years, thresholds):
-    if years is None:
+def score_by_thresholds(value, thresholds, scale):
+    if value is None:
         return None
     try:
-        years = float(years)
+        value = float(value)
     except Exception:
         return None
-    for rule in thresholds:
-        if "gteYears" in rule and years >= rule["gteYears"]:
+    for rule in thresholds or []:
+        if "lt" in rule and value < rule["lt"]:
             return rule["score"]
-        if "ltYears" in rule and years < rule["ltYears"]:
+        if "lte" in rule and value <= rule["lte"]:
+            return rule["score"]
+        if "gt" in rule and value > rule["gt"]:
+            return rule["score"]
+        if "gte" in rule and value >= rule["gte"]:
+            return rule["score"]
+        if "ltYears" in rule and value < rule["ltYears"]:
+            return rule["score"]
+        if "gteYears" in rule and value >= rule["gteYears"]:
             return rule["score"]
     return None
 
 
 def compute_management_mois_under30(row, file_type, industry_avg):
-    debt = row.get("debtRatio")
-    current = row.get("currentRatio")
-    biz_years = row.get("bizYears")
-    debt_avg = industry_avg[file_type]["debtRatio"]
-    current_avg = industry_avg[file_type]["currentRatio"]
+    rules = get_management_rules("mois", 0)
+    if not rules:
+        return None
+    method_selection = rules.get("methodSelection", "max")
+    rounding = rules.get("rounding", {}) or {}
+    methods = rules.get("methods", [])
 
-    composite = None
-    debt_score = score_debt_mois_under30(debt / debt_avg) if debt is not None and debt_avg else None
-    current_score = score_current_mois_under30(current / current_avg) if current is not None and current_avg else None
-    if debt_score is not None or current_score is not None:
-        composite = (debt_score or 0) + (current_score or 0)
-        biz_thresholds = load_config().get("mois_under30", {}).get(
-            "bizYearsThresholds",
-            [{"gteYears": 3, "score": 1.0}, {"ltYears": 3, "score": 0.9}],
-        )
-        biz_score = score_biz_years_mois_under30(biz_years, biz_thresholds)
-        if biz_score is not None:
-            composite += biz_score
+    composite_score = None
+    credit_score = None
 
-    credit = score_credit_mois_under30(row.get("creditGrade", ""))
-    candidates = [v for v in [composite, credit] if v is not None]
+    for method in methods:
+        if method.get("id") == "composite":
+            components = (method.get("components") or {})
+            total = 0.0
+            has_any = False
+            for key, spec in components.items():
+                if key == "debtRatio":
+                    val = row.get("debtRatio")
+                    avg = industry_avg[file_type]["debtRatio"]
+                    base = (val / avg) if (val is not None and avg) else None
+                    score = score_by_thresholds(base, spec.get("thresholds"), spec.get("scale"))
+                elif key == "currentRatio":
+                    val = row.get("currentRatio")
+                    avg = industry_avg[file_type]["currentRatio"]
+                    base = (val / avg) if (val is not None and avg) else None
+                    score = score_by_thresholds(base, spec.get("thresholds"), spec.get("scale"))
+                elif key == "bizYears":
+                    score = score_by_thresholds(row.get("bizYears"), spec.get("thresholds"), spec.get("scale"))
+                else:
+                    score = None
+                if score is not None:
+                    total += float(score)
+                    has_any = True
+            if has_any:
+                composite_score = total
+        elif method.get("id") == "credit":
+            grade_table = method.get("gradeTable", [])
+            credit_score = score_credit_from_table(row.get("creditGrade", ""), grade_table)
+
+    candidates = []
+    if composite_score is not None:
+        candidates.append(composite_score)
+    if credit_score is not None:
+        candidates.append(credit_score)
     if not candidates:
         return None
-    best = max(candidates)
+    if method_selection == "max":
+        best = max(candidates)
+    else:
+        best = sum(candidates)
     best = min(15.0, max(0.0, best))
-    return _truncate(best, 2)
+    digits = rounding.get("digits", 2)
+    if rounding.get("method") == "truncate":
+        return _truncate(best, digits)
+    return round(best, digits)
 
 
 def column_index_to_letter(index):
