@@ -347,6 +347,9 @@ def open_modal():
     verify_btn = QtWidgets.QPushButton("DB 경로 확인")
     form.addWidget(verify_btn)
 
+    reload_btn = QtWidgets.QPushButton("DB 재로드")
+    form.addWidget(reload_btn)
+
     layout.addLayout(form)
 
     table = QtWidgets.QTableWidget(0, 3)
@@ -410,10 +413,20 @@ def open_modal():
             msg += f"\n수정시간: {QtCore.QDateTime.fromSecsSinceEpoch(int(mtime)).toString('yyyy-MM-dd HH:mm:ss')}"
         QtWidgets.QMessageBox.information(dialog, "DB 경로 확인", msg)
 
+    def reload_db():
+        nonlocal data
+        if not db_path.exists():
+            QtWidgets.QMessageBox.warning(dialog, "DB 재로드", "DB 파일 경로가 유효하지 않습니다.")
+            return
+        data = load_db_cached(db_path, force=True)
+        status_label.setText(f"DB: {db_path} (로드 {len(data)}건)")
+        QtWidgets.QMessageBox.information(dialog, "DB 재로드", f"재로드 완료\n로드 {len(data)}건")
+
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)
     config_btn.clicked.connect(set_db_path)
     verify_btn.clicked.connect(verify_db_path)
+    reload_btn.clicked.connect(reload_db)
     table.itemDoubleClicked.connect(lambda _: apply_selected())
 
     btns = QtWidgets.QHBoxLayout()
