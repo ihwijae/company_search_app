@@ -16,6 +16,12 @@ def write_to_active_cell(value):
     rng.value = value
 
 
+def write_to_cell(address, value):
+    book = xw.Book.caller()
+    sht = book.sheets.active
+    sht.range(address).value = value
+
+
 _DIALOG = None
 _APP_EXEC_STARTED = False
 
@@ -269,6 +275,8 @@ def open_modal():
                 return r
         return -1
 
+    last_target_address = {"value": ""}
+
     def apply_selected():
         selected = resolve_checked_row()
         if selected < 0:
@@ -282,14 +290,18 @@ def open_modal():
         clean_name = sanitize_company_name(name_val) or name_val
         manager_name = row_data.get("managerName", "")
         display_name = f"{clean_name}\n{manager_name}".strip() if manager_name else clean_name
-        write_to_active_cell(display_name)
+        target_address = last_target_address["value"]
+        if target_address:
+            write_to_cell(target_address, display_name)
+        else:
+            write_to_active_cell(display_name)
 
         file_type = {
             "전기": "eung",
             "통신": "tongsin",
             "소방": "sobang",
         }[industry_box.currentText()]
-        apply_mois_under30(row_data, file_type)
+        apply_mois_under30(row_data, file_type, target_address=target_address or None)
 
     def set_db_path():
         nonlocal data, db_path, db_paths
@@ -362,6 +374,7 @@ def open_modal():
             rng = book.app.selection
             address = rng.address.replace("$", "")
             cell_label.setText(f"셀: {address}")
+            last_target_address["value"] = address
         except Exception:
             cell_label.setText("셀: -")
 

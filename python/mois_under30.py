@@ -111,7 +111,7 @@ def column_index_to_letter(index):
     return result
 
 
-def apply_mois_under30(row_data, file_type):
+def apply_mois_under30(row_data, file_type, target_address=None):
     cfg = load_config()
     industry_avg = cfg["industryAverages"]
 
@@ -124,9 +124,14 @@ def apply_mois_under30(row_data, file_type):
     perf_cols = settings["performanceCols"]
     sipyung_cols = settings.get("sipyungCols", [])
 
-    active = book.app.selection
-    col_letter = column_index_to_letter(active.column)
-    row_num = active.row
+    if target_address:
+        active = sht.range(target_address)
+        col_letter = column_index_to_letter(active.column)
+        row_num = active.row
+    else:
+        active = book.app.selection
+        col_letter = column_index_to_letter(active.column)
+        row_num = active.row
 
     if col_letter not in name_cols:
         return False
