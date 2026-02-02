@@ -36,6 +36,9 @@ def score_current_mois_under30(ratio: float):
 
 def score_credit_mois_under30(grade: str):
     g = str(grade).strip().upper()
+    match = re.match(r"^([A-Z]{1,3}[0-9]?(?:[+-])?)", g)
+    if match:
+        g = match.group(1)
     if g in {"AAA", "AA+", "AA0", "AA-", "A+", "A0", "A-", "BBB+", "BBB0", "BBB-", "BB+", "BB0"}:
         return 15
     if g == "BB-":
@@ -47,20 +50,46 @@ def score_credit_mois_under30(grade: str):
     return None
 
 
+def score_biz_years_mois_under30(years, thresholds):
+    if years is None:
+        return None
+    try:
+        years = float(years)
+    except Exception:
+        return None
+    for rule in thresholds:
+        if "gteYears" in rule and years >= rule["gteYears"]:
+            return rule["score"]
+        if "ltYears" in rule and years < rule["ltYears"]:
+            return rule["score"]
+    return None
+
+
 def compute_management_mois_under30(row, file_type, industry_avg):
     debt = row.get("debtRatio")
     current = row.get("currentRatio")
+    biz_years = row.get("bizYears")
     debt_avg = industry_avg[file_type]["debtRatio"]
     current_avg = industry_avg[file_type]["currentRatio"]
 
-    composite = 0.0
-    if debt is not None and debt_avg:
-        composite += score_debt_mois_under30(debt / debt_avg)
-    if current is not None and current_avg:
-        composite += score_current_mois_under30(current / current_avg)
+    composite = None
+    debt_score = score_debt_mois_under30(debt / debt_avg) if debt is not None and debt_avg else None
+    current_score = score_current_mois_under30(current / current_avg) if current is not None and current_avg else None
+    if debt_score is not None or current_score is not None:
+        composite = (debt_score or 0) + (current_score or 0)
+        biz_thresholds = load_config().get("mois_under30", {}).get(
+            "bizYearsThresholds",
+            [{"gteYears": 3, "score": 1.0}, {"ltYears": 3, "score": 0.9}],
+        )
+        biz_score = score_biz_years_mois_under30(biz_years, biz_thresholds)
+        if biz_score is not None:
+            composite += biz_score
 
     credit = score_credit_mois_under30(row.get("creditGrade", ""))
-    best = max(composite, credit or 0)
+    candidates = [v for v in [composite, credit] if v is not None]
+    if not candidates:
+        return None
+    best = max(candidates)
     best = min(15.0, max(0.0, best))
     return _truncate(best, 2)
 

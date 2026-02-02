@@ -74,6 +74,7 @@ def _load_sheet_entries(ws, sheet_name, relative_offsets):
                 "bizNo": "",
                 "debtRatio": None,
                 "currentRatio": None,
+                "bizYears": None,
                 "perf5y": None,
                 "creditGrade": "",
                 "sipyung": None,
@@ -93,6 +94,8 @@ def _load_sheet_entries(ws, sheet_name, relative_offsets):
                     entry["debtRatio"] = _to_number(val)
                 elif key == "유동비율":
                     entry["currentRatio"] = _to_number(val)
+                elif key == "영업기간":
+                    entry["bizYears"] = _to_number(val)
                 elif key == "시평":
                     entry["sipyung"] = _to_number(val)
                 elif key == "5년 실적":

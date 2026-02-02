@@ -10,6 +10,10 @@
     "managementCols": ["P", "Q", "R", "S", "T"],
     "performanceCols": ["W", "X", "Y", "Z", "AA"],
     "sipyungCols": ["AO", "AP", "AQ", "AR", "AS"],
+    "bizYearsThresholds": [
+      { "gteYears": 3, "score": 1.0 },
+      { "ltYears": 3, "score": 0.9 }
+    ],
     "startRow": 5,
     "maxRows": 68
   }
