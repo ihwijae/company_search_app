@@ -177,8 +177,8 @@ def open_modal():
 
     layout.addLayout(form)
 
-    table = QtWidgets.QTableWidget(0, 7)
-    table.setHorizontalHeaderLabels(["공종", "업체명", "담당자", "지역", "사업자번호", "5년실적", "시평액"])
+    table = QtWidgets.QTableWidget(0, 8)
+    table.setHorizontalHeaderLabels(["선택", "공종", "업체명", "담당자", "지역", "사업자번호", "5년실적", "시평액"])
     table.horizontalHeader().setStretchLastSection(True)
     table.verticalHeader().setVisible(False)
     table.setAlternatingRowColors(True)
@@ -205,22 +205,35 @@ def open_modal():
             if q in row["norm"]:
                 r = table.rowCount()
                 table.insertRow(r)
-                table.setItem(r, 0, QtWidgets.QTableWidgetItem(current_industry))
-                table.setItem(r, 1, QtWidgets.QTableWidgetItem(row["name"]))
-                table.setItem(r, 2, QtWidgets.QTableWidgetItem(row.get("managerName", "")))
-                table.setItem(r, 3, QtWidgets.QTableWidgetItem(row["region"]))
-                table.setItem(r, 4, QtWidgets.QTableWidgetItem(row.get("bizNo", "")))
+                check_item = QtWidgets.QTableWidgetItem("")
+                check_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
+                check_item.setCheckState(QtCore.Qt.Unchecked)
+                table.setItem(r, 0, check_item)
+                table.setItem(r, 1, QtWidgets.QTableWidgetItem(current_industry))
+                table.setItem(r, 2, QtWidgets.QTableWidgetItem(row["name"]))
+                table.setItem(r, 3, QtWidgets.QTableWidgetItem(row.get("managerName", "")))
+                table.setItem(r, 4, QtWidgets.QTableWidgetItem(row["region"]))
+                table.setItem(r, 5, QtWidgets.QTableWidgetItem(row.get("bizNo", "")))
                 perf_val = row.get("perf5y")
                 sipyung_val = row.get("sipyung")
-                table.setItem(r, 5, QtWidgets.QTableWidgetItem(format_amount(perf_val)))
-                table.setItem(r, 6, QtWidgets.QTableWidgetItem(format_amount(sipyung_val)))
+                table.setItem(r, 6, QtWidgets.QTableWidgetItem(format_amount(perf_val)))
+                table.setItem(r, 7, QtWidgets.QTableWidgetItem(format_amount(sipyung_val)))
+
+    def resolve_checked_row():
+        for r in range(table.rowCount()):
+            item = table.item(r, 0)
+            if item is not None and item.checkState() == QtCore.Qt.Checked:
+                return r
+        return -1
 
     def apply_selected():
-        selected = table.currentRow()
+        selected = resolve_checked_row()
+        if selected < 0:
+            selected = table.currentRow()
         if selected < 0:
             return
-        name_val = table.item(selected, 0).text()
-        region_val = table.item(selected, 1).text()
+        name_val = table.item(selected, 2).text()
+        region_val = table.item(selected, 4).text()
         row_data = next((r for r in data if r["name"] == name_val and r["region"] == region_val), None)
         if not row_data:
             return
@@ -326,6 +339,13 @@ def open_modal():
         data = load_db_cached(db_path, force=True)
         status_label.setText(f"공종 DB: {db_path} (로드 {len(data)}건)")
 
+    def enforce_single_check(row):
+        for r in range(table.rowCount()):
+            item = table.item(r, 0)
+            if item is None:
+                continue
+            item.setCheckState(QtCore.Qt.Checked if r == row else QtCore.Qt.Unchecked)
+
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)
     config_btn.clicked.connect(set_db_path)
@@ -334,6 +354,7 @@ def open_modal():
     diag_btn.clicked.connect(run_db_diagnosis)
     industry_box.currentIndexChanged.connect(on_industry_change)
     table.itemDoubleClicked.connect(lambda _: apply_selected())
+    table.itemSelectionChanged.connect(lambda: enforce_single_check(table.currentRow()))
 
     btns = QtWidgets.QHBoxLayout()
     btns.setSpacing(8)
