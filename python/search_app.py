@@ -10,6 +10,7 @@ from openpyxl import load_workbook
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
+_DB_CACHE = {"path": None, "mtime": None, "data": []}
 
 
 def load_config():
@@ -142,6 +143,21 @@ def load_db(db_path: Path):
     return data
 
 
+def load_db_cached(db_path: Path, force=False):
+    mtime = db_path.stat().st_mtime if db_path.exists() else None
+    if (
+        not force
+        and _DB_CACHE["path"] == str(db_path)
+        and _DB_CACHE["mtime"] == mtime
+    ):
+        return _DB_CACHE["data"]
+    data = load_db(db_path)
+    _DB_CACHE["path"] = str(db_path)
+    _DB_CACHE["mtime"] = mtime
+    _DB_CACHE["data"] = data
+    return data
+
+
 def _truncate(value, digits=2):
     factor = 10 ** digits
     return int(value * factor) / factor
@@ -259,7 +275,7 @@ def open_modal():
         save_config(cfg)
         db_path = Path(picked)
 
-    data = load_db(db_path)
+    data = load_db_cached(db_path)
 
     dialog = QtWidgets.QDialog()
     dialog.setWindowTitle("업체 검색")
@@ -284,6 +300,9 @@ def open_modal():
 
     config_btn = QtWidgets.QPushButton("DB 경로 설정")
     form.addWidget(config_btn)
+
+    verify_btn = QtWidgets.QPushButton("DB 경로 확인")
+    form.addWidget(verify_btn)
 
     layout.addLayout(form)
 
@@ -334,12 +353,22 @@ def open_modal():
         cfg["dbPath"] = os.path.relpath(path, BASE_DIR)
         save_config(cfg)
         db_path = Path(path)
-        data = load_db(db_path)
+        data = load_db_cached(db_path, force=True)
         status_label.setText(f"DB: {db_path} (로드 {len(data)}건)")
+        QtWidgets.QMessageBox.information(dialog, "DB 경로", f"설정됨:\n{db_path}\n로드 {len(data)}건")
+
+    def verify_db_path():
+        exists = db_path.exists()
+        mtime = db_path.stat().st_mtime if exists else None
+        msg = f"경로: {db_path}\n존재: {'예' if exists else '아니오'}\n로드 {len(data)}건"
+        if mtime:
+            msg += f"\n수정시간: {QtCore.QDateTime.fromSecsSinceEpoch(int(mtime)).toString('yyyy-MM-dd HH:mm:ss')}"
+        QtWidgets.QMessageBox.information(dialog, "DB 경로 확인", msg)
 
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)
     config_btn.clicked.connect(set_db_path)
+    verify_btn.clicked.connect(verify_db_path)
     table.itemDoubleClicked.connect(lambda _: apply_selected())
 
     btns = QtWidgets.QHBoxLayout()
