@@ -727,6 +727,14 @@ button.primary:hover { background: var(--accent-2); }
   flex-direction: column;
   gap: 10px;
 }
+
+.agreement-board-root.header-collapsed .excel-header-grid {
+  display: none;
+}
+
+.agreement-board-root.header-collapsed .excel-board-header {
+  padding-top: 4px;
+}
 .excel-inline-alert {
   background: #fff7ed;
   border: 1px solid #fcd34d;

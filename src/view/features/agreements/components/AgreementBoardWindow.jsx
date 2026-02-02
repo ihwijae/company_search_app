@@ -1212,6 +1212,7 @@ export default function AgreementBoardWindow({
   memoHtml = '',
   inlineMode = false,
 }) {
+  const [headerCollapsed, setHeaderCollapsed] = React.useState(false);
   const rangeId = _rangeId;
   const boardWindowRef = React.useRef(null);
   const [portalContainer, setPortalContainer] = React.useState(null);
@@ -5437,7 +5438,7 @@ export default function AgreementBoardWindow({
 
   const boardMarkup = (
     <>
-      <div className="agreement-board-root" ref={rootRef}>
+      <div className={`agreement-board-root${headerCollapsed ? ' header-collapsed' : ''}`} ref={rootRef}>
         <div className="excel-board-shell">
           <div className="excel-board-header">
             <div className="excel-header-grid condensed">
@@ -5668,6 +5669,11 @@ export default function AgreementBoardWindow({
 
               <div className="excel-toolbar">
               <div className="excel-toolbar-actions">
+                <button
+                  type="button"
+                  className="excel-btn"
+                  onClick={() => setHeaderCollapsed((prev) => !prev)}
+                >{headerCollapsed ? '헤더 펼치기' : '헤더 접기'}</button>
                 <button
                   type="button"
                   onClick={handleOpenExportModal}
