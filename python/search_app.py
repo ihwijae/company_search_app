@@ -206,7 +206,17 @@ def open_modal():
 
     if not db_path.exists():
         QtWidgets.QMessageBox.warning(None, "DB 경로", "DB 파일 경로를 설정하세요.")
-        return
+        picked, _ = QtWidgets.QFileDialog.getOpenFileName(
+            None,
+            "업체 DB 선택",
+            str(BASE_DIR),
+            "Excel Files (*.xlsx)",
+        )
+        if not picked:
+            return
+        cfg["dbPath"] = os.path.relpath(picked, BASE_DIR)
+        save_config(cfg)
+        db_path = Path(picked)
 
     data = load_db(db_path)
 
@@ -274,11 +284,14 @@ def open_modal():
         dialog.accept()
 
     def set_db_path():
+        nonlocal data, db_path
         path, _ = QtWidgets.QFileDialog.getOpenFileName(dialog, "업체 DB 선택", str(BASE_DIR), "Excel Files (*.xlsx)")
         if not path:
             return
         cfg["dbPath"] = os.path.relpath(path, BASE_DIR)
         save_config(cfg)
+        db_path = Path(path)
+        data = load_db(db_path)
 
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)
