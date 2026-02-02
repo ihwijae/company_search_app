@@ -192,8 +192,8 @@ def open_modal():
         except Exception:
             return str(value)
         if number.is_integer():
-            return f\"{int(number):,}\"
-        return f\"{number:,.0f}\"
+            return f"{int(number):,}"
+        return f"{number:,.0f}"
 
     def do_search():
         q = normalize_name(query_input.text())
