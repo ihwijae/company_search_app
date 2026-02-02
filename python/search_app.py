@@ -45,6 +45,23 @@ def _to_number(val):
 def load_db(db_path: Path):
     wb = pd.ExcelFile(db_path)
     data = []
+    relative_offsets = {
+        "대표자": 1,
+        "사업자번호": 2,
+        "지역": 3,
+        "시평": 4,
+        "3년 실적": 5,
+        "5년 실적": 6,
+        "부채비율": 7,
+        "유동비율": 8,
+        "영업기간": 9,
+        "신용평가": 10,
+        "여성기업": 11,
+        "중소기업": 12,
+        "일자리창출": 13,
+        "품질평가": 14,
+        "비고": 15,
+    }
     for sheet_name in wb.sheet_names:
         df = wb.parse(sheet_name, header=None)
         header_row = None
@@ -76,27 +93,23 @@ def load_db(db_path: Path):
                 "perf5y": None,
                 "creditGrade": "",
             }
-            offsets = {
-                "사업자번호": 2,
-                "부채비율": 7,
-                "유동비율": 8,
-                "5년 실적": 6,
-                "신용평가": 10,
-            }
-            for key, offset in offsets.items():
+            for key, offset in relative_offsets.items():
                 r = header_row + offset
-                if r < df.shape[0]:
-                    val = df.iat[r, col]
-                    if key == "사업자번호":
-                        entry["bizNo"] = "" if pd.isna(val) else str(val).strip()
-                    elif key == "부채비율":
-                        entry["debtRatio"] = _to_number(val)
-                    elif key == "유동비율":
-                        entry["currentRatio"] = _to_number(val)
-                    elif key == "5년 실적":
-                        entry["perf5y"] = _to_number(val)
-                    elif key == "신용평가":
-                        entry["creditGrade"] = "" if pd.isna(val) else str(val).strip()
+                if r >= df.shape[0]:
+                    continue
+                val = df.iat[r, col]
+                if key in {"부채비율", "유동비율"} and isinstance(val, (int, float)) and not pd.isna(val):
+                    val = val * 100
+                if key == "사업자번호":
+                    entry["bizNo"] = "" if pd.isna(val) else str(val).strip()
+                elif key == "부채비율":
+                    entry["debtRatio"] = _to_number(val)
+                elif key == "유동비율":
+                    entry["currentRatio"] = _to_number(val)
+                elif key == "5년 실적":
+                    entry["perf5y"] = _to_number(val)
+                elif key == "신용평가":
+                    entry["creditGrade"] = "" if pd.isna(val) else str(val).strip()
             data.append(entry)
     return data
 
