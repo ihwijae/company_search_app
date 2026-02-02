@@ -65,15 +65,23 @@ def load_db(db_path: Path):
     for sheet_name in wb.sheet_names:
         df = wb.parse(sheet_name, header=None)
         header_row = None
+        header_col = None
         for i in range(len(df)):
-            val = str(df.iat[i, 0]) if pd.notna(df.iat[i, 0]) else ""
-            if "회사명" in val:
-                header_row = i
+            row_vals = df.iloc[i].tolist()
+            for j, cell in enumerate(row_vals):
+                if pd.isna(cell):
+                    continue
+                val = str(cell)
+                if "회사명" in val:
+                    header_row = i
+                    header_col = j
+                    break
+            if header_row is not None:
                 break
         if header_row is None:
             continue
 
-        for col in range(1, df.shape[1]):
+        for col in range(header_col + 1, df.shape[1]):
             raw_name = df.iat[header_row, col]
             if pd.isna(raw_name):
                 continue
