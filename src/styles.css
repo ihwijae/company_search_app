@@ -735,6 +735,20 @@ button.primary:hover { background: var(--accent-2); }
 .agreement-board-root.header-collapsed .excel-board-header {
   padding-top: 4px;
 }
+
+.excel-header-summary {
+  margin-left: 8px;
+  font-size: 13px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  max-width: 60vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .excel-inline-alert {
   background: #fff7ed;
   border: 1px solid #fcd34d;

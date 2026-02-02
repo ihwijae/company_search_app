@@ -1212,7 +1212,19 @@ export default function AgreementBoardWindow({
   memoHtml = '',
   inlineMode = false,
 }) {
-  const [headerCollapsed, setHeaderCollapsed] = React.useState(false);
+  const [headerCollapsed, setHeaderCollapsed] = React.useState(() => {
+    try {
+      return window.localStorage.getItem('agreementHeaderCollapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem('agreementHeaderCollapsed', headerCollapsed ? '1' : '0');
+    } catch {}
+  }, [headerCollapsed]);
   const rangeId = _rangeId;
   const boardWindowRef = React.useRef(null);
   const [portalContainer, setPortalContainer] = React.useState(null);
@@ -5435,6 +5447,13 @@ export default function AgreementBoardWindow({
   }, [portalContainer, open, inlineMode]);
 
   const headerDutySummary = buildDutySummary(safeDutyRegions, regionDutyRate, safeParticipantLimit);
+  const headerSummaryText = [
+    ownerLabel || '',
+    selectedRangeOption?.label || '',
+    industryLabel || '',
+    headerDutySummary || '',
+    estimatedAmount ? `추정 ${formatAmount(estimatedAmount)}` : '',
+  ].filter(Boolean).join(' · ');
 
   const boardMarkup = (
     <>
@@ -5674,6 +5693,11 @@ export default function AgreementBoardWindow({
                   className="excel-btn"
                   onClick={() => setHeaderCollapsed((prev) => !prev)}
                 >{headerCollapsed ? '헤더 펼치기' : '헤더 접기'}</button>
+                {headerCollapsed && (
+                  <div className="excel-header-summary" title={headerSummaryText}>
+                    {headerSummaryText || '요약 정보 없음'}
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={handleOpenExportModal}
