@@ -11,6 +11,7 @@ from text_utils import normalize_name, sanitize_company_name
 
 
 _DIALOG = None
+_APP_EXEC_STARTED = False
 
 
 def write_to_active_cell(value):
@@ -21,6 +22,7 @@ def write_to_active_cell(value):
 
 def open_modal():
     global _DIALOG
+    global _APP_EXEC_STARTED
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     if _DIALOG is not None and _DIALOG.isVisible():
@@ -226,6 +228,10 @@ def open_modal():
 
     dialog.finished.connect(lambda _: _clear_dialog())
     dialog.show()
+    if not _APP_EXEC_STARTED:
+        _APP_EXEC_STARTED = True
+        app.setQuitOnLastWindowClosed(True)
+        app.exec()
 
 
 def _clear_dialog():
