@@ -32,6 +32,37 @@ def normalize_name(name: str) -> str:
     return re.sub(r"\s+", " ", name).strip().lower()
 
 
+def sanitize_company_name(name: str) -> str:
+    if not name:
+        return ""
+    text = str(name).strip().split("\n")[0]
+    text = text.replace("(주)", "").replace("㈜", "").replace("주식회사", "")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def extract_manager_name(notes: str):
+    if not notes:
+        return None
+    text = re.sub(r"\s+", " ", str(notes)).strip()
+    if not text:
+        return None
+    first_token = re.split(r"[ ,\/\|·\-]+", text)
+    first_token = next((t for t in first_token if t), "")
+    cleaned_first = re.sub(r"^[\[\(（【]([^\]\)）】]+)[\]\)】]?$", r"\1", first_token)
+    if re.match(r"^[가-힣]{2,4}$", cleaned_first):
+        return cleaned_first
+    m = re.search(r"담당자?\s*[:：-]?\s*([가-힣]{2,4})", text)
+    if m:
+        return m.group(1)
+    m = re.search(r"([가-힣]{2,4})\s*(과장|팀장|차장|대리|사원|부장|대표|실장|소장)", text)
+    if m:
+        return m.group(1)
+    m = re.search(r"\b(?!확인서|등록증|증명서|평가|서류)([가-힣]{2,4})\b\s*(?:,|\/|\(|\d|$)", text)
+    if m:
+        return m.group(1)
+    return None
+
+
 def _to_number(val):
     if val is None or (isinstance(val, float) and math.isnan(val)):
         return None
@@ -112,34 +143,42 @@ def load_db(db_path: Path):
                 if dedup_key in seen_keys:
                     continue
                 seen_keys.add(dedup_key)
-                entry = {
-                    "name": name,
-                    "norm": normalize_name(name),
-                    "region": sheet_name.strip(),
-                    "bizNo": "",
-                    "debtRatio": None,
-                    "currentRatio": None,
-                    "perf5y": None,
-                    "creditGrade": "",
-                }
-                for key, offset in relative_offsets.items():
-                    r = header_row + offset
-                    if r > max_row:
-                        continue
-                    val = get_value(r, col)
-                    if key in {"부채비율", "유동비율"} and isinstance(val, (int, float)):
-                        val = val * 100
-                    if key == "사업자번호":
-                        entry["bizNo"] = "" if val is None else str(val).strip()
-                    elif key == "부채비율":
-                        entry["debtRatio"] = _to_number(val)
-                    elif key == "유동비율":
-                        entry["currentRatio"] = _to_number(val)
-                    elif key == "5년 실적":
-                        entry["perf5y"] = _to_number(val)
-                    elif key == "신용평가":
-                        entry["creditGrade"] = "" if val is None else str(val).strip()
-                data.append(entry)
+            entry = {
+                "name": name,
+                "norm": normalize_name(name),
+                "region": sheet_name.strip(),
+                "bizNo": "",
+                "debtRatio": None,
+                "currentRatio": None,
+                "perf5y": None,
+                "creditGrade": "",
+                "sipyung": None,
+                "notes": "",
+                "managerName": "",
+            }
+            for key, offset in relative_offsets.items():
+                r = header_row + offset
+                if r > max_row:
+                    continue
+                val = get_value(r, col)
+                if key in {"부채비율", "유동비율"} and isinstance(val, (int, float)):
+                    val = val * 100
+                if key == "사업자번호":
+                    entry["bizNo"] = "" if val is None else str(val).strip()
+                elif key == "부채비율":
+                    entry["debtRatio"] = _to_number(val)
+                elif key == "유동비율":
+                    entry["currentRatio"] = _to_number(val)
+                elif key == "시평":
+                    entry["sipyung"] = _to_number(val)
+                elif key == "5년 실적":
+                    entry["perf5y"] = _to_number(val)
+                elif key == "신용평가":
+                    entry["creditGrade"] = "" if val is None else str(val).strip()
+                elif key == "비고":
+                    entry["notes"] = "" if val is None else str(val).strip()
+            entry["managerName"] = extract_manager_name(entry.get("notes", ""))
+            data.append(entry)
     return data
 
 
@@ -236,6 +275,7 @@ def apply_mois_under30(name_value, row_data, file_type):
     name_cols = settings["nameCols"]
     mgmt_cols = settings["managementCols"]
     perf_cols = settings["performanceCols"]
+    sipyung_cols = settings.get("sipyungCols", [])
 
     active = book.app.selection
     col_letter = re.sub(r"\d", "", active.address.split("$")[-1])
@@ -251,6 +291,9 @@ def apply_mois_under30(name_value, row_data, file_type):
     perf = row_data.get("perf5y")
     if perf is not None:
         sht.range(f"{perf_cols[idx]}{row_num}").value = perf
+    sipyung = row_data.get("sipyung")
+    if sipyung is not None and idx < len(sipyung_cols):
+        sht.range(f"{sipyung_cols[idx]}{row_num}").value = sipyung
 
 
 def open_modal():
@@ -334,8 +377,10 @@ def open_modal():
         row_data = next((r for r in data if r["name"] == name_val and r["region"] == region_val), None)
         if not row_data:
             return
-        # write name to active cell
-        write_to_active_cell(name_val)
+        clean_name = sanitize_company_name(name_val) or name_val
+        manager_name = row_data.get("managerName", "")
+        display_name = f"{clean_name}\n{manager_name}".strip() if manager_name else clean_name
+        write_to_active_cell(display_name)
 
         file_type = {
             "전기": "eung",

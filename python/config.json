@@ -9,6 +9,7 @@
     "nameCols": ["C", "D", "E", "F", "G"],
     "managementCols": ["P", "Q", "R", "S", "T"],
     "performanceCols": ["W", "X", "Y", "Z", "AA"],
+    "sipyungCols": ["AO", "AP", "AQ", "AR", "AS"],
     "startRow": 5,
     "maxRows": 68
   }
