@@ -1,11 +1,12 @@
 import json
+import math
 import os
 import re
 from pathlib import Path
 
-import pandas as pd
 import xlwings as xw
 from PySide6 import QtWidgets, QtCore
+from openpyxl import load_workbook
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
@@ -31,7 +32,7 @@ def normalize_name(name: str) -> str:
 
 
 def _to_number(val):
-    if val is None or (isinstance(val, float) and pd.isna(val)):
+    if val is None or (isinstance(val, float) and math.isnan(val)):
         return None
     s = str(val).replace(",", "").strip()
     if s == "":
@@ -43,7 +44,7 @@ def _to_number(val):
 
 
 def load_db(db_path: Path):
-    wb = pd.ExcelFile(db_path)
+    wb = load_workbook(db_path, data_only=False)
     data = []
     relative_offsets = {
         "대표자": 1,
@@ -62,28 +63,45 @@ def load_db(db_path: Path):
         "품질평가": 14,
         "비고": 15,
     }
-    for sheet_name in wb.sheet_names:
-        df = wb.parse(sheet_name, header=None)
+
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        max_row = ws.max_row or 0
+        max_col = ws.max_column or 0
+
+        merged_value = {}
+        for merged in ws.merged_cells.ranges:
+            tl = ws.cell(merged.min_row, merged.min_col).value
+            for r in range(merged.min_row, merged.max_row + 1):
+                for c in range(merged.min_col, merged.max_col + 1):
+                    merged_value[(r, c)] = tl
+
+        def get_value(r, c):
+            v = ws.cell(r, c).value
+            if v is None:
+                return merged_value.get((r, c))
+            return v
+
         header_row = None
         header_col = None
-        for i in range(len(df)):
-            row_vals = df.iloc[i].tolist()
-            for j, cell in enumerate(row_vals):
-                if pd.isna(cell):
+        for r in range(1, max_row + 1):
+            for c in range(1, max_col + 1):
+                cell = get_value(r, c)
+                if cell is None:
                     continue
                 val = str(cell)
                 if "회사명" in val:
-                    header_row = i
-                    header_col = j
+                    header_row = r
+                    header_col = c
                     break
             if header_row is not None:
                 break
         if header_row is None:
             continue
 
-        for col in range(header_col + 1, df.shape[1]):
-            raw_name = df.iat[header_row, col]
-            if pd.isna(raw_name):
+        for col in range(header_col + 1, max_col + 1):
+            raw_name = get_value(header_row, col)
+            if raw_name is None:
                 continue
             raw_name = str(raw_name).strip()
             if not raw_name:
@@ -103,13 +121,13 @@ def load_db(db_path: Path):
             }
             for key, offset in relative_offsets.items():
                 r = header_row + offset
-                if r >= df.shape[0]:
+                if r > max_row:
                     continue
-                val = df.iat[r, col]
-                if key in {"부채비율", "유동비율"} and isinstance(val, (int, float)) and not pd.isna(val):
+                val = get_value(r, col)
+                if key in {"부채비율", "유동비율"} and isinstance(val, (int, float)):
                     val = val * 100
                 if key == "사업자번호":
-                    entry["bizNo"] = "" if pd.isna(val) else str(val).strip()
+                    entry["bizNo"] = "" if val is None else str(val).strip()
                 elif key == "부채비율":
                     entry["debtRatio"] = _to_number(val)
                 elif key == "유동비율":
@@ -117,7 +135,7 @@ def load_db(db_path: Path):
                 elif key == "5년 실적":
                     entry["perf5y"] = _to_number(val)
                 elif key == "신용평가":
-                    entry["creditGrade"] = "" if pd.isna(val) else str(val).strip()
+                    entry["creditGrade"] = "" if val is None else str(val).strip()
             data.append(entry)
     return data
 
