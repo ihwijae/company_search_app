@@ -238,8 +238,7 @@ def open_modal():
     def apply_selected():
         selected = resolve_checked_row()
         if selected < 0:
-            selected = table.currentRow()
-        if selected < 0:
+            QtWidgets.QMessageBox.information(dialog, "선택", "선택 체크박스를 먼저 체크하세요.")
             return
         name_val = table.item(selected, 2).text()
         region_val = table.item(selected, 4).text()
@@ -359,6 +358,13 @@ def open_modal():
         finally:
             table.blockSignals(False)
 
+    def toggle_check_at(row):
+        item = table.item(row, 0)
+        if item is None:
+            return
+        next_state = QtCore.Qt.Unchecked if item.checkState() == QtCore.Qt.Checked else QtCore.Qt.Checked
+        item.setCheckState(next_state)
+
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)
     config_btn.clicked.connect(set_db_path)
@@ -368,6 +374,7 @@ def open_modal():
     industry_box.currentIndexChanged.connect(on_industry_change)
     table.itemDoubleClicked.connect(lambda _: apply_selected())
     table.itemChanged.connect(lambda item: enforce_single_check(item.row()) if item.column() == 0 and item.checkState() == QtCore.Qt.Checked else None)
+    table.cellClicked.connect(lambda row, col: toggle_check_at(row) if col == 0 else None)
 
     btns = QtWidgets.QHBoxLayout()
     btns.setSpacing(8)
