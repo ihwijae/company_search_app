@@ -179,9 +179,18 @@ def open_modal():
 
     table = QtWidgets.QTableWidget(0, 8)
     table.setHorizontalHeaderLabels(["선택", "공종", "업체명", "담당자", "지역", "사업자번호", "5년실적", "시평액"])
-    table.horizontalHeader().setStretchLastSection(True)
+    table.horizontalHeader().setStretchLastSection(False)
     table.verticalHeader().setVisible(False)
     table.setAlternatingRowColors(True)
+    table.setColumnWidth(0, 48)
+    table.setColumnWidth(1, 60)
+    table.setColumnWidth(2, 150)
+    table.setColumnWidth(3, 80)
+    table.setColumnWidth(4, 90)
+    table.setColumnWidth(5, 120)
+    table.setColumnWidth(6, 120)
+    table.setColumnWidth(7, 120)
+    table.horizontalHeader().setStretchLastSection(True)
     layout.addWidget(table)
 
     def format_amount(value):
@@ -340,11 +349,15 @@ def open_modal():
         status_label.setText(f"공종 DB: {db_path} (로드 {len(data)}건)")
 
     def enforce_single_check(row):
-        for r in range(table.rowCount()):
-            item = table.item(r, 0)
-            if item is None:
-                continue
-            item.setCheckState(QtCore.Qt.Checked if r == row else QtCore.Qt.Unchecked)
+        table.blockSignals(True)
+        try:
+            for r in range(table.rowCount()):
+                item = table.item(r, 0)
+                if item is None:
+                    continue
+                item.setCheckState(QtCore.Qt.Checked if r == row else QtCore.Qt.Unchecked)
+        finally:
+            table.blockSignals(False)
 
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)
@@ -354,7 +367,7 @@ def open_modal():
     diag_btn.clicked.connect(run_db_diagnosis)
     industry_box.currentIndexChanged.connect(on_industry_change)
     table.itemDoubleClicked.connect(lambda _: apply_selected())
-    table.itemSelectionChanged.connect(lambda: enforce_single_check(table.currentRow()))
+    table.itemChanged.connect(lambda item: enforce_single_check(item.row()) if item.column() == 0 and item.checkState() == QtCore.Qt.Checked else None)
 
     btns = QtWidgets.QHBoxLayout()
     btns.setSpacing(8)
