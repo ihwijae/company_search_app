@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import xlwings as xw
+import ctypes
 from PySide6 import QtWidgets, QtCore
 
 from config_store import BASE_DIR, load_config, save_config
@@ -319,9 +320,10 @@ def open_modal():
 
     def focus_excel():
         try:
-            book = xw.Book.caller()
-            app = book.app
-            app.api.Visible = True
+            app = xw.apps.active if xw.apps.count > 0 else xw.Book.caller().app
+            hwnd = app.api.Hwnd
+            ctypes.windll.user32.ShowWindow(hwnd, 5)
+            ctypes.windll.user32.SetForegroundWindow(hwnd)
             app.api.ActiveWindow.Activate()
         except Exception:
             pass
