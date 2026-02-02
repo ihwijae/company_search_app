@@ -79,6 +79,7 @@ def open_modal():
     dialog.resize(820, 560)
     dialog.setWindowModality(QtCore.Qt.NonModal)
     dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+    dialog.setCursor(QtCore.Qt.ArrowCursor)
     _DIALOG = dialog
 
     dialog.setStyleSheet(
@@ -178,6 +179,7 @@ def open_modal():
     layout.addLayout(form)
 
     table = QtWidgets.QTableWidget(0, 8)
+    table.setCursor(QtCore.Qt.ArrowCursor)
     table.setHorizontalHeaderLabels(["선택", "공종", "업체명", "담당자", "지역", "사업자번호", "5년실적", "시평액"])
     table.horizontalHeader().setStretchLastSection(False)
     table.verticalHeader().setVisible(False)
@@ -206,6 +208,39 @@ def open_modal():
             return f"{int(number):,}"
         return f"{number:,.0f}"
 
+    def get_checkbox(row):
+        widget = table.cellWidget(row, 0)
+        if widget is None:
+            return None
+        return widget.findChild(QtWidgets.QCheckBox)
+
+    def set_checkbox(row, checked):
+        cb = get_checkbox(row)
+        if cb is not None:
+            cb.setChecked(checked)
+
+    def enforce_single_check(row):
+        for r in range(table.rowCount()):
+            if r == row:
+                continue
+            cb = get_checkbox(r)
+            if cb is not None and cb.isChecked():
+                cb.setChecked(False)
+
+    def on_check_changed(row, state):
+        if state == QtCore.Qt.Checked:
+            enforce_single_check(row)
+
+    def create_checkbox_cell(row):
+        cb = QtWidgets.QCheckBox()
+        cb.stateChanged.connect(lambda state, r=row: on_check_changed(r, state))
+        wrapper = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout(wrapper)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(cb)
+        table.setCellWidget(row, 0, wrapper)
+
     def do_search():
         q = normalize_name(query_input.text())
         table.setRowCount(0)
@@ -216,10 +251,7 @@ def open_modal():
             if q in row["norm"]:
                 r = table.rowCount()
                 table.insertRow(r)
-                check_item = QtWidgets.QTableWidgetItem("")
-                check_item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
-                check_item.setCheckState(QtCore.Qt.Unchecked)
-                table.setItem(r, 0, check_item)
+                create_checkbox_cell(r)
                 table.setItem(r, 1, QtWidgets.QTableWidgetItem(current_industry))
                 table.setItem(r, 2, QtWidgets.QTableWidgetItem(row["name"]))
                 table.setItem(r, 3, QtWidgets.QTableWidgetItem(row.get("managerName", "")))
@@ -232,8 +264,8 @@ def open_modal():
 
     def resolve_checked_row():
         for r in range(table.rowCount()):
-            item = table.item(r, 0)
-            if item is not None and item.checkState() == QtCore.Qt.Checked:
+            cb = get_checkbox(r)
+            if cb is not None and cb.isChecked():
                 return r
         return -1
 
@@ -349,23 +381,11 @@ def open_modal():
         data = load_db_cached(db_path, force=True)
         status_label.setText(f"공종 DB: {db_path} (로드 {len(data)}건)")
 
-    def enforce_single_check(row):
-        table.blockSignals(True)
-        try:
-            for r in range(table.rowCount()):
-                item = table.item(r, 0)
-                if item is None:
-                    continue
-                item.setCheckState(QtCore.Qt.Checked if r == row else QtCore.Qt.Unchecked)
-        finally:
-            table.blockSignals(False)
-
     def toggle_check_at(row):
-        item = table.item(row, 0)
-        if item is None:
+        cb = get_checkbox(row)
+        if cb is None:
             return
-        next_state = QtCore.Qt.Unchecked if item.checkState() == QtCore.Qt.Checked else QtCore.Qt.Checked
-        item.setCheckState(next_state)
+        cb.setChecked(not cb.isChecked())
 
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)
@@ -375,9 +395,7 @@ def open_modal():
     diag_btn.clicked.connect(run_db_diagnosis)
     industry_box.currentIndexChanged.connect(on_industry_change)
     table.itemDoubleClicked.connect(lambda _: apply_selected())
-    table.itemChanged.connect(lambda item: enforce_single_check(item.row()) if item.column() == 0 and item.checkState() == QtCore.Qt.Checked else None)
     table.cellClicked.connect(lambda row, col: toggle_check_at(row) if col == 0 else None)
-    table.itemClicked.connect(lambda item: toggle_check_at(item.row()) if item.column() == 0 else None)
 
     btns = QtWidgets.QHBoxLayout()
     btns.setSpacing(8)
