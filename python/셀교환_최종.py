@@ -645,7 +645,11 @@ class SwapApp:
         self._refresh_run_section()
 
 
-if __name__ == "__main__":
+def main():
     root = tk.Tk()
     app = SwapApp(root)
     root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
