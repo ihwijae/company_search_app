@@ -2018,8 +2018,8 @@ export default function AgreementBoardWindow({
     if (!Number.isFinite(rMin) || !Number.isFinite(rMax)) return 0;
     const priceScore = (ratio) => (
       rangeKey === LH_50_TO_100_KEY
-        ? 50 - (2 * Math.abs((0.88 - ratio) * 100))
-        : 70 - (4 * Math.abs((0.88 - ratio) * 100))
+        ? 50 - (2 * Math.abs((0.9 - ratio) * 100))
+        : 70 - (4 * Math.abs((0.9 - ratio) * 100))
     );
     const baseline = rangeKey === LH_50_TO_100_KEY ? 45 : 65;
     const bonusMin = priceScore(rMin) - baseline;
@@ -2060,7 +2060,7 @@ export default function AgreementBoardWindow({
     const bidMax = netCost * (expectedMax / base) * 0.98;
     const rMin = roundTo((bidMin - aValueNumber) / (expectedMin - aValueNumber), 4);
     const rMax = roundTo((bidMax - aValueNumber) / (expectedMax - aValueNumber), 4);
-    return Number.isFinite(rMin) && Number.isFinite(rMax) && (rMin > 0.88 || rMax > 0.88);
+    return Number.isFinite(rMin) && Number.isFinite(rMax) && (rMin > 0.9 || rMax > 0.9);
   }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
 
   React.useEffect(() => {
