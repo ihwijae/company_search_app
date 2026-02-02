@@ -177,30 +177,43 @@ def open_modal():
 
     layout.addLayout(form)
 
-    table = QtWidgets.QTableWidget(0, 6)
-    table.setHorizontalHeaderLabels(["업체명", "담당자", "지역", "사업자번호", "5년실적", "시평액"])
+    table = QtWidgets.QTableWidget(0, 7)
+    table.setHorizontalHeaderLabels(["공종", "업체명", "담당자", "지역", "사업자번호", "5년실적", "시평액"])
     table.horizontalHeader().setStretchLastSection(True)
     table.verticalHeader().setVisible(False)
     table.setAlternatingRowColors(True)
     layout.addWidget(table)
+
+    def format_amount(value):
+        if value is None:
+            return ""
+        try:
+            number = float(value)
+        except Exception:
+            return str(value)
+        if number.is_integer():
+            return f\"{int(number):,}\"
+        return f\"{number:,.0f}\"
 
     def do_search():
         q = normalize_name(query_input.text())
         table.setRowCount(0)
         if not q:
             return
+        current_industry = industry_box.currentText()
         for row in data:
             if q in row["norm"]:
                 r = table.rowCount()
                 table.insertRow(r)
-                table.setItem(r, 0, QtWidgets.QTableWidgetItem(row["name"]))
-                table.setItem(r, 1, QtWidgets.QTableWidgetItem(row.get("managerName", "")))
-                table.setItem(r, 2, QtWidgets.QTableWidgetItem(row["region"]))
-                table.setItem(r, 3, QtWidgets.QTableWidgetItem(row.get("bizNo", "")))
+                table.setItem(r, 0, QtWidgets.QTableWidgetItem(current_industry))
+                table.setItem(r, 1, QtWidgets.QTableWidgetItem(row["name"]))
+                table.setItem(r, 2, QtWidgets.QTableWidgetItem(row.get("managerName", "")))
+                table.setItem(r, 3, QtWidgets.QTableWidgetItem(row["region"]))
+                table.setItem(r, 4, QtWidgets.QTableWidgetItem(row.get("bizNo", "")))
                 perf_val = row.get("perf5y")
                 sipyung_val = row.get("sipyung")
-                table.setItem(r, 4, QtWidgets.QTableWidgetItem("" if perf_val is None else str(perf_val)))
-                table.setItem(r, 5, QtWidgets.QTableWidgetItem("" if sipyung_val is None else str(sipyung_val)))
+                table.setItem(r, 5, QtWidgets.QTableWidgetItem(format_amount(perf_val)))
+                table.setItem(r, 6, QtWidgets.QTableWidgetItem(format_amount(sipyung_val)))
 
     def apply_selected():
         selected = table.currentRow()
