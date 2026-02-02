@@ -33,9 +33,10 @@ def open_modal():
     cfg = load_config()
     db_paths = cfg.get("dbPaths") or {}
     legacy_path = cfg.get("dbPath", "")
-    if legacy_path and not db_paths:
+    if legacy_path and (not db_paths or not any(db_paths.values())):
         db_paths = {"eung": legacy_path, "tongsin": legacy_path, "sobang": legacy_path}
         cfg["dbPaths"] = db_paths
+        cfg["lastIndustry"] = cfg.get("lastIndustry", "eung")
         save_config(cfg)
 
     def resolve_db_path(file_type):
@@ -133,7 +134,7 @@ def open_modal():
     header = QtWidgets.QHBoxLayout()
     title_label = QtWidgets.QLabel("업체 검색")
     title_label.setObjectName("titleLabel")
-    status_label = QtWidgets.QLabel(f"DB: {db_path} (로드 {len(data)}건)")
+    status_label = QtWidgets.QLabel(f"공종 DB: {db_path} (로드 {len(data)}건)")
     status_label.setObjectName("statusLabel")
     cell_label = QtWidgets.QLabel("셀: -")
     cell_label.setObjectName("cellLabel")
@@ -233,13 +234,13 @@ def open_modal():
         save_config(cfg)
         db_path = Path(path)
         data = load_db_cached(db_path, force=True)
-        status_label.setText(f"DB: {db_path} (로드 {len(data)}건)")
+        status_label.setText(f"공종 DB: {db_path} (로드 {len(data)}건)")
         QtWidgets.QMessageBox.information(dialog, "DB 경로", f"설정됨:\n{db_path}\n로드 {len(data)}건")
 
     def verify_db_path():
         exists = db_path.exists()
         mtime = db_path.stat().st_mtime if exists else None
-        msg = f"경로: {db_path}\n존재: {'예' if exists else '아니오'}\n로드 {len(data)}건"
+        msg = f"공종: {industry_box.currentText()}\n경로: {db_path}\n존재: {'예' if exists else '아니오'}\n로드 {len(data)}건"
         if mtime:
             msg += f"\n수정시간: {QtCore.QDateTime.fromSecsSinceEpoch(int(mtime)).toString('yyyy-MM-dd HH:mm:ss')}"
         QtWidgets.QMessageBox.information(dialog, "DB 경로 확인", msg)
@@ -250,7 +251,7 @@ def open_modal():
             QtWidgets.QMessageBox.warning(dialog, "DB 재로드", "DB 파일 경로가 유효하지 않습니다.")
             return
         data = load_db_cached(db_path, force=True)
-        status_label.setText(f"DB: {db_path} (로드 {len(data)}건)")
+        status_label.setText(f"공종 DB: {db_path} (로드 {len(data)}건)")
         QtWidgets.QMessageBox.information(dialog, "DB 재로드", f"재로드 완료\n로드 {len(data)}건")
 
     def run_db_diagnosis():
@@ -280,7 +281,7 @@ def open_modal():
         latest = load_db_cached(db_path)
         if latest is not data:
             data = latest
-            status_label.setText(f"DB: {db_path} (로드 {len(data)}건)")
+            status_label.setText(f"공종 DB: {db_path} (로드 {len(data)}건)")
 
     def update_active_cell_label():
         try:
@@ -305,7 +306,7 @@ def open_modal():
             return
         db_path = next_path
         data = load_db_cached(db_path, force=True)
-        status_label.setText(f"DB: {db_path} (로드 {len(data)}건)")
+        status_label.setText(f"공종 DB: {db_path} (로드 {len(data)}건)")
 
     search_btn.clicked.connect(do_search)
     query_input.returnPressed.connect(do_search)

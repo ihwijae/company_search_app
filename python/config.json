@@ -1,5 +1,11 @@
 {
   "dbPath": "db/업체DB.xlsx",
+  "dbPaths": {
+    "eung": "",
+    "tongsin": "",
+    "sobang": ""
+  },
+  "lastIndustry": "eung",
   "industryAverages": {
     "eung": { "debtRatio": 124.41, "currentRatio": 142.58 },
     "tongsin": { "debtRatio": 124.03, "currentRatio": 140.06 },
