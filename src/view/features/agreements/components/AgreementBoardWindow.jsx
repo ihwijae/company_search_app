@@ -1308,6 +1308,7 @@ export default function AgreementBoardWindow({
     [ownerKeyUpper],
   );
   const ownerSelectValue = selectedGroup?.id || AGREEMENT_GROUPS[0]?.id || '';
+  const ownerLabel = selectedGroup?.label || '';
   const rangeOptions = React.useMemo(() => selectedGroup?.items || [], [selectedGroup]);
   const selectedRangeOption = React.useMemo(() => (
     rangeOptions.find((item) => item.key === rangeId) || rangeOptions[0] || null
