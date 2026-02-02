@@ -166,6 +166,10 @@ def open_modal():
     search_btn = QtWidgets.QPushButton("검색")
     form.addWidget(search_btn)
 
+    focus_btn = QtWidgets.QPushButton("엑셀로 포커스")
+    focus_btn.setObjectName("ghostBtn")
+    form.addWidget(focus_btn)
+
     config_btn = QtWidgets.QPushButton("DB 경로 설정")
     config_btn.setObjectName("ghostBtn")
     form.addWidget(config_btn)
@@ -311,6 +315,16 @@ def open_modal():
         }[industry_box.currentText()]
         apply_mois_under30(row_data, file_type, target_address=target_address or None)
         last_target_address["value"] = target_address or last_target_address["value"]
+        focus_excel()
+
+    def focus_excel():
+        try:
+            book = xw.Book.caller()
+            app = book.app
+            app.api.Visible = True
+            app.api.ActiveWindow.Activate()
+        except Exception:
+            pass
 
     def set_db_path():
         nonlocal data, db_path, db_paths
@@ -408,6 +422,7 @@ def open_modal():
         cb.setChecked(not cb.isChecked())
 
     search_btn.clicked.connect(do_search)
+    focus_btn.clicked.connect(focus_excel)
     query_input.returnPressed.connect(do_search)
     config_btn.clicked.connect(set_db_path)
     verify_btn.clicked.connect(verify_db_path)
