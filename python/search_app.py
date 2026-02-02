@@ -65,7 +65,7 @@ def load_db(db_path: Path):
     for sheet_name in wb.sheet_names:
         df = wb.parse(sheet_name, header=None)
         header_row = None
-        for i in range(min(len(df), 200)):
+        for i in range(len(df)):
             val = str(df.iat[i, 0]) if pd.notna(df.iat[i, 0]) else ""
             if "회사명" in val:
                 header_row = i
