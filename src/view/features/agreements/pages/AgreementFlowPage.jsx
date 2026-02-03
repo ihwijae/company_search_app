@@ -178,9 +178,9 @@ export default function AgreementFlowPage({
       const next = { ...prev };
       let changed = false;
       const defaultAdjustment = isPPS ? '101.6' : '88.745';
-      const defaultBid = isPPS ? '86.745' : '101.8';
+      const defaultBid = isPPS ? '88.745' : '101.8';
       const legacyAdjustmentValues = isPPS ? ['101.4'] : [];
-      const legacyBidValues = isPPS ? ['88.745'] : [];
+      const legacyBidValues = isPPS ? ['86.745'] : [];
 
       const currentAdjustment = String(prev.adjustmentRate || '').trim();
       if (!currentAdjustment || legacyAdjustmentValues.includes(currentAdjustment)) {
@@ -746,7 +746,7 @@ export default function AgreementFlowPage({
                         step="0.001"
                         value={form.adjustmentRate}
                         onChange={(e) => setForm((prev) => ({ ...prev, adjustmentRate: e.target.value }))}
-                        placeholder={isPPS ? '예: 86.745' : '예: 101.4'}
+                        placeholder={isPPS ? '예: 88.745' : '예: 101.4'}
                       />
                     </Field>
                   )}

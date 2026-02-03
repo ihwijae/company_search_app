@@ -2487,7 +2487,7 @@ export default function AgreementBoardWindow({
 
   const bidAutoConfig = React.useMemo(() => {
     if (ownerKeyUpper === 'PPS' && selectedRangeOption?.key === PPS_UNDER_50_KEY) {
-      return { bidRate: '86.745', adjustmentRate: '101.6', baseMultiplier: 1.1 };
+      return { bidRate: '88.745', adjustmentRate: '101.6', baseMultiplier: 1.1 };
     }
     if (ownerKeyUpper === 'MOIS' && selectedRangeOption?.key === MOIS_30_TO_50_KEY) {
       return { bidRate: '88.745', adjustmentRate: '101.8', baseMultiplier: 1.1 };
