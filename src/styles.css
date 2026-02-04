@@ -2043,6 +2043,12 @@ button.primary:hover { background: var(--accent-2); }
   color: #94a3b8;
 }
 
+.excel-amount-modified {
+  font-size: 10px;
+  color: #2563eb;
+  font-weight: 700;
+}
+
 .excel-status.score-only {
   display: flex;
   align-items: center;

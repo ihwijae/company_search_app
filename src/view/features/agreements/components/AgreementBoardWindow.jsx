@@ -4984,10 +4984,14 @@ export default function AgreementBoardWindow({
     const dataStatusTone = summaryStatus
       ? (summaryStatus.includes('1년 이상') ? 'overdue' : (summaryStatus === '미지정' ? 'unknown' : 'stale'))
       : '';
-    const performanceInput = Object.prototype.hasOwnProperty.call(candidate, '_agreementPerformanceInput')
+    const hasPerformanceOverride = Object.prototype.hasOwnProperty.call(candidate, '_agreementPerformanceInput')
+      || candidate._agreementPerformanceCleared === true;
+    const hasSipyungOverride = Object.prototype.hasOwnProperty.call(candidate, '_agreementSipyungInput')
+      || candidate._agreementSipyungCleared === true;
+    const performanceInput = hasPerformanceOverride
       ? candidate._agreementPerformanceInput
       : (performanceAmount != null ? formatAmount(performanceAmount) : '');
-    const sipyungInput = Object.prototype.hasOwnProperty.call(candidate, '_agreementSipyungInput')
+    const sipyungInput = hasSipyungOverride
       ? candidate._agreementSipyungInput
       : (sipyungAmount != null ? formatAmount(sipyungAmount) : '');
     let possibleShare = null;
@@ -5038,8 +5042,10 @@ export default function AgreementBoardWindow({
       possibleShareText,
       sipyungDisplay: formatAmount(sipyungAmount),
       sipyungInput,
+      sipyungModified: hasSipyungOverride,
       performanceDisplay: formatAmount(performanceAmount),
       performanceInput,
+      performanceModified: hasPerformanceOverride,
       managementDisplay: formatScore(managementNumeric, 2),
       managementAlert: managementNumeric != null && managementNumeric < (perSlotMax - 0.01),
       qualityScore,
@@ -5203,6 +5209,9 @@ export default function AgreementBoardWindow({
             onBlur={() => handleAmountBlur(meta.groupIndex, meta.slotIndex, 'performance')}
             placeholder={meta.performanceDisplay}
           />
+          {meta.performanceModified && (
+            <span className="excel-amount-modified">수정됨</span>
+          )}
         </div>
       )}
     </td>
@@ -5225,6 +5234,9 @@ export default function AgreementBoardWindow({
             onBlur={() => handleAmountBlur(meta.groupIndex, meta.slotIndex, 'sipyung')}
             placeholder={meta.sipyungDisplay}
           />
+          {meta.sipyungModified && (
+            <span className="excel-amount-modified">수정됨</span>
+          )}
         </div>
       )}
     </td>
