@@ -5,7 +5,7 @@ import emailIcon from '../assets/email.png';
 import autoIcon from '../assets/auto.png';
 import exchangeIcon from '../assets/교환.png';
 import kakaoIcon from '../assets/kakao.png';
-import notesIcon from '../../특이사항아이콘.png';
+import notesIcon from '../assets/특이사항아이콘.png';
 
 export default function Sidebar({ active, onSelect, fileStatuses, collapsed = true }) {
   const anyLoaded = !!(fileStatuses?.eung || fileStatuses?.tongsin || fileStatuses?.sobang);
