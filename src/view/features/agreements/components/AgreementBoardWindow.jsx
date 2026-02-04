@@ -579,6 +579,7 @@ const getCandidateNumericValue = (candidate, directKeys = [], keywordGroups = []
 
 const getCandidateSipyungAmount = (candidate) => {
   if (!candidate || typeof candidate !== 'object') return null;
+  if (candidate._agreementSipyungCleared) return null;
   if (candidate._agreementSipyungAmount != null) {
     const cached = toNumber(candidate._agreementSipyungAmount);
     if (cached != null) return cached;
@@ -856,6 +857,7 @@ const getCandidateManagementScore = (candidate) => {
 
 const getCandidatePerformanceAmount = (candidate) => {
   if (!candidate || typeof candidate !== 'object') return null;
+  if (candidate._agreementPerformanceCleared) return null;
   const directCandidates = [
     candidate._agreementPerformance5y,
     candidate._performance5y,
@@ -4568,13 +4570,15 @@ export default function AgreementBoardWindow({
     if (kind === 'performance') {
       if (trimmed) {
         candidate._agreementPerformanceInput = cleaned;
+        candidate._agreementPerformanceCleared = false;
         if (parsed != null) {
           candidate._agreementPerformance5y = parsed;
         } else {
           delete candidate._agreementPerformance5y;
         }
       } else {
-        delete candidate._agreementPerformanceInput;
+        candidate._agreementPerformanceInput = '';
+        candidate._agreementPerformanceCleared = true;
         delete candidate._agreementPerformance5y;
       }
       delete candidate._agreementPerformanceScore;
@@ -4583,13 +4587,15 @@ export default function AgreementBoardWindow({
     } else if (kind === 'sipyung') {
       if (trimmed) {
         candidate._agreementSipyungInput = cleaned;
+        candidate._agreementSipyungCleared = false;
         if (parsed != null) {
           candidate._agreementSipyungAmount = parsed;
         } else {
           delete candidate._agreementSipyungAmount;
         }
       } else {
-        delete candidate._agreementSipyungInput;
+        candidate._agreementSipyungInput = '';
+        candidate._agreementSipyungCleared = true;
         delete candidate._agreementSipyungAmount;
       }
     }
@@ -4609,12 +4615,14 @@ export default function AgreementBoardWindow({
     const formatted = formatAmount(parsed);
     if (kind === 'performance') {
       candidate._agreementPerformanceInput = formatted;
+      candidate._agreementPerformanceCleared = false;
       candidate._agreementPerformance5y = parsed;
       delete candidate._agreementPerformanceScore;
       delete candidate._agreementPerformanceMax;
       delete candidate._agreementPerformanceCapVersion;
     } else {
       candidate._agreementSipyungInput = formatted;
+      candidate._agreementSipyungCleared = false;
       candidate._agreementSipyungAmount = parsed;
     }
     candidateScoreCacheRef.current.clear();
@@ -4915,10 +4923,12 @@ export default function AgreementBoardWindow({
     const dataStatusTone = summaryStatus
       ? (summaryStatus.includes('1년 이상') ? 'overdue' : (summaryStatus === '미지정' ? 'unknown' : 'stale'))
       : '';
-    const performanceInput = candidate._agreementPerformanceInput
-      ?? (performanceAmount != null ? formatAmount(performanceAmount) : '');
-    const sipyungInput = candidate._agreementSipyungInput
-      ?? (sipyungAmount != null ? formatAmount(sipyungAmount) : '');
+    const performanceInput = Object.prototype.hasOwnProperty.call(candidate, '_agreementPerformanceInput')
+      ? candidate._agreementPerformanceInput
+      : (performanceAmount != null ? formatAmount(performanceAmount) : '');
+    const sipyungInput = Object.prototype.hasOwnProperty.call(candidate, '_agreementSipyungInput')
+      ? candidate._agreementSipyungInput
+      : (sipyungAmount != null ? formatAmount(sipyungAmount) : '');
     let possibleShare = null;
     if (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount && sipyungAmount > 0) {
       possibleShare = (sipyungAmount / possibleShareBase) * 100;
