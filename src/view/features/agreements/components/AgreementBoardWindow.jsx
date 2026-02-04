@@ -4482,6 +4482,29 @@ export default function AgreementBoardWindow({
 
   const clearSelectedGroups = () => setSelectedGroups(new Set());
 
+  const updateCandidateOverride = React.useCallback((candidate, updates) => {
+    if (!candidate || typeof candidate !== 'object') return;
+    if (typeof onUpdateBoard !== 'function') return;
+    const candidateId = candidate.id;
+    const candidateBiz = normalizeBizNo(getBizNo(candidate));
+    const candidateName = String(getCompanyName(candidate) || '').trim();
+    const nextCandidates = (candidates || []).map((item) => {
+      if (!item || typeof item !== 'object') return item;
+      let matched = false;
+      if (candidateId && item.id === candidateId) matched = true;
+      if (!matched && candidateBiz) {
+        const itemBiz = normalizeBizNo(getBizNo(item));
+        if (itemBiz && itemBiz === candidateBiz) matched = true;
+      }
+      if (!matched && candidateName) {
+        const itemName = String(getCompanyName(item) || '').trim();
+        if (itemName && itemName === candidateName) matched = true;
+      }
+      return matched ? { ...item, ...updates } : item;
+    });
+    onUpdateBoard({ candidates: nextCandidates });
+  }, [candidates, onUpdateBoard]);
+
   const resolveCandidateBySlot = React.useCallback((groupIndex, slotIndex) => {
     const uid = groupAssignments[groupIndex]?.[slotIndex];
     if (!uid) return null;
@@ -4576,14 +4599,29 @@ export default function AgreementBoardWindow({
         } else {
           delete candidate._agreementPerformance5y;
         }
+        updateCandidateOverride(candidate, {
+          _agreementPerformanceInput: cleaned,
+          _agreementPerformanceCleared: false,
+          _agreementPerformance5y: parsed != null ? parsed : null,
+        });
       } else {
         candidate._agreementPerformanceInput = '';
         candidate._agreementPerformanceCleared = true;
         delete candidate._agreementPerformance5y;
+        updateCandidateOverride(candidate, {
+          _agreementPerformanceInput: '',
+          _agreementPerformanceCleared: true,
+          _agreementPerformance5y: null,
+        });
       }
       delete candidate._agreementPerformanceScore;
       delete candidate._agreementPerformanceMax;
       delete candidate._agreementPerformanceCapVersion;
+      updateCandidateOverride(candidate, {
+        _agreementPerformanceScore: undefined,
+        _agreementPerformanceMax: undefined,
+        _agreementPerformanceCapVersion: undefined,
+      });
     } else if (kind === 'sipyung') {
       if (trimmed) {
         candidate._agreementSipyungInput = cleaned;
@@ -4593,15 +4631,25 @@ export default function AgreementBoardWindow({
         } else {
           delete candidate._agreementSipyungAmount;
         }
+        updateCandidateOverride(candidate, {
+          _agreementSipyungInput: cleaned,
+          _agreementSipyungCleared: false,
+          _agreementSipyungAmount: parsed != null ? parsed : null,
+        });
       } else {
         candidate._agreementSipyungInput = '';
         candidate._agreementSipyungCleared = true;
         delete candidate._agreementSipyungAmount;
+        updateCandidateOverride(candidate, {
+          _agreementSipyungInput: '',
+          _agreementSipyungCleared: true,
+          _agreementSipyungAmount: null,
+        });
       }
     }
     candidateScoreCacheRef.current.clear();
     setCandidateMetricsVersion((prev) => prev + 1);
-  }, [resolveCandidateBySlot]);
+  }, [resolveCandidateBySlot, updateCandidateOverride]);
 
   const handleAmountBlur = React.useCallback((groupIndex, slotIndex, kind) => {
     const candidate = resolveCandidateBySlot(groupIndex, slotIndex);
@@ -4620,14 +4668,27 @@ export default function AgreementBoardWindow({
       delete candidate._agreementPerformanceScore;
       delete candidate._agreementPerformanceMax;
       delete candidate._agreementPerformanceCapVersion;
+      updateCandidateOverride(candidate, {
+        _agreementPerformanceInput: formatted,
+        _agreementPerformanceCleared: false,
+        _agreementPerformance5y: parsed,
+        _agreementPerformanceScore: undefined,
+        _agreementPerformanceMax: undefined,
+        _agreementPerformanceCapVersion: undefined,
+      });
     } else {
       candidate._agreementSipyungInput = formatted;
       candidate._agreementSipyungCleared = false;
       candidate._agreementSipyungAmount = parsed;
+      updateCandidateOverride(candidate, {
+        _agreementSipyungInput: formatted,
+        _agreementSipyungCleared: false,
+        _agreementSipyungAmount: parsed,
+      });
     }
     candidateScoreCacheRef.current.clear();
     setCandidateMetricsVersion((prev) => prev + 1);
-  }, [resolveCandidateBySlot]);
+  }, [resolveCandidateBySlot, updateCandidateOverride]);
 
   const handleApprovalChange = React.useCallback((groupIndex, value) => {
     setGroupApprovals((prev) => {
