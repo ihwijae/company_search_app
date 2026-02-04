@@ -1966,8 +1966,8 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-badge-stale {
-  background: #fef3c7;
-  color: #92400e;
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 .excel-badge-overdue {

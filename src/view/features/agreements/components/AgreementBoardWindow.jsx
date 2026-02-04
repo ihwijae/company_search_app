@@ -4597,6 +4597,30 @@ export default function AgreementBoardWindow({
     setCandidateMetricsVersion((prev) => prev + 1);
   }, [resolveCandidateBySlot]);
 
+  const handleAmountBlur = React.useCallback((groupIndex, slotIndex, kind) => {
+    const candidate = resolveCandidateBySlot(groupIndex, slotIndex);
+    if (!candidate) return;
+    const raw = kind === 'performance'
+      ? candidate._agreementPerformanceInput
+      : candidate._agreementSipyungInput;
+    if (raw === undefined || raw === null || raw === '') return;
+    const parsed = toNumber(raw);
+    if (parsed == null) return;
+    const formatted = formatAmount(parsed);
+    if (kind === 'performance') {
+      candidate._agreementPerformanceInput = formatted;
+      candidate._agreementPerformance5y = parsed;
+      delete candidate._agreementPerformanceScore;
+      delete candidate._agreementPerformanceMax;
+      delete candidate._agreementPerformanceCapVersion;
+    } else {
+      candidate._agreementSipyungInput = formatted;
+      candidate._agreementSipyungAmount = parsed;
+    }
+    candidateScoreCacheRef.current.clear();
+    setCandidateMetricsVersion((prev) => prev + 1);
+  }, [resolveCandidateBySlot]);
+
   const handleApprovalChange = React.useCallback((groupIndex, value) => {
     setGroupApprovals((prev) => {
       const next = prev.slice();
@@ -4892,9 +4916,9 @@ export default function AgreementBoardWindow({
       ? (summaryStatus.includes('1년 이상') ? 'overdue' : (summaryStatus === '미지정' ? 'unknown' : 'stale'))
       : '';
     const performanceInput = candidate._agreementPerformanceInput
-      ?? (performanceAmount != null ? formatPlainAmount(performanceAmount) : '');
+      ?? (performanceAmount != null ? formatAmount(performanceAmount) : '');
     const sipyungInput = candidate._agreementSipyungInput
-      ?? (sipyungAmount != null ? formatPlainAmount(sipyungAmount) : '');
+      ?? (sipyungAmount != null ? formatAmount(sipyungAmount) : '');
     let possibleShare = null;
     if (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount && sipyungAmount > 0) {
       possibleShare = (sipyungAmount / possibleShareBase) * 100;
@@ -5108,6 +5132,7 @@ export default function AgreementBoardWindow({
             className="excel-amount-input"
             value={meta.performanceInput || ''}
             onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'performance')}
+            onBlur={() => handleAmountBlur(meta.groupIndex, meta.slotIndex, 'performance')}
             placeholder={meta.performanceDisplay}
           />
         </div>
@@ -5129,6 +5154,7 @@ export default function AgreementBoardWindow({
             className="excel-amount-input"
             value={meta.sipyungInput || ''}
             onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'sipyung')}
+            onBlur={() => handleAmountBlur(meta.groupIndex, meta.slotIndex, 'sipyung')}
             placeholder={meta.sipyungDisplay}
           />
         </div>
