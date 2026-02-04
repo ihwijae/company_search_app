@@ -4927,9 +4927,6 @@ export default function AgreementBoardWindow({
       ? `${possibleShare >= 100 ? possibleShare.toFixed(0) : possibleShare.toFixed(2)}%`
       : '';
     const tags = [];
-    if (entry.type === 'region' || isDutyRegionCompany(candidate)) {
-      tags.push({ key: 'region', label: '지역사' });
-    }
     if (isSingleBidEligible(candidate)) {
       tags.push({ key: 'single-bid', label: '단독가능' });
     }
