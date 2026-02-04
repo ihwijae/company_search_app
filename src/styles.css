@@ -1965,6 +1965,21 @@ button.primary:hover { background: var(--accent-2); }
   font-size: 11px;
 }
 
+.excel-badge-stale {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.excel-badge-overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.excel-badge-unknown {
+  background: #e2e8f0;
+  color: #475569;
+}
+
 .excel-member-hint,
 .excel-hint {
   font-size: 11px;
@@ -2011,6 +2026,21 @@ button.primary:hover { background: var(--accent-2); }
   padding: 6px 8px;
   text-align: right;
   font-size: 13px;
+}
+
+.excel-amount-input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 4px 6px;
+  text-align: center;
+  font-size: 12px;
+  background: #fff;
+}
+
+.excel-amount-input:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
 }
 
 .excel-status.score-only {

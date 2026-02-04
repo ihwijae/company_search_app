@@ -1113,6 +1113,39 @@ const extractAmountValue = (candidate, directKeys = [], keywordGroups = []) => {
   return null;
 };
 
+const resolveSummaryStatusFromMap = (statusMap) => {
+  if (!statusMap || typeof statusMap !== 'object') return '';
+  const keyStatuses = [
+    statusMap['시평'],
+    statusMap['3년 실적'],
+    statusMap['5년 실적'],
+  ].filter((value) => value !== undefined && value !== null && value !== '');
+  if (keyStatuses.length === 0) return '';
+  const normalized = keyStatuses.map((value) => String(value));
+  if (normalized.some((value) => value.includes('1년 이상 경과'))) return '1년 이상 경과';
+  if (normalized.some((value) => value.includes('1년 경과'))) return '1년 경과';
+  if (normalized.every((value) => value === '최신')) return '최신';
+  return '미지정';
+};
+
+const getCandidateSummaryStatus = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return '';
+  const direct = extractValue(candidate, ['요약상태', 'summaryStatus', 'summaryState'])
+    || extractValue(candidate.snapshot, ['요약상태', 'summaryStatus', 'summaryState']);
+  if (direct) return String(direct);
+  const maps = [
+    candidate.dataStatus,
+    candidate['데이터상태'],
+    candidate.snapshot?.dataStatus,
+    candidate.snapshot?.['데이터상태'],
+  ].filter((value) => value && typeof value === 'object');
+  for (const statusMap of maps) {
+    const summary = resolveSummaryStatusFromMap(statusMap);
+    if (summary) return summary;
+  }
+  return '';
+};
+
 const getBizNo = (company = {}) => {
   const raw = company.bizNo
     || company.biz_no
@@ -4447,6 +4480,13 @@ export default function AgreementBoardWindow({
 
   const clearSelectedGroups = () => setSelectedGroups(new Set());
 
+  const resolveCandidateBySlot = React.useCallback((groupIndex, slotIndex) => {
+    const uid = groupAssignments[groupIndex]?.[slotIndex];
+    if (!uid) return null;
+    const entry = participantMap.get(uid);
+    return entry?.candidate || null;
+  }, [groupAssignments, participantMap]);
+
   const handleDeleteGroups = async () => {
     if (selectedGroups.size === 0) {
       showHeaderAlert('삭제할 협정을 선택해 주세요.');
@@ -4517,6 +4557,45 @@ export default function AgreementBoardWindow({
       return next;
     });
   };
+
+  const handleAmountInput = React.useCallback((groupIndex, slotIndex, rawValue, kind) => {
+    const candidate = resolveCandidateBySlot(groupIndex, slotIndex);
+    if (!candidate) return;
+    const original = rawValue ?? '';
+    const cleaned = String(original).replace(/[^0-9,.-]/g, '');
+    const trimmed = cleaned.trim();
+    const parsed = toNumber(trimmed);
+    if (kind === 'performance') {
+      if (trimmed) {
+        candidate._agreementPerformanceInput = cleaned;
+        if (parsed != null) {
+          candidate._agreementPerformance5y = parsed;
+        } else {
+          delete candidate._agreementPerformance5y;
+        }
+      } else {
+        delete candidate._agreementPerformanceInput;
+        delete candidate._agreementPerformance5y;
+      }
+      delete candidate._agreementPerformanceScore;
+      delete candidate._agreementPerformanceMax;
+      delete candidate._agreementPerformanceCapVersion;
+    } else if (kind === 'sipyung') {
+      if (trimmed) {
+        candidate._agreementSipyungInput = cleaned;
+        if (parsed != null) {
+          candidate._agreementSipyungAmount = parsed;
+        } else {
+          delete candidate._agreementSipyungAmount;
+        }
+      } else {
+        delete candidate._agreementSipyungInput;
+        delete candidate._agreementSipyungAmount;
+      }
+    }
+    candidateScoreCacheRef.current.clear();
+    setCandidateMetricsVersion((prev) => prev + 1);
+  }, [resolveCandidateBySlot]);
 
   const handleApprovalChange = React.useCallback((groupIndex, value) => {
     setGroupApprovals((prev) => {
@@ -4807,6 +4886,15 @@ export default function AgreementBoardWindow({
     const shareForCalc = shareNumeric != null ? shareNumeric : shareFallback;
     const sipyungAmount = getCandidateSipyungAmount(candidate);
     const performanceAmount = getCandidatePerformanceAmount(candidate);
+    const summaryStatus = getCandidateSummaryStatus(candidate);
+    const dataStatusLabel = summaryStatus && summaryStatus !== '최신' ? `자료 ${summaryStatus}` : '';
+    const dataStatusTone = summaryStatus
+      ? (summaryStatus.includes('1년 이상') ? 'overdue' : (summaryStatus === '미지정' ? 'unknown' : 'stale'))
+      : '';
+    const performanceInput = candidate._agreementPerformanceInput
+      ?? (performanceAmount != null ? formatPlainAmount(performanceAmount) : '');
+    const sipyungInput = candidate._agreementSipyungInput
+      ?? (sipyungAmount != null ? formatPlainAmount(sipyungAmount) : '');
     let possibleShare = null;
     if (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount && sipyungAmount > 0) {
       possibleShare = (sipyungAmount / possibleShareBase) * 100;
@@ -4857,7 +4945,9 @@ export default function AgreementBoardWindow({
       sharePlaceholder: possibleShareText || '0',
       possibleShareText,
       sipyungDisplay: formatAmount(sipyungAmount),
+      sipyungInput,
       performanceDisplay: formatAmount(performanceAmount),
+      performanceInput,
       managementDisplay: formatScore(managementNumeric, 2),
       managementAlert: managementNumeric != null && managementNumeric < (perSlotMax - 0.01),
       qualityScore,
@@ -4866,6 +4956,8 @@ export default function AgreementBoardWindow({
       credibilityProduct: credibilityProduct != null ? `${credibilityProduct.toFixed(2)}점` : '',
       technicianValue,
       technicianNumeric,
+      dataStatusLabel,
+      dataStatusTone,
       remarks: conflictNotes,
     };
   };
@@ -4913,9 +5005,14 @@ export default function AgreementBoardWindow({
                 onClick={() => handleRemove(meta.groupIndex, meta.slotIndex)}
               >제거</button>
             </div>
-            {meta.managerName && (
+            {(meta.managerName || meta.dataStatusLabel) && (
               <div className="excel-member-sub">
-                <span className="excel-badge">{meta.managerName}</span>
+                {meta.managerName && <span className="excel-badge">{meta.managerName}</span>}
+                {meta.dataStatusLabel && (
+                  <span className={`excel-badge excel-badge-${meta.dataStatusTone || 'stale'}`}>
+                    {meta.dataStatusLabel}
+                  </span>
+                )}
               </div>
             )}
             {meta.possibleShareText && (
@@ -5006,7 +5103,13 @@ export default function AgreementBoardWindow({
       {meta.empty ? null : (
         <div className="excel-performance">
           <span className="perf-label">5년 실적</span>
-          <strong className="perf-value">{meta.performanceDisplay}</strong>
+          <input
+            type="text"
+            className="excel-amount-input"
+            value={meta.performanceInput || ''}
+            onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'performance')}
+            placeholder={meta.performanceDisplay}
+          />
         </div>
       )}
     </td>
@@ -5021,7 +5124,13 @@ export default function AgreementBoardWindow({
       {meta.empty ? null : (
         <div className="excel-performance">
           <span className="perf-label">시평액</span>
-          <strong className="perf-value">{meta.sipyungDisplay}</strong>
+          <input
+            type="text"
+            className="excel-amount-input"
+            value={meta.sipyungInput || ''}
+            onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'sipyung')}
+            placeholder={meta.sipyungDisplay}
+          />
         </div>
       )}
     </td>
