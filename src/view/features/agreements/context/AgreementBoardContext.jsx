@@ -173,7 +173,6 @@ const stripCandidateComputedFields = (candidate) => {
   const clone = { ...candidate };
   delete clone._agreementManagementScore;
   delete clone._agreementManagementScoreVersion;
-  delete clone._agreementPerformance5y;
   delete clone._agreementPerformanceScore;
   delete clone._agreementPerformanceMax;
   delete clone._agreementPerformanceCapVersion;
@@ -404,7 +403,6 @@ const appendCandidates = React.useCallback((entries = []) => {
             snapshot: item.snapshot || prevItem?.snapshot,
             _agreementManagementScore: undefined,
             _agreementManagementScoreVersion: undefined,
-            _agreementPerformance5y: undefined,
             _agreementPerformanceScore: undefined,
             _agreementPerformanceMax: undefined,
             _agreementPerformanceCapVersion: undefined,
