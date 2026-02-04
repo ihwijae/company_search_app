@@ -1148,6 +1148,21 @@ const getCandidateSummaryStatus = (candidate) => {
   return '';
 };
 
+const stripAgreementAmountOverrides = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return candidate;
+  const next = { ...candidate };
+  delete next._agreementSipyungAmount;
+  delete next._agreementSipyungInput;
+  delete next._agreementSipyungCleared;
+  delete next._agreementPerformance5y;
+  delete next._agreementPerformanceInput;
+  delete next._agreementPerformanceCleared;
+  delete next._agreementPerformanceScore;
+  delete next._agreementPerformanceMax;
+  delete next._agreementPerformanceCapVersion;
+  return next;
+};
+
 const getBizNo = (company = {}) => {
   const raw = company.bizNo
     || company.biz_no
@@ -4447,6 +4462,9 @@ export default function AgreementBoardWindow({
     setBaseTouched(false);
     setBidTouched(false);
     if (typeof onUpdateBoard === 'function') {
+      const clearedCandidates = Array.isArray(candidates)
+        ? candidates.map((item) => stripAgreementAmountOverrides(item))
+        : [];
       onUpdateBoard({
         memoHtml: '',
         noticeNo: '',
@@ -4467,6 +4485,7 @@ export default function AgreementBoardWindow({
         dutyRegions: [],
         regionDutyRate: '',
         participantLimit: safeGroupSize,
+        candidates: clearedCandidates,
       });
     }
   };
