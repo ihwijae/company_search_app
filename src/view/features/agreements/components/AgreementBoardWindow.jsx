@@ -2764,6 +2764,7 @@ export default function AgreementBoardWindow({
       if (!child) return;
       child.document.title = title;
       child.document.documentElement.style.height = '100%';
+      child.document.documentElement.style.overflow = 'hidden';
       child.document.body.style.margin = '0';
       child.document.body.style.background = '#f3f4f6';
       child.document.body.style.height = '100%';
