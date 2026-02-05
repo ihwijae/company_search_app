@@ -2,7 +2,6 @@ import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
-import AgreementBoardWindow from '../components/AgreementBoardWindow.jsx';
 import { useAgreementBoard } from '../context/AgreementBoardContext.jsx';
 import { BASE_ROUTES } from '../../../../shared/navigation.js';
 
@@ -10,14 +9,11 @@ export default function AgreementBoardPage() {
   const {
     boardState,
     updateBoard,
-    appendCandidatesFromSearch,
-    removeCandidate,
-    closeBoard,
   } = useAgreementBoard();
 
   React.useEffect(() => {
-    if (!boardState.open || !boardState.inlineMode) {
-      updateBoard({ open: true, inlineMode: true });
+    if (!boardState.open || boardState.inlineMode) {
+      updateBoard({ open: true, inlineMode: false });
     }
   }, [boardState.inlineMode, boardState.open, updateBoard]);
 
@@ -26,16 +22,10 @@ export default function AgreementBoardPage() {
   }, [updateBoard]);
 
   React.useEffect(() => {
-    if (!boardState.open) return undefined;
-    const previousOverflowY = document.body.style.overflowY;
-    const previousOverflowX = document.body.style.overflowX;
-    document.body.style.overflowY = 'hidden';
-    document.body.style.overflowX = 'hidden';
-    return () => {
-      document.body.style.overflowY = previousOverflowY;
-      document.body.style.overflowX = previousOverflowX;
-    };
-  }, [boardState.open]);
+    if (boardState.open && boardState.inlineMode) {
+      updateBoard({ inlineMode: false });
+    }
+  }, [boardState.inlineMode, boardState.open, updateBoard]);
 
   const handleMenuSelect = React.useCallback((key) => {
     if (!key) return;
@@ -54,75 +44,16 @@ export default function AgreementBoardPage() {
     if (key === 'settings') { window.location.hash = BASE_ROUTES.settings; return; }
   }, []);
 
-  if (!boardState.open) {
-    return (
-      <div className="app-shell">
-        <Sidebar active="agreements" onSelect={handleMenuSelect} collapsed={true} />
-        <div className="main">
-          <div className="title-drag" />
-          <div className="topbar" />
-          <div className="stage">
-            <div className="content">
-              <p>협정보드를 불러오는 중입니다...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell">
       <Sidebar active="agreements" onSelect={handleMenuSelect} collapsed={true} />
       <div className="main">
         <div className="title-drag" />
         <div className="topbar" />
-        <div className="stage agreement-board-stage">
-          <AgreementBoardWindow
-            inlineMode
-            open={boardState.open}
-            onClose={closeBoard}
-            candidates={boardState.candidates || []}
-            pinned={boardState.pinned || []}
-            excluded={boardState.excluded || []}
-            groupAssignments={boardState.groupAssignments || []}
-            groupShares={boardState.groupShares || []}
-            groupShareRawInputs={boardState.groupShareRawInputs || []}
-            groupCredibility={boardState.groupCredibility || []}
-            groupTechnicianScores={boardState.groupTechnicianScores || []}
-            groupApprovals={boardState.groupApprovals || []}
-            groupManagementBonus={boardState.groupManagementBonus || []}
-            groupQualityScores={boardState.groupQualityScores || []}
-            technicianEntriesByTarget={boardState.technicianEntriesByTarget || {}}
-            dutyRegions={boardState.dutyRegions || []}
-            groupSize={boardState.groupSize}
-            title={boardState.title || '협정보드'}
-            alwaysInclude={boardState.alwaysInclude || []}
-            fileType={boardState.fileType}
-            ownerId={boardState.ownerId}
-            rangeId={boardState.rangeId}
-            onAddRepresentatives={appendCandidatesFromSearch}
-            onRemoveRepresentative={removeCandidate}
-            onUpdateBoard={updateBoard}
-            noticeNo={boardState.noticeNo}
-            noticeTitle={boardState.noticeTitle}
-            noticeDate={boardState.noticeDate}
-            industryLabel={boardState.industryLabel}
-            entryAmount={boardState.entryAmount}
-            entryMode={boardState.entryMode}
-            baseAmount={boardState.baseAmount}
-            estimatedAmount={boardState.estimatedAmount}
-            bidAmount={boardState.bidAmount}
-            ratioBaseAmount={boardState.ratioBaseAmount}
-            bidRate={boardState.bidRate}
-            adjustmentRate={boardState.adjustmentRate}
-            bidDeadline={boardState.bidDeadline}
-            regionDutyRate={boardState.regionDutyRate}
-            participantLimit={boardState.participantLimit}
-            netCostAmount={boardState.netCostAmount}
-            aValue={boardState.aValue}
-            memoHtml={boardState.memoHtml}
-          />
+        <div className="stage">
+          <div className="content">
+            <p>협정보드는 새 창에서 열립니다.</p>
+          </div>
         </div>
       </div>
     </div>

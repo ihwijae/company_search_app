@@ -11,6 +11,13 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
   const anyLoaded = !!(fileStatuses?.eung || fileStatuses?.tongsin || fileStatuses?.sobang);
   const isCollapsed = collapsed;
   const handleSelect = (key) => {
+    if (key === 'agreements' && typeof window !== 'undefined') {
+      const opener = window.__openAgreementBoard;
+      if (typeof opener === 'function') {
+        opener();
+        return;
+      }
+    }
     if (onSelect) onSelect(key);
   };
 

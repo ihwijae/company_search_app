@@ -374,6 +374,27 @@ const updateBoard = React.useCallback((payload = {}) => {
     });
   }, []);
 
+  const openBoardWindow = React.useCallback((payload = {}) => {
+    if (payload && Object.keys(payload).length > 0) {
+      openBoard({ ...payload, inlineMode: false });
+      return;
+    }
+    updateBoard({ open: true, inlineMode: false });
+  }, [openBoard, updateBoard]);
+
+  React.useEffect(() => {
+    try {
+      window.__openAgreementBoard = openBoardWindow;
+      return () => {
+        if (window.__openAgreementBoard === openBoardWindow) {
+          delete window.__openAgreementBoard;
+        }
+      };
+    } catch (err) {
+      return undefined;
+    }
+  }, [openBoardWindow]);
+
 const appendCandidates = React.useCallback((entries = []) => {
   if (!Array.isArray(entries) || entries.length === 0) return;
   setBoardState((prev) => {
