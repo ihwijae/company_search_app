@@ -3462,12 +3462,7 @@ export default function AgreementBoardWindow({
           const technicianValue = technicianEnabled
             ? getTechnicianValue(groupIndex, slotIndex)
             : null;
-          const sipyungValue = candidate._sipyung ?? extractAmountValue(
-            candidate,
-            ['_sipyung', 'sipyung', '시평', '시평액', '시평액(원)', '시평금액', '기초금액', '기초금액(원)'],
-            [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']]
-          );
-          const sipyung = parseNumeric(sipyungValue);
+          const sipyung = getCandidateSipyungAmount(candidate);
           const credibilitySource = credibilityEnabled ? groupCredibility[groupIndex]?.[slotIndex] : null;
           const credibilityBonus = credibilityEnabled ? parseNumeric(credibilitySource) : null;
           const isRegionMember = entry.type === 'region' || isDutyRegionCompany(candidate);
