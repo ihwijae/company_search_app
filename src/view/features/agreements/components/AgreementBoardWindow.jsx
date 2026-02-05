@@ -2763,11 +2763,17 @@ export default function AgreementBoardWindow({
       const child = window.open('', 'company-search-agreement-board', features);
       if (!child) return;
       child.document.title = title;
+      child.document.documentElement.style.height = '100%';
       child.document.body.style.margin = '0';
       child.document.body.style.background = '#f3f4f6';
+      child.document.body.style.height = '100%';
+      child.document.body.style.overflow = 'hidden';
       child.document.body.innerHTML = '';
       const root = child.document.createElement('div');
       root.id = 'agreement-board-root';
+      root.style.height = '100%';
+      root.style.display = 'flex';
+      root.style.flexDirection = 'column';
       child.document.body.appendChild(root);
       copyDocumentStyles(document, child.document);
       boardWindowRef.current = child;
