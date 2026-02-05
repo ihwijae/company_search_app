@@ -1836,8 +1836,8 @@ export default function AgreementBoardWindow({
 
   const showHeaderAlert = React.useCallback((message) => {
     if (!message) return;
-    notify({ type: 'info', message });
-  }, [notify]);
+    notify({ type: 'info', message, portalTarget: portalContainer || null });
+  }, [notify, portalContainer]);
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -3410,7 +3410,11 @@ export default function AgreementBoardWindow({
     }
 
     setExporting(true);
-    showLoading({ title: '엑셀 내보내기', message: '엑셀 시트를 생성하는 중입니다...' });
+    showLoading({
+      title: '엑셀 내보내기',
+      message: '엑셀 시트를 생성하는 중입니다...',
+      portalTarget: portalContainer || null,
+    });
     try {
       const estimatedValue = parseAmountValue(estimatedAmount);
       const baseValue = parseAmountValue(baseAmount);
@@ -4447,6 +4451,7 @@ export default function AgreementBoardWindow({
       confirmText: '예',
       cancelText: '아니오',
       tone: 'warning',
+      portalTarget: portalContainer || null,
     });
     if (!ok) return;
     setGroupAssignments(buildInitialAssignments());
@@ -4544,6 +4549,7 @@ export default function AgreementBoardWindow({
       confirmText: '예',
       cancelText: '아니오',
       tone: 'warning',
+      portalTarget: portalContainer || null,
     });
     if (!ok) return;
     const selected = new Set(selectedGroups);
@@ -6628,7 +6634,10 @@ export default function AgreementBoardWindow({
         error={loadError}
         onLoad={handleLoadAgreement}
         onResetFilters={resetFilters}
-        onDelete={(path) => handleDeleteAgreement(path, confirm)}
+        onDelete={(path) => handleDeleteAgreement(
+          path,
+          (options = {}) => confirm({ ...options, portalTarget: portalContainer || null }),
+        )}
         formatAmount={formatAmount}
       />
       {regionPickerOpen && (

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 const FeedbackContext = React.createContext({
   notify: () => null,
@@ -22,10 +23,22 @@ export default function FeedbackProvider({ children }) {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
-  const notify = React.useCallback(({ message, title, type = 'info', duration = 3800 } = {}) => {
+  const notify = React.useCallback(({
+    message,
+    title,
+    type = 'info',
+    duration = 3800,
+    portalTarget = null,
+  } = {}) => {
     if (!message && !title) return null;
     const id = generateId();
-    const nextToast = { id, message, title, type };
+    const nextToast = {
+      id,
+      message,
+      title,
+      type,
+      portalTarget: portalTarget || null,
+    };
     setToasts((prev) => [...prev, nextToast]);
     if (duration > 0) {
       setTimeout(() => removeToast(id), duration);
@@ -40,6 +53,7 @@ export default function FeedbackProvider({ children }) {
       confirmText: options.confirmText || '확인',
       cancelText: options.cancelText || '취소',
       tone: options.tone || 'info',
+      portalTarget: options.portalTarget || null,
       onResolve: (result) => {
         resolve(result);
         setConfirmState(null);
@@ -50,7 +64,11 @@ export default function FeedbackProvider({ children }) {
   const showLoading = React.useCallback((options = {}) => {
     const title = options.title || '처리 중입니다';
     const message = options.message || '';
-    setLoadingState({ title, message });
+    setLoadingState({
+      title,
+      message,
+      portalTarget: options.portalTarget || null,
+    });
   }, []);
 
   const hideLoading = React.useCallback(() => {
@@ -67,53 +85,90 @@ export default function FeedbackProvider({ children }) {
   return (
     <FeedbackContext.Provider value={contextValue}>
       {children}
-      <div className="toast-stack" aria-live="polite" aria-atomic="true">
-        {toasts.map((toast) => (
-          <div key={toast.id} className={`toast toast--${toast.type}`} role="status">
-            <div className="toast__content">
-              {toast.title && <strong>{toast.title}</strong>}
-              {toast.message && <span>{toast.message}</span>}
-            </div>
-            <button
-              type="button"
-              className="toast__close"
-              onClick={() => removeToast(toast.id)}
-              aria-label="알림 닫기"
-            >
-              ×
-            </button>
+      {(() => {
+        const defaultToasts = [];
+        const portalGroups = new Map();
+        toasts.forEach((toast) => {
+          if (toast.portalTarget && toast.portalTarget.isConnected) {
+            const group = portalGroups.get(toast.portalTarget) || [];
+            group.push(toast);
+            portalGroups.set(toast.portalTarget, group);
+          } else {
+            defaultToasts.push(toast);
+          }
+        });
+
+        const renderStack = (items) => (
+          <div className="toast-stack" aria-live="polite" aria-atomic="true">
+            {items.map((toast) => (
+              <div key={toast.id} className={`toast toast--${toast.type}`} role="status">
+                <div className="toast__content">
+                  {toast.title && <strong>{toast.title}</strong>}
+                  {toast.message && <span>{toast.message}</span>}
+                </div>
+                <button
+                  type="button"
+                  className="toast__close"
+                  onClick={() => removeToast(toast.id)}
+                  aria-label="알림 닫기"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      {confirmState && (
-        <div className="confirm-overlay" role="presentation">
-          <div className="confirm-dialog" role="dialog" aria-modal="true">
-            <div className="confirm-dialog__body">
-              <strong>{confirmState.title}</strong>
-              {confirmState.message && <p>{confirmState.message}</p>}
-            </div>
-            <div className="confirm-dialog__actions">
-              <button type="button" className="btn-muted" onClick={() => confirmState.onResolve(false)}>
-                {confirmState.cancelText}
-              </button>
-              <button type="button" className="btn-primary" onClick={() => confirmState.onResolve(true)}>
-                {confirmState.confirmText}
-              </button>
+        );
+
+        return (
+          <>
+            {renderStack(defaultToasts)}
+            {Array.from(portalGroups.entries()).map(([target, items]) => (
+              createPortal(renderStack(items), target, `toast-${items[0]?.id || 'target'}`)
+            ))}
+          </>
+        );
+      })()}
+      {confirmState && (() => {
+        const content = (
+          <div className="confirm-overlay" role="presentation">
+            <div className="confirm-dialog" role="dialog" aria-modal="true">
+              <div className="confirm-dialog__body">
+                <strong>{confirmState.title}</strong>
+                {confirmState.message && <p>{confirmState.message}</p>}
+              </div>
+              <div className="confirm-dialog__actions">
+                <button type="button" className="btn-muted" onClick={() => confirmState.onResolve(false)}>
+                  {confirmState.cancelText}
+                </button>
+                <button type="button" className="btn-primary" onClick={() => confirmState.onResolve(true)}>
+                  {confirmState.confirmText}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {loadingState && (
-        <div className="feedback-loading-overlay" role="presentation">
-          <div className="feedback-loading-modal" role="dialog" aria-modal="true">
-            <h3>{loadingState.title}</h3>
-            {loadingState.message && <p>{loadingState.message}</p>}
-            <div className="feedback-loading-bar">
-              <div className="feedback-loading-bar__value" style={{ width: '70%' }} />
+        );
+        if (confirmState.portalTarget && confirmState.portalTarget.isConnected) {
+          return createPortal(content, confirmState.portalTarget);
+        }
+        return content;
+      })()}
+      {loadingState && (() => {
+        const content = (
+          <div className="feedback-loading-overlay" role="presentation">
+            <div className="feedback-loading-modal" role="dialog" aria-modal="true">
+              <h3>{loadingState.title}</h3>
+              {loadingState.message && <p>{loadingState.message}</p>}
+              <div className="feedback-loading-bar">
+                <div className="feedback-loading-bar__value" style={{ width: '70%' }} />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+        if (loadingState.portalTarget && loadingState.portalTarget.isConnected) {
+          return createPortal(content, loadingState.portalTarget);
+        }
+        return content;
+      })()}
     </FeedbackContext.Provider>
   );
 }
