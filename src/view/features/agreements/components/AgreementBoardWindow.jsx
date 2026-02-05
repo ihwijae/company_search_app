@@ -1317,14 +1317,6 @@ export default function AgreementBoardWindow({
   const [exportTargetName, setExportTargetName] = React.useState('');
   const [exportSheetName, setExportSheetName] = React.useState('');
   const exportFileInputRef = React.useRef(null);
-  const systemDialogActionRef = React.useRef(null);
-  const [systemDialog, setSystemDialog] = React.useState({
-    open: false,
-    title: '',
-    message: '',
-    confirmLabel: '선택하기',
-    hints: [],
-  });
   const regionSearchSessionRef = React.useRef(null);
   const [technicianModalOpen, setTechnicianModalOpen] = React.useState(false);
   const [technicianEntries, setTechnicianEntries] = React.useState([]);
@@ -5326,51 +5318,6 @@ export default function AgreementBoardWindow({
     setExportTargetName('');
   }, []);
 
-  const openSystemDialog = React.useCallback(({
-    title,
-    message,
-    confirmLabel = '선택하기',
-    hints = [],
-    onConfirm,
-  } = {}) => {
-    if (typeof onConfirm === 'function') {
-      systemDialogActionRef.current = onConfirm;
-    } else {
-      systemDialogActionRef.current = null;
-    }
-    setSystemDialog({
-      open: true,
-      title: title || '파일 선택',
-      message: message || '',
-      confirmLabel,
-      hints: Array.isArray(hints) ? hints : [],
-    });
-  }, []);
-
-  const closeSystemDialog = React.useCallback(() => {
-    systemDialogActionRef.current = null;
-    setSystemDialog((prev) => ({ ...prev, open: false }));
-  }, []);
-
-  const handleSystemDialogConfirm = React.useCallback(async () => {
-    const action = systemDialogActionRef.current;
-    closeSystemDialog();
-    if (typeof action === 'function') {
-      await action();
-    }
-  }, [closeSystemDialog]);
-
-  const handlePickRootWithDialog = React.useCallback(() => {
-    openSystemDialog({
-      title: '저장 폴더 선택',
-      message: '협정 파일이 저장된 폴더를 선택해 주세요.',
-      confirmLabel: '폴더 선택',
-      hints: ['OS 파일 선택 창이 열립니다.', '폴더를 선택하면 목록이 갱신됩니다.'],
-      onConfirm: async () => {
-        await handlePickRoot();
-      },
-    });
-  }, [openSystemDialog, handlePickRoot]);
 
   const handleQualityScoreChange = (groupIndex, slotIndex, value) => {
     setGroupQualityScores((prev) => {
@@ -6400,30 +6347,25 @@ export default function AgreementBoardWindow({
             showHeaderAlert('시트명을 입력해 주세요.');
             return;
           }
-          const runExport = async () => {
-            const ok = await handleExportExcel({
-              appendTargetPath: exportTargetPath || '',
-              sheetName: resolvedSheetName,
-            });
-            if (ok) {
-              setExportModalOpen(false);
-            }
-          };
-          if (!exportTargetPath) {
-            openSystemDialog({
-              title: '저장 위치 선택',
-              message: '엑셀 파일을 저장할 위치를 선택해 주세요.',
-              confirmLabel: '저장 위치 선택',
-              hints: ['OS 파일 선택 창이 열립니다.', '취소하면 내보내기가 중단됩니다.'],
-              onConfirm: runExport,
-            });
-            return;
+          const ok = await handleExportExcel({
+            appendTargetPath: exportTargetPath || '',
+            sheetName: resolvedSheetName,
+          });
+          if (ok) {
+            setExportModalOpen(false);
           }
-          await runExport();
         }}
         size="sm"
+        boxClassName="agreement-export-modal"
       >
         <div className="export-sheet-modal">
+          <div className="export-sheet-hero">
+            <div className="export-sheet-hero__badge">EXPORT</div>
+            <div>
+              <strong>협정 결과를 엑셀로 저장합니다.</strong>
+              <p>파일을 선택하면 해당 파일에 시트가 추가됩니다.</p>
+            </div>
+          </div>
           <div className="export-sheet-field">
             <span className="export-sheet-label">대상 파일</span>
             <div className="export-sheet-file">
@@ -6457,34 +6399,6 @@ export default function AgreementBoardWindow({
               placeholder="예: 2026년익산청교통정체잦은곳"
             />
             <p className="export-sheet-hint">통신/소방 공고는 자동으로 (통신)/(소방)이 붙습니다.</p>
-          </div>
-        </div>
-      </Modal>
-      <Modal
-        open={systemDialog.open}
-        onClose={closeSystemDialog}
-        onCancel={closeSystemDialog}
-        onSave={handleSystemDialogConfirm}
-        closeOnSave={false}
-        title={systemDialog.title}
-        confirmLabel={systemDialog.confirmLabel}
-        cancelLabel="취소"
-        size="sm"
-        boxClassName="system-dialog-modal"
-      >
-        <div className="system-dialog-body">
-          <div className="system-dialog-icon">FILE</div>
-          <div className="system-dialog-content">
-            {systemDialog.message && (
-              <p className="system-dialog-message">{systemDialog.message}</p>
-            )}
-            {Array.isArray(systemDialog.hints) && systemDialog.hints.length > 0 && (
-              <ul className="system-dialog-hints">
-                {systemDialog.hints.map((hint, index) => (
-                  <li key={`${hint}-${index}`}>{hint}</li>
-                ))}
-              </ul>
-            )}
           </div>
         </div>
       </Modal>
@@ -6720,7 +6634,7 @@ export default function AgreementBoardWindow({
         filters={loadFilters}
         setFilters={setLoadFilters}
         rootPath={loadRootPath}
-        onPickRoot={handlePickRootWithDialog}
+        onPickRoot={handlePickRoot}
         dutyRegionOptions={dutyRegionOptions}
         rangeOptions={loadRangeOptions}
         agreementGroups={AGREEMENT_GROUPS}
