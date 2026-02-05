@@ -417,6 +417,10 @@ button.primary:hover { background: var(--accent-2); }
   letter-spacing: 0.2px;
 }
 .notes-editor-body { margin-top: 12px; display: flex; flex-direction: column; gap: 16px; }
+.notes-memo-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .notes-editor-actions { margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; }
 .notes-section { display: flex; flex-direction: column; gap: 8px; }
 .notes-editor-card {

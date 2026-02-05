@@ -726,9 +726,9 @@ export default function CompanyNotesPage() {
                                 공통
                               </button>
                             )}
-                            <span>{stripCommonLines(row.memo)}</span>
+                            <span className="notes-memo-text">{stripCommonLines(row.memo)}</span>
                             {row.ownerManaged && ownerCommonMemo && commonOpenIds.has(row.id) && (
-                              <div className="notes-common-text">{ownerCommonMemo}</div>
+                              <div className="notes-common-text notes-memo-text">{ownerCommonMemo}</div>
                             )}
                           </div>
                         </td>
