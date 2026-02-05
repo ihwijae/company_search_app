@@ -709,6 +709,40 @@ button.primary:hover { background: var(--accent-2); }
 .excel-helper-modal__option-meta { font-size: 13px; color: #6b7280; }
 .excel-helper-modal__option-managers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .excel-helper-modal__footer { padding: 16px 24px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 12px; }
+.system-dialog-modal .system-dialog-body {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 8px 4px 4px;
+}
+.system-dialog-modal .system-dialog-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #e0f2fe, #eef2ff);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #c7d2fe;
+}
+.system-dialog-modal .system-dialog-message {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #1f2937;
+}
+.system-dialog-modal .system-dialog-hints {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #64748b;
+  display: grid;
+  gap: 6px;
+}
 .excel-board-shell {
   flex: 1;
   display: flex;
