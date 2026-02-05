@@ -2275,17 +2275,6 @@ export default function AgreementBoardWindow({
     parseNumeric,
   });
 
-  const handlePickRootWithDialog = React.useCallback(() => {
-    openSystemDialog({
-      title: '저장 폴더 선택',
-      message: '협정 파일이 저장된 폴더를 선택해 주세요.',
-      confirmLabel: '폴더 선택',
-      hints: ['OS 파일 선택 창이 열립니다.', '폴더를 선택하면 목록이 갱신됩니다.'],
-      onConfirm: async () => {
-        await handlePickRoot();
-      },
-    });
-  }, [openSystemDialog, handlePickRoot]);
 
   const loadRangeOptions = React.useMemo(() => {
     if (loadFilters.ownerId) {
@@ -5370,6 +5359,18 @@ export default function AgreementBoardWindow({
       await action();
     }
   }, [closeSystemDialog]);
+
+  const handlePickRootWithDialog = React.useCallback(() => {
+    openSystemDialog({
+      title: '저장 폴더 선택',
+      message: '협정 파일이 저장된 폴더를 선택해 주세요.',
+      confirmLabel: '폴더 선택',
+      hints: ['OS 파일 선택 창이 열립니다.', '폴더를 선택하면 목록이 갱신됩니다.'],
+      onConfirm: async () => {
+        await handlePickRoot();
+      },
+    });
+  }, [openSystemDialog, handlePickRoot]);
 
   const handleQualityScoreChange = (groupIndex, slotIndex, value) => {
     setGroupQualityScores((prev) => {
