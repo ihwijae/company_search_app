@@ -179,7 +179,7 @@ const summarizeMissingEntries = (entries, candidatesMap) => {
 
 export default function BidResultPage() {
   const { notify } = useFeedback();
-  const [ownerId, setOwnerId] = React.useState('LH');
+  const [ownerId, setOwnerId] = React.useState('');
   const [fileType, setFileType] = React.useState('eung');
   const [formatFile, setFormatFile] = React.useState(null);
   const [isFormatting, setIsFormatting] = React.useState(false);
@@ -215,7 +215,7 @@ export default function BidResultPage() {
   const templateFileName = templatePath ? templatePath.split(/[\\/]/).pop() : '';
   const bidAmountTemplateName = bidAmountTemplatePath ? bidAmountTemplatePath.split(/[\\/]/).pop() : '';
   const ownerLabel = React.useMemo(() => (
-    OWNER_OPTIONS.find((option) => option.value === ownerId)?.label || ownerId
+    OWNER_OPTIONS.find((option) => option.value === ownerId)?.label || '한국토지주택공사'
   ), [ownerId]);
 
   const strongLabelStyle = React.useMemo(() => ({
@@ -494,6 +494,11 @@ export default function BidResultPage() {
   };
 
   const handleOrderingResultUpload = (event) => {
+    if (!ownerId) {
+      notify({ type: 'info', message: '발주처를 먼저 선택하세요.' });
+      if (event?.target) event.target.value = '';
+      return;
+    }
     const file = event.target.files[0];
     if (file) {
       setOrderingResultFile(file);
@@ -534,8 +539,7 @@ export default function BidResultPage() {
     const sheet = agreementWorkbook.Sheets?.[selectedAgreementSheet];
     if (!sheet) return [];
     const entries = [];
-    const isLhOwner = ownerId === 'LH';
-    const maxConsecutiveEmptyRows = isLhOwner ? 2 : 1;
+    const maxConsecutiveEmptyRows = 2;
     let consecutiveEmptyRows = 0;
     for (let row = 5; row <= 1000; row += 1) {
       const checkAddress = XLSX.utils.encode_cell({ r: row - 1, c: 0 });
@@ -544,7 +548,7 @@ export default function BidResultPage() {
       const hasCheck = String(checkValue || '').trim() !== '';
       if (!hasCheck) {
         consecutiveEmptyRows += 1;
-        if (!isLhOwner || consecutiveEmptyRows >= maxConsecutiveEmptyRows) break;
+        if (consecutiveEmptyRows >= maxConsecutiveEmptyRows) break;
         continue;
       }
       consecutiveEmptyRows = 0;
@@ -563,7 +567,7 @@ export default function BidResultPage() {
       });
     }
     return entries;
-  }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
+  }, [agreementWorkbook, selectedAgreementSheet]);
 
   const extractBidAmountEntries = React.useCallback(() => {
     if (!agreementWorkbook || !selectedAgreementSheet) return { entries: [], excludedNames: [] };
@@ -571,8 +575,7 @@ export default function BidResultPage() {
     if (!sheet) return { entries: [], excludedNames: [] };
     const entries = [];
     const excludedNames = [];
-    const isLhOwner = ownerId === 'LH';
-    const maxConsecutiveEmptyRows = isLhOwner ? 2 : 1;
+    const maxConsecutiveEmptyRows = 2;
     let consecutiveEmptyRows = 0;
     for (let row = 5; row <= 1000; row += 1) {
       const checkAddress = XLSX.utils.encode_cell({ r: row - 1, c: 0 });
@@ -581,7 +584,7 @@ export default function BidResultPage() {
       const hasCheck = String(checkValue || '').trim() !== '';
       if (!hasCheck) {
         consecutiveEmptyRows += 1;
-        if (!isLhOwner || consecutiveEmptyRows >= maxConsecutiveEmptyRows) break;
+        if (consecutiveEmptyRows >= maxConsecutiveEmptyRows) break;
         continue;
       }
       consecutiveEmptyRows = 0;
@@ -614,7 +617,7 @@ export default function BidResultPage() {
       });
     }
     return { entries, excludedNames };
-  }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
+  }, [agreementWorkbook, selectedAgreementSheet]);
 
   const buildBizEntries = React.useCallback((entries, candidatesMap, selections) => {
     const bizEntries = [];
@@ -889,6 +892,10 @@ export default function BidResultPage() {
   };
 
   const handleRunOrderingProcess = async () => {
+    if (!ownerId) {
+      notify({ type: 'info', message: '발주처를 먼저 선택하세요.' });
+      return;
+    }
     if (!templatePath) {
       notify({ type: 'info', message: '먼저 템플릿 파일을 서식 변환으로 생성하세요.' });
       return;
@@ -944,18 +951,6 @@ export default function BidResultPage() {
                     </div>
                     <p className="section-help">업로드한 엑셀 파일의 서식/수식을 자동으로 정리합니다. (B열 순번 기준으로 마지막 행까지 적용)</p>
                     <div style={{ marginBottom: '16px' }}>
-                      <label className="field-label" style={strongLabelStyle}>발주처</label>
-                        <select
-                          className="input"
-                          value={ownerId}
-                          onChange={(e) => setOwnerId(e.target.value)}
-                        >
-                          {OWNER_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </select>
-                    </div>
-                    <div style={{ marginBottom: '16px' }}>
                       <label className="field-label" style={strongLabelStyle}>업체 분류</label>
                       <select
                         className="input"
@@ -967,12 +962,6 @@ export default function BidResultPage() {
                         ))}
                       </select>
                     </div>
-                  {ownerId !== 'LH' && (
-                    <div className="excel-inline-alert">
-                      선택한 발주처 양식은 아직 준비 중입니다. 현재는 LH만 지원합니다.
-                    </div>
-                  )}
-                  {ownerId === 'LH' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       <div>
                         <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
@@ -1011,10 +1000,8 @@ export default function BidResultPage() {
                         </button>
                       </div>
                     </div>
-                  )}
                   </div>
-                  {ownerId === 'LH' && (
-                    <div style={{ ...sectionCardStyle, flex: '1 1 360px' }}>
+                  <div style={{ ...sectionCardStyle, flex: '1 1 360px' }}>
                       <div style={{ marginBottom: '12px' }}>
                         <span style={sectionTitleBadgeStyle}>투찰금액 템플릿 업체 배치</span>
                       </div>
@@ -1161,10 +1148,8 @@ export default function BidResultPage() {
                         </div>
                       </div>
                     </div>
-                  )}
                 </div>
-                {ownerId === 'LH' && (
-                  <>
+                <>
                   <div style={{ height: '16px' }} />
                   <div style={sectionCardStyle}>
                     <div style={{ marginBottom: '12px' }}>
@@ -1294,6 +1279,23 @@ export default function BidResultPage() {
                         </button>
                       </div>
                       <div>
+                        <label className="field-label" style={strongLabelStyle}>발주처</label>
+                        <select
+                          className="input"
+                          value={ownerId}
+                          onChange={(event) => {
+                            setOwnerId(event.target.value);
+                            setOrderingResultFile(null);
+                            if (orderingFileInputRef.current) orderingFileInputRef.current.value = '';
+                          }}
+                        >
+                          <option value="">발주처를 선택하세요</option>
+                          {OWNER_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
                         <label className="field-label" style={strongLabelStyle}>발주처결과 업로드</label>
                         <input
                           type="file"
@@ -1302,7 +1304,13 @@ export default function BidResultPage() {
                           ref={orderingFileInputRef}
                           onChange={handleOrderingResultUpload}
                           onClick={(e) => { e.target.value = ''; }}
+                          disabled={!ownerId}
                         />
+                        {!ownerId && (
+                          <p className="section-help" style={{ marginTop: 8 }}>
+                            발주처를 먼저 선택하면 파일 업로드가 가능합니다.
+                          </p>
+                        )}
                         <button
                           type="button"
                           className="btn-soft"
@@ -1323,7 +1331,7 @@ export default function BidResultPage() {
                           type="button"
                           className="primary"
                           onClick={handleRunOrderingProcess}
-                          disabled={isOrderingProcessing}
+                          disabled={isOrderingProcessing || !ownerId}
                           style={{ minWidth: '180px' }}
                         >
                           {isOrderingProcessing ? '처리 중...' : '결과 실행'}
@@ -1332,7 +1340,6 @@ export default function BidResultPage() {
                     </div>
                   </div>
                   </>
-                )}
               </section>
             </div>
           </div>
