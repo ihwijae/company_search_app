@@ -1244,11 +1244,11 @@ export default function BidResultPage() {
                           ref={agreementFileInputRef}
                           onChange={handleAgreementFileUpload}
                           onClick={(e) => { e.target.value = ''; }}
-                          disabled={!fileType}
+                          disabled={!ownerId || !fileType}
                         />
-                        {!fileType && (
+                        {(!ownerId || !fileType) && (
                           <p className="section-help" style={{ marginTop: 8 }}>
-                            공종을 먼저 선택하면 파일 업로드가 가능합니다.
+                            발주처와 공종을 먼저 선택하면 파일 업로드가 가능합니다.
                           </p>
                         )}
                         <button
@@ -1285,7 +1285,7 @@ export default function BidResultPage() {
                           type="button"
                           className="primary"
                           onClick={handleRunAgreementProcess}
-                          disabled={isAgreementProcessing || !fileType}
+                          disabled={isAgreementProcessing || !ownerId || !fileType}
                           style={{ minWidth: '180px' }}
                         >
                           {isAgreementProcessing ? '처리 중...' : '협정 실행'}
