@@ -180,7 +180,7 @@ const summarizeMissingEntries = (entries, candidatesMap) => {
 export default function BidResultPage() {
   const { notify } = useFeedback();
   const [ownerId, setOwnerId] = React.useState('');
-  const [fileType, setFileType] = React.useState('eung');
+  const [fileType, setFileType] = React.useState('');
   const [formatFile, setFormatFile] = React.useState(null);
   const [isFormatting, setIsFormatting] = React.useState(false);
   const [templatePath, setTemplatePath] = React.useState('');
@@ -338,7 +338,7 @@ export default function BidResultPage() {
       return;
     }
     if (!fileType) {
-      notify({ type: 'info', message: '업체 분류(전기/통신/소방)를 선택하세요.' });
+      notify({ type: 'info', message: '공종(전기/통신/소방)을 선택하세요.' });
       return;
     }
     if (!window.electronAPI?.bidResult?.applyBidAmountTemplate) {
@@ -473,6 +473,11 @@ export default function BidResultPage() {
   };
 
   const handleAgreementFileUpload = (event) => {
+    if (!fileType) {
+      notify({ type: 'info', message: '공종을 먼저 선택하세요.' });
+      if (event?.target) event.target.value = '';
+      return;
+    }
     const file = event.target.files[0];
     if (file) {
       setAgreementFile(file);
@@ -805,7 +810,7 @@ export default function BidResultPage() {
       return;
     }
     if (!fileType) {
-      notify({ type: 'info', message: '업체 분류(전기/통신/소방)를 선택하세요.' });
+      notify({ type: 'info', message: '공종(전기/통신/소방)을 선택하세요.' });
       return;
     }
     if (!window.electronAPI?.bidResult?.applyAgreement) {
@@ -950,18 +955,6 @@ export default function BidResultPage() {
                       <span style={sectionTitleBadgeStyle}>개찰결과 엑셀 크기 및 폰트 수정</span>
                     </div>
                     <p className="section-help">업로드한 엑셀 파일의 서식/수식을 자동으로 정리합니다. (B열 순번 기준으로 마지막 행까지 적용)</p>
-                    <div style={{ marginBottom: '16px' }}>
-                      <label className="field-label" style={strongLabelStyle}>업체 분류</label>
-                      <select
-                        className="input"
-                        value={fileType}
-                        onChange={(e) => setFileType(e.target.value)}
-                      >
-                        {FILE_TYPE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       <div>
                         <label className="field-label" style={strongLabelStyle}>엑셀 파일 선택</label>
@@ -1193,6 +1186,26 @@ export default function BidResultPage() {
                         </button>
                       </div>
                       <div>
+                        <label className="field-label" style={strongLabelStyle}>공종</label>
+                        <select
+                          className="input"
+                          value={fileType}
+                          onChange={(event) => {
+                            setFileType(event.target.value);
+                            setAgreementFile(null);
+                            setAgreementWorkbook(null);
+                            setAgreementSheetNames([]);
+                            setSelectedAgreementSheet('');
+                            if (agreementFileInputRef.current) agreementFileInputRef.current.value = '';
+                          }}
+                        >
+                          <option value="" disabled hidden>공종을 선택하세요</option>
+                          {FILE_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
                         <label className="field-label" style={strongLabelStyle}>협정파일 업로드</label>
                         <input
                           type="file"
@@ -1201,7 +1214,13 @@ export default function BidResultPage() {
                           ref={agreementFileInputRef}
                           onChange={handleAgreementFileUpload}
                           onClick={(e) => { e.target.value = ''; }}
+                          disabled={!fileType}
                         />
+                        {!fileType && (
+                          <p className="section-help" style={{ marginTop: 8 }}>
+                            공종을 먼저 선택하면 파일 업로드가 가능합니다.
+                          </p>
+                        )}
                         <button
                           type="button"
                           className="btn-soft"
@@ -1236,7 +1255,7 @@ export default function BidResultPage() {
                           type="button"
                           className="primary"
                           onClick={handleRunAgreementProcess}
-                          disabled={isAgreementProcessing}
+                          disabled={isAgreementProcessing || !fileType}
                           style={{ minWidth: '180px' }}
                         >
                           {isAgreementProcessing ? '처리 중...' : '협정 실행'}
@@ -1289,7 +1308,7 @@ export default function BidResultPage() {
                             if (orderingFileInputRef.current) orderingFileInputRef.current.value = '';
                           }}
                         >
-                          <option value="">발주처를 선택하세요</option>
+                          <option value="" disabled hidden>발주처를 선택하세요</option>
                           {OWNER_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
                           ))}
