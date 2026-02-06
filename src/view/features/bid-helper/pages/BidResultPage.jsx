@@ -544,7 +544,8 @@ export default function BidResultPage() {
     const sheet = agreementWorkbook.Sheets?.[selectedAgreementSheet];
     if (!sheet) return [];
     const entries = [];
-    const maxConsecutiveEmptyRows = 2;
+    const isLhOwner = ownerId === 'LH';
+    const maxConsecutiveEmptyRows = isLhOwner ? 2 : 1;
     let consecutiveEmptyRows = 0;
     for (let row = 5; row <= 1000; row += 1) {
       const checkAddress = XLSX.utils.encode_cell({ r: row - 1, c: 0 });
@@ -553,7 +554,7 @@ export default function BidResultPage() {
       const hasCheck = String(checkValue || '').trim() !== '';
       if (!hasCheck) {
         consecutiveEmptyRows += 1;
-        if (consecutiveEmptyRows >= maxConsecutiveEmptyRows) break;
+        if (!isLhOwner || consecutiveEmptyRows >= maxConsecutiveEmptyRows) break;
         continue;
       }
       consecutiveEmptyRows = 0;
@@ -572,7 +573,7 @@ export default function BidResultPage() {
       });
     }
     return entries;
-  }, [agreementWorkbook, selectedAgreementSheet]);
+  }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
 
   const extractBidAmountEntries = React.useCallback(() => {
     if (!agreementWorkbook || !selectedAgreementSheet) return { entries: [], excludedNames: [] };
@@ -580,7 +581,8 @@ export default function BidResultPage() {
     if (!sheet) return { entries: [], excludedNames: [] };
     const entries = [];
     const excludedNames = [];
-    const maxConsecutiveEmptyRows = 2;
+    const isLhOwner = ownerId === 'LH';
+    const maxConsecutiveEmptyRows = isLhOwner ? 2 : 1;
     let consecutiveEmptyRows = 0;
     for (let row = 5; row <= 1000; row += 1) {
       const checkAddress = XLSX.utils.encode_cell({ r: row - 1, c: 0 });
@@ -589,7 +591,7 @@ export default function BidResultPage() {
       const hasCheck = String(checkValue || '').trim() !== '';
       if (!hasCheck) {
         consecutiveEmptyRows += 1;
-        if (consecutiveEmptyRows >= maxConsecutiveEmptyRows) break;
+        if (!isLhOwner || consecutiveEmptyRows >= maxConsecutiveEmptyRows) break;
         continue;
       }
       consecutiveEmptyRows = 0;
@@ -622,7 +624,7 @@ export default function BidResultPage() {
       });
     }
     return { entries, excludedNames };
-  }, [agreementWorkbook, selectedAgreementSheet]);
+  }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
 
   const buildBizEntries = React.useCallback((entries, candidatesMap, selections) => {
     const bizEntries = [];
