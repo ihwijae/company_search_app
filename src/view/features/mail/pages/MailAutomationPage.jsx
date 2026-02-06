@@ -1342,7 +1342,7 @@ function MailAutomationPageInner() {
                     <button type="button" className="btn-soft" onClick={handleDeleteSmtpProfile} disabled={!selectedSmtpProfileId}>삭제</button>
                   </div>
                 </div>
-                <p className="mail-hint">SMTP 서버: Naver (smtp.naver.com)</p>
+                <p className="mail-hint mail-smtp-server-notice">SMTP 서버: Naver (smtp.naver.com)</p>
                 <div className="mail-smtp-sender">
                   <label>
                     발신자 이름

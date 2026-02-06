@@ -1734,6 +1734,13 @@ body {
   color: #64748b;
 }
 
+.mail-smtp-server-notice {
+  margin-top: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
 .mail-smtp-custom {
   display: flex;
   flex-direction: column;
