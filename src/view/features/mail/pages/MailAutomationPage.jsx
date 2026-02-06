@@ -147,6 +147,7 @@ const DEFAULT_CUSTOM_PROFILE = Object.freeze({ host: '', port: '587', secure: tr
 const SMTP_PROFILE_STORAGE_KEY = 'mail:smtpProfiles';
 
 const EMPTY_MAIL_STATE = {
+  ownerId: 'LH',
   projectInfo: { ...DEFAULT_PROJECT_INFO },
   recipients: [],
   vendorAmounts: {},
@@ -163,6 +164,10 @@ const EMPTY_MAIL_STATE = {
 };
 
 const makeSmtpProfileId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+const MAIL_OWNER_OPTIONS = [
+  { id: 'LH', label: '한국토지주택공사' },
+  { id: 'EX', label: '한국도로공사' },
+];
 
 export default function MailAutomationPage() {
   return (
@@ -189,6 +194,10 @@ function MailAutomationPageInner() {
   }, [notify]);
 
   const [activeMenu, setActiveMenu] = React.useState('mail');
+  const [ownerId, setOwnerId] = React.useState(() => {
+    const savedOwnerId = String(initialDraft.ownerId || '').toUpperCase();
+    return MAIL_OWNER_OPTIONS.some((option) => option.id === savedOwnerId) ? savedOwnerId : 'LH';
+  });
   const [excelFile, setExcelFile] = React.useState(null);
   const [projectInfo, setProjectInfo] = React.useState(() => (
     isPlainObject(initialDraft.projectInfo)
@@ -327,6 +336,7 @@ function MailAutomationPageInner() {
 
   React.useEffect(() => {
     const payload = {
+      ownerId,
       projectInfo,
       recipients: serializeRecipientsForPersist(recipients),
       subjectTemplate,
@@ -349,6 +359,7 @@ function MailAutomationPageInner() {
     };
     savePersisted(MAIL_DRAFT_STORAGE_KEY, payload);
   }, [
+    ownerId,
     projectInfo,
     recipients,
     subjectTemplate,
@@ -951,6 +962,7 @@ function MailAutomationPageInner() {
     setBodyTemplate(EMPTY_MAIL_STATE.bodyTemplate);
     setSendDelay(EMPTY_MAIL_STATE.sendDelay);
     setIncludeGlobalRecipients(false);
+    setOwnerId(EMPTY_MAIL_STATE.ownerId);
     setSmtpProfile(EMPTY_MAIL_STATE.smtpProfile);
     setSenderName('');
     setSenderEmail('');
@@ -1272,7 +1284,20 @@ function MailAutomationPageInner() {
         <div className="title-drag" />
         <div className="topbar" />
         <div className="stage mail-stage">
-          <div className="mail-layout">
+          <div className="mail-agency-bar">
+            <label htmlFor="mail-owner-select">발주처</label>
+            <select
+              id="mail-owner-select"
+              value={ownerId}
+              onChange={(event) => setOwnerId(event.target.value)}
+            >
+              {MAIL_OWNER_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+          {ownerId === 'LH' ? (
+            <div className="mail-layout">
             <section className="mail-panel mail-panel--config">
               <header className="mail-panel__header">
                 <h2>엑셀 불러오기</h2>
@@ -1558,6 +1583,12 @@ function MailAutomationPageInner() {
 
             </section>
           </div>
+          ) : (
+            <div className="mail-owner-placeholder">
+              <h2>한국도로공사 메일 기능 준비 중</h2>
+              <p>상단 발주처 메뉴를 먼저 추가했습니다. 다음 단계에서 한국도로공사 전용 양식과 자동 파싱/템플릿을 연결하겠습니다.</p>
+            </div>
+          )}
         </div>
       </div>
       {previewOpen && (
