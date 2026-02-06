@@ -166,7 +166,6 @@ const DEFAULT_EX_BODY_TEMPLATE = `
   <p style="margin:4px 0;">투찰마감일 {{closingDate}}</p>
 </div>`;
 
-const DEFAULT_CUSTOM_PROFILE = Object.freeze({ host: '', port: '587', secure: true, username: '', password: '' });
 const SMTP_PROFILE_STORAGE_KEY = 'mail:smtpProfiles';
 
 const EMPTY_MAIL_STATE = {
@@ -177,11 +176,9 @@ const EMPTY_MAIL_STATE = {
   vendorWorkers: {},
   subjectTemplate: DEFAULT_SUBJECT_TEMPLATE,
   bodyTemplate: DEFAULT_LH_BODY_TEMPLATE,
-  smtpProfile: 'naver',
   senderName: '',
   senderEmail: '',
   replyTo: '',
-  customProfile: { ...DEFAULT_CUSTOM_PROFILE },
   sendDelay: 1,
   includeGlobalRecipients: false,
 };
@@ -245,20 +242,12 @@ function MailAutomationPageInner() {
   ));
   const [subjectTemplate, setSubjectTemplate] = React.useState(() => initialDraft.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE);
   const [bodyTemplate, setBodyTemplate] = React.useState(() => initialDraft.bodyTemplate || DEFAULT_LH_BODY_TEMPLATE);
-  const [smtpProfile, setSmtpProfile] = React.useState(() => initialDraft.smtpProfile || 'naver');
   const [senderName, setSenderName] = React.useState(() => initialDraft.senderName || '');
   const [senderEmail, setSenderEmail] = React.useState(() => initialDraft.senderEmail || '');
   const [replyTo, setReplyTo] = React.useState(() => initialDraft.replyTo || '');
   const [smtpProfileName, setSmtpProfileName] = React.useState(() => initialDraft.smtpProfileName || '');
-  const [gmailPassword, setGmailPassword] = React.useState('');
   const [naverPassword, setNaverPassword] = React.useState('');
   const [loadedSmtpProfileId, setLoadedSmtpProfileId] = React.useState('');
-  const [customProfile, setCustomProfile] = React.useState(() => {
-    if (isPlainObject(initialDraft.customProfile)) {
-      return { ...DEFAULT_CUSTOM_PROFILE, ...initialDraft.customProfile, password: '' };
-    }
-    return { ...DEFAULT_CUSTOM_PROFILE };
-  });
   const [sendDelay, setSendDelay] = React.useState(() => {
     const saved = Number(initialDraft.sendDelay);
     return Number.isFinite(saved) && saved >= 0 ? saved : 1;
@@ -281,17 +270,10 @@ function MailAutomationPageInner() {
         return {
           id,
           name: profile.name || profile.label || profile.senderEmail || `프로필-${id}`,
-          smtpProfile: profile.smtpProfile || 'naver',
           senderName: profile.senderName || '',
           senderEmail: profile.senderEmail || '',
           replyTo: profile.replyTo || '',
-          gmailPassword: profile.gmailPassword || '',
           naverPassword: profile.naverPassword || '',
-          customProfile: {
-            ...DEFAULT_CUSTOM_PROFILE,
-            ...profile.customProfile,
-            password: profile.customProfile?.password || '',
-          },
         };
       })
       .filter(Boolean);
@@ -370,17 +352,10 @@ function MailAutomationPageInner() {
       includeGlobalRecipients,
       vendorAmounts,
       vendorWorkers,
-      smtpProfile,
       senderName,
       senderEmail,
       replyTo,
       smtpProfileName,
-      customProfile: {
-        host: customProfile.host || '',
-        port: customProfile.port || '587',
-        secure: Boolean(customProfile.secure),
-        username: customProfile.username || '',
-      },
     };
     savePersisted(MAIL_DRAFT_STORAGE_KEY, payload);
   }, [
@@ -392,14 +367,9 @@ function MailAutomationPageInner() {
     includeGlobalRecipients,
     vendorAmounts,
     vendorWorkers,
-    smtpProfile,
     senderName,
     senderEmail,
     replyTo,
-    customProfile.host,
-    customProfile.port,
-    customProfile.secure,
-    customProfile.username,
     smtpProfileName,
   ]);
 
@@ -450,54 +420,19 @@ function MailAutomationPageInner() {
       senderName: trimValue(senderName),
       replyTo: trimValue(replyTo),
     };
-    if (smtpProfile === 'gmail') {
-      if (!gmailPassword) {
-        throw new Error('Gmail 앱 비밀번호를 입력해 주세요.');
-      }
-      return {
-        ...base,
-        connection: {
-          host: 'smtp.gmail.com',
-          port: 465,
-          secure: true,
-          auth: { user: trimmedSenderEmail, pass: gmailPassword },
-        },
-      };
+    if (!naverPassword) {
+      throw new Error('네이버 SMTP 비밀번호를 입력해 주세요.');
     }
-    if (smtpProfile === 'naver') {
-      if (!naverPassword) {
-        throw new Error('네이버 SMTP 비밀번호를 입력해 주세요.');
-      }
-      return {
-        ...base,
-        connection: {
-          host: 'smtp.naver.com',
-          port: 465,
-          secure: true,
-          auth: { user: trimmedSenderEmail, pass: naverPassword },
-        },
-      };
-    }
-    const host = trimValue(customProfile.host);
-    if (!host) {
-      throw new Error('SMTP 호스트를 입력해 주세요.');
-    }
-    const username = trimValue(customProfile.username) || trimmedSenderEmail;
-    const password = customProfile.password;
-    if (!password) {
-      throw new Error('SMTP 비밀번호를 입력해 주세요.');
-    }
-    const portNumber = Number(customProfile.port) || (customProfile.secure ? 465 : 587);
     return {
       ...base,
       connection: {
-        host,
-        port: portNumber,
-        secure: Boolean(customProfile.secure),
-        auth: { user: username, pass: password },
+        host: 'smtp.naver.com',
+        port: 465,
+        secure: true,
+        auth: { user: trimmedSenderEmail, pass: naverPassword },
       },
     };
-  }, [smtpProfile, senderEmail, senderName, replyTo, gmailPassword, naverPassword, customProfile]);
+  }, [senderEmail, senderName, replyTo, naverPassword]);
 
   React.useEffect(() => {
     window.location.hash = '#/mail';
@@ -923,13 +858,10 @@ function MailAutomationPageInner() {
     }
     const profileData = {
       name: trimmed,
-      smtpProfile,
       senderName,
       senderEmail,
       replyTo,
-      gmailPassword,
       naverPassword,
-      customProfile: { ...customProfile },
     };
 
     const existingProfile = smtpProfiles.find((profile) => profile.name === trimmed);
@@ -948,7 +880,7 @@ function MailAutomationPageInner() {
     setSelectedSmtpProfileId(newId);
     setSmtpProfileName(trimmed);
     showStatusMessage(`SMTP 프로필 '${trimmed}'을 저장했습니다.`, { type: 'success', title: 'SMTP 프로필 저장' });
-  }, [senderEmail, senderName, smtpProfile, replyTo, gmailPassword, naverPassword, customProfile, smtpProfileName, smtpProfiles, showStatusMessage, notify]);
+  }, [senderEmail, senderName, replyTo, naverPassword, smtpProfileName, smtpProfiles, showStatusMessage, notify]);
 
   const handleLoadSmtpProfile = React.useCallback(() => {
     if (!selectedSmtpProfileId) {
@@ -960,13 +892,10 @@ function MailAutomationPageInner() {
       notify({ type: 'warning', message: '선택한 SMTP 프로필을 찾을 수 없습니다.' });
       return;
     }
-    setSmtpProfile(profile.smtpProfile || 'naver');
     setSenderName(profile.senderName || '');
     setSenderEmail(profile.senderEmail || '');
     setReplyTo(profile.replyTo || '');
-    setGmailPassword(profile.gmailPassword || '');
     setNaverPassword(profile.naverPassword || '');
-    setCustomProfile({ ...DEFAULT_CUSTOM_PROFILE, ...profile.customProfile });
     setSmtpProfileName(profile.name || '');
     setLoadedSmtpProfileId(profile.id);
     showStatusMessage(`SMTP 프로필 '${profile.name}'을 불러왔습니다.`);
@@ -1013,14 +942,11 @@ function MailAutomationPageInner() {
     setSendDelay(EMPTY_MAIL_STATE.sendDelay);
     setIncludeGlobalRecipients(false);
     setOwnerId(EMPTY_MAIL_STATE.ownerId);
-    setSmtpProfile(EMPTY_MAIL_STATE.smtpProfile);
     setSenderName('');
     setSenderEmail('');
     setReplyTo('');
     setSmtpProfileName('');
-    setGmailPassword('');
     setNaverPassword('');
-    setCustomProfile({ ...EMPTY_MAIL_STATE.customProfile });
     setSelectedSmtpProfileId('');
     setLoadedSmtpProfileId('');
     showStatusMessage('메일 작성 내용을 초기화했습니다.');
@@ -1416,26 +1342,7 @@ function MailAutomationPageInner() {
                     <button type="button" className="btn-soft" onClick={handleDeleteSmtpProfile} disabled={!selectedSmtpProfileId}>삭제</button>
                   </div>
                 </div>
-                <div className="mail-smtp-options">
-                  <label>
-                    <input
-                      type="radio"
-                      value="naver"
-                      checked={smtpProfile === 'naver'}
-                      onChange={(event) => setSmtpProfile(event.target.value)}
-                    />
-                    Naver (smtp.naver.com)
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      value="custom"
-                      checked={smtpProfile === 'custom'}
-                      onChange={(event) => setSmtpProfile(event.target.value)}
-                    />
-                    기타 SMTP 직접 입력
-                  </label>
-                </div>
+                <p className="mail-hint">SMTP 서버: Naver (smtp.naver.com)</p>
                 <div className="mail-smtp-sender">
                   <label>
                     발신자 이름
@@ -1446,50 +1353,16 @@ function MailAutomationPageInner() {
                     <input value={senderEmail} onChange={(event) => setSenderEmail(event.target.value)} placeholder="example@company.com" />
                   </label>
                 </div>
-                {smtpProfile === 'naver' && (
-                  <label>
-                    SMTP 비밀번호
-                    <input
-                      type="password"
-                      value={naverPassword}
-                      onChange={(event) => setNaverPassword(event.target.value)}
-                      placeholder="네이버 메일 비밀번호 또는 SMTP 전용 비밀번호"
-                    />
-                    <span className="mail-hint">네이버 메일 환경설정에서 SMTP/IMAP 사용을 허용해야 합니다.</span>
-                  </label>
-                )}
-                {smtpProfile === 'custom' && (
-                  <div className="mail-smtp-custom">
-                    <div className="mail-smtp-grid">
-                      <label>
-                        SMTP 호스트
-                        <input value={customProfile.host} onChange={(event) => setCustomProfile((prev) => ({ ...prev, host: event.target.value }))} placeholder="smtp.example.com" />
-                      </label>
-                      <label>
-                        포트
-                        <input value={customProfile.port} onChange={(event) => setCustomProfile((prev) => ({ ...prev, port: event.target.value }))} placeholder="587" />
-                      </label>
-                    </div>
-                    <label className="mail-smtp-secure">
-                      <input
-                        type="checkbox"
-                        checked={customProfile.secure}
-                        onChange={(event) => setCustomProfile((prev) => ({ ...prev, secure: event.target.checked }))}
-                      />
-                      TLS/SSL 사용
-                    </label>
-                    <div className="mail-smtp-grid">
-                      <label>
-                        사용자명
-                        <input value={customProfile.username} onChange={(event) => setCustomProfile((prev) => ({ ...prev, username: event.target.value }))} placeholder="SMTP 로그인 아이디" />
-                      </label>
-                      <label>
-                        암호
-                        <input type="password" value={customProfile.password} onChange={(event) => setCustomProfile((prev) => ({ ...prev, password: event.target.value }))} placeholder="SMTP 비밀번호" />
-                      </label>
-                    </div>
-                  </div>
-                )}
+                <label>
+                  SMTP 비밀번호
+                  <input
+                    type="password"
+                    value={naverPassword}
+                    onChange={(event) => setNaverPassword(event.target.value)}
+                    placeholder="네이버 메일 비밀번호 또는 SMTP 전용 비밀번호"
+                  />
+                  <span className="mail-hint">네이버 메일 환경설정에서 SMTP/IMAP 사용을 허용해야 합니다.</span>
+                </label>
                 <button type="button" className="btn-soft" onClick={handleTestMail}>테스트 메일 보내기</button>
               </div>
 
