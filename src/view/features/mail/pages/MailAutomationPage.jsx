@@ -223,10 +223,7 @@ function MailAutomationPageInner() {
   }, [notify]);
 
   const [activeMenu, setActiveMenu] = React.useState('mail');
-  const [ownerId, setOwnerId] = React.useState(() => {
-    const savedOwnerId = String(initialDraft.ownerId || '').toUpperCase();
-    return MAIL_OWNER_OPTIONS.some((option) => option.id === savedOwnerId) ? savedOwnerId : '';
-  });
+  const [ownerId, setOwnerId] = React.useState('');
   const [excelFile, setExcelFile] = React.useState(null);
   const [projectInfo, setProjectInfo] = React.useState(() => (
     isPlainObject(initialDraft.projectInfo)
@@ -365,7 +362,6 @@ function MailAutomationPageInner() {
 
   React.useEffect(() => {
     const payload = {
-      ownerId,
       projectInfo,
       recipients: serializeRecipientsForPersist(recipients),
       subjectTemplate,
@@ -388,7 +384,6 @@ function MailAutomationPageInner() {
     };
     savePersisted(MAIL_DRAFT_STORAGE_KEY, payload);
   }, [
-    ownerId,
     projectInfo,
     recipients,
     subjectTemplate,
@@ -1504,7 +1499,7 @@ function MailAutomationPageInner() {
                   <label>
                     발주처
                     <select value={ownerId} onChange={(event) => handleOwnerChange(event.target.value)}>
-                      <option value="">발주처를 선택하세요</option>
+                      <option value="" disabled hidden>발주처를 선택하세요</option>
                       {MAIL_OWNER_OPTIONS.map((option) => (
                         <option key={option.id} value={option.id}>{option.label}</option>
                       ))}
