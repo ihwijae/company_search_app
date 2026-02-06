@@ -1575,48 +1575,11 @@ body {
   gap: 18px;
 }
 
-.mail-agency-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.mail-agency-bar label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #334155;
-}
-
-.mail-agency-bar select {
-  min-width: 220px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
-  color: #0f172a;
-  background: #fff;
-}
-
-.mail-owner-placeholder {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  padding: 28px;
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.04);
-}
-
-.mail-owner-placeholder h2 {
-  margin: 0 0 8px;
-  font-size: 20px;
-  color: #0f172a;
-}
-
-.mail-owner-placeholder p {
-  margin: 0;
-  font-size: 14px;
-  color: #475569;
-  line-height: 1.6;
+.mail-template-owner-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
 }
 
 .mail-panel {

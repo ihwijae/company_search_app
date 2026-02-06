@@ -123,7 +123,8 @@ const stripHtmlTags = (html) => {
     .replace(/\n{2,}/g, '\n\n')
     .trim();
 };
-const DEFAULT_BODY_TEMPLATE = `
+const DEFAULT_SUBJECT_TEMPLATE = '{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}';
+const DEFAULT_LH_BODY_TEMPLATE = `
 <div style="font-family:'Malgun Gothic',Dotum,Arial,sans-serif;font-size:19px;color:#1f2933;line-height:1.7;">
   <p style="margin:0 0 12px;color:#0455c0;font-size:22px;font-weight:bold;">
     {{owner}} "{{announcementNumber}} {{announcementName}}"의 입찰내역을 보내드립니다.
@@ -142,18 +143,37 @@ const DEFAULT_BODY_TEMPLATE = `
   <p style="margin:12px 0;color:#0455c0;font-weight:bold;font-size:24px;">ENC 파일만 첨부하세요!!!</p>
   <p style="margin:4px 0;">투찰마감일 {{closingDate}}</p>
 </div>`;
+const DEFAULT_EX_BODY_TEMPLATE = `
+<div style="font-family:'Malgun Gothic',Dotum,Arial,sans-serif;font-size:19px;color:#1f2933;line-height:1.7;">
+  <p style="margin:0 0 12px;color:#0455c0;font-size:22px;font-weight:bold;">
+    {{owner}} "{{announcementNumber}} {{announcementName}}" 입찰 자료를 전달드립니다.
+  </p>
+  <p style="margin:0 0 12px;">
+    첨부된 <span style="font-weight:bold;text-decoration:underline;">ENC 파일</span> 1개만 입찰서에 첨부하여 투찰해 주세요.<br />
+    함께 첨부된 엑셀 파일은 투찰 금액 확인용이며 <span style="font-weight:bold;text-decoration:underline;">메일 회신 시 첨부하지 않도록</span> 부탁드립니다.
+  </p>
+  <p style="margin:0 0 18px;">안전한 투찰 진행 바랍니다.</p>
+  <hr style="border:none;border-top:1px solid #c9ced6;margin:16px 0;" />
+  <p style="margin:4px 0;">공사명 : <strong>{{announcementName}}</strong></p>
+  <p style="margin:4px 0;">공고번호 : <strong>{{announcementNumber}}</strong></p>
+  <p style="margin:4px 0;">
+    <strong><span style="color:#d22b2b;">{{vendorName}} 투찰금액 : {{tenderAmount}}</span></strong>
+  </p>
+  <p style="margin:12px 0;color:#0455c0;font-weight:bold;font-size:24px;">ENC 파일만 첨부하세요!!!</p>
+  <p style="margin:4px 0;">투찰마감일 {{closingDate}}</p>
+</div>`;
 
 const DEFAULT_CUSTOM_PROFILE = Object.freeze({ host: '', port: '587', secure: true, username: '', password: '' });
 const SMTP_PROFILE_STORAGE_KEY = 'mail:smtpProfiles';
 
 const EMPTY_MAIL_STATE = {
-  ownerId: 'LH',
+  ownerId: '',
   projectInfo: { ...DEFAULT_PROJECT_INFO },
   recipients: [],
   vendorAmounts: {},
   vendorWorkers: {},
-  subjectTemplate: '{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}',
-  bodyTemplate: DEFAULT_BODY_TEMPLATE,
+  subjectTemplate: DEFAULT_SUBJECT_TEMPLATE,
+  bodyTemplate: DEFAULT_LH_BODY_TEMPLATE,
   smtpProfile: 'naver',
   senderName: '',
   senderEmail: '',
@@ -168,6 +188,12 @@ const MAIL_OWNER_OPTIONS = [
   { id: 'LH', label: '한국토지주택공사' },
   { id: 'EX', label: '한국도로공사' },
 ];
+const MAIL_DEFAULT_TEMPLATE_BY_OWNER = {
+  LH: DEFAULT_LH_BODY_TEMPLATE,
+  EX: DEFAULT_EX_BODY_TEMPLATE,
+};
+const resolveOwnerLabel = (ownerId) => MAIL_OWNER_OPTIONS.find((option) => option.id === ownerId)?.label || '';
+const resolveDefaultBodyTemplateByOwner = (ownerId) => MAIL_DEFAULT_TEMPLATE_BY_OWNER[ownerId] || DEFAULT_LH_BODY_TEMPLATE;
 
 export default function MailAutomationPage() {
   return (
@@ -196,7 +222,7 @@ function MailAutomationPageInner() {
   const [activeMenu, setActiveMenu] = React.useState('mail');
   const [ownerId, setOwnerId] = React.useState(() => {
     const savedOwnerId = String(initialDraft.ownerId || '').toUpperCase();
-    return MAIL_OWNER_OPTIONS.some((option) => option.id === savedOwnerId) ? savedOwnerId : 'LH';
+    return MAIL_OWNER_OPTIONS.some((option) => option.id === savedOwnerId) ? savedOwnerId : '';
   });
   const [excelFile, setExcelFile] = React.useState(null);
   const [projectInfo, setProjectInfo] = React.useState(() => (
@@ -217,8 +243,8 @@ function MailAutomationPageInner() {
   const [vendorWorkers, setVendorWorkers] = React.useState(() => (
     isPlainObject(initialDraft.vendorWorkers) ? { ...initialDraft.vendorWorkers } : {}
   ));
-  const [subjectTemplate, setSubjectTemplate] = React.useState(() => initialDraft.subjectTemplate || '{{owner}} "{{announcementNumber}} {{announcementName}}"_{{vendorName}}');
-  const [bodyTemplate, setBodyTemplate] = React.useState(() => initialDraft.bodyTemplate || DEFAULT_BODY_TEMPLATE);
+  const [subjectTemplate, setSubjectTemplate] = React.useState(() => initialDraft.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE);
+  const [bodyTemplate, setBodyTemplate] = React.useState(() => initialDraft.bodyTemplate || DEFAULT_LH_BODY_TEMPLATE);
   const [smtpProfile, setSmtpProfile] = React.useState(() => initialDraft.smtpProfile || 'naver');
   const [senderName, setSenderName] = React.useState(() => initialDraft.senderName || '');
   const [senderEmail, setSenderEmail] = React.useState(() => initialDraft.senderEmail || '');
@@ -389,6 +415,32 @@ function MailAutomationPageInner() {
       setSelectedSmtpProfileId(smtpProfiles[0]?.id || '');
     }
   }, [selectedSmtpProfileId, smtpProfiles]);
+  const selectedOwnerLabel = React.useMemo(() => resolveOwnerLabel(ownerId), [ownerId]);
+
+  const ensureOwnerSelected = React.useCallback(() => {
+    if (ownerId) return true;
+    showStatusMessage('발주처를 먼저 선택해 주세요.', { type: 'warning' });
+    return false;
+  }, [ownerId, showStatusMessage]);
+
+  const handleOwnerChange = React.useCallback((nextOwnerId) => {
+    const normalizedOwnerId = String(nextOwnerId || '').toUpperCase();
+    const nextTemplate = resolveDefaultBodyTemplateByOwner(normalizedOwnerId);
+    const currentDefaultTemplate = resolveDefaultBodyTemplateByOwner(ownerId);
+    setOwnerId(normalizedOwnerId);
+    setBodyTemplate((prev) => {
+      const prevTemplate = String(prev || '');
+      if (!prevTemplate.trim()) return nextTemplate;
+      if (prevTemplate === currentDefaultTemplate) return nextTemplate;
+      return prevTemplate;
+    });
+  }, [ownerId]);
+
+  const handleApplyDefaultTemplate = React.useCallback(() => {
+    if (!ensureOwnerSelected()) return;
+    setBodyTemplate(resolveDefaultBodyTemplateByOwner(ownerId));
+    showStatusMessage('선택한 발주처 기본 템플릿을 적용했습니다.');
+  }, [ownerId, ensureOwnerSelected, showStatusMessage]);
 
   const resolveSmtpConfig = React.useCallback(() => {
     const trimmedSenderEmail = trimValue(senderEmail);
@@ -1027,12 +1079,12 @@ function MailAutomationPageInner() {
   const buildRecipientContext = React.useCallback((recipient) => ({
     announcementNumber: projectInfo.announcementNumber || '',
     announcementName: projectInfo.announcementName || '',
-    owner: projectInfo.owner || '',
+    owner: selectedOwnerLabel || projectInfo.owner || '',
     closingDate: projectInfo.closingDate || '',
     baseAmount: projectInfo.baseAmount || '',
     vendorName: recipient.vendorName || '',
     tenderAmount: recipient.tenderAmount || '',
-  }), [projectInfo]);
+  }), [projectInfo, selectedOwnerLabel]);
 
   const buildFallbackText = React.useCallback((context) => ([
     `${context.owner || ''} "${context.announcementNumber || ''} ${context.announcementName || ''}"`,
@@ -1065,6 +1117,7 @@ function MailAutomationPageInner() {
 
   const handleSendAll = React.useCallback(async () => {
     if (sending) return;
+    if (!ensureOwnerSelected()) return;
     const ready = recipients.filter((item) => trimValue(item.email) && Array.isArray(item.attachments) && item.attachments.length > 0);
     if (!ready.length) {
       notify({ type: 'warning', message: '발송 대상이 없습니다. 이메일과 첨부를 확인해 주세요.' });
@@ -1172,9 +1225,10 @@ function MailAutomationPageInner() {
         try { unsubscribeProgress(); } catch {}
       }
     }
-  }, [sending, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay, buildRecipientHeader, notify, showStatusMessage]);
+  }, [sending, ensureOwnerSelected, recipients, resolveSmtpConfig, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText, sendDelay, buildRecipientHeader, notify, showStatusMessage]);
 
   const handleTestMail = React.useCallback(async () => {
+    if (!ensureOwnerSelected()) return;
     const api = window.electronAPI?.mail?.sendTest;
     if (typeof api !== 'function') {
       showStatusMessage('이 빌드에서는 테스트 메일 기능을 사용할 수 없습니다.', { type: 'warning' });
@@ -1203,7 +1257,7 @@ function MailAutomationPageInner() {
     const templateContext = {
       announcementNumber: projectInfo.announcementNumber || '',
       announcementName: projectInfo.announcementName || '',
-      owner: projectInfo.owner || '',
+      owner: selectedOwnerLabel || projectInfo.owner || '',
       closingDate: projectInfo.closingDate || '',
       baseAmount: projectInfo.baseAmount || '',
       vendorName: sampleRecipient?.vendorName || '',
@@ -1259,9 +1313,10 @@ function MailAutomationPageInner() {
       const message = error?.message ? `테스트 메일 실패: ${error.message}` : '테스트 메일 발송 중 오류가 발생했습니다.';
       showStatusMessage(message, { type: 'error', title: '테스트 메일 실패' });
     }
-  }, [resolveSmtpConfig, projectInfo, recipients, subjectTemplate, bodyTemplate, showStatusMessage]);
+  }, [ensureOwnerSelected, resolveSmtpConfig, projectInfo, recipients, subjectTemplate, bodyTemplate, selectedOwnerLabel, showStatusMessage]);
 
   const handleTemplatePreview = React.useCallback(() => {
+    if (!ensureOwnerSelected()) return;
     const sampleRecipient = recipients.find((item) => item.vendorName || item.tenderAmount || item.email) || {
       id: 0,
       vendorName: '업체명',
@@ -1275,7 +1330,7 @@ function MailAutomationPageInner() {
     const text = stripHtmlTags(html) || buildFallbackText(context);
     setPreviewData({ subject, html, text });
     setPreviewOpen(true);
-  }, [recipients, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText]);
+  }, [ensureOwnerSelected, recipients, subjectTemplate, bodyTemplate, buildRecipientContext, buildFallbackText]);
 
   return (
     <div className="app-shell">
@@ -1284,20 +1339,7 @@ function MailAutomationPageInner() {
         <div className="title-drag" />
         <div className="topbar" />
         <div className="stage mail-stage">
-          <div className="mail-agency-bar">
-            <label htmlFor="mail-owner-select">발주처</label>
-            <select
-              id="mail-owner-select"
-              value={ownerId}
-              onChange={(event) => setOwnerId(event.target.value)}
-            >
-              {MAIL_OWNER_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>{option.label}</option>
-              ))}
-            </select>
-          </div>
-          {ownerId === 'LH' ? (
-            <div className="mail-layout">
+          <div className="mail-layout">
             <section className="mail-panel mail-panel--config">
               <header className="mail-panel__header">
                 <h2>엑셀 불러오기</h2>
@@ -1455,6 +1497,18 @@ function MailAutomationPageInner() {
 
               <div className="mail-section">
                 <h3>템플릿</h3>
+                <div className="mail-template-owner-row">
+                  <label>
+                    발주처
+                    <select value={ownerId} onChange={(event) => handleOwnerChange(event.target.value)}>
+                      <option value="">발주처를 선택하세요</option>
+                      {MAIL_OWNER_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="button" className="btn-soft" onClick={handleApplyDefaultTemplate} disabled={!ownerId}>기본 템플릿 적용</button>
+                </div>
                 <label>
                   제목 템플릿
                   <input value={subjectTemplate} onChange={(event) => setSubjectTemplate(event.target.value)} />
@@ -1491,7 +1545,7 @@ function MailAutomationPageInner() {
                   </button>
                   <button type="button" className="btn-soft" onClick={handleAddRecipient}>업체 추가</button>
                   <button type="button" className="btn-soft" onClick={handleKeepAssignedRecipients}>작업할업체만남기기</button>
-                  <button type="button" className="btn-primary" onClick={handleSendAll} disabled={sending}>{sending ? '발송 중...' : '전체 발송'}</button>
+                  <button type="button" className="btn-primary" onClick={handleSendAll} disabled={sending || !ownerId}>{sending ? '발송 중...' : '전체 발송'}</button>
                 </div>
               </header>
 
@@ -1583,12 +1637,6 @@ function MailAutomationPageInner() {
 
             </section>
           </div>
-          ) : (
-            <div className="mail-owner-placeholder">
-              <h2>한국도로공사 메일 기능 준비 중</h2>
-              <p>상단 발주처 메뉴를 먼저 추가했습니다. 다음 단계에서 한국도로공사 전용 양식과 자동 파싱/템플릿을 연결하겠습니다.</p>
-            </div>
-          )}
         </div>
       </div>
       {previewOpen && (
