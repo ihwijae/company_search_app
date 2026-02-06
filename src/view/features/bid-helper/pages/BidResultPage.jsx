@@ -473,6 +473,11 @@ export default function BidResultPage() {
   };
 
   const handleAgreementFileUpload = (event) => {
+    if (!ownerId) {
+      notify({ type: 'info', message: '발주처를 먼저 선택하세요.' });
+      if (event?.target) event.target.value = '';
+      return;
+    }
     if (!fileType) {
       notify({ type: 'info', message: '공종을 먼저 선택하세요.' });
       if (event?.target) event.target.value = '';
@@ -532,6 +537,12 @@ export default function BidResultPage() {
   const handleAgreementSheetSelect = (event) => {
     setSelectedAgreementSheet(event.target.value);
   };
+
+  const handleOwnerChange = React.useCallback((value) => {
+    setOwnerId(value);
+    setOrderingResultFile(null);
+    if (orderingFileInputRef.current) orderingFileInputRef.current.value = '';
+  }, []);
 
   const handlePickAgreementFile = () => {
     if (agreementFileInputRef.current) {
@@ -799,6 +810,10 @@ export default function BidResultPage() {
   };
 
   const handleRunAgreementProcess = async () => {
+    if (!ownerId) {
+      notify({ type: 'info', message: '발주처를 먼저 선택하세요.' });
+      return;
+    }
     if (!templatePath) {
       notify({ type: 'info', message: '먼저 템플릿 파일을 서식 변환으로 생성하세요.' });
       return;
@@ -1188,6 +1203,19 @@ export default function BidResultPage() {
                         </button>
                       </div>
                       <div>
+                        <label className="field-label" style={strongLabelStyle}>발주처</label>
+                        <select
+                          className="input"
+                          value={ownerId}
+                          onChange={(event) => handleOwnerChange(event.target.value)}
+                        >
+                          <option value="" disabled hidden>발주처를 선택하세요</option>
+                          {OWNER_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
                         <label className="field-label" style={strongLabelStyle}>공종</label>
                         <select
                           className="input"
@@ -1272,6 +1300,19 @@ export default function BidResultPage() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       <div>
+                        <label className="field-label" style={strongLabelStyle}>발주처</label>
+                        <select
+                          className="input"
+                          value={ownerId}
+                          onChange={(event) => handleOwnerChange(event.target.value)}
+                        >
+                          <option value="" disabled hidden>발주처를 선택하세요</option>
+                          {OWNER_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
                         <label className="field-label" style={strongLabelStyle}>개찰결과파일</label>
                         <div className="input" style={{ fontWeight: 700 }}>
                           {templateFileName || '템플릿을 먼저 생성하세요.'}
@@ -1300,23 +1341,6 @@ export default function BidResultPage() {
                         </button>
                       </div>
                       <div>
-                        <label className="field-label" style={strongLabelStyle}>발주처</label>
-                        <select
-                          className="input"
-                          value={ownerId}
-                          onChange={(event) => {
-                            setOwnerId(event.target.value);
-                            setOrderingResultFile(null);
-                            if (orderingFileInputRef.current) orderingFileInputRef.current.value = '';
-                          }}
-                        >
-                          <option value="" disabled hidden>발주처를 선택하세요</option>
-                          {OWNER_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
                         <label className="field-label" style={strongLabelStyle}>발주처결과 업로드</label>
                         <input
                           type="file"
@@ -1329,7 +1353,7 @@ export default function BidResultPage() {
                         />
                         {!ownerId && (
                           <p className="section-help" style={{ marginTop: 8 }}>
-                            발주처를 먼저 선택하면 파일 업로드가 가능합니다.
+                            위 협정 업체 체크 섹션에서 발주처를 먼저 선택해 주세요.
                           </p>
                         )}
                         <button
