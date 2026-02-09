@@ -2203,7 +2203,9 @@ try {
           debtScore,
           currentScore,
           bizYears,
-          bizYearsStartDate: bizYearsStartDate && isValidDate(bizYearsStartDate) ? bizYearsStartDate.toISOString().slice(0, 10) : null,
+          bizYearsStartDate: bizYearsStartDate && isValidDate(bizYearsStartDate)
+            ? `${bizYearsStartDate.getFullYear()}-${String(bizYearsStartDate.getMonth() + 1).padStart(2, '0')}-${String(bizYearsStartDate.getDate()).padStart(2, '0')}`
+            : null,
           bizYearsScore: Number.isFinite(Number(bizYearsScore)) ? Number(bizYearsScore) : null,
           bizYearsMaxScore: bizYearsMax > 0 ? bizYearsMax : null,
           debtAgainstAverage,
