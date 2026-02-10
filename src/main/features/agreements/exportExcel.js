@@ -276,6 +276,7 @@ async function exportAgreementExcel({
   const bidAmountCell = headerCells.bidAmount || null;
   const ratioBaseAmountCell = headerCells.ratioBaseAmount || null;
   const entryAmountCell = headerCells.entryAmount || null;
+  const entryAmountNoteCell = headerCells.entryAmountNote || null;
   const netCostPenaltyNoticeCell = headerCells.netCostPenaltyNotice || null;
   const memoCell = headerCells.memo || null;
 
@@ -303,6 +304,16 @@ async function exportAgreementExcel({
   }
   if (entryAmountCell) {
     worksheet.getCell(entryAmountCell).value = entryAmountValue != null ? entryAmountValue : null;
+  }
+  if (entryAmountNoteCell) {
+    const entryMode = String(header.entryMode || '').trim().toLowerCase();
+    const modeLabel = entryMode === 'ratio'
+      ? '비율반영'
+      : (entryMode === 'sum' ? '단순합산' : '');
+    const entryText = (entryAmountValue != null && modeLabel)
+      ? `※입찰참가자격 : 시공능력평가액 ${Math.round(entryAmountValue).toLocaleString('ko-KR')}원 이상 (${modeLabel})`
+      : '';
+    worksheet.getCell(entryAmountNoteCell).value = entryText;
   }
   const compositeTitle = [header.noticeNo, header.noticeTitle]
     .map((part) => (part ? String(part).trim() : ''))

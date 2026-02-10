@@ -297,6 +297,7 @@ const resolveTemplateKey = (ownerId, rangeId, fileType) => {
   const normalizedType = String(fileType || '').toLowerCase();
   if (ownerKey === 'MOIS' && rangeKey === 'mois-under30') return 'mois-under30';
   if (ownerKey === 'MOIS' && rangeKey === MOIS_30_TO_50_KEY) return 'mois-30to50';
+  if (ownerKey === 'MOIS' && rangeKey === MOIS_50_TO_100_KEY) return 'mois-50to100';
   if (ownerKey === 'PPS' && rangeKey === PPS_UNDER_50_KEY) return 'pps-under50';
   if (ownerKey === 'LH' && rangeKey === LH_UNDER_50_KEY) return 'lh-under50';
   if (ownerKey === 'LH' && rangeKey === LH_50_TO_100_KEY) {
@@ -3648,6 +3649,7 @@ export default function AgreementBoardWindow({
           bidAmount: bidAmountValue ?? null,
           ratioBaseAmount: ratioBaseValue ?? null,
           entryAmount: entryAmountValue ?? null,
+          entryMode: entryModeResolved || 'none',
           amountForScore: amountForScoreResolved,
           bidDeadline: formattedDeadline,
           rawBidDeadline: bidDeadline || '',
