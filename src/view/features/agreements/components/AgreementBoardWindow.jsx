@@ -1403,6 +1403,46 @@ export default function AgreementBoardWindow({
   }, [isKrailOwner]);
   const managementScale = isMois30To50 ? (10 / 15) : 1;
   const performanceAmountLabel = isMois50To100 ? '3년 실적' : '5년 실적';
+  const getCandidatePerformanceAmountForCurrentRange = React.useCallback((candidate) => {
+    if (!candidate || typeof candidate !== 'object') return null;
+    if (!isMois50To100) return getCandidatePerformanceAmount(candidate);
+
+    if (candidate._agreementPerformanceCleared) return null;
+    const hasManualOverride = Object.prototype.hasOwnProperty.call(candidate, '_agreementPerformanceInput');
+    if (hasManualOverride) {
+      const manual = toNumber(candidate._agreementPerformance5y ?? candidate._agreementPerformanceInput);
+      if (manual != null) return manual;
+    }
+
+    const direct3yCandidates = [
+      candidate._agreementPerformance3y,
+      candidate._performance3y,
+      candidate.performance3y,
+      candidate.perf3y,
+      candidate['performance3y'],
+      candidate['3년 실적'],
+      candidate['3년실적'],
+      candidate['3년 실적 합계'],
+      candidate['최근3년실적'],
+      candidate['최근3년실적합계'],
+      candidate['3년실적금액'],
+      candidate['최근3년시공실적'],
+    ];
+    for (const value of direct3yCandidates) {
+      const parsed = toNumber(value);
+      if (parsed != null) return parsed;
+    }
+
+    const extracted3y = extractAmountValue(
+      candidate,
+      ['_performance3y', 'performance3y', 'perf3y', '3년 실적', '3년실적', '3년 실적 합계', '최근3년실적', '최근3년실적합계', '3년실적금액', '최근3년시공실적'],
+      [['3년실적', '최근3년', 'threeyear', 'performance3', '시공실적']],
+    );
+    const parsed3y = toNumber(extracted3y);
+    if (parsed3y != null) return parsed3y;
+
+    return getCandidatePerformanceAmount(candidate);
+  }, [isMois50To100]);
   const roundForKrailUnder50 = React.useCallback(
     (value) => (isKrailUnder50 ? roundTo(value, 2) : value),
     [isKrailUnder50],
@@ -2612,8 +2652,16 @@ export default function AgreementBoardWindow({
     const base = parseAmountValue(baseAmount);
     const bidRateValue = parsePercentValue(bidRate);
     const adjustmentValue = parsePercentValue(adjustmentRate);
+    const aValueNum = parseAmountValue(aValue) || 0;
+    const expectedPrice = base && base > 0 && Number.isFinite(adjustmentValue)
+      ? (base * adjustmentValue)
+      : 0;
     const autoValue = base && base > 0 && Number.isFinite(bidRateValue) && Number.isFinite(adjustmentValue)
-      ? Math.round(base * bidRateValue * adjustmentValue)
+      ? (
+        (ownerKeyUpper === 'MOIS' && selectedRangeOption?.key === MOIS_50_TO_100_KEY)
+          ? Math.round(((expectedPrice - aValueNum) * bidRateValue) + aValueNum)
+          : Math.round(base * bidRateValue * adjustmentValue)
+      )
       : 0;
     const autoFormatted = formatPlainAmount(autoValue);
     const current = editableBidAmount || '';
@@ -2625,7 +2673,7 @@ export default function AgreementBoardWindow({
     if (!autoFormatted && current === '') return;
     setEditableBidAmount(autoFormatted);
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidAmount: autoFormatted });
-  }, [bidAutoConfig, baseAmount, bidRate, adjustmentRate, editableBidAmount, bidTouched, onUpdateBoard]);
+  }, [bidAutoConfig, baseAmount, bidRate, adjustmentRate, editableBidAmount, bidTouched, onUpdateBoard, aValue, ownerKeyUpper, selectedRangeOption?.key]);
 
   const handleBidAmountChange = (value) => {
     setEditableBidAmount(value);
@@ -2875,7 +2923,7 @@ export default function AgreementBoardWindow({
       : true;
 
     const perfTarget = perfectPerformanceAmount || 0;
-    const performanceAmount = getCandidatePerformanceAmount(candidate);
+    const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
     const perfOk = perfTarget > 0
       ? (performanceAmount != null && performanceAmount >= perfTarget)
       : false;
@@ -2893,6 +2941,7 @@ export default function AgreementBoardWindow({
     managementMax,
     dutyRegionSet,
     isDutyRegionCompany,
+    getCandidatePerformanceAmountForCurrentRange,
   ]);
 
   const representativeCandidates = React.useMemo(
@@ -3491,7 +3540,7 @@ export default function AgreementBoardWindow({
             : getSharePercent(groupIndex, slotIndex, candidate);
           const sharePercent = parseNumeric(shareSource);
           const managementScore = getCandidateManagementScore(candidate);
-          const performanceAmount = getCandidatePerformanceAmount(candidate);
+          const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
           const technicianValue = technicianEnabled
             ? getTechnicianValue(groupIndex, slotIndex)
             : null;
@@ -3661,6 +3710,7 @@ export default function AgreementBoardWindow({
     resolveQualityPoints,
     selectedRangeOption?.key,
     groupManagementBonus,
+    getCandidatePerformanceAmountForCurrentRange,
   ]);
 
   const handleGenerateText = React.useCallback(async () => {
@@ -3822,7 +3872,7 @@ export default function AgreementBoardWindow({
         const candidate = entry.candidate;
         const sharePercent = getSharePercent(groupIndex, slotIndex, candidate);
         const managementScore = getCandidateManagementScore(candidate);
-        const performanceAmount = getCandidatePerformanceAmount(candidate);
+        const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
         const technicianScore = technicianEditable ? getTechnicianValue(groupIndex, slotIndex) : null;
         const credibilityBonus = credibilityEnabled ? getCredibilityValue(groupIndex, slotIndex) : 0;
         const sipyungAmount = getCandidateSipyungAmount(candidate);
@@ -4136,7 +4186,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, isLh50To100, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax]);
+  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, isLh50To100, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -4164,7 +4214,7 @@ export default function AgreementBoardWindow({
         debtRatio: getCandidateNumericValue(candidate, ['debtRatio', '부채비율']),
         currentRatio: getCandidateNumericValue(candidate, ['currentRatio', '유동비율']),
         credit: extractCreditGrade(candidate),
-        perf5y: getCandidatePerformanceAmount(candidate),
+        perf5y: getCandidatePerformanceAmountForCurrentRange(candidate),
         managementScore: candidate.managementTotalScore ?? candidate.managementScore ?? null,
       }));
       console.debug('[AgreementBoard] candidate sample', sample);
@@ -4241,7 +4291,7 @@ export default function AgreementBoardWindow({
         const currentPerformanceScore = (candidate._agreementPerformanceScore != null && capVersionFresh)
           ? clampScore(candidate._agreementPerformanceScore, capForStored)
           : null;
-        const performanceAmount = getCandidatePerformanceAmount(candidate);
+        const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
         const needsManagement = currentManagement == null;
         const needsPerformanceScore = performanceAmount != null && performanceAmount > 0
           && performanceBaseReady && currentPerformanceScore == null;
@@ -4913,7 +4963,7 @@ export default function AgreementBoardWindow({
               value = formatNumeric(managementScore);
             }
           } else if (kind === 'performance') {
-            const performanceAmount = getCandidatePerformanceAmount(candidate);
+            const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
             if (performanceAmount != null && performanceAmount !== '') {
               value = formatAmountForExcel(performanceAmount);
             }
@@ -4947,7 +4997,7 @@ export default function AgreementBoardWindow({
       setCopyingKind(null);
       setExcelCopying(false);
     }
-  }, [copyToClipboard, excelCopying, groups, participantMap, groupShares, groupShareRawInputs, possibleShareBase]);
+  }, [copyToClipboard, excelCopying, groups, participantMap, groupShares, groupShareRawInputs, possibleShareBase, getCandidatePerformanceAmountForCurrentRange]);
 
 
   const copyGroupMetric = React.useCallback(async (groupIndex, metric) => {
@@ -4968,7 +5018,7 @@ export default function AgreementBoardWindow({
       },
       perf5y: {
         label: performanceAmountLabel,
-        extractor: (candidate) => formatPlainAmount(getCandidatePerformanceAmount(candidate)),
+        extractor: (candidate) => formatPlainAmount(getCandidatePerformanceAmountForCurrentRange(candidate)),
       },
       sipyung: {
         label: '시평액',
@@ -5001,7 +5051,7 @@ export default function AgreementBoardWindow({
       console.error('[AgreementBoard] copy failed', err);
       showHeaderAlert('복사에 실패했습니다. 다시 시도해 주세요.');
     }
-  }, [groups, showHeaderAlert, performanceAmountLabel]);
+  }, [groups, showHeaderAlert, performanceAmountLabel, getCandidatePerformanceAmountForCurrentRange]);
 
   const tableColumnCount = React.useMemo(() => {
     const baseColumns = 12
@@ -5053,7 +5103,7 @@ export default function AgreementBoardWindow({
     const shareFallback = getSharePercent(groupIndex, slotIndex, candidate);
     const shareForCalc = shareNumeric != null ? shareNumeric : shareFallback;
     const sipyungAmount = getCandidateSipyungAmount(candidate);
-    const performanceAmount = getCandidatePerformanceAmount(candidate);
+    const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
     const summaryStatus = getCandidateSummaryStatus(candidate);
     const dataStatusLabel = summaryStatus && summaryStatus !== '최신' ? `자료 ${summaryStatus}` : '';
     const dataStatusTone = summaryStatus
@@ -5799,7 +5849,7 @@ export default function AgreementBoardWindow({
                   )}
                   <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />
                 </div>
-                {isLH && (
+                {(isLH || isMois50To100) && (
                   <>
                     <div className="excel-field-block size-lg">
                       <span className="field-label">순공사원가</span>
@@ -5853,6 +5903,9 @@ export default function AgreementBoardWindow({
                     <AmountInput value={ratioBaseAmount || ''} onChange={handleRatioBaseAmountChange} placeholder="원" />
                   ) : (
                     <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
+                  )}
+                  {isMois50To100 && (
+                    <div className="readonly-note">A값 반드시 확인하세요!</div>
                   )}
                 </div>
                 <div className="excel-field-block size-md">
