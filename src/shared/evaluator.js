@@ -171,8 +171,8 @@ function resolvePerformanceVariant(perf, inputs = {}) {
 function evalPerformanceFormula(formula, context) {
   if (!formula || typeof formula !== 'string') return null;
   try {
-    const fn = new Function('perf5y', 'baseAmount', 'estimatedAmount', `return (${formula});`);
-    const value = fn(context.perf5y, context.baseAmount, context.estimatedAmount);
+    const fn = new Function('perf5y', 'perf3y', 'baseAmount', 'estimatedAmount', `return (${formula});`);
+    const value = fn(context.perf5y, context.perf3y, context.baseAmount, context.estimatedAmount);
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : null;
   } catch {
@@ -183,6 +183,7 @@ function evalPerformanceFormula(formula, context) {
 function evalPerformance(inputs, rules) {
   const perf = resolvePerformanceVariant(rules.performance || {}, inputs);
   const perf5y = toNumber(inputs.perf5y);
+  const perf3y = toNumber(inputs.perf3y);
   const base = toNumber(inputs.baseAmount);
   const estimatedAmount = toNumber(inputs.estimatedAmount);
   const configMaxScoreRaw = Number(perf.maxScore);
@@ -237,7 +238,12 @@ function evalPerformance(inputs, rules) {
     return { score, raw: usable, capped: clamped, mode: 'ratio-bands', ratio, maxScore };
   }
 
-  const formulaScore = evalPerformanceFormula(perf.formula, { perf5y, baseAmount: base, estimatedAmount });
+  const formulaScore = evalPerformanceFormula(perf.formula, {
+    perf5y,
+    perf3y,
+    baseAmount: base,
+    estimatedAmount,
+  });
   const raw = formulaScore != null ? formulaScore : (base > 0 ? ratio * maxScore : 0);
   const capped = maxScore != null ? Math.min(raw, maxScore) : raw;
   const score = applyRounding(capped, perf.rounding);

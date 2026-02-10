@@ -27,6 +27,9 @@ const LH_50_TO_100_SUBCONTRACT_SCORE = 10;
 const LH_50_TO_100_MATERIAL_SCORE = 10;
 const EX_50_TO_100_BID_SCORE = 45;
 const EX_50_TO_100_SUBCONTRACT_SCORE = 20;
+const MOIS_50_TO_100_BID_SCORE = 45;
+const MOIS_50_TO_100_SUBCONTRACT_SCORE = 10;
+const MOIS_50_TO_100_MATERIAL_SCORE = 10;
 const SUBCONTRACT_SCORE = 5;
 const MANAGEMENT_SCORE_MAX = 15;
 const KRAIL_TECHNICIAN_ABILITY_MAX = 5;
@@ -41,6 +44,7 @@ const LH_50_TO_100_KEY = 'lh-50to100';
 const PPS_UNDER_50_KEY = 'pps-under50';
 const MOIS_UNDER_30_KEY = 'mois-under30';
 const MOIS_30_TO_50_KEY = 'mois-30to50';
+const MOIS_50_TO_100_KEY = 'mois-50to100';
 const KRAIL_UNDER_50_KEY = 'krail-under50';
 const KRAIL_50_TO_100_KEY = 'krail-50to100';
 const EX_UNDER_50_KEY = 'ex-under50';
@@ -51,7 +55,7 @@ const BOARD_COPY_ACTIONS = [
   { kind: 'names', label: '업체명 복사', successMessage: '업체명 데이터가 복사되었습니다.' },
   { kind: 'shares', label: '지분 복사', successMessage: '지분 값이 복사되었습니다.' },
   { kind: 'management', label: '경영점수 복사', successMessage: '경영점수가 복사되었습니다.' },
-  { kind: 'performance', label: '실적 복사', successMessage: '5년 실적이 복사되었습니다.' },
+  { kind: 'performance', label: '실적 복사', successMessage: '실적 데이터가 복사되었습니다.' },
   { kind: 'sipyung', label: '시평액 복사', successMessage: '시평액이 복사되었습니다.' },
 ];
 const BOARD_COPY_LOOKUP = BOARD_COPY_ACTIONS.reduce((acc, action) => {
@@ -564,8 +568,8 @@ const resolveBoardConstraintRules = (rawRules) => {
 const SHARE_DIRECT_KEYS = ['_share', '_pct', 'candidateShare', 'share', '지분', '기본지분'];
 const SHARE_KEYWORDS = [['지분', 'share', '비율']];
 
-const PERFORMANCE_DIRECT_KEYS = ['_performance5y', 'performance5y', 'perf5y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적'];
-const PERFORMANCE_KEYWORDS = [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적']];
+const PERFORMANCE_DIRECT_KEYS = ['_performance5y', 'performance5y', 'perf5y', '_performance3y', 'performance3y', 'perf3y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적', '3년 실적', '3년실적', '3년 실적 합계', '최근3년실적', '최근3년실적합계', '3년실적금액', '최근3년시공실적'];
+const PERFORMANCE_KEYWORDS = [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적'], ['3년실적', '최근3년', 'threeyear', 'performance3', '시공실적']];
 
 const SIPYUNG_DIRECT_KEYS = ['_sipyung', 'sipyung', '시평', '시평액', '시평금액', '시평액(원)', '시평금액(원)', '기초금액', '기초금액(원)'];
 const SIPYUNG_KEYWORDS = [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']];
@@ -863,6 +867,9 @@ const getCandidatePerformanceAmount = (candidate) => {
     candidate._performance5y,
     candidate.performance5y,
     candidate.perf5y,
+    candidate._performance3y,
+    candidate.performance3y,
+    candidate.perf3y,
     candidate.performanceTotal,
     candidate['performance5y'],
     candidate['5년 실적'],
@@ -872,6 +879,13 @@ const getCandidatePerformanceAmount = (candidate) => {
     candidate['최근5년실적합계'],
     candidate['5년실적금액'],
     candidate['최근5년시공실적'],
+    candidate['3년 실적'],
+    candidate['3년실적'],
+    candidate['3년 실적 합계'],
+    candidate['최근3년실적'],
+    candidate['최근3년실적합계'],
+    candidate['3년실적금액'],
+    candidate['최근3년시공실적'],
   ];
   for (const value of directCandidates) {
     const parsed = toNumber(value);
@@ -1365,6 +1379,7 @@ export default function AgreementBoardWindow({
   ), [rangeId, rangeOptions]);
   const selectedRangeKey = selectedRangeOption?.key || '';
   const isMois30To50 = isMoisOwner && selectedRangeKey === MOIS_30_TO_50_KEY;
+  const isMois50To100 = isMoisOwner && selectedRangeKey === MOIS_50_TO_100_KEY;
   const isMoisUnderOr30To50 = isMoisOwner && (selectedRangeKey === MOIS_UNDER_30_KEY || selectedRangeKey === MOIS_30_TO_50_KEY);
   const isPpsUnder50 = ownerKeyUpper === 'PPS' && selectedRangeKey === PPS_UNDER_50_KEY;
   const isKrailUnder50 = ownerKeyUpper === 'KRAIL' && selectedRangeKey === KRAIL_UNDER_50_KEY;
@@ -1387,6 +1402,7 @@ export default function AgreementBoardWindow({
     });
   }, [isKrailOwner]);
   const managementScale = isMois30To50 ? (10 / 15) : 1;
+  const performanceAmountLabel = isMois50To100 ? '3년 실적' : '5년 실적';
   const roundForKrailUnder50 = React.useCallback(
     (value) => (isKrailUnder50 ? roundTo(value, 2) : value),
     [isKrailUnder50],
@@ -1541,12 +1557,14 @@ export default function AgreementBoardWindow({
   }, [bidDatePart, bidTimePeriod, bidHourInput, updateBidDeadlineFromParts]);
 
   const handleBaseAmountChange = React.useCallback((value) => {
-    const nextValue = String(value ?? '');
-    setBaseTouched(Boolean(nextValue.trim()));
+    // Any direct edit (including clear) means user is overriding auto-base.
+    setBaseTouched(true);
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ baseAmount: value });
   }, [onUpdateBoard]);
 
   const handleEstimatedAmountChange = React.useCallback((value) => {
+    // Re-enable auto-base calculation when estimated amount is edited again.
+    setBaseTouched(false);
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ estimatedAmount: value });
   }, [onUpdateBoard]);
 
@@ -1847,7 +1865,7 @@ export default function AgreementBoardWindow({
       const parsed = parseAmountValue(source);
       if (parsed !== null && parsed > 0) return parsed;
     }
-    if (ownerKeyUpper === 'MOIS' && selectedRangeKey === MOIS_30_TO_50_KEY) {
+    if (ownerKeyUpper === 'MOIS' && (selectedRangeKey === MOIS_30_TO_50_KEY || selectedRangeKey === MOIS_50_TO_100_KEY)) {
       const baseValue = parseAmountValue(baseAmount);
       const bidRateValue = parsePercentValue(bidRate);
       const adjustmentValue = parsePercentValue(adjustmentRate);
@@ -2543,6 +2561,9 @@ export default function AgreementBoardWindow({
     if (ownerKeyUpper === 'MOIS' && selectedRangeOption?.key === MOIS_30_TO_50_KEY) {
       return { bidRate: '88.745', adjustmentRate: '101.8', baseMultiplier: 1.1 };
     }
+    if (ownerKeyUpper === 'MOIS' && selectedRangeOption?.key === MOIS_50_TO_100_KEY) {
+      return { bidRate: '87.495', adjustmentRate: '101.8', baseMultiplier: 1.1 };
+    }
     return null;
   }, [ownerKeyUpper, selectedRangeOption?.key]);
 
@@ -2980,10 +3001,10 @@ export default function AgreementBoardWindow({
         [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']]
       );
       if (canonicalSipyung !== null && canonicalSipyung !== undefined) candidate._sipyung = canonicalSipyung;
-      const canonicalPerformance = candidate._performance5y ?? extractAmountValue(
+      const canonicalPerformance = candidate._performance5y ?? candidate._performance3y ?? extractAmountValue(
         candidate,
-        ['_performance5y', 'performance5y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적'],
-        [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적']]
+        ['_performance5y', 'performance5y', '_performance3y', 'performance3y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적', '3년 실적', '3년실적', '3년 실적 합계', '최근3년실적', '최근3년실적합계', '3년실적금액', '최근3년시공실적'],
+        [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적'], ['3년실적', '최근3년', 'threeyear', 'performance3', '시공실적']]
       );
       if (canonicalPerformance !== null && canonicalPerformance !== undefined) candidate._performance5y = canonicalPerformance;
       const canonicalScore = candidate._score ?? extractAmountValue(
@@ -3433,7 +3454,7 @@ export default function AgreementBoardWindow({
         : (bidAmountValue != null ? bidAmountValue : null);
       const includePossibleShare = (ownerKeyUpper === 'PPS' && rangeId === PPS_UNDER_50_KEY)
         || (ownerKeyUpper === 'LH' && rangeId === LH_UNDER_50_KEY)
-        || (ownerKeyUpper === 'MOIS' && rangeId === MOIS_30_TO_50_KEY);
+        || (ownerKeyUpper === 'MOIS' && (rangeId === MOIS_30_TO_50_KEY || rangeId === MOIS_50_TO_100_KEY));
       const dutyRateNumber = parseNumeric(regionDutyRate);
       const dutySummaryText = buildDutySummary(dutyRegions, dutyRateNumber, safeParticipantLimit);
       const formattedDeadline = formatBidDeadline(bidDeadline);
@@ -3927,6 +3948,7 @@ export default function AgreementBoardWindow({
         amount: evaluationAmount != null ? evaluationAmount : (perfBase != null ? perfBase : 0),
         inputs: {
           perf5y: perfAmount,
+          perf3y: perfAmount,
           baseAmount: perfBase,
           estimatedAmount: estimatedValue,
           fileType,
@@ -4018,15 +4040,23 @@ export default function AgreementBoardWindow({
         const subcontractScore = hasMembers
           ? (isMois30To50
             ? SUBCONTRACT_SCORE
+            : (isMois50To100
+              ? MOIS_50_TO_100_SUBCONTRACT_SCORE
             : (isEx50To100
               ? EX_50_TO_100_SUBCONTRACT_SCORE
-              : (isLh50To100 ? LH_50_TO_100_SUBCONTRACT_SCORE : null)))
+              : (isLh50To100 ? LH_50_TO_100_SUBCONTRACT_SCORE : null))))
           : null;
-        const materialScore = hasMembers && isLh50To100 ? LH_50_TO_100_MATERIAL_SCORE : null;
+        const materialScore = hasMembers
+          ? (isLh50To100
+            ? LH_50_TO_100_MATERIAL_SCORE
+            : (isMois50To100 ? MOIS_50_TO_100_MATERIAL_SCORE : null))
+          : null;
         const bidScoreValue = hasMembers
           ? (isEx50To100
             ? EX_50_TO_100_BID_SCORE
-            : (isLh50To100 ? LH_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT))
+            : (isLh50To100
+              ? LH_50_TO_100_BID_SCORE
+              : (isMois50To100 ? MOIS_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT)))
           : null;
         const technicianScoreForTotal = (technicianEnabled && technicianAbilityScore != null)
           ? technicianAbilityScore
@@ -4042,10 +4072,20 @@ export default function AgreementBoardWindow({
         totalScoreBase = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreBase));
         totalScoreWithCred = roundUpForPpsUnder50(roundForKrailUnder50(totalScoreWithCred));
         const totalMaxBase = managementMax + performanceMax
-          + (isEx50To100 ? EX_50_TO_100_BID_SCORE : (isLh50To100 ? LH_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT))
+          + (isEx50To100
+            ? EX_50_TO_100_BID_SCORE
+            : (isLh50To100
+              ? LH_50_TO_100_BID_SCORE
+              : (isMois50To100 ? MOIS_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT)))
           + netCostBonusScore
-          + (isMois30To50 ? SUBCONTRACT_SCORE : (isEx50To100 ? EX_50_TO_100_SUBCONTRACT_SCORE : (isLh50To100 ? LH_50_TO_100_SUBCONTRACT_SCORE : 0)))
-          + (isLh50To100 ? LH_50_TO_100_MATERIAL_SCORE : 0)
+          + (isMois30To50
+            ? SUBCONTRACT_SCORE
+            : (isMois50To100
+              ? MOIS_50_TO_100_SUBCONTRACT_SCORE
+              : (isEx50To100 ? EX_50_TO_100_SUBCONTRACT_SCORE : (isLh50To100 ? LH_50_TO_100_SUBCONTRACT_SCORE : 0))))
+          + (isLh50To100
+            ? LH_50_TO_100_MATERIAL_SCORE
+            : (isMois50To100 ? MOIS_50_TO_100_MATERIAL_SCORE : 0))
           + (technicianRequired && technicianAbilityMax ? technicianAbilityMax : 0);
         const totalMaxWithCred = credibilityEnabled ? totalMaxBase + (credibilityMax || 0) : totalMaxBase;
 
@@ -4096,7 +4136,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, isLh50To100, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax]);
+  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, isLh50To100, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -4153,9 +4193,12 @@ export default function AgreementBoardWindow({
       if (!candidate || typeof candidate !== 'object') return false;
       if (
         candidate._performance5y != null || candidate.performance5y != null
-        || candidate.perf5y != null || candidate.performanceTotal != null
+        || candidate._performance3y != null || candidate.performance3y != null
+        || candidate.perf5y != null || candidate.perf3y != null || candidate.performanceTotal != null
         || candidate['5년 실적'] != null || candidate['5년실적'] != null
         || candidate['최근5년실적'] != null || candidate['5년실적금액'] != null
+        || candidate['3년 실적'] != null || candidate['3년실적'] != null
+        || candidate['최근3년실적'] != null || candidate['3년실적금액'] != null
       ) {
         return true;
       }
@@ -4253,6 +4296,7 @@ export default function AgreementBoardWindow({
             bizYears,
             qualityEval,
             perf5y: candidatePerfAmount,
+            perf3y: candidatePerfAmount,
             baseAmount: perfBase,
             estimatedAmount: estimatedValue,
             fileType,
@@ -4265,6 +4309,7 @@ export default function AgreementBoardWindow({
         if (!Number.isFinite(payload.inputs.bizYears)) delete payload.inputs.bizYears;
         if (!Number.isFinite(payload.inputs.qualityEval)) delete payload.inputs.qualityEval;
         if (!Number.isFinite(payload.inputs.perf5y)) delete payload.inputs.perf5y;
+        if (!Number.isFinite(payload.inputs.perf3y)) delete payload.inputs.perf3y;
         if (!Number.isFinite(payload.inputs.baseAmount)) delete payload.inputs.baseAmount;
         if (!Number.isFinite(payload.inputs.estimatedAmount)) delete payload.inputs.estimatedAmount;
         if (!payload.inputs.fileType) delete payload.inputs.fileType;
@@ -4922,7 +4967,7 @@ export default function AgreementBoardWindow({
         },
       },
       perf5y: {
-        label: '5년 실적',
+        label: performanceAmountLabel,
         extractor: (candidate) => formatPlainAmount(getCandidatePerformanceAmount(candidate)),
       },
       sipyung: {
@@ -4956,7 +5001,7 @@ export default function AgreementBoardWindow({
       console.error('[AgreementBoard] copy failed', err);
       showHeaderAlert('복사에 실패했습니다. 다시 시도해 주세요.');
     }
-  }, [groups, showHeaderAlert]);
+  }, [groups, showHeaderAlert, performanceAmountLabel]);
 
   const tableColumnCount = React.useMemo(() => {
     const baseColumns = 12
@@ -4964,6 +5009,7 @@ export default function AgreementBoardWindow({
       + (technicianEnabled ? 2 : 0)
       + (isLHOwner ? 1 : 0)
       + ((isMois30To50 || isEx50To100) ? 1 : 0)
+      + (isMois50To100 ? 2 : 0)
       + (isLh50To100 ? 2 : 0);
     const variableColumns = columnSpans.nameSpan
       + columnSpans.shareSpan
@@ -4977,6 +5023,7 @@ export default function AgreementBoardWindow({
     credibilityEnabled,
     isLHOwner,
     isMois30To50,
+    isMois50To100,
     isEx50To100,
     isLh50To100,
     technicianEnabled,
@@ -5228,7 +5275,7 @@ export default function AgreementBoardWindow({
     <td key={`perf-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-perf-cell" rowSpan={rowSpan}>
       {meta.empty ? null : (
         <div className="excel-performance">
-          <span className="perf-label">5년 실적</span>
+          <span className="perf-label">{performanceAmountLabel}</span>
           <input
             type="text"
             className="excel-amount-input"
@@ -5468,10 +5515,10 @@ export default function AgreementBoardWindow({
       ? (qualityPoints != null ? formatScore(qualityPoints, resolveSummaryDigits('quality')) : '-')
       : null;
     const qualityPointsState = (isLHOwner && qualityPoints != null && qualityPoints < 2) ? 'warn' : '';
-    const subcontractDisplay = (isMois30To50 || isEx50To100 || isLh50To100)
+    const subcontractDisplay = (isMois30To50 || isMois50To100 || isEx50To100 || isLh50To100)
       ? (summaryInfo?.subcontractScore != null ? formatScore(summaryInfo.subcontractScore, resolveSummaryDigits('subcontract')) : '-')
       : null;
-    const materialDisplay = isLh50To100
+    const materialDisplay = (isLh50To100 || isMois50To100)
       ? (summaryInfo?.materialScore != null ? formatScore(summaryInfo.materialScore, resolveSummaryDigits('material')) : '-')
       : null;
     const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore, resolveSummaryDigits('bid')) : '-';
@@ -5614,10 +5661,10 @@ export default function AgreementBoardWindow({
             {qualityPointsDisplay}
           </td>
         )}
-        {isLh50To100 && (
+        {(isLh50To100 || isMois50To100) && (
           <td className="excel-cell total-cell subcontract-cell" rowSpan={rightRowSpan}>{subcontractDisplay}</td>
         )}
-        {isLh50To100 && (
+        {(isLh50To100 || isMois50To100) && (
           <td className="excel-cell total-cell material-cell" rowSpan={rightRowSpan}>{materialDisplay}</td>
         )}
         {(isMois30To50 || isEx50To100) && (
@@ -5747,7 +5794,7 @@ export default function AgreementBoardWindow({
                 </div>
                 <div className="excel-field-block size-lg">
                   <span className="field-label">기초금액</span>
-                  {(ownerKeyUpper === 'PPS' || isMois30To50) && (
+                  {(ownerKeyUpper === 'PPS' || isMois30To50 || isMois50To100) && (
                     <span className="field-label sub">(추정가격 × 1.1배)</span>
                   )}
                   <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />
@@ -6072,8 +6119,8 @@ export default function AgreementBoardWindow({
                 />
               )}
               {isLHOwner && <col className="col-quality-points" style={{ width: `${COLUMN_WIDTHS.qualityPoints}px` }} />}
-              {isLh50To100 && <col className="col-subcontract" style={{ width: `${COLUMN_WIDTHS.subcontract}px` }} />}
-              {isLh50To100 && <col className="col-material" style={{ width: `${COLUMN_WIDTHS.material}px` }} />}
+              {(isLh50To100 || isMois50To100) && <col className="col-subcontract" style={{ width: `${COLUMN_WIDTHS.subcontract}px` }} />}
+              {(isLh50To100 || isMois50To100) && <col className="col-material" style={{ width: `${COLUMN_WIDTHS.material}px` }} />}
               {(isMois30To50 || isEx50To100) && (
                 <col className="col-subcontract" style={{ width: resolveColWidth('subcontract') }} />
               )}
@@ -6194,12 +6241,12 @@ export default function AgreementBoardWindow({
                     품질점수
                   </th>
                 )}
-                {isLh50To100 && (
+                {(isLh50To100 || isMois50To100) && (
                   <th rowSpan="2" className="col-header subcontract-header">
                     하도급
                   </th>
                 )}
-                {isLh50To100 && (
+                {(isLh50To100 || isMois50To100) && (
                   <th rowSpan="2" className="col-header material-header">
                     자재
                   </th>

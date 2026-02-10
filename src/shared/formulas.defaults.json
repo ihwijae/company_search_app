@@ -1805,23 +1805,23 @@
                       "thresholds": [
                         {
                           "lt": 0.5,
-                          "score": 8.0
+                          "score": 7.142857
                         },
                         {
                           "lt": 0.75,
-                          "score": 7.2
+                          "score": 6.642857
                         },
                         {
                           "lt": 1.0,
-                          "score": 6.4
+                          "score": 6.142857
                         },
                         {
                           "lt": 1.25,
-                          "score": 5.6
+                          "score": 5.642857
                         },
                         {
                           "gte": 1.25,
-                          "score": 4.8
+                          "score": 5.142857
                         }
                       ]
                     },
@@ -1831,23 +1831,40 @@
                       "thresholds": [
                         {
                           "gte": 1.5,
-                          "score": 7.0
+                          "score": 7.142857
                         },
                         {
                           "gte": 1.2,
-                          "score": 6.3
+                          "score": 6.642857
                         },
                         {
                           "gte": 1.0,
-                          "score": 5.6
+                          "score": 6.142857
                         },
                         {
                           "gte": 0.7,
-                          "score": 4.9
+                          "score": 5.642857
                         },
                         {
                           "lt": 0.7,
-                          "score": 4.2
+                          "score": 5.142857
+                        }
+                      ]
+                    },
+                    "bizYears": {
+                      "scale": "higherIsBetter",
+                      "thresholds": [
+                        {
+                          "gteYears": 5,
+                          "score": 0.714286
+                        },
+                        {
+                          "gteYears": 3,
+                          "score": 0.642857
+                        },
+                        {
+                          "ltYears": 3,
+                          "score": 0.571429
                         }
                       ]
                     }
@@ -1908,43 +1925,43 @@
                     },
                     {
                       "grade": "BB-",
-                      "score": 14
+                      "score": 14.285714
                     },
                     {
                       "grade": "B+",
-                      "score": 13
+                      "score": 13.571429
                     },
                     {
                       "grade": "B0",
-                      "score": 13
+                      "score": 13.571429
                     },
                     {
                       "grade": "B-",
-                      "score": 13
+                      "score": 13.571429
                     },
                     {
                       "grade": "CCC+",
-                      "score": 10
+                      "score": 11.428571
                     },
                     {
                       "grade": "CCC0",
-                      "score": 10
+                      "score": 11.428571
                     },
                     {
                       "grade": "CCC-",
-                      "score": 10
+                      "score": 11.428571
                     },
                     {
                       "grade": "CC",
-                      "score": 10
+                      "score": 11.428571
                     },
                     {
                       "grade": "C",
-                      "score": 10
+                      "score": 11.428571
                     },
                     {
                       "grade": "D",
-                      "score": 10
+                      "score": 11.428571
                     }
                   ],
                   "note": "행안부 신용평가 기본값"
@@ -1960,18 +1977,18 @@
               }
             },
             "performance": {
-              "formula": "(perf5y / baseAmount) * 13",
+              "formula": "(perf3y / (estimatedAmount * 1.7)) * 15",
               "variables": [
-                "perf5y",
-                "baseAmount"
+                "perf3y",
+                "estimatedAmount"
               ],
-              "maxScore": 13,
+              "maxScore": 15,
               "rounding": {
                 "method": "truncate",
                 "digits": 2
               }
             },
-            "notes": "행안부 50억~100억 기본값 (임시)",
+            "notes": "행안부 50억~100억 기본값",
             "effectiveFrom": null,
             "effectiveTo": null
           }

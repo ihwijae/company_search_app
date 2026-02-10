@@ -1903,6 +1903,9 @@ try {
         }
         const rating = toNumber(c['시평']);
         const perf5y = toNumber(c['5년 실적']);
+        const perf3y = toNumber(c['3년 실적']);
+        const useMois3yPerformance = normalizedOwnerId === 'mois' && String(menuKey || '') === 'mois-50to100';
+        const performanceAmount = useMois3yPerformance ? perf3y : perf5y;
         const debtRatio = parseNumeric(c['부채비율']);
         const currentRatio = parseNumeric(c['유동비율']);
         const bizYearsInfo = computeBizYears(c['영업기간'], bizEvaluationDate);
@@ -1969,7 +1972,8 @@ try {
                 currentRatio,
                 bizYears,
                 qualityEval,
-                perf5y,
+                perf5y: performanceAmount,
+                perf3y: perf3y,
                 baseAmount: baseAmountNumber,
               },
               industryAvg,
@@ -2001,7 +2005,8 @@ try {
               currentRatio,
               bizYears,
               qualityEval,
-              perf5y,
+              perf5y: performanceAmount,
+              perf3y: perf3y,
               baseAmount: baseAmountNumber,
               creditGrade: creditGradeRaw,
             },
@@ -2070,7 +2075,7 @@ try {
           const entryNum = toNumber(entryAmount);
           const baseNum = toNumber(baseAmount);
           const sipValue = rating;
-          const perfValue = perf5y;
+          const perfValue = performanceAmount;
           const hasEntry = entryNum > 0;
           const moneyCondition = hasEntry ? (sipValue >= entryNum) : true;
           const perfCondition = baseNum > 0 && perfValue >= baseNum;
@@ -2129,7 +2134,7 @@ try {
           const entryNum = toNumber(entryAmount);
           const perfTargetRaw = perfectPerformanceNumber;
           const sipNumeric = parseNumeric(rating);
-          const perfNumeric = parseNumeric(perf5y);
+          const perfNumeric = parseNumeric(performanceAmount);
           const perfTarget = toNumber(perfTargetRaw);
           const hasEntry = entryNum > 0;
           const toLocale = (num) => (Number.isFinite(num) ? num.toLocaleString() : String(num || '0'));
@@ -2177,22 +2182,31 @@ try {
           manager,
           region,
           rating,
-          perf5y,
+          perf5y: performanceAmount,
+          perf3y,
           sipyung: rating,
           '시평금액': rating,
           '기초금액': rating,
           '기초금액(원)': rating,
-          performance5y: perf5y,
+          performance5y: performanceAmount,
+          performance3y: perf3y,
           '시평': rating,
           '시평액': rating,
           '시평액(원)': rating,
-          '5년 실적': perf5y,
-          '5년실적': perf5y,
-          '5년 실적 합계': perf5y,
-          '최근5년실적': perf5y,
-          '최근5년실적합계': perf5y,
-          '5년실적금액': perf5y,
-          '최근5년시공실적': perf5y,
+          '5년 실적': performanceAmount,
+          '5년실적': performanceAmount,
+          '5년 실적 합계': performanceAmount,
+          '최근5년실적': performanceAmount,
+          '최근5년실적합계': performanceAmount,
+          '5년실적금액': performanceAmount,
+          '최근5년시공실적': performanceAmount,
+          '3년 실적': perf3y,
+          '3년실적': perf3y,
+          '3년 실적 합계': perf3y,
+          '최근3년실적': perf3y,
+          '최근3년실적합계': perf3y,
+          '3년실적금액': perf3y,
+          '최근3년시공실적': perf3y,
           '여성기업': c['여성기업'],
           '품질평가': c['품질평가'],
           summaryStatus,
