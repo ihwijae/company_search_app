@@ -1026,6 +1026,10 @@ button.primary:hover { background: var(--accent-2); }
   padding: 2px 8px 6px;
   text-align: right;
 }
+.excel-field-block .readonly-note.a-value-warning-note {
+  color: #dc2626;
+  font-weight: 700;
+}
 .field-label { font-size: 11px; font-weight: 600; color: #334155; letter-spacing: 0.04em; }
 .field-label.sub { font-size: 10px; font-weight: 500; color: #64748b; letter-spacing: 0; }
 .excel-field-block .input,

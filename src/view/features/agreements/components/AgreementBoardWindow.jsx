@@ -2599,10 +2599,10 @@ export default function AgreementBoardWindow({
       return { bidRate: '88.745', adjustmentRate: '101.6', baseMultiplier: 1.1 };
     }
     if (ownerKeyUpper === 'MOIS' && selectedRangeOption?.key === MOIS_30_TO_50_KEY) {
-      return { bidRate: '88.745', adjustmentRate: '101.8', baseMultiplier: 1.1 };
+      return { bidRate: '88.745', adjustmentRate: '101.6', baseMultiplier: 1.1 };
     }
     if (ownerKeyUpper === 'MOIS' && selectedRangeOption?.key === MOIS_50_TO_100_KEY) {
-      return { bidRate: '87.495', adjustmentRate: '101.8', baseMultiplier: 1.1 };
+      return { bidRate: '87.495', adjustmentRate: '101.6', baseMultiplier: 1.1 };
     }
     return null;
   }, [ownerKeyUpper, selectedRangeOption?.key]);
@@ -5905,7 +5905,7 @@ export default function AgreementBoardWindow({
                     <AmountInput value={editableBidAmount} onChange={handleBidAmountChange} placeholder="원" />
                   )}
                   {isMois50To100 && (
-                    <div className="readonly-note">A값 반드시 확인하세요!</div>
+                    <div className="readonly-note a-value-warning-note">A값 반드시 확인하세요!</div>
                   )}
                 </div>
                 <div className="excel-field-block size-md">
