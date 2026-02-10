@@ -12,6 +12,29 @@ const normalize = (value) => {
   return String(value).trim();
 };
 
+export const normalizeCellText = (value) => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value).trim();
+  }
+  if (typeof value === 'object') {
+    // ExcelJS richText cell value
+    if (Array.isArray(value.richText)) {
+      return value.richText.map((part) => (part && part.text ? String(part.text) : '')).join('').trim();
+    }
+    if (value.text !== undefined && value.text !== null) {
+      return String(value.text).trim();
+    }
+    if (value.result !== undefined && value.result !== null) {
+      return String(value.result).trim();
+    }
+    if (value.hyperlink !== undefined && value.hyperlink !== null) {
+      return String(value.hyperlink).trim();
+    }
+  }
+  return String(value).trim();
+};
+
 export const getCandidateTextField = (candidate, fields = []) => {
   if (!candidate || typeof candidate !== 'object') return '';
   const sources = [candidate, candidate.snapshot];
@@ -21,7 +44,7 @@ export const getCandidateTextField = (candidate, fields = []) => {
       if (Object.prototype.hasOwnProperty.call(source, field)) {
         const value = source[field];
         if (value !== undefined && value !== null && value !== '') {
-          return value;
+          return normalizeCellText(value);
         }
       }
     }

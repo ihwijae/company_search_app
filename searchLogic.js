@@ -22,6 +22,22 @@ const parseAmount = (value) => {
   }
 };
 
+const normalizeCellText = (value) => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value).trim();
+  }
+  if (typeof value === 'object') {
+    if (Array.isArray(value.richText)) {
+      return value.richText.map((part) => (part && part.text ? String(part.text) : '')).join('').trim();
+    }
+    if (value.text !== undefined && value.text !== null) return String(value.text).trim();
+    if (value.result !== undefined && value.result !== null) return String(value.result).trim();
+    if (value.hyperlink !== undefined && value.hyperlink !== null) return String(value.hyperlink).trim();
+  }
+  return String(value).trim();
+};
+
 const isWomenOwned = (company) => {
   if (!company || typeof company !== 'object') return false;
   const raw = company['여성기업'];
@@ -255,6 +271,9 @@ class SearchLogic {
                             let processedValue = (item === "부채비율" || item === "유동비율") && typeof value === 'number'
                                 ? value * 100
                                 : value;
+                            if (processedValue && typeof processedValue === 'object') {
+                                processedValue = normalizeCellText(processedValue);
+                            }
 
                             companyData[item] = processedValue ?? ""; // null이나 undefined는 빈 문자열로
                             companyStatuses[item] = status;
