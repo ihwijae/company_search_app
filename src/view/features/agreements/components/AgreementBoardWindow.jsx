@@ -4612,6 +4612,11 @@ export default function AgreementBoardWindow({
   };
 
   const handleRemove = (groupIndex, slotIndex) => {
+    const removedUid = groupAssignments[groupIndex]?.[slotIndex];
+    const removedCandidate = removedUid ? participantMap.get(removedUid)?.candidate : null;
+    if (removedCandidate) {
+      clearAgreementOverridesForCandidates([removedCandidate]);
+    }
     setGroupAssignments((prev) => {
       const next = prev.map((group) => group.slice());
       if (next[groupIndex]) next[groupIndex][slotIndex] = null;
@@ -4792,6 +4797,38 @@ export default function AgreementBoardWindow({
     return entry?.candidate || null;
   }, [groupAssignments, participantMap]);
 
+  const clearAgreementOverridesForCandidates = React.useCallback((targets = []) => {
+    if (!Array.isArray(targets) || targets.length === 0) return;
+    if (typeof onUpdateBoard !== 'function') return;
+    const idSet = new Set();
+    const bizSet = new Set();
+    const nameSet = new Set();
+    targets.forEach((candidate) => {
+      if (!candidate || typeof candidate !== 'object') return;
+      if (candidate.id != null && candidate.id !== '') idSet.add(String(candidate.id));
+      const biz = normalizeBizNo(getBizNo(candidate));
+      if (biz) bizSet.add(biz);
+      const name = String(getCompanyName(candidate) || '').trim();
+      if (name) nameSet.add(name);
+    });
+    if (idSet.size === 0 && bizSet.size === 0 && nameSet.size === 0) return;
+    const nextCandidates = (candidates || []).map((item) => {
+      if (!item || typeof item !== 'object') return item;
+      let matched = false;
+      if (!matched && item.id != null && item.id !== '' && idSet.has(String(item.id))) matched = true;
+      if (!matched) {
+        const biz = normalizeBizNo(getBizNo(item));
+        if (biz && bizSet.has(biz)) matched = true;
+      }
+      if (!matched) {
+        const name = String(getCompanyName(item) || '').trim();
+        if (name && nameSet.has(name)) matched = true;
+      }
+      return matched ? stripAgreementAmountOverrides(item) : item;
+    });
+    onUpdateBoard({ candidates: nextCandidates });
+  }, [candidates, onUpdateBoard]);
+
   const handleDeleteGroups = async () => {
     if (selectedGroups.size === 0) {
       showHeaderAlert('삭제할 협정을 선택해 주세요.');
@@ -4807,6 +4844,16 @@ export default function AgreementBoardWindow({
     });
     if (!ok) return;
     const selected = new Set(selectedGroups);
+    const removedCandidates = [];
+    groupAssignments.forEach((row, idx) => {
+      if (!selected.has(idx) || !Array.isArray(row)) return;
+      row.forEach((uid) => {
+        if (!uid) return;
+        const candidate = participantMap.get(uid)?.candidate;
+        if (candidate) removedCandidates.push(candidate);
+      });
+    });
+    clearAgreementOverridesForCandidates(removedCandidates);
     setGroupAssignments((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setGroupShares((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setGroupShareRawInputs((prev) => prev.filter((_, idx) => !selected.has(idx)));
