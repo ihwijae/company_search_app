@@ -1741,7 +1741,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-name { width: 100px; }
 .col-share { width: 56px; }
 .col-credibility-slot { width: 45px; }
-.col-status { width: 64px; }
+.col-status { width: 56px; }
 .col-management { width: 55px; }
 .col-management-bonus { width: 50px; }
 .col-share-total { width: 60px; }
@@ -1950,7 +1950,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-status-cell {
-  min-width: 64px;
+  min-width: 56px;
   overflow: hidden;
 }
 

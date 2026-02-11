@@ -124,7 +124,7 @@ const COLUMN_WIDTHS = {
   approval: 90,
   name: 100,
   share: 56,
-  status: 64,
+  status: 56,
   management: 55,
   managementBonus: 50,
   shareTotal: 60,
