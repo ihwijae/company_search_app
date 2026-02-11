@@ -2262,6 +2262,11 @@ button.primary:hover { background: var(--accent-2); }
   background: #ffedd5;
 }
 
+.excel-cell.total-cell.construction-experience-warn {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
 .excel-cell.total-score.score-full {
   color: #15803d;
   font-weight: 700;

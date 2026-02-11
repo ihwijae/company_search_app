@@ -5591,6 +5591,9 @@ export default function AgreementBoardWindow({
     const constructionExperienceDisplay = isLHOwner
       ? (constructionExperienceScore != null ? formatScore(constructionExperienceScore, resolveSummaryDigits('performance')) : '-')
       : null;
+    const constructionExperienceWarn = isLHOwner
+      && constructionExperienceScore != null
+      && constructionExperienceScore < CONSTRUCTION_EXPERIENCE_SCORE_MAX;
     const qualityPointsState = (isLHOwner && qualityPoints != null && qualityPoints < 2) ? 'warn' : '';
     const subcontractDisplay = (isMois30To50 || isMois50To100 || isEx50To100 || isLh50To100)
       ? (summaryInfo?.subcontractScore != null ? formatScore(summaryInfo.subcontractScore, resolveSummaryDigits('subcontract')) : '-')
@@ -5739,7 +5742,10 @@ export default function AgreementBoardWindow({
           </td>
         )}
         {isLHOwner && (
-          <td className="excel-cell total-cell construction-experience-cell" rowSpan={rightRowSpan}>
+          <td
+            className={`excel-cell total-cell construction-experience-cell${constructionExperienceWarn ? ' construction-experience-warn' : ''}`}
+            rowSpan={rightRowSpan}
+          >
             {constructionExperienceDisplay}
           </td>
         )}
