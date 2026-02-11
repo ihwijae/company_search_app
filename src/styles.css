@@ -1741,7 +1741,7 @@ button.primary:hover { background: var(--accent-2); }
 .col-name { width: 100px; }
 .col-share { width: 65px; }
 .col-credibility-slot { width: 45px; }
-.col-status { width: 45px; }
+.col-status { width: 72px; }
 .col-management { width: 55px; }
 .col-management-bonus { width: 50px; }
 .col-share-total { width: 60px; }
@@ -1950,7 +1950,8 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-status-cell {
-  min-width: 60px;
+  min-width: 72px;
+  overflow: hidden;
 }
 
 .order-cell,
@@ -2185,6 +2186,7 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-amount-input {
   width: 100%;
+  box-sizing: border-box;
   border-radius: 8px;
   border: 1px solid #d1d5db;
   padding: 4px 6px;
@@ -2225,7 +2227,9 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-status-input {
-  width: 72px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   text-align: center;
 }
 
