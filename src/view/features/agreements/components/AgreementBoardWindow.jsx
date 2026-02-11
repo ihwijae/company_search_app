@@ -5762,6 +5762,7 @@ export default function AgreementBoardWindow({
             >
               <option value="">선택</option>
               <option value="알림">알림</option>
+              <option value="추가">추가</option>
               <option value="정정">정정</option>
               <option value="취소">취소</option>
             </select>
