@@ -1739,9 +1739,9 @@ button.primary:hover { background: var(--accent-2); }
 .col-select { width: 32px; }
 .col-approval { width: 90px; }
 .col-name { width: 100px; }
-.col-share { width: 65px; }
+.col-share { width: 56px; }
 .col-credibility-slot { width: 45px; }
-.col-status { width: 86px; }
+.col-status { width: 76px; }
 .col-management { width: 55px; }
 .col-management-bonus { width: 50px; }
 .col-share-total { width: 60px; }
@@ -1930,7 +1930,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-share-cell {
-  min-width: 50px;
+  min-width: 56px;
 }
 
 .excel-credibility-cell {
@@ -1950,7 +1950,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-status-cell {
-  min-width: 86px;
+  min-width: 76px;
   overflow: hidden;
 }
 

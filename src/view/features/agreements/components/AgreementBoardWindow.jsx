@@ -123,8 +123,8 @@ const COLUMN_WIDTHS = {
   order: 40,
   approval: 90,
   name: 100,
-  share: 65,
-  status: 86,
+  share: 56,
+  status: 76,
   management: 55,
   managementBonus: 50,
   shareTotal: 60,
@@ -5576,7 +5576,11 @@ export default function AgreementBoardWindow({
             onDoubleClick={() => startAmountCellEdit(meta, 'share')}
             title="더블클릭하여 수정"
           >
-            {meta.shareValue || (meta.shareForCalc != null ? formatShareDecimal(meta.shareForCalc) : (meta.sharePlaceholder || '-'))}
+            {(() => {
+              const base = meta.shareValue || (meta.shareForCalc != null ? formatShareDecimal(meta.shareForCalc) : '');
+              if (!base) return '-';
+              return `${base}%`;
+            })()}
           </button>
         )
       )}
@@ -5587,12 +5591,35 @@ export default function AgreementBoardWindow({
     <td key={`cred-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-credibility-cell" rowSpan={rowSpan}>
       {meta.empty ? null : (
         <>
-          <input
-            type="text"
-            value={meta.credibilityValue || ''}
-            onChange={(event) => handleCredibilityInput(meta.groupIndex, meta.slotIndex, event.target.value)}
-            placeholder="0"
-          />
+          {isAmountCellEditing(meta, 'credibility') ? (
+            <input
+              type="text"
+              className="excel-amount-input excel-credibility-input"
+              value={meta.credibilityValue || ''}
+              onChange={(event) => handleCredibilityInput(meta.groupIndex, meta.slotIndex, event.target.value)}
+              onBlur={() => finishAmountCellEdit(meta, 'credibility', true)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  finishAmountCellEdit(meta, 'credibility', true);
+                } else if (event.key === 'Escape') {
+                  event.preventDefault();
+                  finishAmountCellEdit(meta, 'credibility', true);
+                }
+              }}
+              placeholder="0"
+              autoFocus
+            />
+          ) : (
+            <button
+              type="button"
+              className="excel-inline-edit-display"
+              onDoubleClick={() => startAmountCellEdit(meta, 'credibility')}
+              title="더블클릭하여 수정"
+            >
+              {meta.credibilityValue || '0'}
+            </button>
+          )}
           {meta.credibilityProduct && (
             <div className="excel-hint">반영 {meta.credibilityProduct}</div>
           )}
