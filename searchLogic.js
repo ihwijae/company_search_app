@@ -109,15 +109,20 @@ const normalizeBizNumber = (value) => {
 const buildDedupKey = (item) => {
   if (!item || typeof item !== 'object') return '';
   const typeToken = item._file_type ? String(item._file_type).trim().toLowerCase() : '';
+  const regionSource = item['대표지역'] || item['지역'];
+  const regionToken = regionSource ? String(regionSource).trim() : '';
+  const appendRegion = (baseKey) => (regionToken ? `${baseKey}|region:${regionToken}` : baseKey);
   const biz = normalizeBizNumber(item['사업자번호']);
   if (biz) {
-    return typeToken ? `biz:${biz}|type:${typeToken}` : `biz:${biz}`;
+    const baseKey = typeToken ? `biz:${biz}|type:${typeToken}` : `biz:${biz}`;
+    return appendRegion(baseKey);
   }
   const nameSource = item['검색된 회사'] || item['회사명'] || item['대표자'];
   if (nameSource) {
     const normalized = String(nameSource).trim();
     if (normalized) {
-      return typeToken ? `name:${normalized}|type:${typeToken}` : `name:${normalized}`;
+      const baseKey = typeToken ? `name:${normalized}|type:${typeToken}` : `name:${normalized}`;
+      return appendRegion(baseKey);
     }
   }
   return '';
