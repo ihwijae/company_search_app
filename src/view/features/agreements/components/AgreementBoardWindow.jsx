@@ -32,6 +32,7 @@ const MOIS_50_TO_100_SUBCONTRACT_SCORE = 10;
 const MOIS_50_TO_100_MATERIAL_SCORE = 10;
 const SUBCONTRACT_SCORE = 5;
 const MANAGEMENT_SCORE_MAX = 15;
+const CONSTRUCTION_EXPERIENCE_SCORE_MAX = 15;
 const KRAIL_TECHNICIAN_ABILITY_MAX = 5;
 const PERFORMANCE_DEFAULT_MAX = 13;
 const PERFORMANCE_MOIS_DEFAULT_MAX = 15;
@@ -128,6 +129,7 @@ const COLUMN_WIDTHS = {
   managementBonus: 50,
   shareTotal: 60,
   qualityPoints: 55,
+  constructionExperience: 70,
   performanceCell: 90,
   performanceSummary: 50,
   technicianCell: 90,
@@ -154,6 +156,7 @@ const COLLAPSED_COLUMN_WIDTHS = {
   managementBonus: 26,
   shareTotal: 28,
   qualityPoints: 28,
+  constructionExperience: 32,
   performanceCell: 26,
   performanceSummary: 28,
   technicianCell: 26,
@@ -755,6 +758,16 @@ const clampScore = (value, max = MANAGEMENT_SCORE_MAX) => {
   if (number < 0) return 0;
   if (number > max) return max;
   return number;
+};
+
+const resolveConstructionExperienceScore = (performanceScore, qualityPoints) => {
+  const performanceValue = toNumber(performanceScore);
+  if (performanceValue == null) return null;
+  const qualityValue = toNumber(qualityPoints);
+  return clampScore(
+    performanceValue + (qualityValue == null ? 0 : qualityValue),
+    CONSTRUCTION_EXPERIENCE_SCORE_MAX,
+  );
 };
 
 const getCandidateManagementScore = (candidate) => {
@@ -2420,6 +2433,7 @@ export default function AgreementBoardWindow({
       + (collapsedColumns.managementBonus ? COLLAPSED_COLUMN_WIDTHS.managementBonus : COLUMN_WIDTHS.managementBonus)
       + COLUMN_WIDTHS.shareTotal
       + (isLHOwner ? COLUMN_WIDTHS.qualityPoints : 0)
+      + (isLHOwner ? COLUMN_WIDTHS.constructionExperience : 0)
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
       + (technicianEnabled
@@ -2505,13 +2519,13 @@ export default function AgreementBoardWindow({
       const managementScore = roundForLhTotals(managementMaxValue * shareRatio) || 0;
       const qualityTotal = 85 * shareRatio;
       const qualityPoints = resolveQualityPoints(qualityTotal, selectedRangeOption?.key) || 0;
+      const constructionExperienceScore = resolveConstructionExperienceScore(performanceMax, qualityPoints) || 0;
       const totalScore = roundForLhTotals(
         managementScore
-          + performanceMax
+          + constructionExperienceScore
           + BID_SCORE_DEFAULT
           + (netCostBonusValue || 0)
           + credibilityBonus
-          + qualityPoints
       ) || 0;
       if (totalScore >= (LH_FULL_SCORE - 1e-6)) {
         best = {
@@ -2520,6 +2534,7 @@ export default function AgreementBoardWindow({
           managementScore,
           qualityTotal,
           qualityPoints,
+          constructionExperienceScore,
           totalScore,
         };
         break;
@@ -5522,12 +5537,19 @@ export default function AgreementBoardWindow({
       ? summaryInfo?.totalMaxWithCred
       : summaryInfo?.totalMaxBase;
     const qualityPoints = isLHOwner ? resolveQualityPoints(qualityTotal, selectedRangeOption?.key) : null;
-    const qualityMax = isLHOwner ? resolveQualityPointsMax(selectedRangeOption?.key) : 0;
+    const constructionExperienceScore = isLHOwner
+      ? resolveConstructionExperienceScore(summaryInfo?.performanceScore, qualityPoints)
+      : null;
+    const performanceScoreForTotal = summaryInfo?.performanceScore;
     const totalScore = baseTotalScore != null
-      ? baseTotalScore + (qualityPoints || 0)
+      ? (isLHOwner
+        ? baseTotalScore - (performanceScoreForTotal || 0) + (constructionExperienceScore || 0)
+        : baseTotalScore)
       : null;
     const totalMax = baseTotalMax != null
-      ? baseTotalMax + (isLHOwner ? (qualityPoints || 0) : 0)
+      ? (isLHOwner
+        ? baseTotalMax - (summaryInfo?.performanceMax || 0) + CONSTRUCTION_EXPERIENCE_SCORE_MAX
+        : baseTotalMax)
       : null;
     if (totalScore != null && (isLHOwner ? LH_FULL_SCORE : (ownerKeyUpper === 'PPS' ? PPS_FULL_SCORE : totalMax)) != null) {
       const threshold = isLHOwner ? LH_FULL_SCORE : (ownerKeyUpper === 'PPS' ? PPS_FULL_SCORE : totalMax);
@@ -5565,6 +5587,9 @@ export default function AgreementBoardWindow({
       : null;
     const qualityPointsDisplay = isLHOwner
       ? (qualityPoints != null ? formatScore(qualityPoints, resolveSummaryDigits('quality')) : '-')
+      : null;
+    const constructionExperienceDisplay = isLHOwner
+      ? (constructionExperienceScore != null ? formatScore(constructionExperienceScore, resolveSummaryDigits('performance')) : '-')
       : null;
     const qualityPointsState = (isLHOwner && qualityPoints != null && qualityPoints < 2) ? 'warn' : '';
     const subcontractDisplay = (isMois30To50 || isMois50To100 || isEx50To100 || isLh50To100)
@@ -5711,6 +5736,11 @@ export default function AgreementBoardWindow({
             rowSpan={rightRowSpan}
           >
             {qualityPointsDisplay}
+          </td>
+        )}
+        {isLHOwner && (
+          <td className="excel-cell total-cell construction-experience-cell" rowSpan={rightRowSpan}>
+            {constructionExperienceDisplay}
           </td>
         )}
         {(isLh50To100 || isMois50To100) && (
@@ -6174,6 +6204,7 @@ export default function AgreementBoardWindow({
                 />
               )}
               {isLHOwner && <col className="col-quality-points" style={{ width: `${COLUMN_WIDTHS.qualityPoints}px` }} />}
+              {isLHOwner && <col className="col-construction-experience" style={{ width: `${COLUMN_WIDTHS.constructionExperience}px` }} />}
               {(isLh50To100 || isMois50To100) && <col className="col-subcontract" style={{ width: `${COLUMN_WIDTHS.subcontract}px` }} />}
               {(isLh50To100 || isMois50To100) && <col className="col-material" style={{ width: `${COLUMN_WIDTHS.material}px` }} />}
               {(isMois30To50 || isEx50To100) && (
@@ -6294,6 +6325,11 @@ export default function AgreementBoardWindow({
                 {isLHOwner && (
                   <th rowSpan="2" className="col-header quality-points-header">
                     품질점수
+                  </th>
+                )}
+                {isLHOwner && (
+                  <th rowSpan="2" className="col-header construction-experience-header">
+                    시공경험점수
                   </th>
                 )}
                 {(isLh50To100 || isMois50To100) && (
