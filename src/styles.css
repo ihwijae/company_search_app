@@ -2238,6 +2238,11 @@ button.primary:hover { background: var(--accent-2); }
   font-weight: 700;
 }
 
+.excel-status.score-only.warn .excel-inline-edit-display {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
 .excel-inline-edit-display {
   width: 100%;
   border: 1px solid transparent;
@@ -2255,6 +2260,14 @@ button.primary:hover { background: var(--accent-2); }
 .excel-inline-edit-display:hover {
   border-color: #cbd5e1;
   background: #f8fafc;
+}
+
+.excel-inline-edit-display-share {
+  text-align: right;
+}
+
+.excel-share-input {
+  text-align: right;
 }
 
 .excel-performance {

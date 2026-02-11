@@ -5083,7 +5083,7 @@ export default function AgreementBoardWindow({
 
   const finishAmountCellEdit = React.useCallback((meta, kind, commit = true) => {
     if (!meta || meta.empty) return;
-    if (commit) handleAmountBlur(meta.groupIndex, meta.slotIndex, kind);
+    if (commit && kind !== 'share') handleAmountBlur(meta.groupIndex, meta.slotIndex, kind);
     setEditingAmountCell((prev) => {
       if (!prev) return prev;
       if (prev.groupIndex !== meta.groupIndex || prev.slotIndex !== meta.slotIndex || prev.kind !== kind) return prev;
@@ -5550,14 +5550,35 @@ export default function AgreementBoardWindow({
   const renderShareCell = (meta) => (
     <td key={`share-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-share-cell">
       {meta.empty ? null : (
-        <>
+        isAmountCellEditing(meta, 'share') ? (
           <input
             type="text"
+            className="excel-amount-input excel-share-input"
             value={meta.shareValue}
             onChange={(event) => handleShareInput(meta.groupIndex, meta.slotIndex, event.target.value)}
+            onBlur={() => finishAmountCellEdit(meta, 'share', true)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                finishAmountCellEdit(meta, 'share', true);
+              } else if (event.key === 'Escape') {
+                event.preventDefault();
+                finishAmountCellEdit(meta, 'share', true);
+              }
+            }}
             placeholder={meta.sharePlaceholder}
+            autoFocus
           />
-        </>
+        ) : (
+          <button
+            type="button"
+            className="excel-inline-edit-display excel-inline-edit-display-share"
+            onDoubleClick={() => startAmountCellEdit(meta, 'share')}
+            title="더블클릭하여 수정"
+          >
+            {meta.shareValue || (meta.shareForCalc != null ? formatShareDecimal(meta.shareForCalc) : (meta.sharePlaceholder || '-'))}
+          </button>
+        )
       )}
     </td>
   );
