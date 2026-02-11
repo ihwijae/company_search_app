@@ -4616,7 +4616,7 @@ export default function AgreementBoardWindow({
     const removedUid = groupAssignments[groupIndex]?.[slotIndex];
     const removedCandidate = removedUid ? participantMap.get(removedUid)?.candidate : null;
     if (removedCandidate) {
-      clearAgreementOverridesForCandidates([removedCandidate]);
+      removeCandidatesFromBoard([removedCandidate]);
     }
     setGroupAssignments((prev) => {
       const next = prev.map((group) => group.slice());
@@ -4798,7 +4798,7 @@ export default function AgreementBoardWindow({
     return entry?.candidate || null;
   }, [groupAssignments, participantMap]);
 
-  const clearAgreementOverridesForCandidates = React.useCallback((targets = []) => {
+  const removeCandidatesFromBoard = React.useCallback((targets = []) => {
     if (!Array.isArray(targets) || targets.length === 0) return;
     if (typeof onUpdateBoard !== 'function') return;
     const idSet = new Set();
@@ -4813,7 +4813,7 @@ export default function AgreementBoardWindow({
       if (name) nameSet.add(name);
     });
     if (idSet.size === 0 && bizSet.size === 0 && nameSet.size === 0) return;
-    const nextCandidates = (candidates || []).map((item) => {
+    const nextCandidates = (candidates || []).filter((item) => {
       if (!item || typeof item !== 'object') return item;
       let matched = false;
       if (!matched && item.id != null && item.id !== '' && idSet.has(String(item.id))) matched = true;
@@ -4825,10 +4825,13 @@ export default function AgreementBoardWindow({
         const name = String(getCompanyName(item) || '').trim();
         if (name && nameSet.has(name)) matched = true;
       }
-      return matched ? stripAgreementAmountOverrides(item) : item;
+      return !matched;
     });
     onUpdateBoard({ candidates: nextCandidates });
-  }, [candidates, onUpdateBoard]);
+    if (typeof onRemoveRepresentative === 'function') {
+      idSet.forEach((id) => onRemoveRepresentative(id));
+    }
+  }, [candidates, onRemoveRepresentative, onUpdateBoard]);
 
   const handleDeleteGroups = async () => {
     if (selectedGroups.size === 0) {
@@ -4854,7 +4857,7 @@ export default function AgreementBoardWindow({
         if (candidate) removedCandidates.push(candidate);
       });
     });
-    clearAgreementOverridesForCandidates(removedCandidates);
+    removeCandidatesFromBoard(removedCandidates);
     setGroupAssignments((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setGroupShares((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setGroupShareRawInputs((prev) => prev.filter((_, idx) => !selected.has(idx)));
