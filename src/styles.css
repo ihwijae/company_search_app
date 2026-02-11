@@ -1741,11 +1741,11 @@ button.primary:hover { background: var(--accent-2); }
 .col-name { width: 100px; }
 .col-share { width: 65px; }
 .col-credibility-slot { width: 45px; }
-.col-status { width: 72px; }
+.col-status { width: 86px; }
 .col-management { width: 55px; }
 .col-management-bonus { width: 50px; }
 .col-share-total { width: 60px; }
-.col-performance { width: 90px; }
+.col-performance { width: 120px; }
 .col-technician { width: 90px; }
 .col-technician-summary { width: 55px; }
 .col-technician-ability-summary { width: 55px; }
@@ -1946,11 +1946,11 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-perf-cell {
-  min-width: 90px;
+  min-width: 120px;
 }
 
 .excel-status-cell {
-  min-width: 72px;
+  min-width: 86px;
   overflow: hidden;
 }
 
@@ -2236,6 +2236,25 @@ button.primary:hover { background: var(--accent-2); }
 .excel-status.score-only.warn .excel-status-input {
   color: #b91c1c;
   font-weight: 700;
+}
+
+.excel-inline-edit-display {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #0f172a;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: center;
+  padding: 4px 6px;
+  cursor: text;
+  box-sizing: border-box;
+}
+
+.excel-inline-edit-display:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 
 .excel-performance {

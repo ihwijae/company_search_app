@@ -124,13 +124,13 @@ const COLUMN_WIDTHS = {
   approval: 90,
   name: 100,
   share: 65,
-  status: 45,
+  status: 86,
   management: 55,
   managementBonus: 50,
   shareTotal: 60,
   qualityPoints: 55,
   constructionExperience: 70,
-  performanceCell: 90,
+  performanceCell: 120,
   performanceSummary: 50,
   technicianCell: 90,
   technicianSummary: 55,
@@ -1468,6 +1468,7 @@ export default function AgreementBoardWindow({
   const [minRatingNetCostBonus, setMinRatingNetCostBonus] = React.useState('');
   const [minRatingCredibilityScore, setMinRatingCredibilityScore] = React.useState('');
   const [minRatingCredibilityShare, setMinRatingCredibilityShare] = React.useState('');
+  const [editingAmountCell, setEditingAmountCell] = React.useState(null);
   const [bidDatePart, setBidDatePart] = React.useState('');
   const [bidTimePeriod, setBidTimePeriod] = React.useState('AM');
   const [bidHourInput, setBidHourInput] = React.useState('');
@@ -4932,6 +4933,9 @@ export default function AgreementBoardWindow({
           _agreementPerformanceInput: cleaned,
           _agreementPerformanceCleared: false,
           _agreementPerformance5y: parsed != null ? parsed : null,
+          _agreementPerformanceScore: undefined,
+          _agreementPerformanceMax: undefined,
+          _agreementPerformanceCapVersion: undefined,
         });
       } else {
         candidate._agreementPerformanceInput = '';
@@ -4941,16 +4945,14 @@ export default function AgreementBoardWindow({
           _agreementPerformanceInput: '',
           _agreementPerformanceCleared: true,
           _agreementPerformance5y: null,
+          _agreementPerformanceScore: undefined,
+          _agreementPerformanceMax: undefined,
+          _agreementPerformanceCapVersion: undefined,
         });
       }
       delete candidate._agreementPerformanceScore;
       delete candidate._agreementPerformanceMax;
       delete candidate._agreementPerformanceCapVersion;
-      updateCandidateOverride(candidate, {
-        _agreementPerformanceScore: undefined,
-        _agreementPerformanceMax: undefined,
-        _agreementPerformanceCapVersion: undefined,
-      });
     } else if (kind === 'sipyung') {
       if (trimmed) {
         candidate._agreementSipyungInput = cleaned;
@@ -5064,6 +5066,30 @@ export default function AgreementBoardWindow({
     candidateScoreCacheRef.current.clear();
     setCandidateMetricsVersion((prev) => prev + 1);
   }, [resolveCandidateBySlot, updateCandidateOverride, managementMax]);
+
+  const isAmountCellEditing = React.useCallback((meta, kind) => (
+    Boolean(
+      editingAmountCell
+      && editingAmountCell.groupIndex === meta.groupIndex
+      && editingAmountCell.slotIndex === meta.slotIndex
+      && editingAmountCell.kind === kind
+    )
+  ), [editingAmountCell]);
+
+  const startAmountCellEdit = React.useCallback((meta, kind) => {
+    if (!meta || meta.empty) return;
+    setEditingAmountCell({ groupIndex: meta.groupIndex, slotIndex: meta.slotIndex, kind });
+  }, []);
+
+  const finishAmountCellEdit = React.useCallback((meta, kind, commit = true) => {
+    if (!meta || meta.empty) return;
+    if (commit) handleAmountBlur(meta.groupIndex, meta.slotIndex, kind);
+    setEditingAmountCell((prev) => {
+      if (!prev) return prev;
+      if (prev.groupIndex !== meta.groupIndex || prev.slotIndex !== meta.slotIndex || prev.kind !== kind) return prev;
+      return null;
+    });
+  }, [handleAmountBlur]);
 
   const handleApprovalChange = React.useCallback((groupIndex, value) => {
     setGroupApprovals((prev) => {
@@ -5392,7 +5418,7 @@ export default function AgreementBoardWindow({
     const managementInputRaw = candidate._agreementManagementInput;
     const managementInput = managementInputRaw !== undefined && managementInputRaw !== null
       ? String(managementInputRaw)
-      : '';
+      : (managementNumeric != null ? formatScore(managementNumeric, 2) : '');
     const managementModified = candidate._agreementManagementManual !== undefined
       && candidate._agreementManagementManual !== null
       && candidate._agreementManagementManual !== '';
@@ -5576,15 +5602,36 @@ export default function AgreementBoardWindow({
     <td key={`status-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-status-cell" rowSpan={rowSpan}>
       {meta.empty ? null : (
         <div className={`excel-status score-only ${meta.managementAlert ? 'warn' : ''}`}>
-          <input
-            type="text"
-            className="excel-amount-input excel-status-input"
-            value={meta.managementInput || ''}
-            onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'management')}
-            onBlur={() => handleAmountBlur(meta.groupIndex, meta.slotIndex, 'management')}
-            placeholder={meta.managementDisplay}
-            title="경영점수"
-          />
+          {isAmountCellEditing(meta, 'management') ? (
+            <input
+              type="text"
+              className="excel-amount-input excel-status-input"
+              value={meta.managementInput || ''}
+              onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'management')}
+              onBlur={() => finishAmountCellEdit(meta, 'management', true)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  finishAmountCellEdit(meta, 'management', true);
+                } else if (event.key === 'Escape') {
+                  event.preventDefault();
+                  finishAmountCellEdit(meta, 'management', true);
+                }
+              }}
+              placeholder={meta.managementDisplay}
+              title="경영점수"
+              autoFocus
+            />
+          ) : (
+            <button
+              type="button"
+              className="excel-inline-edit-display"
+              onDoubleClick={() => startAmountCellEdit(meta, 'management')}
+              title="더블클릭하여 수정"
+            >
+              {meta.managementDisplay || '-'}
+            </button>
+          )}
           {meta.managementModified && (
             <span className="excel-amount-modified">수정됨</span>
           )}
@@ -5598,14 +5645,35 @@ export default function AgreementBoardWindow({
       {meta.empty ? null : (
         <div className="excel-performance">
           <span className="perf-label">{performanceAmountLabel}</span>
-          <input
-            type="text"
-            className="excel-amount-input"
-            value={meta.performanceInput || ''}
-            onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'performance')}
-            onBlur={() => handleAmountBlur(meta.groupIndex, meta.slotIndex, 'performance')}
-            placeholder={meta.performanceDisplay}
-          />
+          {isAmountCellEditing(meta, 'performance') ? (
+            <input
+              type="text"
+              className="excel-amount-input"
+              value={meta.performanceInput || ''}
+              onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'performance')}
+              onBlur={() => finishAmountCellEdit(meta, 'performance', true)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  finishAmountCellEdit(meta, 'performance', true);
+                } else if (event.key === 'Escape') {
+                  event.preventDefault();
+                  finishAmountCellEdit(meta, 'performance', true);
+                }
+              }}
+              placeholder={meta.performanceDisplay}
+              autoFocus
+            />
+          ) : (
+            <button
+              type="button"
+              className="excel-inline-edit-display"
+              onDoubleClick={() => startAmountCellEdit(meta, 'performance')}
+              title="더블클릭하여 수정"
+            >
+              {meta.performanceDisplay || '-'}
+            </button>
+          )}
           {meta.performanceModified && (
             <span className="excel-amount-modified">수정됨</span>
           )}
@@ -5623,14 +5691,35 @@ export default function AgreementBoardWindow({
       {meta.empty ? null : (
         <div className="excel-performance">
           <span className="perf-label">시평액</span>
-          <input
-            type="text"
-            className="excel-amount-input"
-            value={meta.sipyungInput || ''}
-            onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'sipyung')}
-            onBlur={() => handleAmountBlur(meta.groupIndex, meta.slotIndex, 'sipyung')}
-            placeholder={meta.sipyungDisplay}
-          />
+          {isAmountCellEditing(meta, 'sipyung') ? (
+            <input
+              type="text"
+              className="excel-amount-input"
+              value={meta.sipyungInput || ''}
+              onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'sipyung')}
+              onBlur={() => finishAmountCellEdit(meta, 'sipyung', true)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  finishAmountCellEdit(meta, 'sipyung', true);
+                } else if (event.key === 'Escape') {
+                  event.preventDefault();
+                  finishAmountCellEdit(meta, 'sipyung', true);
+                }
+              }}
+              placeholder={meta.sipyungDisplay}
+              autoFocus
+            />
+          ) : (
+            <button
+              type="button"
+              className="excel-inline-edit-display"
+              onDoubleClick={() => startAmountCellEdit(meta, 'sipyung')}
+              title="더블클릭하여 수정"
+            >
+              {meta.sipyungDisplay || '-'}
+            </button>
+          )}
           {meta.sipyungModified && (
             <span className="excel-amount-modified">수정됨</span>
           )}
