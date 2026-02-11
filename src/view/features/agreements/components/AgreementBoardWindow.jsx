@@ -124,7 +124,7 @@ const COLUMN_WIDTHS = {
   approval: 90,
   name: 100,
   share: 56,
-  status: 76,
+  status: 64,
   management: 55,
   managementBonus: 50,
   shareTotal: 60,
@@ -5083,7 +5083,8 @@ export default function AgreementBoardWindow({
 
   const finishAmountCellEdit = React.useCallback((meta, kind, commit = true) => {
     if (!meta || meta.empty) return;
-    if (commit && kind !== 'share') handleAmountBlur(meta.groupIndex, meta.slotIndex, kind);
+    const shouldCommitWithAmountBlur = kind === 'management' || kind === 'performance' || kind === 'sipyung';
+    if (commit && shouldCommitWithAmountBlur) handleAmountBlur(meta.groupIndex, meta.slotIndex, kind);
     setEditingAmountCell((prev) => {
       if (!prev) return prev;
       if (prev.groupIndex !== meta.groupIndex || prev.slotIndex !== meta.slotIndex || prev.kind !== kind) return prev;
@@ -5871,16 +5872,43 @@ export default function AgreementBoardWindow({
               className="excel-cell excel-share-cell quality-score"
             >
               {meta.empty ? '' : (
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  className="quality-score-input"
-                  value={meta.qualityInput !== undefined && meta.qualityInput !== null
-                    ? String(meta.qualityInput)
-                    : (meta.qualityScore != null ? String(meta.qualityScore) : '')}
-                  onChange={(event) => handleQualityScoreChange(groupIndex, meta.slotIndex, event.target.value)}
-                  placeholder={meta.qualityScore != null ? String(meta.qualityScore) : ''}
-                />
+                isAmountCellEditing(meta, 'quality') ? (
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="excel-amount-input quality-score-input"
+                    value={meta.qualityInput !== undefined && meta.qualityInput !== null
+                      ? String(meta.qualityInput)
+                      : (meta.qualityScore != null ? String(meta.qualityScore) : '')}
+                    onChange={(event) => handleQualityScoreChange(groupIndex, meta.slotIndex, event.target.value)}
+                    onBlur={() => finishAmountCellEdit(meta, 'quality', true)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        finishAmountCellEdit(meta, 'quality', true);
+                      } else if (event.key === 'Escape') {
+                        event.preventDefault();
+                        finishAmountCellEdit(meta, 'quality', true);
+                      }
+                    }}
+                    placeholder={meta.qualityScore != null ? String(meta.qualityScore) : ''}
+                    autoFocus
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="excel-inline-edit-display"
+                    onDoubleClick={() => startAmountCellEdit(meta, 'quality')}
+                    title="더블클릭하여 수정"
+                  >
+                    {(() => {
+                      const shown = meta.qualityInput !== undefined && meta.qualityInput !== null && meta.qualityInput !== ''
+                        ? String(meta.qualityInput)
+                        : (meta.qualityScore != null ? formatScore(meta.qualityScore, 2) : '');
+                      return shown || '-';
+                    })()}
+                  </button>
+                )
               )}
             </td>
           ))
