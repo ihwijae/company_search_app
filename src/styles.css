@@ -2209,6 +2209,8 @@ button.primary:hover { background: var(--accent-2); }
   align-items: center;
   justify-content: center;
   min-height: 36px;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .excel-status.score-only .status-score {
@@ -2220,6 +2222,16 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-status.score-only.warn .status-score {
   color: #b91c1c;
+}
+
+.excel-status-input {
+  width: 72px;
+  text-align: center;
+}
+
+.excel-status.score-only.warn .excel-status-input {
+  color: #b91c1c;
+  font-weight: 700;
 }
 
 .excel-performance {

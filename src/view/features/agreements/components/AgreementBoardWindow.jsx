@@ -871,6 +871,15 @@ const resolveConstructionExperienceScore = (performanceScore, qualityPoints) => 
 
 const getCandidateManagementScore = (candidate) => {
   if (!candidate || typeof candidate !== 'object') return null;
+  const manualRaw = candidate._agreementManagementManual;
+  if (manualRaw !== null && manualRaw !== undefined && manualRaw !== '') {
+    const manual = clampScore(toNumber(manualRaw));
+    if (manual != null) {
+      candidate._agreementManagementScore = manual;
+      candidate._agreementManagementScoreVersion = MANAGEMENT_SCORE_VERSION;
+      return manual;
+    }
+  }
   const normalizeFlag = (value) => {
     if (value === true) return true;
     if (value === null || value === undefined) return false;
@@ -1287,6 +1296,10 @@ const stripAgreementAmountOverrides = (candidate) => {
   delete next._agreementPerformanceScore;
   delete next._agreementPerformanceMax;
   delete next._agreementPerformanceCapVersion;
+  delete next._agreementManagementInput;
+  delete next._agreementManagementManual;
+  delete next._agreementManagementScore;
+  delete next._agreementManagementScoreVersion;
   return next;
 };
 
@@ -1764,33 +1777,66 @@ export default function AgreementBoardWindow({
     setTechnicianModalOpen(false);
   }, []);
 
-  const technicianTargetKey = React.useMemo(
-    () => `${technicianTarget.groupIndex}:${technicianTarget.slotIndex}`,
-    [technicianTarget.groupIndex, technicianTarget.slotIndex],
-  );
+  const resolveTechnicianStorageKeyBySlot = React.useCallback((groupIndex, slotIndex) => {
+    const uid = groupAssignments?.[groupIndex]?.[slotIndex];
+    if (!uid) return '';
+    const entry = participantMap.get(uid);
+    const candidate = entry?.candidate;
+    if (candidate && typeof candidate === 'object') {
+      const bizNo = normalizeBizNo(getBizNo(candidate));
+      if (bizNo) return `biz:${bizNo}`;
+      if (candidate.id != null && candidate.id !== '') return `id:${String(candidate.id)}`;
+      const name = String(getCompanyName(candidate) || '').trim().toLowerCase();
+      if (name) return `name:${name}`;
+    }
+    return `uid:${uid}`;
+  }, [groupAssignments, participantMap]);
+
+  const resolveTechnicianStorageKeyByTarget = React.useCallback((target) => {
+    if (!target || typeof target !== 'object') return '';
+    return resolveTechnicianStorageKeyBySlot(target.groupIndex, target.slotIndex);
+  }, [resolveTechnicianStorageKeyBySlot]);
 
   React.useEffect(() => {
-    technicianEntriesByTargetRef.current = (
+    const incoming = (
       initialTechnicianEntriesByTarget && typeof initialTechnicianEntriesByTarget === 'object'
         ? { ...initialTechnicianEntriesByTarget }
         : {}
     );
-  }, [initialTechnicianEntriesByTarget]);
+    const migrated = { ...incoming };
+    Object.entries(incoming).forEach(([legacyKey, entries]) => {
+      if (!Array.isArray(entries)) return;
+      const match = /^(\d+):(\d+)$/.exec(String(legacyKey));
+      if (!match) return;
+      const groupIndex = Number(match[1]);
+      const slotIndex = Number(match[2]);
+      if (!Number.isInteger(groupIndex) || !Number.isInteger(slotIndex)) return;
+      const candidateKey = resolveTechnicianStorageKeyBySlot(groupIndex, slotIndex);
+      if (!candidateKey) return;
+      if (!Array.isArray(migrated[candidateKey])) {
+        migrated[candidateKey] = entries;
+      }
+      delete migrated[legacyKey];
+    });
+    technicianEntriesByTargetRef.current = migrated;
+  }, [initialTechnicianEntriesByTarget, resolveTechnicianStorageKeyBySlot]);
 
   React.useEffect(() => {
     if (!technicianModalOpen) return;
-    technicianEntriesTargetKeyRef.current = technicianTargetKey;
-    const stored = technicianEntriesByTargetRef.current[technicianTargetKey];
+    const activeKey = resolveTechnicianStorageKeyByTarget(technicianTarget);
+    technicianEntriesTargetKeyRef.current = activeKey;
+    const stored = activeKey ? technicianEntriesByTargetRef.current[activeKey] : [];
     setTechnicianEntries(Array.isArray(stored) ? stored : []);
-  }, [technicianModalOpen, technicianTargetKey]);
+  }, [technicianModalOpen, technicianTarget, resolveTechnicianStorageKeyByTarget]);
 
   React.useEffect(() => {
     if (!technicianModalOpen) return;
-    const key = technicianEntriesTargetKeyRef.current || technicianTargetKey;
+    const key = technicianEntriesTargetKeyRef.current || resolveTechnicianStorageKeyByTarget(technicianTarget);
+    if (!key) return;
     const nextMap = { ...technicianEntriesByTargetRef.current, [key]: technicianEntries };
     technicianEntriesByTargetRef.current = nextMap;
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ technicianEntriesByTarget: nextMap });
-  }, [technicianEntries, technicianModalOpen, onUpdateBoard, technicianTargetKey]);
+  }, [technicianEntries, technicianModalOpen, onUpdateBoard, technicianTarget, resolveTechnicianStorageKeyByTarget]);
 
   const handleMemoSave = React.useCallback(() => {
     const cleaned = sanitizeHtml(memoDraft || '');
@@ -4825,6 +4871,7 @@ export default function AgreementBoardWindow({
     const cleaned = String(original).replace(/[^0-9,.-]/g, '');
     const trimmed = cleaned.trim();
     const parsed = toNumber(trimmed);
+    const managementCap = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
     if (kind === 'performance') {
       if (trimmed) {
         candidate._agreementPerformanceInput = cleaned;
@@ -4881,20 +4928,52 @@ export default function AgreementBoardWindow({
           _agreementSipyungAmount: null,
         });
       }
+    } else if (kind === 'management') {
+      if (trimmed) {
+        const clamped = clampScore(parsed, managementCap);
+        candidate._agreementManagementInput = cleaned;
+        if (clamped != null) {
+          candidate._agreementManagementManual = clamped;
+          candidate._agreementManagementScore = clamped;
+          candidate._agreementManagementScoreVersion = MANAGEMENT_SCORE_VERSION;
+        } else {
+          delete candidate._agreementManagementManual;
+          delete candidate._agreementManagementScore;
+          delete candidate._agreementManagementScoreVersion;
+        }
+        updateCandidateOverride(candidate, {
+          _agreementManagementInput: cleaned,
+          _agreementManagementManual: clamped != null ? clamped : null,
+          _agreementManagementScore: clamped != null ? clamped : null,
+          _agreementManagementScoreVersion: clamped != null ? MANAGEMENT_SCORE_VERSION : null,
+        });
+      } else {
+        candidate._agreementManagementInput = '';
+        delete candidate._agreementManagementManual;
+        delete candidate._agreementManagementScore;
+        delete candidate._agreementManagementScoreVersion;
+        updateCandidateOverride(candidate, {
+          _agreementManagementInput: '',
+          _agreementManagementManual: null,
+          _agreementManagementScore: null,
+          _agreementManagementScoreVersion: null,
+        });
+      }
     }
     candidateScoreCacheRef.current.clear();
     setCandidateMetricsVersion((prev) => prev + 1);
-  }, [resolveCandidateBySlot, updateCandidateOverride]);
+  }, [resolveCandidateBySlot, updateCandidateOverride, managementMax]);
 
   const handleAmountBlur = React.useCallback((groupIndex, slotIndex, kind) => {
     const candidate = resolveCandidateBySlot(groupIndex, slotIndex);
     if (!candidate) return;
     const raw = kind === 'performance'
       ? candidate._agreementPerformanceInput
-      : candidate._agreementSipyungInput;
+      : (kind === 'management' ? candidate._agreementManagementInput : candidate._agreementSipyungInput);
     if (raw === undefined || raw === null || raw === '') return;
     const parsed = toNumber(raw);
     if (parsed == null) return;
+    const managementCap = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
     const formatted = formatAmount(parsed);
     if (kind === 'performance') {
       candidate._agreementPerformanceInput = formatted;
@@ -4911,7 +4990,7 @@ export default function AgreementBoardWindow({
         _agreementPerformanceMax: undefined,
         _agreementPerformanceCapVersion: undefined,
       });
-    } else {
+    } else if (kind === 'sipyung') {
       candidate._agreementSipyungInput = formatted;
       candidate._agreementSipyungCleared = false;
       candidate._agreementSipyungAmount = parsed;
@@ -4920,10 +4999,24 @@ export default function AgreementBoardWindow({
         _agreementSipyungCleared: false,
         _agreementSipyungAmount: parsed,
       });
+    } else if (kind === 'management') {
+      const clamped = clampScore(parsed, managementCap);
+      if (clamped == null) return;
+      const formattedScore = formatScore(clamped, 2);
+      candidate._agreementManagementInput = formattedScore;
+      candidate._agreementManagementManual = clamped;
+      candidate._agreementManagementScore = clamped;
+      candidate._agreementManagementScoreVersion = MANAGEMENT_SCORE_VERSION;
+      updateCandidateOverride(candidate, {
+        _agreementManagementInput: formattedScore,
+        _agreementManagementManual: clamped,
+        _agreementManagementScore: clamped,
+        _agreementManagementScoreVersion: MANAGEMENT_SCORE_VERSION,
+      });
     }
     candidateScoreCacheRef.current.clear();
     setCandidateMetricsVersion((prev) => prev + 1);
-  }, [resolveCandidateBySlot, updateCandidateOverride]);
+  }, [resolveCandidateBySlot, updateCandidateOverride, managementMax]);
 
   const handleApprovalChange = React.useCallback((groupIndex, value) => {
     setGroupApprovals((prev) => {
@@ -5249,6 +5342,13 @@ export default function AgreementBoardWindow({
     const managementScore = getCandidateManagementScore(candidate);
     const perSlotMax = isMois30To50 ? MANAGEMENT_SCORE_MAX : managementMax;
     const managementNumeric = clampScore(toNumber(managementScore), perSlotMax);
+    const managementInputRaw = candidate._agreementManagementInput;
+    const managementInput = managementInputRaw !== undefined && managementInputRaw !== null
+      ? String(managementInputRaw)
+      : '';
+    const managementModified = candidate._agreementManagementManual !== undefined
+      && candidate._agreementManagementManual !== null
+      && candidate._agreementManagementManual !== '';
     const credibilityStored = groupCredibility[groupIndex]?.[slotIndex];
     const credibilityValue = credibilityStored != null ? String(credibilityStored) : '';
     const credibilityNumeric = parseNumeric(credibilityValue);
@@ -5285,6 +5385,8 @@ export default function AgreementBoardWindow({
       performanceModified: hasPerformanceOverride,
       managementDisplay: formatScore(managementNumeric, 2),
       managementAlert: managementNumeric != null && managementNumeric < (perSlotMax - 0.01),
+      managementInput,
+      managementModified,
       qualityScore,
       qualityInput: qualityInputRaw,
       credibilityValue,
@@ -5427,7 +5529,18 @@ export default function AgreementBoardWindow({
     <td key={`status-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-status-cell" rowSpan={rowSpan}>
       {meta.empty ? null : (
         <div className={`excel-status score-only ${meta.managementAlert ? 'warn' : ''}`}>
-          <span className="status-score" title="경영점수">{meta.managementDisplay}</span>
+          <input
+            type="text"
+            className="excel-amount-input excel-status-input"
+            value={meta.managementInput || ''}
+            onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'management')}
+            onBlur={() => handleAmountBlur(meta.groupIndex, meta.slotIndex, 'management')}
+            placeholder={meta.managementDisplay}
+            title="경영점수"
+          />
+          {meta.managementModified && (
+            <span className="excel-amount-modified">수정됨</span>
+          )}
         </div>
       )}
     </td>
