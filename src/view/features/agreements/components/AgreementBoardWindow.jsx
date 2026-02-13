@@ -4011,11 +4011,13 @@ export default function AgreementBoardWindow({
 
     const baseValue = parseAmountValue(baseAmount);
     const estimatedValue = parseAmountValue(estimatedAmount);
-    const perfBase = ownerKeyUpper === 'EX'
+    const perfBase = isPpsUnder50
       ? (baseValue != null && baseValue > 0 ? baseValue : (estimatedValue != null && estimatedValue > 0 ? estimatedValue : null))
-      : ((estimatedValue != null && estimatedValue > 0)
-        ? estimatedValue
-        : (baseValue != null && baseValue > 0 ? baseValue : null));
+      : (ownerKeyUpper === 'EX'
+        ? (baseValue != null && baseValue > 0 ? baseValue : (estimatedValue != null && estimatedValue > 0 ? estimatedValue : null))
+        : ((estimatedValue != null && estimatedValue > 0)
+          ? estimatedValue
+          : (baseValue != null && baseValue > 0 ? baseValue : null)));
     const rangeAmountHint = parseRangeAmountHint(ownerKeyUpper, selectedRangeOption?.label);
     const evaluationAmount = rangeAmountHint > 0 ? rangeAmountHint : 0;
     const ownerKey = String(ownerId || 'lh').toLowerCase();
@@ -4360,9 +4362,11 @@ export default function AgreementBoardWindow({
     const evalApi = typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null;
     const baseValue = parseAmountValue(baseAmount);
     const estimatedValue = parseAmountValue(estimatedAmount);
-    const perfBase = (estimatedValue != null && estimatedValue > 0)
-      ? estimatedValue
-      : (baseValue != null && baseValue > 0 ? baseValue : null);
+    const perfBase = isPpsUnder50
+      ? (baseValue != null && baseValue > 0 ? baseValue : (estimatedValue != null && estimatedValue > 0 ? estimatedValue : null))
+      : ((estimatedValue != null && estimatedValue > 0)
+        ? estimatedValue
+        : (baseValue != null && baseValue > 0 ? baseValue : null));
     const rangeAmountHint = parseRangeAmountHint(ownerKeyUpper, selectedRangeOption?.label);
     const evaluationAmount = rangeAmountHint > 0 ? rangeAmountHint : 0;
     const ownerKey = String(ownerId || 'lh').toLowerCase();
@@ -4596,7 +4600,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate]);
+  }, [open, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50]);
 
   const handleDragStart = (id, groupIndex, slotIndex) => (event) => {
     if (!id) return;
