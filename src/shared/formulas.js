@@ -104,14 +104,8 @@ function getUserDataDirSafe() {
 }
 
 function loadFormulasMerged() {
-  const base = deepClone(defaults);
-  const userDir = getUserDataDirSafe();
-  const overrides = loadUserOverrides(userDir);
-  if (!overrides || !overrides.agencies) return base;
-  const merged = deepClone(base);
-  merged.agencies = mergeAgencies(base.agencies, overrides.agencies);
-  merged.version = Math.max(base.version || 1, overrides.version || 1);
-  return merged;
+  // Force defaults-only mode: ignore any userData/formulas.json overrides.
+  return deepClone(defaults);
 }
 
 function loadFormulasDefaults() {
