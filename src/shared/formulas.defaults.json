@@ -2442,40 +2442,28 @@
               }
             },
             "performance": {
+              "formula": "((Math.round((perf5y / (baseAmount * 2)) * 100) / 100) * 15)",
+              "variables": [
+                "perf5y",
+                "baseAmount",
+                "estimatedAmount"
+              ],
               "maxScore": 15,
-              "mode": "ratio-bands",
-              "thresholds": [
+              "rounding": {
+                "method": "round",
+                "digits": 2
+              },
+              "mode": "formula",
+              "variants": [
                 {
-                  "minRatio": 1.0,
-                  "score": 15
-                },
-                {
-                  "minRatio": 0.8,
-                  "score": 13
-                },
-                {
-                  "minRatio": 0.6,
-                  "score": 11
-                },
-                {
-                  "minRatio": 0.5,
-                  "score": 9
-                },
-                {
-                  "minRatio": 0.4,
-                  "score": 7
-                },
-                {
-                  "minRatio": 0.3,
-                  "score": 5
-                },
-                {
-                  "minRatio": 0.2,
-                  "score": 3
-                },
-                {
-                  "minRatio": 0.0,
-                  "score": 1
+                  "id": "sobang-50to100",
+                  "when": {
+                    "fileTypes": [
+                      "sobang"
+                    ]
+                  },
+                  "formula": "((Math.round((perf5y / (baseAmount * 3)) * 100) / 100) * 15)",
+                  "maxScore": 15
                 }
               ]
             },

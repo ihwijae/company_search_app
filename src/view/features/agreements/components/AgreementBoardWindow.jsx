@@ -26,6 +26,8 @@ const LH_50_TO_100_BID_SCORE = 45;
 const LH_50_TO_100_SUBCONTRACT_SCORE = 10;
 const LH_50_TO_100_MATERIAL_SCORE = 10;
 const EX_50_TO_100_BID_SCORE = 45;
+const KRAIL_50_TO_100_BID_SCORE = 45;
+const KRAIL_50_TO_100_SUBCONTRACT_MATERIAL_SCORE = 20;
 const EX_50_TO_100_SUBCONTRACT_SCORE = 20;
 const MOIS_50_TO_100_BID_SCORE = 45;
 const MOIS_50_TO_100_SUBCONTRACT_SCORE = 10;
@@ -2525,7 +2527,7 @@ export default function AgreementBoardWindow({
         ? (collapsedColumns.technicianSummary ? COLLAPSED_COLUMN_WIDTHS.technicianSummary : COLUMN_WIDTHS.technicianSummary)
           + (collapsedColumns.technicianAbility ? COLLAPSED_COLUMN_WIDTHS.technicianAbilitySummary : COLUMN_WIDTHS.technicianAbilitySummary)
         : 0)
-      + ((isMois30To50 || isEx50To100)
+      + ((isMois30To50 || isEx50To100 || isKrail50To100)
         ? (collapsedColumns.subcontract ? COLLAPSED_COLUMN_WIDTHS.subcontract : COLUMN_WIDTHS.subcontract)
         : 0)
       + (isLh50To100 ? (COLUMN_WIDTHS.subcontract + COLUMN_WIDTHS.material) : 0)
@@ -2542,6 +2544,7 @@ export default function AgreementBoardWindow({
     isLHOwner,
     isMois30To50,
     isEx50To100,
+    isKrail50To100,
     isLh50To100,
     technicianEnabled,
     collapsedColumns,
@@ -4259,7 +4262,9 @@ export default function AgreementBoardWindow({
               ? MOIS_50_TO_100_SUBCONTRACT_SCORE
             : (isEx50To100
               ? EX_50_TO_100_SUBCONTRACT_SCORE
-              : (isLh50To100 ? LH_50_TO_100_SUBCONTRACT_SCORE : null))))
+              : (isKrail50To100
+                ? KRAIL_50_TO_100_SUBCONTRACT_MATERIAL_SCORE
+                : (isLh50To100 ? LH_50_TO_100_SUBCONTRACT_SCORE : null)))))
           : null;
         const materialScore = hasMembers
           ? (isLh50To100
@@ -4269,9 +4274,11 @@ export default function AgreementBoardWindow({
         const bidScoreValue = hasMembers
           ? (isEx50To100
             ? EX_50_TO_100_BID_SCORE
-            : (isLh50To100
-              ? LH_50_TO_100_BID_SCORE
-              : (isMois50To100 ? MOIS_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT)))
+            : (isKrail50To100
+              ? KRAIL_50_TO_100_BID_SCORE
+              : (isLh50To100
+                ? LH_50_TO_100_BID_SCORE
+                : (isMois50To100 ? MOIS_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT))))
           : null;
         const technicianScoreForTotal = (technicianEnabled && technicianAbilityScore != null)
           ? technicianAbilityScore
@@ -4289,15 +4296,21 @@ export default function AgreementBoardWindow({
         const totalMaxBase = managementMax + performanceMax
           + (isEx50To100
             ? EX_50_TO_100_BID_SCORE
-            : (isLh50To100
-              ? LH_50_TO_100_BID_SCORE
-              : (isMois50To100 ? MOIS_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT)))
+            : (isKrail50To100
+              ? KRAIL_50_TO_100_BID_SCORE
+              : (isLh50To100
+                ? LH_50_TO_100_BID_SCORE
+                : (isMois50To100 ? MOIS_50_TO_100_BID_SCORE : BID_SCORE_DEFAULT))))
           + netCostBonusScore
           + (isMois30To50
             ? SUBCONTRACT_SCORE
             : (isMois50To100
               ? MOIS_50_TO_100_SUBCONTRACT_SCORE
-              : (isEx50To100 ? EX_50_TO_100_SUBCONTRACT_SCORE : (isLh50To100 ? LH_50_TO_100_SUBCONTRACT_SCORE : 0))))
+              : (isEx50To100
+                ? EX_50_TO_100_SUBCONTRACT_SCORE
+                : (isKrail50To100
+                  ? KRAIL_50_TO_100_SUBCONTRACT_MATERIAL_SCORE
+                  : (isLh50To100 ? LH_50_TO_100_SUBCONTRACT_SCORE : 0)))))
           + (isLh50To100
             ? LH_50_TO_100_MATERIAL_SCORE
             : (isMois50To100 ? MOIS_50_TO_100_MATERIAL_SCORE : 0))
@@ -4351,7 +4364,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isPpsUnder50, isLh50To100, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange]);
+  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -5345,6 +5358,7 @@ export default function AgreementBoardWindow({
       + (technicianEnabled ? 2 : 0)
       + (isLHOwner ? 1 : 0)
       + ((isMois30To50 || isEx50To100) ? 1 : 0)
+      + (isKrail50To100 ? 1 : 0)
       + (isMois50To100 ? 2 : 0)
       + (isLh50To100 ? 2 : 0);
     const variableColumns = columnSpans.nameSpan
@@ -5361,6 +5375,7 @@ export default function AgreementBoardWindow({
     isMois30To50,
     isMois50To100,
     isEx50To100,
+    isKrail50To100,
     isLh50To100,
     technicianEnabled,
     columnSpans,
@@ -6022,7 +6037,7 @@ export default function AgreementBoardWindow({
       && constructionExperienceScore != null
       && constructionExperienceScore < CONSTRUCTION_EXPERIENCE_SCORE_MAX;
     const qualityPointsState = (isLHOwner && qualityPoints != null && qualityPoints < 2) ? 'warn' : '';
-    const subcontractDisplay = (isMois30To50 || isMois50To100 || isEx50To100 || isLh50To100)
+    const subcontractDisplay = (isMois30To50 || isMois50To100 || isEx50To100 || isKrail50To100 || isLh50To100)
       ? (summaryInfo?.subcontractScore != null ? formatScore(summaryInfo.subcontractScore, resolveSummaryDigits('subcontract')) : '-')
       : null;
     const materialDisplay = (isLh50To100 || isMois50To100)
@@ -6183,7 +6198,7 @@ export default function AgreementBoardWindow({
         {(isLh50To100 || isMois50To100) && (
           <td className="excel-cell total-cell material-cell" rowSpan={rightRowSpan}>{materialDisplay}</td>
         )}
-        {(isMois30To50 || isEx50To100) && (
+        {(isMois30To50 || isEx50To100 || isKrail50To100) && (
           <td className="excel-cell total-cell subcontract-cell" rowSpan={rightRowSpan}>{subcontractDisplay}</td>
         )}
         <td className="excel-cell total-cell bid-score-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
@@ -6641,7 +6656,7 @@ export default function AgreementBoardWindow({
               {isLHOwner && <col className="col-construction-experience" style={{ width: `${COLUMN_WIDTHS.constructionExperience}px` }} />}
               {(isLh50To100 || isMois50To100) && <col className="col-subcontract" style={{ width: `${COLUMN_WIDTHS.subcontract}px` }} />}
               {(isLh50To100 || isMois50To100) && <col className="col-material" style={{ width: `${COLUMN_WIDTHS.material}px` }} />}
-              {(isMois30To50 || isEx50To100) && (
+              {(isMois30To50 || isEx50To100 || isKrail50To100) && (
                 <col className="col-subcontract" style={{ width: resolveColWidth('subcontract') }} />
               )}
               <col className="col-bid" style={{ width: `${COLUMN_WIDTHS.bid}px` }} />
@@ -6782,6 +6797,11 @@ export default function AgreementBoardWindow({
                   </th>
                 )}
                 {isEx50To100 && (
+                  <th rowSpan="2" className="col-header subcontract-header">
+                    {renderColToggle('subcontract', '하도급및자재', { collapsedLabel: '하도급' })}
+                  </th>
+                )}
+                {isKrail50To100 && (
                   <th rowSpan="2" className="col-header subcontract-header">
                     {renderColToggle('subcontract', '하도급및자재', { collapsedLabel: '하도급' })}
                   </th>
