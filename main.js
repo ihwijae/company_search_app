@@ -552,7 +552,8 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     },
     approvalColumn: 'B',
     summaryColumns: {
-      credibility: 'AK',
+      subcontract: 'AK',
+      credibility: 'AL',
     },
     credibilityScale: 0.9 / 3,
     credibilityScaleExpr: '0.9/3',
@@ -598,7 +599,8 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     },
     approvalColumn: 'B',
     summaryColumns: {
-      credibility: 'AK',
+      subcontract: 'AK',
+      credibility: 'AL',
     },
     credibilityScale: 0.9 / 3,
     credibilityScaleExpr: '0.9/3',
