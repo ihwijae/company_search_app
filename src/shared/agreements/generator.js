@@ -109,14 +109,9 @@ export function generateOne(item) {
     }
     lines.push('');
   } else if (isKRail(owner)) {
-    const krailHeader = [ownerDisplayName, String(item.noticeNo || '').trim()].filter(Boolean).join(' ').trim();
-    if (krailHeader) {
-      lines.push(krailHeader);
-    } else if (ownerDisplayName) {
-      lines.push(ownerDisplayName);
-    }
-    if (String(item.title || '').trim()) {
-      lines.push(String(item.title).trim());
+    lines.push(`[${ownerDisplayName}]`);
+    if (mainLine) {
+      lines.push(mainLine);
     }
     lines.push('');
   } else {
