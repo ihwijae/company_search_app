@@ -318,8 +318,15 @@ export default function AgreementFlowPage({
       }
     }
 
+    if (resolvedOwnerId === 'KRAIL' && key === 'krail-50to100') {
+      if (base <= 0) return { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+      const type = toFileType(form.industry);
+      const multiplier = type === 'sobang' ? 3 : 2;
+      return { perfectPerformanceAmount: base * multiplier, perfectPerformanceBasis: `기초금액 × ${multiplier}배` };
+    }
+
     return { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
-  }, [activeMenuKey, resolvedOwnerId, form.estimatedPrice, form.baseAmount]);
+  }, [activeMenuKey, resolvedOwnerId, form.estimatedPrice, form.baseAmount, form.industry]);
 
   const formattedPerfectPerformanceAmount = perfectPerformanceAmount > 0
     ? perfectPerformanceAmount.toLocaleString()

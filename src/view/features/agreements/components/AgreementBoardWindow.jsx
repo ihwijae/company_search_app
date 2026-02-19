@@ -2072,6 +2072,13 @@ export default function AgreementBoardWindow({
       return { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' };
     }
 
+    if (ownerKeyUpper === 'KRAIL' && rangeKey === KRAIL_50_TO_100_KEY) {
+      if (base <= 0) return { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+      const normalizedType = String(fileType || '').toLowerCase();
+      const multiplier = normalizedType === 'sobang' ? 3 : 2;
+      return { perfectPerformanceAmount: base * multiplier, perfectPerformanceBasis: `기초금액 × ${multiplier}배` };
+    }
+
     if (ownerKeyUpper === 'EX' && rangeKey === EX_UNDER_50_KEY) {
       return base > 0
         ? { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' }
