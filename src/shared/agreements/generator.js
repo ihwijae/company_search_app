@@ -69,7 +69,7 @@ function isPPS(owner) {
 function isKRail(owner) {
   const s = String(owner || '').trim();
   if (!s) return false;
-  return /국가철도/.test(s);
+  return /국가철도/i.test(s) || /^KRAIL$/i.test(s);
 }
 
 function needsHeader(owner) {
@@ -89,7 +89,9 @@ function memberNeedsBizNo(owner) {
 export function generateOne(item) {
   const lines = [];
   const owner = String(item.owner || '').trim();
-  const ownerDisplayName = owner === 'LH' ? '한국토지주택공사' : owner;
+  const ownerDisplayName = owner === 'LH'
+    ? '한국토지주택공사'
+    : (isKRail(owner) ? '국가철도공단' : owner);
   const mainLine = [String(item.noticeNo || '').trim(), String(item.title || '').trim()]
     .filter(Boolean)
     .join(' ')
