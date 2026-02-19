@@ -4,7 +4,7 @@ import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import { extractManagerNames } from '../../../../utils/companyIndicators.js';
-import { loadPersisted } from '../../../../shared/persistence.js';
+import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 
 const INDUSTRY_OPTIONS = [
@@ -30,6 +30,19 @@ const INQUIRY_OPTIONS = [
 
 const DEFAULT_FILTERS = { industry: 'all', region: '전체', name: '', bizNo: '', ownerOnly: false, commonOnly: false };
 const STORAGE_KEY = 'company-notes:data';
+const UI_STORAGE_KEY = 'company-notes:ui';
+
+const normalizeFilters = (value) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_FILTERS;
+  return {
+    industry: typeof value.industry === 'string' ? value.industry : DEFAULT_FILTERS.industry,
+    region: typeof value.region === 'string' ? value.region : DEFAULT_FILTERS.region,
+    name: typeof value.name === 'string' ? value.name : DEFAULT_FILTERS.name,
+    bizNo: typeof value.bizNo === 'string' ? value.bizNo : DEFAULT_FILTERS.bizNo,
+    ownerOnly: Boolean(value.ownerOnly),
+    commonOnly: Boolean(value.commonOnly),
+  };
+};
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
 const normalizeDigits = (value) => String(value || '').replace(/[^0-9]/g, '');
@@ -109,10 +122,15 @@ const stripCommonLines = (memo) => String(memo || '')
   .trim();
 
 export default function CompanyNotesPage() {
+  const initialUiState = React.useMemo(() => {
+    const stored = loadPersisted(UI_STORAGE_KEY, null);
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return null;
+    return stored;
+  }, []);
   const [activeMenu, setActiveMenu] = React.useState('company-notes');
   const { confirm, notify, showLoading, hideLoading } = useFeedback();
-  const [draftFilters, setDraftFilters] = React.useState(DEFAULT_FILTERS);
-  const [filters, setFilters] = React.useState(DEFAULT_FILTERS);
+  const [draftFilters, setDraftFilters] = React.useState(() => normalizeFilters(initialUiState?.draftFilters));
+  const [filters, setFilters] = React.useState(() => normalizeFilters(initialUiState?.filters));
   const [regionOptions, setRegionOptions] = React.useState(['전체']);
   const [rows, setRows] = React.useState([]);
   const [editorOpen, setEditorOpen] = React.useState(false);
@@ -132,13 +150,17 @@ export default function CompanyNotesPage() {
   });
   const [companyPickerOpen, setCompanyPickerOpen] = React.useState(false);
   const [lastEditorDefaults, setLastEditorDefaults] = React.useState({
-    industry: 'eung',
-    region: '',
+    industry: normalizeIndustryValue(initialUiState?.lastEditorDefaults?.industry || 'eung'),
+    region: String(initialUiState?.lastEditorDefaults?.region || ''),
   });
   const [ownerCommonModalOpen, setOwnerCommonModalOpen] = React.useState(false);
   const [ownerCommonMemo, setOwnerCommonMemo] = React.useState('');
   const [ownerCommonDraft, setOwnerCommonDraft] = React.useState('');
-  const [commonOpenIds, setCommonOpenIds] = React.useState(() => new Set());
+  const [commonOpenIds, setCommonOpenIds] = React.useState(() => {
+    const ids = initialUiState?.commonOpenIds;
+    if (!Array.isArray(ids)) return new Set();
+    return new Set(ids.filter(Boolean));
+  });
   const saveTimerRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -221,6 +243,18 @@ export default function CompanyNotesPage() {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [rows, ownerCommonMemo]);
+
+  React.useEffect(() => {
+    const payload = {
+      version: 1,
+      updatedAt: Date.now(),
+      draftFilters,
+      filters,
+      lastEditorDefaults,
+      commonOpenIds: Array.from(commonOpenIds),
+    };
+    savePersisted(UI_STORAGE_KEY, payload);
+  }, [draftFilters, filters, lastEditorDefaults, commonOpenIds]);
 
   const filteredRows = React.useMemo(() => {
     const nameKey = normalizeText(filters.name);

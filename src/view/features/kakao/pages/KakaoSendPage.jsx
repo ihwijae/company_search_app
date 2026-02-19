@@ -5,6 +5,7 @@ import Sidebar from '../../../../components/Sidebar';
 import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import { extractManagerNames, getCandidateTextField } from '../../../../utils/companyIndicators.js';
+import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 
 const MENU_ROUTES = {
   search: '#/search',
@@ -40,6 +41,7 @@ const FILE_TYPE_LABELS = [
   { key: 'tongsin', match: /통신/ },
   { key: 'sobang', match: /소방/ },
 ];
+const KAKAO_UI_STORAGE_KEY = 'kakao-send:ui';
 
 const normalizeCompanyName = (name) => {
   if (!name) return '';
@@ -95,15 +97,42 @@ const getCandidateFileType = (candidate) => {
 };
 
 export default function KakaoSendPage() {
+  const initialUiState = React.useMemo(() => {
+    const stored = loadPersisted(KAKAO_UI_STORAGE_KEY, null);
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return null;
+    return stored;
+  }, []);
   const { notify } = useFeedback();
-  const [draft, setDraft] = React.useState('');
-  const [splitEntries, setSplitEntries] = React.useState([]);
-  const [messageOverrides, setMessageOverrides] = React.useState({});
+  const [draft, setDraft] = React.useState(() => String(initialUiState?.draft || ''));
+  const [splitEntries, setSplitEntries] = React.useState(() => (
+    Array.isArray(initialUiState?.splitEntries) ? initialUiState.splitEntries : []
+  ));
+  const [messageOverrides, setMessageOverrides] = React.useState(() => (
+    initialUiState?.messageOverrides && typeof initialUiState.messageOverrides === 'object' && !Array.isArray(initialUiState.messageOverrides)
+      ? initialUiState.messageOverrides
+      : {}
+  ));
   const [messageModal, setMessageModal] = React.useState({ open: false, entryId: null });
   const [messageDraft, setMessageDraft] = React.useState('');
   const [messageTemplate, setMessageTemplate] = React.useState('');
-  const [industryFilter, setIndustryFilter] = React.useState('auto');
-  const [selectedManagerId, setSelectedManagerId] = React.useState('');
+  const [industryFilter, setIndustryFilter] = React.useState(() => {
+    const next = String(initialUiState?.industryFilter || 'auto');
+    return ['auto', 'eung', 'tongsin', 'sobang'].includes(next) ? next : 'auto';
+  });
+  const [selectedManagerId, setSelectedManagerId] = React.useState(() => String(initialUiState?.selectedManagerId || ''));
+
+  React.useEffect(() => {
+    const payload = {
+      version: 1,
+      updatedAt: Date.now(),
+      draft,
+      splitEntries,
+      messageOverrides,
+      industryFilter,
+      selectedManagerId,
+    };
+    savePersisted(KAKAO_UI_STORAGE_KEY, payload);
+  }, [draft, splitEntries, messageOverrides, industryFilter, selectedManagerId]);
 
   const handleMenuSelect = React.useCallback((key) => {
     if (!key || key === 'kakao-send') return;
