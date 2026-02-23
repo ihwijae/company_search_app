@@ -210,6 +210,7 @@ export default function BidResultPage() {
   const formatFileInputRef = React.useRef(null);
   const templateFileInputRef = React.useRef(null);
   const agreementFileInputRef = React.useRef(null);
+  const agreementPickerInputRef = React.useRef(null);
   const orderingFileInputRef = React.useRef(null);
   const bidAmountTemplateInputRef = React.useRef(null);
   const templateFileName = templatePath ? templatePath.split(/[\\/]/).pop() : '';
@@ -521,6 +522,9 @@ export default function BidResultPage() {
     if (agreementFileInputRef.current) {
       agreementFileInputRef.current.value = '';
     }
+    if (agreementPickerInputRef.current) {
+      agreementPickerInputRef.current.value = '';
+    }
     setAgreementFile(null);
     setAgreementWorkbook(null);
     setAgreementSheetNames([]);
@@ -545,6 +549,10 @@ export default function BidResultPage() {
   }, []);
 
   const handlePickAgreementFile = () => {
+    if (agreementPickerInputRef.current) {
+      agreementPickerInputRef.current.click();
+      return;
+    }
     if (agreementFileInputRef.current) {
       agreementFileInputRef.current.click();
     }
@@ -1109,6 +1117,14 @@ export default function BidResultPage() {
                         </div>
                         <div>
                           <label className="field-label" style={strongLabelStyle}>협정파일 정보</label>
+                          <input
+                            type="file"
+                            accept=".xlsx"
+                            ref={agreementPickerInputRef}
+                            onChange={handleAgreementFileUpload}
+                            onClick={(e) => { e.target.value = ''; }}
+                            style={{ display: 'none' }}
+                          />
                           <div className="input" style={{ fontWeight: 700 }}>
                             {agreementFile?.name || '협정파일을 선택하세요.'}
                           </div>
