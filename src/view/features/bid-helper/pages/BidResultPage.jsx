@@ -181,10 +181,13 @@ export default function BidResultPage() {
   const { notify } = useFeedback();
   const [ownerId, setOwnerId] = React.useState('');
   const [fileType, setFileType] = React.useState('');
+  const [bidAmountOwnerId, setBidAmountOwnerId] = React.useState('');
+  const [bidAmountFileType, setBidAmountFileType] = React.useState('');
   const [formatFile, setFormatFile] = React.useState(null);
   const [isFormatting, setIsFormatting] = React.useState(false);
   const [templatePath, setTemplatePath] = React.useState('');
   const [agreementFile, setAgreementFile] = React.useState(null);
+  const [bidAmountAgreementFile, setBidAmountAgreementFile] = React.useState(null);
   const [orderingResultFile, setOrderingResultFile] = React.useState(null);
   const [bidAmountTemplatePath, setBidAmountTemplatePath] = React.useState('');
   const [isAgreementProcessing, setIsAgreementProcessing] = React.useState(false);
@@ -197,8 +200,11 @@ export default function BidResultPage() {
   const [bidAmountDeadlineTime, setBidAmountDeadlineTime] = React.useState('');
   const [bidAmountBaseAmount, setBidAmountBaseAmount] = React.useState('');
   const [agreementWorkbook, setAgreementWorkbook] = React.useState(null);
+  const [bidAmountAgreementWorkbook, setBidAmountAgreementWorkbook] = React.useState(null);
   const [agreementSheetNames, setAgreementSheetNames] = React.useState([]);
+  const [bidAmountAgreementSheetNames, setBidAmountAgreementSheetNames] = React.useState([]);
   const [selectedAgreementSheet, setSelectedAgreementSheet] = React.useState('');
+  const [bidAmountSelectedAgreementSheet, setBidAmountSelectedAgreementSheet] = React.useState('');
   const [companyConflictSelections, setCompanyConflictSelections] = React.useState({});
   const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
   const [pendingConflictAction, setPendingConflictAction] = React.useState(null);
@@ -215,9 +221,9 @@ export default function BidResultPage() {
   const bidAmountTemplateInputRef = React.useRef(null);
   const templateFileName = templatePath ? templatePath.split(/[\\/]/).pop() : '';
   const bidAmountTemplateName = bidAmountTemplatePath ? bidAmountTemplatePath.split(/[\\/]/).pop() : '';
-  const ownerLabel = React.useMemo(() => (
-    OWNER_OPTIONS.find((option) => option.value === ownerId)?.label || '한국토지주택공사'
-  ), [ownerId]);
+  const bidAmountOwnerLabel = React.useMemo(() => (
+    OWNER_OPTIONS.find((option) => option.value === bidAmountOwnerId)?.label || '한국토지주택공사'
+  ), [bidAmountOwnerId]);
 
   const strongLabelStyle = React.useMemo(() => ({
     display: 'block',
@@ -330,16 +336,20 @@ export default function BidResultPage() {
       notify({ type: 'info', message: '투찰금액 템플릿 파일을 선택하세요.' });
       return;
     }
-    if (!agreementFile?.path) {
+    if (!bidAmountOwnerId) {
+      notify({ type: 'info', message: '발주처를 먼저 선택하세요.' });
+      return;
+    }
+    if (!bidAmountFileType) {
+      notify({ type: 'info', message: '공종(전기/통신/소방)을 선택하세요.' });
+      return;
+    }
+    if (!bidAmountAgreementFile?.path) {
       notify({ type: 'info', message: '협정파일을 선택하세요.' });
       return;
     }
-    if (!selectedAgreementSheet) {
+    if (!bidAmountSelectedAgreementSheet) {
       notify({ type: 'info', message: '협정파일 시트를 선택하세요.' });
-      return;
-    }
-    if (!fileType) {
-      notify({ type: 'info', message: '공종(전기/통신/소방)을 선택하세요.' });
       return;
     }
     if (!window.electronAPI?.bidResult?.applyBidAmountTemplate) {
@@ -358,7 +368,7 @@ export default function BidResultPage() {
       for (const entry of entries) {
         if (!entry.normalizedName) continue;
         if (candidatesMap.has(entry.normalizedName)) continue;
-        const response = await window.electronAPI.searchCompanies({ name: entry.cleanedName }, fileType);
+        const response = await window.electronAPI.searchCompanies({ name: entry.cleanedName }, bidAmountFileType);
         if (!response?.success) {
           candidatesMap.set(entry.normalizedName, []);
           continue;
@@ -408,7 +418,7 @@ export default function BidResultPage() {
         header: {
           noticeNo: bidAmountNoticeNo,
           noticeTitle: bidAmountNoticeTitle,
-          ownerLabel,
+          ownerLabel: bidAmountOwnerLabel,
           bidDeadline: deadlineParts.filter(Boolean).join(' '),
           baseAmount: bidAmountBaseAmount,
         },
@@ -473,6 +483,37 @@ export default function BidResultPage() {
     }
   };
 
+  const handleBidAmountAgreementFileUpload = (event) => {
+    if (!bidAmountOwnerId) {
+      notify({ type: 'info', message: '발주처를 먼저 선택하세요.' });
+      if (event?.target) event.target.value = '';
+      return;
+    }
+    if (!bidAmountFileType) {
+      notify({ type: 'info', message: '공종을 먼저 선택하세요.' });
+      if (event?.target) event.target.value = '';
+      return;
+    }
+    const file = event.target.files[0];
+    if (file) {
+      setBidAmountAgreementFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        setBidAmountAgreementWorkbook(workbook);
+        setBidAmountAgreementSheetNames(workbook.SheetNames || []);
+        setBidAmountSelectedAgreementSheet(workbook.SheetNames?.[0] || '');
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      setBidAmountAgreementFile(null);
+      setBidAmountAgreementWorkbook(null);
+      setBidAmountAgreementSheetNames([]);
+      setBidAmountSelectedAgreementSheet('');
+    }
+  };
+
   const handleAgreementFileUpload = (event) => {
     if (!ownerId) {
       notify({ type: 'info', message: '발주처를 먼저 선택하세요.' });
@@ -522,13 +563,20 @@ export default function BidResultPage() {
     if (agreementFileInputRef.current) {
       agreementFileInputRef.current.value = '';
     }
-    if (agreementPickerInputRef.current) {
-      agreementPickerInputRef.current.value = '';
-    }
     setAgreementFile(null);
     setAgreementWorkbook(null);
     setAgreementSheetNames([]);
     setSelectedAgreementSheet('');
+  }, []);
+
+  const handleClearBidAmountAgreementFile = React.useCallback(() => {
+    if (agreementPickerInputRef.current) {
+      agreementPickerInputRef.current.value = '';
+    }
+    setBidAmountAgreementFile(null);
+    setBidAmountAgreementWorkbook(null);
+    setBidAmountAgreementSheetNames([]);
+    setBidAmountSelectedAgreementSheet('');
   }, []);
 
   const handleClearOrderingFile = React.useCallback(() => {
@@ -541,6 +589,9 @@ export default function BidResultPage() {
   const handleAgreementSheetSelect = (event) => {
     setSelectedAgreementSheet(event.target.value);
   };
+  const handleBidAmountAgreementSheetSelect = (event) => {
+    setBidAmountSelectedAgreementSheet(event.target.value);
+  };
 
   const handleOwnerChange = React.useCallback((value) => {
     setOwnerId(value);
@@ -548,7 +599,25 @@ export default function BidResultPage() {
     if (orderingFileInputRef.current) orderingFileInputRef.current.value = '';
   }, []);
 
+  const handleBidAmountOwnerChange = React.useCallback((value) => {
+    setBidAmountOwnerId(value);
+    handleClearBidAmountAgreementFile();
+  }, [handleClearBidAmountAgreementFile]);
+
+  const handleBidAmountFileTypeChange = React.useCallback((value) => {
+    setBidAmountFileType(value);
+    handleClearBidAmountAgreementFile();
+  }, [handleClearBidAmountAgreementFile]);
+
   const handlePickAgreementFile = () => {
+    if (!bidAmountOwnerId) {
+      notify({ type: 'info', message: '발주처를 먼저 선택하세요.' });
+      return;
+    }
+    if (!bidAmountFileType) {
+      notify({ type: 'info', message: '공종을 먼저 선택하세요.' });
+      return;
+    }
     if (agreementPickerInputRef.current) {
       agreementPickerInputRef.current.click();
       return;
@@ -595,12 +664,12 @@ export default function BidResultPage() {
   }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
 
   const extractBidAmountEntries = React.useCallback(() => {
-    if (!agreementWorkbook || !selectedAgreementSheet) return { entries: [], excludedNames: [] };
-    const sheet = agreementWorkbook.Sheets?.[selectedAgreementSheet];
+    if (!bidAmountAgreementWorkbook || !bidAmountSelectedAgreementSheet) return { entries: [], excludedNames: [] };
+    const sheet = bidAmountAgreementWorkbook.Sheets?.[bidAmountSelectedAgreementSheet];
     if (!sheet) return { entries: [], excludedNames: [] };
     const entries = [];
     const excludedNames = [];
-    const isLhOwner = ownerId === 'LH';
+    const isLhOwner = bidAmountOwnerId === 'LH';
     const maxConsecutiveEmptyRows = isLhOwner ? 2 : 1;
     let consecutiveEmptyRows = 0;
     for (let row = 5; row <= 1000; row += 1) {
@@ -643,7 +712,7 @@ export default function BidResultPage() {
       });
     }
     return { entries, excludedNames };
-  }, [agreementWorkbook, selectedAgreementSheet, ownerId]);
+  }, [bidAmountAgreementWorkbook, bidAmountSelectedAgreementSheet, bidAmountOwnerId]);
 
   const buildBizEntries = React.useCallback((entries, candidatesMap, selections) => {
     const bizEntries = [];
@@ -746,7 +815,7 @@ export default function BidResultPage() {
           header: {
             noticeNo: bidAmountNoticeNo,
             noticeTitle: bidAmountNoticeTitle,
-            ownerLabel,
+            ownerLabel: bidAmountOwnerLabel,
             bidDeadline: deadlineParts.filter(Boolean).join(' '),
             baseAmount: bidAmountBaseAmount,
           },
@@ -1044,6 +1113,32 @@ export default function BidResultPage() {
                           />
                         </div>
                         <div>
+                          <label className="field-label" style={strongLabelStyle}>발주처</label>
+                          <select
+                            className="input"
+                            value={bidAmountOwnerId}
+                            onChange={(event) => handleBidAmountOwnerChange(event.target.value)}
+                          >
+                            <option value="" disabled hidden>발주처를 선택하세요</option>
+                            {OWNER_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="field-label" style={strongLabelStyle}>공종</label>
+                          <select
+                            className="input"
+                            value={bidAmountFileType}
+                            onChange={(event) => handleBidAmountFileTypeChange(event.target.value)}
+                          >
+                            <option value="" disabled hidden>공종을 선택하세요</option>
+                            {FILE_TYPE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
                           <label className="field-label" style={strongLabelStyle}>투찰마감일</label>
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             <input
@@ -1121,28 +1216,33 @@ export default function BidResultPage() {
                             type="file"
                             accept=".xlsx"
                             ref={agreementPickerInputRef}
-                            onChange={handleAgreementFileUpload}
+                            onChange={handleBidAmountAgreementFileUpload}
                             onClick={(e) => { e.target.value = ''; }}
                             style={{ display: 'none' }}
                           />
                           <div className="input" style={{ fontWeight: 700 }}>
-                            {agreementFile?.name || '협정파일을 선택하세요.'}
+                            {bidAmountAgreementFile?.name || '협정파일을 선택하세요.'}
                           </div>
                           <p className="section-help" style={{ marginTop: 6 }}>
-                            시트: {selectedAgreementSheet || '선택 안 함'}
+                            시트: {bidAmountSelectedAgreementSheet || '선택 안 함'}
                           </p>
                           <select
                             className="input"
-                            value={selectedAgreementSheet}
-                            onChange={handleAgreementSheetSelect}
-                            disabled={agreementSheetNames.length === 0}
+                            value={bidAmountSelectedAgreementSheet}
+                            onChange={handleBidAmountAgreementSheetSelect}
+                            disabled={bidAmountAgreementSheetNames.length === 0}
                             style={{ marginTop: '8px' }}
                           >
                             <option value="">시트를 선택하세요</option>
-                            {agreementSheetNames.map((name) => (
+                            {bidAmountAgreementSheetNames.map((name) => (
                               <option key={name} value={name}>{name}</option>
                             ))}
                           </select>
+                          {(!bidAmountOwnerId || !bidAmountFileType) && (
+                            <p className="section-help" style={{ marginTop: 8 }}>
+                              발주처와 공종을 먼저 선택하면 협정파일 선택이 가능합니다.
+                            </p>
+                          )}
                           <button
                             type="button"
                             className="btn-soft"
@@ -1155,8 +1255,8 @@ export default function BidResultPage() {
                             type="button"
                             className="btn-soft"
                             style={{ marginTop: '8px' }}
-                            onClick={handleClearAgreementFile}
-                            disabled={!agreementFile}
+                            onClick={handleClearBidAmountAgreementFile}
+                            disabled={!bidAmountAgreementFile}
                           >
                             선택 해제
                           </button>
