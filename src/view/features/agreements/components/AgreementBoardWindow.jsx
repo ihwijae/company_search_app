@@ -2000,6 +2000,7 @@ export default function AgreementBoardWindow({
   const boardSearchInputRef = React.useRef(null);
   const boardSearchCardRefs = React.useRef(new Map());
   const boardSearchSignatureRef = React.useRef('');
+  const boardSearchNavigationRef = React.useRef(false);
   const skipAssignmentSyncRef = React.useRef(false);
 
   const markSkipAssignmentSync = React.useCallback(() => {
@@ -3344,6 +3345,7 @@ export default function AgreementBoardWindow({
 
   const moveBoardSearchMatch = React.useCallback((step) => {
     if (!boardSearchMatches.length) return;
+    boardSearchNavigationRef.current = true;
     setBoardSearchActiveIndex((prev) => {
       const size = boardSearchMatches.length;
       const base = prev >= 0 ? prev : 0;
@@ -3377,9 +3379,10 @@ export default function AgreementBoardWindow({
     const node = boardSearchCardRefs.current.get(boardSearchActiveKey);
     if (!node) return;
     node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-    if (typeof node.focus === 'function') {
+    if (boardSearchNavigationRef.current && typeof node.focus === 'function') {
       try { node.focus({ preventScroll: true }); } catch { node.focus(); }
     }
+    boardSearchNavigationRef.current = false;
   }, [boardSearchOpen, boardSearchActiveKey]);
 
   React.useEffect(() => {

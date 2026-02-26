@@ -1515,6 +1515,9 @@ button.primary:hover { background: var(--accent-2); }
   height: 34px;
   border-radius: 8px;
 }
+.excel-board-search-box select {
+  min-width: 104px;
+}
 .excel-board-search-box .input {
   min-width: 180px;
 }
