@@ -1505,24 +1505,26 @@ button.primary:hover { background: var(--accent-2); }
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 6px 10px;
+  padding: 10px 12px;
   border: 1px solid #bfdbfe;
   border-radius: 12px;
   background: #eff6ff;
 }
 .excel-board-search-box .input,
 .excel-board-search-box select {
-  height: 34px;
+  height: 38px;
   border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.2;
 }
 .excel-board-search-box select {
-  min-width: 104px;
+  min-width: 136px;
 }
 .excel-board-search-box .input {
-  min-width: 180px;
+  min-width: 260px;
 }
 .excel-board-search-status {
-  font-size: 12px;
+  font-size: 13px;
   color: #1e40af;
   font-weight: 700;
   white-space: nowrap;
@@ -1538,12 +1540,12 @@ button.primary:hover { background: var(--accent-2); }
   padding-top: 110px;
 }
 .excel-board-search-modal {
-  width: min(720px, calc(100% - 24px));
+  width: min(940px, calc(100% - 24px));
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 14px;
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
-  padding: 12px;
+  padding: 14px;
 }
 .excel-board-search-modal-header {
   display: flex;

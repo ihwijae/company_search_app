@@ -3392,7 +3392,6 @@ export default function AgreementBoardWindow({
   }, [boardSearchOpen, boardSearchActiveKey]);
 
   React.useEffect(() => {
-    if (!open) return undefined;
     const onKeyDown = (event) => {
       const key = String(event.key || '').toLowerCase();
       const ctrlOrMeta = event.ctrlKey || event.metaKey;
@@ -3424,7 +3423,7 @@ export default function AgreementBoardWindow({
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [open, boardSearchOpen, moveBoardSearchMatch, openBoardSearchPopup, closeBoardSearchPopup]);
+  }, [boardSearchOpen, moveBoardSearchMatch, openBoardSearchPopup, closeBoardSearchPopup]);
 
   const resolveTechnicianStorageKeyBySlot = React.useCallback((groupIndex, slotIndex) => {
     const uid = groupAssignments?.[groupIndex]?.[slotIndex];
