@@ -3364,6 +3364,12 @@ export default function AgreementBoardWindow({
       ? `${boardSearchActiveIndex + 1}/${boardSearchMatches.length} · 총 ${boardSearchMatches.length}건`
       : `총 ${boardSearchMatches.length}건`
   );
+  const openBoardSearchPopup = React.useCallback(() => {
+    setBoardSearchOpen(true);
+  }, []);
+  const closeBoardSearchPopup = React.useCallback(() => {
+    setBoardSearchOpen(false);
+  }, []);
 
   React.useEffect(() => {
     if (!boardSearchOpen) return;
@@ -3393,7 +3399,7 @@ export default function AgreementBoardWindow({
 
       if (ctrlOrMeta && key === 'f') {
         event.preventDefault();
-        setBoardSearchOpen(true);
+        openBoardSearchPopup();
         return;
       }
 
@@ -3401,7 +3407,7 @@ export default function AgreementBoardWindow({
 
       if (key === 'escape') {
         event.preventDefault();
-        setBoardSearchOpen(false);
+        closeBoardSearchPopup();
         return;
       }
 
@@ -3418,7 +3424,7 @@ export default function AgreementBoardWindow({
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [open, boardSearchOpen, moveBoardSearchMatch]);
+  }, [open, boardSearchOpen, moveBoardSearchMatch, openBoardSearchPopup, closeBoardSearchPopup]);
 
   const resolveTechnicianStorageKeyBySlot = React.useCallback((groupIndex, slotIndex) => {
     const uid = groupAssignments?.[groupIndex]?.[slotIndex];
@@ -6678,44 +6684,10 @@ export default function AgreementBoardWindow({
                 <button
                   type="button"
                   className={`excel-btn${boardSearchOpen ? ' primary' : ''}`}
-                  onClick={() => setBoardSearchOpen((prev) => !prev)}
+                  onClick={openBoardSearchPopup}
                 >
-                  {boardSearchOpen ? '검색 닫기' : '검색'}
+                  검색
                 </button>
-                {boardSearchOpen && (
-                  <div className="excel-board-search-box">
-                    <select
-                      className="input"
-                      value={boardSearchField}
-                      onChange={(event) => setBoardSearchField(event.target.value === 'manager' ? 'manager' : 'name')}
-                    >
-                      <option value="name">업체명</option>
-                      <option value="manager">담당자명</option>
-                    </select>
-                    <input
-                      ref={boardSearchInputRef}
-                      className="input"
-                      value={boardSearchQuery}
-                      onChange={(event) => setBoardSearchQuery(event.target.value)}
-                      placeholder="검색어 입력 (Ctrl+F)"
-                    />
-                    <span className="excel-board-search-status">
-                      {boardSearchCurrentLabel}
-                    </span>
-                    <button
-                      type="button"
-                      className="excel-btn"
-                      onClick={() => moveBoardSearchMatch(-1)}
-                      disabled={boardSearchMatches.length === 0}
-                    >이전</button>
-                    <button
-                      type="button"
-                      className="excel-btn"
-                      onClick={() => moveBoardSearchMatch(1)}
-                      disabled={boardSearchMatches.length === 0}
-                    >다음</button>
-                  </div>
-                )}
               </div>
               <div className="excel-toolbar-actions">
                 <button
@@ -7063,6 +7035,48 @@ export default function AgreementBoardWindow({
         </div>
         </div>
       </div>
+      {boardSearchOpen && (
+        <div className="excel-board-search-overlay" onClick={closeBoardSearchPopup}>
+          <div className="excel-board-search-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="excel-board-search-modal-header">
+              <strong>찾기</strong>
+              <button type="button" className="excel-board-search-close" onClick={closeBoardSearchPopup}>닫기</button>
+            </div>
+            <div className="excel-board-search-box">
+              <select
+                className="input"
+                value={boardSearchField}
+                onChange={(event) => setBoardSearchField(event.target.value === 'manager' ? 'manager' : 'name')}
+              >
+                <option value="name">업체명</option>
+                <option value="manager">담당자명</option>
+              </select>
+              <input
+                ref={boardSearchInputRef}
+                className="input"
+                value={boardSearchQuery}
+                onChange={(event) => setBoardSearchQuery(event.target.value)}
+                placeholder="검색어 입력 (Ctrl+F)"
+              />
+              <span className="excel-board-search-status">
+                {boardSearchCurrentLabel}
+              </span>
+              <button
+                type="button"
+                className="excel-btn"
+                onClick={() => moveBoardSearchMatch(-1)}
+                disabled={boardSearchMatches.length === 0}
+              >이전</button>
+              <button
+                type="button"
+                className="excel-btn"
+                onClick={() => moveBoardSearchMatch(1)}
+                disabled={boardSearchMatches.length === 0}
+              >다음</button>
+            </div>
+          </div>
+        </div>
+      )}
       {representativeSearchOpen && (
         <CompanySearchModal
           open={representativeSearchOpen}
