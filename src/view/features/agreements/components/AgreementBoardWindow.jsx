@@ -1363,6 +1363,7 @@ const buildEntryUid = (prefix, candidate, index, seen) => {
   seen.set(base, count + 1);
   return uid;
 };
+const buildBoardSearchKey = (groupIndex, slotIndex) => `${groupIndex}:${slotIndex}`;
 
 export default function AgreementBoardWindow({
   open,
@@ -1985,6 +1986,10 @@ export default function AgreementBoardWindow({
   const [bidTouched, setBidTouched] = React.useState(false);
   const [bidRateTouched, setBidRateTouched] = React.useState(false);
   const [adjustmentRateTouched, setAdjustmentRateTouched] = React.useState(false);
+  const [boardSearchOpen, setBoardSearchOpen] = React.useState(false);
+  const [boardSearchField, setBoardSearchField] = React.useState('name');
+  const [boardSearchQuery, setBoardSearchQuery] = React.useState('');
+  const [boardSearchActiveIndex, setBoardSearchActiveIndex] = React.useState(-1);
   const baseAutoRef = React.useRef('');
   const bidAutoRef = React.useRef('');
   const { notify, confirm, showLoading, hideLoading } = useFeedback();
@@ -1992,6 +1997,9 @@ export default function AgreementBoardWindow({
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
   const boardMainRef = React.useRef(null);
+  const boardSearchInputRef = React.useRef(null);
+  const boardSearchCardRefs = React.useRef(new Map());
+  const boardSearchSignatureRef = React.useRef('');
   const skipAssignmentSyncRef = React.useRef(false);
 
   const markSkipAssignmentSync = React.useCallback(() => {
@@ -3278,6 +3286,136 @@ export default function AgreementBoardWindow({
     }
     return map;
   }, [representativeEntries, regionEntries]);
+
+  const normalizedBoardSearchQuery = React.useMemo(
+    () => String(boardSearchQuery || '').trim().toLowerCase(),
+    [boardSearchQuery],
+  );
+
+  const boardSearchMatches = React.useMemo(() => {
+    if (!normalizedBoardSearchQuery) return [];
+    const byManager = boardSearchField === 'manager';
+    const matches = [];
+    groupAssignments.forEach((row, groupIndex) => {
+      if (!Array.isArray(row)) return;
+      row.forEach((uid, slotIndex) => {
+        if (!uid) return;
+        const entry = participantMap.get(uid);
+        const candidate = entry?.candidate;
+        if (!candidate) return;
+        const companyName = String(getCompanyName(candidate) || '');
+        const managerName = String(getCandidateManagerName(candidate) || '');
+        const target = byManager ? managerName : companyName;
+        if (!target || !target.toLowerCase().includes(normalizedBoardSearchQuery)) return;
+        matches.push({
+          key: buildBoardSearchKey(groupIndex, slotIndex),
+          companyName,
+          managerName,
+        });
+      });
+    });
+    return matches;
+  }, [groupAssignments, participantMap, boardSearchField, normalizedBoardSearchQuery]);
+
+  const boardSearchMatchKeySet = React.useMemo(
+    () => new Set(boardSearchMatches.map((match) => match.key)),
+    [boardSearchMatches],
+  );
+
+  React.useEffect(() => {
+    const signature = `${boardSearchField}:${normalizedBoardSearchQuery}`;
+    const signatureChanged = boardSearchSignatureRef.current !== signature;
+    boardSearchSignatureRef.current = signature;
+
+    if (!normalizedBoardSearchQuery || boardSearchMatches.length === 0) {
+      setBoardSearchActiveIndex(-1);
+      return;
+    }
+    if (signatureChanged) {
+      setBoardSearchActiveIndex(0);
+      return;
+    }
+    setBoardSearchActiveIndex((prev) => {
+      if (prev < 0) return 0;
+      if (prev >= boardSearchMatches.length) return boardSearchMatches.length - 1;
+      return prev;
+    });
+  }, [boardSearchField, normalizedBoardSearchQuery, boardSearchMatches.length]);
+
+  const moveBoardSearchMatch = React.useCallback((step) => {
+    if (!boardSearchMatches.length) return;
+    setBoardSearchActiveIndex((prev) => {
+      const size = boardSearchMatches.length;
+      const base = prev >= 0 ? prev : 0;
+      return (base + step + size) % size;
+    });
+  }, [boardSearchMatches.length]);
+
+  const boardSearchActiveMatch = (
+    boardSearchActiveIndex >= 0 && boardSearchActiveIndex < boardSearchMatches.length
+      ? boardSearchMatches[boardSearchActiveIndex]
+      : null
+  );
+  const boardSearchActiveKey = boardSearchActiveMatch?.key || '';
+  const boardSearchCurrentLabel = (
+    boardSearchMatches.length > 0 && boardSearchActiveIndex >= 0
+      ? `${boardSearchActiveIndex + 1}/${boardSearchMatches.length} · 총 ${boardSearchMatches.length}건`
+      : `총 ${boardSearchMatches.length}건`
+  );
+
+  React.useEffect(() => {
+    if (!boardSearchOpen) return;
+    const timer = window.setTimeout(() => {
+      boardSearchInputRef.current?.focus();
+      boardSearchInputRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [boardSearchOpen]);
+
+  React.useEffect(() => {
+    if (!boardSearchOpen || !boardSearchActiveKey) return;
+    const node = boardSearchCardRefs.current.get(boardSearchActiveKey);
+    if (!node) return;
+    node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    if (typeof node.focus === 'function') {
+      try { node.focus({ preventScroll: true }); } catch { node.focus(); }
+    }
+  }, [boardSearchOpen, boardSearchActiveKey]);
+
+  React.useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event) => {
+      const key = String(event.key || '').toLowerCase();
+      const ctrlOrMeta = event.ctrlKey || event.metaKey;
+
+      if (ctrlOrMeta && key === 'f') {
+        event.preventDefault();
+        setBoardSearchOpen(true);
+        return;
+      }
+
+      if (!boardSearchOpen) return;
+
+      if (key === 'escape') {
+        event.preventDefault();
+        setBoardSearchOpen(false);
+        return;
+      }
+
+      if (ctrlOrMeta && key === 'g') {
+        event.preventDefault();
+        moveBoardSearchMatch(event.shiftKey ? -1 : 1);
+        return;
+      }
+
+      if (key === 'enter' && document.activeElement === boardSearchInputRef.current) {
+        event.preventDefault();
+        moveBoardSearchMatch(event.shiftKey ? -1 : 1);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [open, boardSearchOpen, moveBoardSearchMatch]);
 
   const resolveTechnicianStorageKeyBySlot = React.useCallback((groupIndex, slotIndex) => {
     const uid = groupAssignments?.[groupIndex]?.[slotIndex];
@@ -5509,6 +5647,9 @@ export default function AgreementBoardWindow({
 
   const renderNameCell = (meta) => {
     const isDropTarget = dropTarget && dropTarget.groupIndex === meta.groupIndex && dropTarget.slotIndex === meta.slotIndex;
+    const searchKey = buildBoardSearchKey(meta.groupIndex, meta.slotIndex);
+    const isBoardSearchMatch = boardSearchOpen && boardSearchMatchKeySet.has(searchKey);
+    const isBoardSearchActive = boardSearchOpen && boardSearchActiveKey === searchKey;
     const cellClasses = ['excel-cell', 'excel-name-cell'];
     if (!meta.empty && meta.isDutyRegion) cellClasses.push('duty-region');
     if (isDropTarget) cellClasses.push('drop-target');
@@ -5532,10 +5673,15 @@ export default function AgreementBoardWindow({
           </button>
         ) : (
           <div
-            className={`excel-member-card${draggingId === meta.uid ? ' dragging' : ''}`}
+            className={`excel-member-card${draggingId === meta.uid ? ' dragging' : ''}${isBoardSearchMatch ? ' search-match' : ''}${isBoardSearchActive ? ' search-active' : ''}`}
             draggable
             onDragStart={handleDragStart(meta.uid, meta.groupIndex, meta.slotIndex)}
             onDragEnd={handleDragEnd}
+            ref={(node) => {
+              if (node) boardSearchCardRefs.current.set(searchKey, node);
+              else boardSearchCardRefs.current.delete(searchKey);
+            }}
+            tabIndex={isBoardSearchMatch ? -1 : undefined}
           >
             <div className="excel-member-tags">
               {meta.tags.map((tag) => (
@@ -6525,6 +6671,49 @@ export default function AgreementBoardWindow({
             </div>
 
               <div className="excel-toolbar">
+              <div className="excel-toolbar-search">
+                <button
+                  type="button"
+                  className={`excel-btn${boardSearchOpen ? ' primary' : ''}`}
+                  onClick={() => setBoardSearchOpen((prev) => !prev)}
+                >
+                  {boardSearchOpen ? '검색 닫기' : '검색'}
+                </button>
+                {boardSearchOpen && (
+                  <div className="excel-board-search-box">
+                    <select
+                      className="input"
+                      value={boardSearchField}
+                      onChange={(event) => setBoardSearchField(event.target.value === 'manager' ? 'manager' : 'name')}
+                    >
+                      <option value="name">업체명</option>
+                      <option value="manager">담당자명</option>
+                    </select>
+                    <input
+                      ref={boardSearchInputRef}
+                      className="input"
+                      value={boardSearchQuery}
+                      onChange={(event) => setBoardSearchQuery(event.target.value)}
+                      placeholder="검색어 입력 (Ctrl+F)"
+                    />
+                    <span className="excel-board-search-status">
+                      {boardSearchCurrentLabel}
+                    </span>
+                    <button
+                      type="button"
+                      className="excel-btn"
+                      onClick={() => moveBoardSearchMatch(-1)}
+                      disabled={boardSearchMatches.length === 0}
+                    >이전</button>
+                    <button
+                      type="button"
+                      className="excel-btn"
+                      onClick={() => moveBoardSearchMatch(1)}
+                      disabled={boardSearchMatches.length === 0}
+                    >다음</button>
+                  </div>
+                )}
+              </div>
               <div className="excel-toolbar-actions">
                 <button
                   type="button"
