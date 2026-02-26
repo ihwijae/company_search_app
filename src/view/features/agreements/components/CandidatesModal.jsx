@@ -1342,9 +1342,19 @@ const industryToLabel = (type) => {
                     : chooseDefaultMax('credit');
                   const debtScore = c.debtScore != null ? Number(c.debtScore) : null;
                   const currentScore = c.currentScore != null ? Number(c.currentScore) : null;
+                  const bizYearsScore = showBizYearsMetrics && c.bizYearsScore != null ? Number(c.bizYearsScore) : null;
+                  const bizYearsMax = showBizYearsMetrics
+                    && Number.isFinite(Number(c.bizYearsMaxScore))
+                    && Number(c.bizYearsMaxScore) > 0
+                    ? Number(c.bizYearsMaxScore)
+                    : 0;
                   const creditScore = c.creditScore != null ? Number(c.creditScore) : null;
-                  const combinedScore = (Number.isFinite(debtScore) ? debtScore : 0) + (Number.isFinite(currentScore) ? currentScore : 0);
-                  const combinedMax = (Number.isFinite(debtMax) ? debtMax : 0) + (Number.isFinite(currentMax) ? currentMax : 0);
+                  const combinedScore = (Number.isFinite(debtScore) ? debtScore : 0)
+                    + (Number.isFinite(currentScore) ? currentScore : 0)
+                    + (Number.isFinite(bizYearsScore) ? bizYearsScore : 0);
+                  const combinedMax = (Number.isFinite(debtMax) ? debtMax : 0)
+                    + (Number.isFinite(currentMax) ? currentMax : 0)
+                    + (Number.isFinite(bizYearsMax) ? bizYearsMax : 0);
                   const managementMax = Math.max(combinedMax, Number.isFinite(creditMax) ? creditMax : 0);
                   const creditNoteLower = String(c.creditNote || '').trim().toLowerCase();
                   const creditNoteTextRaw = c.creditNoteText || '';
@@ -1385,7 +1395,10 @@ const industryToLabel = (type) => {
                     managementScore = managementMax;
                   }
                   const managementIsMax = managementMax > 0 && Math.abs(managementScore - managementMax) < 1e-6;
-                  const hasManagementScores = Number.isFinite(debtScore) || Number.isFinite(currentScore) || Number.isFinite(creditScoreValue);
+                  const hasManagementScores = Number.isFinite(debtScore)
+                    || Number.isFinite(currentScore)
+                    || Number.isFinite(bizYearsScore)
+                    || Number.isFinite(creditScoreValue);
                   const hasCreditScoreValue = creditScoreValue != null && creditScoreValue > 0;
                   const creditDisplayLabel = creditGradeTextRaw.trim() || creditGradePure;
                   const normalizedGrade = creditGradePure.replace(/\s+/g, '').toUpperCase();
