@@ -24,6 +24,15 @@ const MENU_ROUTES = {
 
 const TEAM_LEAD_BUCKET_ID = 'team-lead';
 const TEAM_LEAD_EXCLUDE = ['윤명숙', '이동훈', '김희준', '김대열'];
+const BIZ_FIELDS = ['사업자번호', 'bizNo', '사업자 번호'];
+const NAME_FIELDS = ['업체명', '회사명', 'name', '검색된 회사'];
+const REPRESENTATIVE_FIELDS = ['대표자', '대표자명'];
+const REGION_FIELDS = ['대표지역', '지역'];
+const FILE_TYPE_BADGE_LABELS = {
+  eung: '전기',
+  tongsin: '통신',
+  sobang: '소방',
+};
 
 const COMPANY_NAME_FIELDS = [
   '검색된 회사',
@@ -50,6 +59,27 @@ const normalizeCompanyName = (name) => {
   normalized = normalized.replace(/앤/g, '엔');
   normalized = normalized.replace(/[^a-z0-9가-힣㈜\(\)]/g, '');
   return normalized;
+};
+
+const normalizeBizNumber = (value) => String(value || '').replace(/[^0-9]/g, '');
+
+const pickFirstValue = (obj, fields) => {
+  if (!obj || typeof obj !== 'object') return '';
+  for (const key of fields) {
+    if (obj[key]) return obj[key];
+  }
+  return '';
+};
+
+const buildCompanyOptionKey = (company) => {
+  if (!company || typeof company !== 'object') return '';
+  const typeToken = String(company?._file_type || '').trim().toLowerCase();
+  const biz = normalizeBizNumber(pickFirstValue(company, BIZ_FIELDS));
+  if (biz) return typeToken ? `${typeToken}|biz:${biz}` : `biz:${biz}`;
+  const name = String(pickFirstValue(company, NAME_FIELDS) || '').trim();
+  if (name) return typeToken ? `${typeToken}|name:${name}` : `name:${name}`;
+  const fallback = String(company?.id || company?.rowIndex || company?.row || '');
+  return fallback ? `${typeToken}|row:${fallback}` : typeToken || Math.random().toString(36).slice(2);
 };
 
 const buildNameVariants = (name) => {
@@ -120,6 +150,9 @@ export default function KakaoSendPage() {
     return ['auto', 'eung', 'tongsin', 'sobang'].includes(next) ? next : 'auto';
   });
   const [selectedManagerId, setSelectedManagerId] = React.useState(() => String(initialUiState?.selectedManagerId || ''));
+  const [companyConflictSelections, setCompanyConflictSelections] = React.useState({});
+  const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
+  const [pendingConflictPayload, setPendingConflictPayload] = React.useState(null);
 
   React.useEffect(() => {
     const payload = {
@@ -202,21 +235,21 @@ export default function KakaoSendPage() {
     }
   }, [managerBuckets, selectedManagerId]);
 
-  const autoMatchManagers = async (entries, overrideFileType) => {
-    if (!window?.electronAPI?.searchManyCompanies) return entries;
+  const autoMatchManagers = async (entries, overrideFileType, selections = {}) => {
+    if (!window?.electronAPI?.searchManyCompanies) return { entries, conflictEntries: [] };
     const nameSet = new Set();
     entries.forEach((entry) => {
       if (!entry.companyName) return;
       buildNameVariants(entry.companyName).forEach((variant) => nameSet.add(variant));
     });
-    if (nameSet.size === 0) return entries;
+    if (nameSet.size === 0) return { entries, conflictEntries: [] };
     console.log('[kakao-auto-match] query names:', Array.from(nameSet));
     const searchFileType = overrideFileType && overrideFileType !== 'auto' ? overrideFileType : 'all';
     console.log('[kakao-auto-match] fileType:', searchFileType);
     const response = await window.electronAPI.searchManyCompanies(Array.from(nameSet), searchFileType);
     if (!response?.success) {
       notify({ type: 'warning', message: '업체 담당자 자동 매칭에 실패했습니다.' });
-      return entries;
+      return { entries, conflictEntries: [] };
     }
     const candidates = Array.isArray(response.data) ? response.data : [];
     console.log('[kakao-auto-match] candidates:', candidates.length);
@@ -229,7 +262,8 @@ export default function KakaoSendPage() {
       map.get(normalized).push(candidate);
     });
     console.log('[kakao-auto-match] mapped names:', Array.from(map.keys()));
-    const nextEntries = entries.map(entry => {
+    const conflictMap = new Map();
+    const nextEntries = entries.map((entry) => {
       const normalizedName = normalizeCompanyName(entry.companyName);
       let list = map.get(normalizedName) || [];
       if (list.length === 0) {
@@ -251,6 +285,26 @@ export default function KakaoSendPage() {
         ? list.filter((candidate) => getCandidateFileType(candidate) === targetType)
         : list;
       const pool = filtered.length > 0 ? filtered : list;
+      if (pool.length > 1 && normalizedName) {
+        const savedKey = selections?.[normalizedName];
+        const picked = savedKey
+          ? pool.find((candidate) => buildCompanyOptionKey(candidate) === savedKey)
+          : null;
+        if (!picked) {
+          if (!conflictMap.has(normalizedName)) {
+            conflictMap.set(normalizedName, {
+              normalizedName,
+              displayName: entry.companyName || entry.company || normalizedName,
+              options: pool,
+            });
+          }
+          return entry;
+        }
+        const managers = extractManagerNames(picked);
+        const matchedId = managers.length > 0 ? (String(managers[0] || '').trim() || 'none') : 'none';
+        console.log('[kakao-auto-match] manager result:', entry.companyName, matchedId);
+        return matchedId === 'none' ? entry : { ...entry, managerId: matchedId };
+      }
       let matchedId = 'none';
       for (const candidate of pool) {
         const managers = extractManagerNames(candidate);
@@ -262,7 +316,60 @@ export default function KakaoSendPage() {
       console.log('[kakao-auto-match] manager result:', entry.companyName, matchedId);
       return matchedId === 'none' ? entry : { ...entry, managerId: matchedId };
     });
-    return nextEntries;
+    return {
+      entries: nextEntries,
+      conflictEntries: Array.from(conflictMap.values()),
+    };
+  };
+
+  const handleCompanyConflictPick = (normalizedName, option) => {
+    const key = buildCompanyOptionKey(option);
+    setCompanyConflictSelections((prev) => ({ ...prev, [normalizedName]: key }));
+  };
+
+  const handleCompanyConflictCancel = () => {
+    setCompanyConflictModal({ open: false, entries: [], isResolving: false });
+    setPendingConflictPayload(null);
+  };
+
+  const handleCompanyConflictConfirm = async () => {
+    if (!pendingConflictPayload?.entries) {
+      handleCompanyConflictCancel();
+      return;
+    }
+    const unresolved = (companyConflictModal.entries || []).filter((entry) => {
+      const savedKey = companyConflictSelections?.[entry.normalizedName];
+      if (!savedKey) return true;
+      return !entry.options.some((candidate) => buildCompanyOptionKey(candidate) === savedKey);
+    });
+    if (unresolved.length > 0) {
+      notify({ type: 'info', message: '중복된 업체가 있습니다. 모든 항목을 선택해 주세요.' });
+      return;
+    }
+    setCompanyConflictModal((prev) => ({ ...prev, isResolving: true }));
+    try {
+      const result = await autoMatchManagers(
+        pendingConflictPayload.entries,
+        pendingConflictPayload.overrideFileType,
+        companyConflictSelections
+      );
+      if (result.conflictEntries.length > 0) {
+        setCompanyConflictModal({ open: true, entries: result.conflictEntries, isResolving: false });
+        return;
+      }
+      setSplitEntries(result.entries);
+      const matchedCount = result.entries.filter((entry) => entry.managerId !== 'none').length;
+      notify({
+        type: 'success',
+        message: pendingConflictPayload.mode === 'split'
+          ? `총 ${result.entries.length}개 업체로 분리되었습니다. 담당자 매칭 ${matchedCount}건.`
+          : `담당자 매칭 ${matchedCount}건 완료.`,
+      });
+      handleCompanyConflictCancel();
+    } catch {
+      notify({ type: 'warning', message: '업체 담당자 자동 매칭에 실패했습니다.' });
+      setCompanyConflictModal((prev) => ({ ...prev, isResolving: false }));
+    }
   };
 
   const handleSplitMessages = async () => {
@@ -306,12 +413,18 @@ export default function KakaoSendPage() {
       return;
     }
     notify({ type: 'info', message: '업체 담당자를 자동 매칭 중입니다.' });
-    const matchedEntries = await autoMatchManagers(entries, industryFilter);
-    setSplitEntries(matchedEntries);
-    const matchedCount = matchedEntries.filter((entry) => entry.managerId !== 'none').length;
+    const result = await autoMatchManagers(entries, industryFilter, companyConflictSelections);
+    if (result.conflictEntries.length > 0) {
+      setPendingConflictPayload({ mode: 'split', entries, overrideFileType: industryFilter });
+      setCompanyConflictModal({ open: true, entries: result.conflictEntries, isResolving: false });
+      notify({ type: 'info', message: '동일 업체명이 여러 건 조회되어 선택이 필요합니다.' });
+      return;
+    }
+    setSplitEntries(result.entries);
+    const matchedCount = result.entries.filter((entry) => entry.managerId !== 'none').length;
     notify({
       type: 'success',
-      message: `총 ${matchedEntries.length}개 업체로 분리되었습니다. 담당자 매칭 ${matchedCount}건.`,
+      message: `총 ${result.entries.length}개 업체로 분리되었습니다. 담당자 매칭 ${matchedCount}건.`,
     });
   };
 
@@ -327,9 +440,15 @@ export default function KakaoSendPage() {
       return;
     }
     notify({ type: 'info', message: '업체 담당자를 자동 매칭 중입니다.' });
-    const matchedEntries = await autoMatchManagers(splitEntries, industryFilter);
-    setSplitEntries(matchedEntries);
-    const matchedCount = matchedEntries.filter((entry) => entry.managerId !== 'none').length;
+    const result = await autoMatchManagers(splitEntries, industryFilter, companyConflictSelections);
+    if (result.conflictEntries.length > 0) {
+      setPendingConflictPayload({ mode: 'rematch', entries: splitEntries, overrideFileType: industryFilter });
+      setCompanyConflictModal({ open: true, entries: result.conflictEntries, isResolving: false });
+      notify({ type: 'info', message: '동일 업체명이 여러 건 조회되어 선택이 필요합니다.' });
+      return;
+    }
+    setSplitEntries(result.entries);
+    const matchedCount = result.entries.filter((entry) => entry.managerId !== 'none').length;
     notify({
       type: 'success',
       message: `담당자 매칭 ${matchedCount}건 완료.`,
@@ -670,6 +789,69 @@ export default function KakaoSendPage() {
           </div>
         </div>
       </Modal>
+      {companyConflictModal.open && (
+        <div className="excel-helper-modal-overlay" role="presentation">
+          <div className="excel-helper-modal" role="dialog" aria-modal="true">
+            <header className="excel-helper-modal__header">
+              <h3>중복된 업체 선택</h3>
+              <p>동일한 이름의 업체가 여러 건 조회되었습니다. 각 업체에 맞는 자료를 선택해 주세요.</p>
+            </header>
+            <div className="excel-helper-modal__body">
+              {(companyConflictModal.entries || []).map((entry) => (
+                <div key={entry.normalizedName} className="excel-helper-modal__conflict">
+                  <div className="excel-helper-modal__conflict-title">{entry.displayName}</div>
+                  <div className="excel-helper-modal__options">
+                    {entry.options.map((option) => {
+                      const optionKey = buildCompanyOptionKey(option);
+                      const selectedKey = companyConflictSelections?.[entry.normalizedName];
+                      const isActive = selectedKey === optionKey;
+                      const bizNo = pickFirstValue(option, BIZ_FIELDS) || '-';
+                      const representative = pickFirstValue(option, REPRESENTATIVE_FIELDS) || '-';
+                      const region = pickFirstValue(option, REGION_FIELDS) || '-';
+                      const typeKey = String(option?._file_type || '').toLowerCase();
+                      const typeLabel = FILE_TYPE_BADGE_LABELS[typeKey] || '';
+                      const managers = extractManagerNames(option);
+                      return (
+                        <button
+                          key={optionKey}
+                          type="button"
+                          className={isActive ? 'excel-helper-modal__option active' : 'excel-helper-modal__option'}
+                          onClick={() => handleCompanyConflictPick(entry.normalizedName, option)}
+                        >
+                          <div className="excel-helper-modal__option-name">
+                            {pickFirstValue(option, NAME_FIELDS) || entry.displayName}
+                            {typeLabel && <span className={`file-type-badge-small file-type-${typeKey}`}>{typeLabel}</span>}
+                          </div>
+                          <div className="excel-helper-modal__option-meta">사업자번호 {bizNo}</div>
+                          <div className="excel-helper-modal__option-meta">대표자 {representative} · 지역 {region}</div>
+                          {managers.length > 0 && (
+                            <div className="excel-helper-modal__option-managers">
+                              {managers.map((manager) => (
+                                <span key={`${optionKey}-${manager}`} className="badge-person">{manager}</span>
+                              ))}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <footer className="excel-helper-modal__footer">
+              <button type="button" className="btn-soft" onClick={handleCompanyConflictCancel} disabled={companyConflictModal.isResolving}>취소</button>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleCompanyConflictConfirm}
+                disabled={companyConflictModal.isResolving}
+              >
+                {companyConflictModal.isResolving ? '처리 중...' : '선택 완료'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
