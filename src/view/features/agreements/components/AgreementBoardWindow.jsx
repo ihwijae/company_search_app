@@ -1433,6 +1433,7 @@ export default function AgreementBoardWindow({
   const [draggingId, setDraggingId] = React.useState(null);
   const [dropTarget, setDropTarget] = React.useState(null);
   const [dragSource, setDragSource] = React.useState(null);
+  const [pendingMoveSource, setPendingMoveSource] = React.useState(null);
   const [groupShares, setGroupShares] = React.useState(() => (
     Array.isArray(initialGroupShares) ? initialGroupShares.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
   ));
@@ -3091,6 +3092,23 @@ export default function AgreementBoardWindow({
   }, [open, technicianModalOpen]);
 
   React.useEffect(() => () => { closeTechnicianWindow(); }, [closeTechnicianWindow]);
+
+  React.useEffect(() => {
+    if (!open) {
+      setPendingMoveSource(null);
+      return;
+    }
+    if (!pendingMoveSource?.uid) return;
+    let found = false;
+    for (const row of groupAssignments) {
+      if (!Array.isArray(row)) continue;
+      if (row.includes(pendingMoveSource.uid)) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) setPendingMoveSource(null);
+  }, [open, groupAssignments, pendingMoveSource]);
 
   React.useEffect(() => {
     if (inlineMode) return;
@@ -4872,6 +4890,78 @@ export default function AgreementBoardWindow({
     setDragSource(null);
   };
 
+  const handleCardMoveClick = React.useCallback(async (meta) => {
+    if (!meta || meta.empty || !meta.uid) return;
+
+    if (!pendingMoveSource) {
+      setPendingMoveSource({
+        uid: meta.uid,
+        groupIndex: meta.groupIndex,
+        slotIndex: meta.slotIndex,
+        companyName: meta.companyName || '업체',
+      });
+      return;
+    }
+
+    const sourceUid = pendingMoveSource.uid;
+    const targetUid = meta.uid;
+    if (!sourceUid) {
+      setPendingMoveSource(null);
+      return;
+    }
+    if (sourceUid === targetUid) {
+      setPendingMoveSource(null);
+      return;
+    }
+
+    const sourceName = pendingMoveSource.companyName || '업체';
+    const targetName = meta.companyName || '업체';
+    const targetLabel = `${meta.groupIndex + 1}번 협정 ${meta.label}`;
+    const swapping = Boolean(targetUid);
+
+    const ok = await confirm({
+      title: swapping ? '업체 위치를 변경하시겠습니까?' : '업체를 이동하시겠습니까?',
+      message: swapping
+        ? `${sourceName} 업체와 ${targetName} 업체의 위치를 변경하시겠습니까?`
+        : `${sourceName} 업체를 ${targetLabel} 위치로 이동하시겠습니까?`,
+      confirmText: '예',
+      cancelText: '아니오',
+      tone: 'info',
+      portalTarget: portalContainer || null,
+    });
+    if (!ok) return;
+
+    setGroupAssignments((prev) => {
+      const next = prev.map((group) => group.slice());
+      let sourceGroupIndex = -1;
+      let sourceSlotIndex = -1;
+      let targetGroupIndex = -1;
+      let targetSlotIndex = -1;
+
+      next.forEach((group, gIdx) => {
+        group.forEach((uid, sIdx) => {
+          if (uid === sourceUid) {
+            sourceGroupIndex = gIdx;
+            sourceSlotIndex = sIdx;
+          }
+          if (uid === targetUid) {
+            targetGroupIndex = gIdx;
+            targetSlotIndex = sIdx;
+          }
+        });
+      });
+
+      if (sourceGroupIndex < 0 || sourceSlotIndex < 0) return next;
+      if (targetGroupIndex < 0 || targetSlotIndex < 0) return next;
+
+      next[sourceGroupIndex][sourceSlotIndex] = targetUid || null;
+      next[targetGroupIndex][targetSlotIndex] = sourceUid;
+      return next;
+    });
+
+    setPendingMoveSource(null);
+  }, [confirm, pendingMoveSource, portalContainer]);
+
   const handleRemove = (groupIndex, slotIndex) => {
     const removedUid = groupAssignments[groupIndex]?.[slotIndex];
     const removedCandidate = removedUid ? participantMap.get(removedUid)?.candidate : null;
@@ -5125,6 +5215,7 @@ export default function AgreementBoardWindow({
     setGroupApprovals((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setGroupManagementBonus((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setDropTarget(null);
+    setPendingMoveSource(null);
     clearSelectedGroups();
   };
 
@@ -5765,10 +5856,11 @@ export default function AgreementBoardWindow({
           </button>
         ) : (
           <div
-            className={`excel-member-card${draggingId === meta.uid ? ' dragging' : ''}${isBoardSearchMatch ? ' search-match' : ''}${isBoardSearchActive ? ' search-active' : ''}`}
+            className={`excel-member-card${draggingId === meta.uid ? ' dragging' : ''}${pendingMoveSource?.uid === meta.uid ? ' move-source' : ''}${isBoardSearchMatch ? ' search-match' : ''}${isBoardSearchActive ? ' search-active' : ''}`}
             draggable
             onDragStart={handleDragStart(meta.uid, meta.groupIndex, meta.slotIndex)}
             onDragEnd={handleDragEnd}
+            onClick={() => { void handleCardMoveClick(meta); }}
             ref={(node) => {
               if (node) boardSearchCardRefs.current.set(searchKey, node);
               else boardSearchCardRefs.current.delete(searchKey);
@@ -5785,7 +5877,10 @@ export default function AgreementBoardWindow({
               <button
                 type="button"
                 className="excel-remove-btn"
-                onClick={() => handleRemove(meta.groupIndex, meta.slotIndex)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleRemove(meta.groupIndex, meta.slotIndex);
+                }}
               >제거</button>
             </div>
             {(meta.managerName || meta.dataStatusLabel) && (
@@ -6840,7 +6935,7 @@ export default function AgreementBoardWindow({
                 {technicianEnabled && (
                   <button
                     type="button"
-                    className="excel-btn"
+                    className="excel-btn excel-btn-technician"
                     onClick={openTechnicianModal}
                     disabled={!technicianEditable}
                   >
