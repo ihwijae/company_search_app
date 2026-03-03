@@ -5028,10 +5028,9 @@ export default function AgreementBoardWindow({
     });
     removeCandidatesFromBoard(removedCandidates);
     setGroupAssignments((prev) => prev.filter((_, idx) => !selected.has(idx)));
-    setGroupShares((prev) => prev.filter((_, idx) => !selected.has(idx)));
-    setGroupShareRawInputs((prev) => prev.filter((_, idx) => !selected.has(idx)));
-    setGroupCredibility((prev) => prev.filter((_, idx) => !selected.has(idx)));
-    setGroupTechnicianScores((prev) => prev.filter((_, idx) => !selected.has(idx)));
+    // Shares/credibility/technician are slot-index arrays.
+    // If we filter them here before `groupAssignments` sync runs, old/new indices can desync.
+    // Leave them untouched and let the assignment-sync effect remap by participant id.
     setGroupApprovals((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setGroupManagementBonus((prev) => prev.filter((_, idx) => !selected.has(idx)));
     setDropTarget(null);
@@ -5753,12 +5752,13 @@ export default function AgreementBoardWindow({
             autoFocus
           />
         ) : (
-          <button
-            type="button"
-            className="excel-inline-edit-display excel-inline-edit-display-share"
-            onDoubleClick={() => startAmountCellEdit(meta, 'share')}
-            title="더블클릭하여 수정"
-          >
+            <button
+              type="button"
+              className="excel-inline-edit-display excel-inline-edit-display-share"
+              onClick={() => startAmountCellEdit(meta, 'share')}
+              onFocus={() => startAmountCellEdit(meta, 'share')}
+              title="클릭하여 수정"
+            >
             {(() => {
               const base = meta.shareValue || (meta.shareForCalc != null ? formatShareDecimal(meta.shareForCalc) : '');
               if (!base) return '-';
@@ -5797,8 +5797,9 @@ export default function AgreementBoardWindow({
             <button
               type="button"
               className="excel-inline-edit-display"
-              onDoubleClick={() => startAmountCellEdit(meta, 'credibility')}
-              title="더블클릭하여 수정"
+              onClick={() => startAmountCellEdit(meta, 'credibility')}
+              onFocus={() => startAmountCellEdit(meta, 'credibility')}
+              title="클릭하여 수정"
             >
               {meta.credibilityValue || '0'}
             </button>
@@ -5818,13 +5819,43 @@ export default function AgreementBoardWindow({
       rowSpan={rowSpan}
     >
       {meta.empty ? null : (
-        <input
-          type="text"
-          value={meta.technicianValue || ''}
-          onChange={(event) => handleTechnicianInput(meta.groupIndex, meta.slotIndex, event.target.value)}
-          placeholder="0"
-          disabled={!technicianEditable}
-        />
+        isAmountCellEditing(meta, 'technician') ? (
+          <input
+            type="text"
+            className="excel-amount-input"
+            value={meta.technicianValue || ''}
+            onChange={(event) => handleTechnicianInput(meta.groupIndex, meta.slotIndex, event.target.value)}
+            onBlur={() => finishAmountCellEdit(meta, 'technician', true)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                finishAmountCellEdit(meta, 'technician', true);
+              } else if (event.key === 'Escape') {
+                event.preventDefault();
+                finishAmountCellEdit(meta, 'technician', true);
+              }
+            }}
+            placeholder="0"
+            autoFocus
+            disabled={!technicianEditable}
+          />
+        ) : (
+          <button
+            type="button"
+            className="excel-inline-edit-display"
+            onClick={() => {
+              if (!technicianEditable) return;
+              startAmountCellEdit(meta, 'technician');
+            }}
+            onFocus={() => {
+              if (!technicianEditable) return;
+              startAmountCellEdit(meta, 'technician');
+            }}
+            title={technicianEditable ? '클릭하여 수정' : undefined}
+          >
+            {meta.technicianValue || '0'}
+          </button>
+        )
       )}
     </td>
   );
@@ -5857,8 +5888,9 @@ export default function AgreementBoardWindow({
             <button
               type="button"
               className="excel-inline-edit-display"
-              onDoubleClick={() => startAmountCellEdit(meta, 'management')}
-              title="더블클릭하여 수정"
+              onClick={() => startAmountCellEdit(meta, 'management')}
+              onFocus={() => startAmountCellEdit(meta, 'management')}
+              title="클릭하여 수정"
             >
               {meta.managementDisplay || '-'}
             </button>
@@ -5899,8 +5931,9 @@ export default function AgreementBoardWindow({
             <button
               type="button"
               className="excel-inline-edit-display"
-              onDoubleClick={() => startAmountCellEdit(meta, 'performance')}
-              title="더블클릭하여 수정"
+              onClick={() => startAmountCellEdit(meta, 'performance')}
+              onFocus={() => startAmountCellEdit(meta, 'performance')}
+              title="클릭하여 수정"
             >
               {meta.performanceDisplay || '-'}
             </button>
@@ -5945,8 +5978,9 @@ export default function AgreementBoardWindow({
             <button
               type="button"
               className="excel-inline-edit-display"
-              onDoubleClick={() => startAmountCellEdit(meta, 'sipyung')}
-              title="더블클릭하여 수정"
+              onClick={() => startAmountCellEdit(meta, 'sipyung')}
+              onFocus={() => startAmountCellEdit(meta, 'sipyung')}
+              title="클릭하여 수정"
             >
               {meta.sipyungDisplay || '-'}
             </button>
@@ -6080,8 +6114,9 @@ export default function AgreementBoardWindow({
                   <button
                     type="button"
                     className="excel-inline-edit-display"
-                    onDoubleClick={() => startAmountCellEdit(meta, 'quality')}
-                    title="더블클릭하여 수정"
+                    onClick={() => startAmountCellEdit(meta, 'quality')}
+                    onFocus={() => startAmountCellEdit(meta, 'quality')}
+                    title="클릭하여 수정"
                   >
                     {(() => {
                       const shown = meta.qualityInput !== undefined && meta.qualityInput !== null && meta.qualityInput !== ''
