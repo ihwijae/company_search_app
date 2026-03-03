@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import AgreementLoadModal from './AgreementLoadModal.jsx';
+import TechnicianScoreWindow from './TechnicianScoreWindow.jsx';
 import useAgreementBoardStorage from '../hooks/useAgreementBoardStorage.js';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import Modal from '../../../../components/Modal.jsx';
@@ -1471,6 +1472,8 @@ export default function AgreementBoardWindow({
   const technicianEntriesByTargetRef = React.useRef({});
   const technicianEntriesTargetKeyRef = React.useRef('0:0');
   const [technicianTarget, setTechnicianTarget] = React.useState({ groupIndex: 0, slotIndex: 0 });
+  const technicianWindowRef = React.useRef(null);
+  const [technicianPortalContainer, setTechnicianPortalContainer] = React.useState(null);
   const [minRatingOpen, setMinRatingOpen] = React.useState(false);
   const [minRatingRequiredShare, setMinRatingRequiredShare] = React.useState('');
   const [minRatingNetCostBonus, setMinRatingNetCostBonus] = React.useState('');
@@ -2925,6 +2928,72 @@ export default function AgreementBoardWindow({
 
   // handleRepresentativePicked defined later after participant map is ready
 
+  const closeTechnicianWindow = React.useCallback(() => {
+    const win = technicianWindowRef.current;
+    if (win && !win.closed) {
+      if (win.__agreementBoardCleanup) {
+        try { win.__agreementBoardCleanup(); } catch {}
+        delete win.__agreementBoardCleanup;
+      }
+      win.close();
+    }
+    technicianWindowRef.current = null;
+    setTechnicianPortalContainer(null);
+  }, []);
+
+  const ensureTechnicianWindow = React.useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (!technicianModalOpen) return;
+    if (technicianWindowRef.current && technicianWindowRef.current.closed) {
+      technicianWindowRef.current = null;
+      setTechnicianPortalContainer(null);
+    }
+
+    if (!technicianWindowRef.current) {
+      const width = Math.min(920, Math.max(760, window.innerWidth - 280));
+      const height = Math.min(760, Math.max(560, window.innerHeight - 220));
+      const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
+      const dualScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
+      const left = Math.max(24, dualScreenLeft + Math.max(0, (window.innerWidth - width) / 2) + 80);
+      const top = Math.max(32, dualScreenTop + Math.max(0, (window.innerHeight - height) / 2) + 24);
+      const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+      const child = window.open('', 'company-search-technician-score', features);
+      if (!child) return;
+      child.document.title = '기술자점수 계산';
+      child.document.documentElement.style.height = '100%';
+      child.document.documentElement.style.overflow = 'hidden';
+      child.document.body.style.margin = '0';
+      child.document.body.style.height = '100%';
+      child.document.body.style.background = '#f8fafc';
+      child.document.body.innerHTML = '';
+      const root = child.document.createElement('div');
+      root.id = 'technician-score-root';
+      root.style.height = '100%';
+      child.document.body.appendChild(root);
+      copyDocumentStyles(document, child.document);
+      technicianWindowRef.current = child;
+      setTechnicianPortalContainer(root);
+      const handleBeforeUnload = () => {
+        technicianWindowRef.current = null;
+        setTechnicianPortalContainer(null);
+        setTechnicianModalOpen(false);
+      };
+      child.addEventListener('beforeunload', handleBeforeUnload);
+      child.__agreementBoardCleanup = () => child.removeEventListener('beforeunload', handleBeforeUnload);
+    } else {
+      const win = technicianWindowRef.current;
+      if (win.document && win.document.readyState === 'complete') {
+        copyDocumentStyles(document, win.document);
+      }
+      if (!technicianPortalContainer && win.document) {
+        const existingRoot = win.document.getElementById('technician-score-root');
+        if (existingRoot) setTechnicianPortalContainer(existingRoot);
+      }
+      win.document.title = '기술자점수 계산';
+      try { win.focus(); } catch {}
+    }
+  }, [technicianModalOpen, technicianPortalContainer]);
+
   const closeWindow = React.useCallback(() => {
     if (inlineMode) return;
     const win = boardWindowRef.current;
@@ -2937,7 +3006,8 @@ export default function AgreementBoardWindow({
     }
     boardWindowRef.current = null;
     setPortalContainer(null);
-  }, [inlineMode]);
+    closeTechnicianWindow();
+  }, [inlineMode, closeTechnicianWindow]);
 
   const ensureWindow = React.useCallback(() => {
     if (inlineMode) return;
@@ -3005,6 +3075,22 @@ export default function AgreementBoardWindow({
   }, [inlineMode, open, ensureWindow, closeWindow]);
 
   React.useEffect(() => () => { closeWindow(); }, [closeWindow]);
+
+  React.useEffect(() => {
+    if (!open || !technicianModalOpen) {
+      closeTechnicianWindow();
+      return;
+    }
+    ensureTechnicianWindow();
+  }, [open, technicianModalOpen, ensureTechnicianWindow, closeTechnicianWindow]);
+
+  React.useEffect(() => {
+    if (!open && technicianModalOpen) {
+      setTechnicianModalOpen(false);
+    }
+  }, [open, technicianModalOpen]);
+
+  React.useEffect(() => () => { closeTechnicianWindow(); }, [closeTechnicianWindow]);
 
   React.useEffect(() => {
     if (inlineMode) return;
@@ -3522,6 +3608,11 @@ export default function AgreementBoardWindow({
       return next;
     });
   }, [technicianEditable, technicianScoreTotal, technicianTarget, technicianTargetOptions.length]);
+
+  const handleSaveTechnicianScore = React.useCallback(() => {
+    applyTechnicianScoreToTarget();
+    closeTechnicianModal();
+  }, [applyTechnicianScoreToTarget, closeTechnicianModal]);
 
   const attemptPendingPlacement = React.useCallback(() => {
     const pending = pendingPlacementRef.current;
@@ -7345,127 +7436,6 @@ export default function AgreementBoardWindow({
           </div>
         </div>
       </Modal>
-      <Modal
-        open={technicianModalOpen}
-        title="기술자점수 계산"
-        onClose={closeTechnicianModal}
-        onCancel={closeTechnicianModal}
-        onSave={applyTechnicianScoreToTarget}
-        closeOnSave
-        size="lg"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 12, color: '#475569' }}>적용 대상</span>
-              <select
-                className="filter-input"
-                value={`${technicianTarget.groupIndex}:${technicianTarget.slotIndex}`}
-                onChange={(event) => {
-                  const [groupIndex, slotIndex] = event.target.value.split(':').map((v) => Number(v));
-                  setTechnicianTarget({ groupIndex, slotIndex });
-                }}
-              >
-                {technicianTargetOptions.map((option) => (
-                  <option key={option.key} value={option.key}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 12, color: '#475569' }}>총점</span>
-              <strong style={{ fontSize: 18, color: '#0f172a' }}>{formatTechnicianScore(technicianScoreTotal)}점</strong>
-            </div>
-            <button
-              type="button"
-              className="excel-btn"
-              onClick={addTechnicianEntry}
-              disabled={!technicianEditable}
-            >
-              기술자 추가
-            </button>
-          </div>
-          {!technicianEditable && (
-            <div style={{ fontSize: 12, color: '#b91c1c' }}>
-              소방 공종은 기술자점수가 평가제외입니다.
-            </div>
-          )}
-          {technicianEntries.length === 0 && (
-            <div style={{ padding: 12, border: '1px dashed #cbd5f5', borderRadius: 10, color: '#64748b' }}>
-              추가된 기술자가 없습니다. "기술자 추가" 버튼을 눌러 입력을 시작하세요.
-            </div>
-          )}
-          {technicianEntries.length > 0 && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '120px 160px 160px 80px 1fr auto',
-                gap: 10,
-                alignItems: 'center',
-                fontSize: 12,
-                color: '#64748b',
-                fontWeight: 600,
-              }}
-            >
-              <div>등급계수</div>
-              <div>경력계수</div>
-              <div>관리능력계수</div>
-              <div>인원</div>
-              <div>점수</div>
-              <div />
-            </div>
-          )}
-          {technicianEntries.map((entry) => (
-            <div
-              key={entry.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '120px 160px 160px 80px 1fr auto',
-                gap: 10,
-                alignItems: 'center',
-              }}
-            >
-              <select
-                className="filter-input"
-                value={entry.grade}
-                onChange={(event) => updateTechnicianEntry(entry.id, 'grade', event.target.value)}
-              >
-                <option value="">등급을 선택하세요</option>
-                {TECHNICIAN_GRADE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              <select
-                className="filter-input"
-                value={entry.careerCoeff}
-                onChange={(event) => updateTechnicianEntry(entry.id, 'careerCoeff', event.target.value)}
-              >
-                {TECHNICIAN_CAREER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              <select
-                className="filter-input"
-                value={entry.managementCoeff}
-                onChange={(event) => updateTechnicianEntry(entry.id, 'managementCoeff', event.target.value)}
-              >
-                {TECHNICIAN_MANAGEMENT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              <input
-                className="filter-input"
-                value={entry.count}
-                onChange={(event) => updateTechnicianEntry(entry.id, 'count', event.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="인원"
-              />
-              <div style={{ fontSize: 13, color: '#0f172a' }}>
-                점수 {formatTechnicianScore(computeTechnicianScore(entry))}
-              </div>
-              <button type="button" className="excel-btn" onClick={() => removeTechnicianEntry(entry.id)}>삭제</button>
-            </div>
-          ))}
-        </div>
-      </Modal>
       <AgreementLoadModal
         open={loadModalOpen}
         onClose={closeLoadModal}
@@ -7533,11 +7503,45 @@ export default function AgreementBoardWindow({
     </>
   );
 
+  const technicianWindowMarkup = (
+    <TechnicianScoreWindow
+      technicianTarget={technicianTarget}
+      technicianTargetOptions={technicianTargetOptions}
+      onTargetChange={setTechnicianTarget}
+      technicianScoreTotal={technicianScoreTotal}
+      technicianEditable={technicianEditable}
+      onAddTechnicianEntry={addTechnicianEntry}
+      technicianEntries={technicianEntries}
+      onUpdateTechnicianEntry={updateTechnicianEntry}
+      onRemoveTechnicianEntry={removeTechnicianEntry}
+      onSave={handleSaveTechnicianScore}
+      onClose={closeTechnicianModal}
+      formatTechnicianScore={formatTechnicianScore}
+      computeTechnicianScore={computeTechnicianScore}
+      gradeOptions={TECHNICIAN_GRADE_OPTIONS}
+      careerOptions={TECHNICIAN_CAREER_OPTIONS}
+      managementOptions={TECHNICIAN_MANAGEMENT_OPTIONS}
+    />
+  );
+  const technicianPortal = (open && technicianModalOpen && technicianPortalContainer)
+    ? createPortal(technicianWindowMarkup, technicianPortalContainer)
+    : null;
+
   if (inlineMode) {
     if (!open) return null;
-    return boardMarkup;
+    return (
+      <>
+        {boardMarkup}
+        {technicianPortal}
+      </>
+    );
   }
 
   if (!open || !portalContainer) return null;
-  return createPortal(boardMarkup, portalContainer);
+  return (
+    <>
+      {createPortal(boardMarkup, portalContainer)}
+      {technicianPortal}
+    </>
+  );
 }
