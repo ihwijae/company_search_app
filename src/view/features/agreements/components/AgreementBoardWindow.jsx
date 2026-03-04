@@ -4891,9 +4891,10 @@ export default function AgreementBoardWindow({
   };
 
   const handleCardMoveClick = React.useCallback(async (meta) => {
-    if (!meta || meta.empty || !meta.uid) return;
+    if (!meta) return;
 
     if (!pendingMoveSource) {
+      if (meta.empty || !meta.uid) return;
       setPendingMoveSource({
         uid: meta.uid,
         groupIndex: meta.groupIndex,
@@ -4904,12 +4905,18 @@ export default function AgreementBoardWindow({
     }
 
     const sourceUid = pendingMoveSource.uid;
-    const targetUid = meta.uid;
+    const targetUid = meta.empty ? null : (meta.uid || null);
     if (!sourceUid) {
       setPendingMoveSource(null);
       return;
     }
-    if (sourceUid === targetUid) {
+    if (
+      sourceUid === targetUid
+      || (
+        pendingMoveSource.groupIndex === meta.groupIndex
+        && pendingMoveSource.slotIndex === meta.slotIndex
+      )
+    ) {
       setPendingMoveSource(null);
       return;
     }
@@ -4935,8 +4942,8 @@ export default function AgreementBoardWindow({
       const next = prev.map((group) => group.slice());
       let sourceGroupIndex = -1;
       let sourceSlotIndex = -1;
-      let targetGroupIndex = -1;
-      let targetSlotIndex = -1;
+      let targetGroupIndex = meta.groupIndex;
+      let targetSlotIndex = meta.slotIndex;
 
       next.forEach((group, gIdx) => {
         group.forEach((uid, sIdx) => {
@@ -4944,7 +4951,7 @@ export default function AgreementBoardWindow({
             sourceGroupIndex = gIdx;
             sourceSlotIndex = sIdx;
           }
-          if (uid === targetUid) {
+          if (targetUid && uid === targetUid) {
             targetGroupIndex = gIdx;
             targetSlotIndex = sIdx;
           }
@@ -4952,7 +4959,13 @@ export default function AgreementBoardWindow({
       });
 
       if (sourceGroupIndex < 0 || sourceSlotIndex < 0) return next;
-      if (targetGroupIndex < 0 || targetSlotIndex < 0) return next;
+      if (targetGroupIndex == null || targetGroupIndex < 0 || targetSlotIndex == null || targetSlotIndex < 0) return next;
+      while (next.length <= targetGroupIndex) {
+        next.push(Array(safeGroupSize).fill(null));
+      }
+      while (next[targetGroupIndex].length < safeGroupSize) {
+        next[targetGroupIndex].push(null);
+      }
 
       next[sourceGroupIndex][sourceSlotIndex] = targetUid || null;
       next[targetGroupIndex][targetSlotIndex] = sourceUid;
@@ -4960,7 +4973,16 @@ export default function AgreementBoardWindow({
     });
 
     setPendingMoveSource(null);
-  }, [confirm, pendingMoveSource, portalContainer]);
+  }, [confirm, pendingMoveSource, portalContainer, safeGroupSize]);
+
+  const handleEmptySlotClick = React.useCallback((meta) => {
+    if (!meta || !meta.empty) return;
+    if (pendingMoveSource?.uid) {
+      void handleCardMoveClick(meta);
+      return;
+    }
+    openRepresentativeSearch({ groupIndex: meta.groupIndex, slotIndex: meta.slotIndex });
+  }, [handleCardMoveClick, openRepresentativeSearch, pendingMoveSource]);
 
   const handleRemove = (groupIndex, slotIndex) => {
     const removedUid = groupAssignments[groupIndex]?.[slotIndex];
@@ -5850,7 +5872,7 @@ export default function AgreementBoardWindow({
             type="button"
             className="excel-add-button"
             aria-label="업체 검색"
-            onClick={() => openRepresentativeSearch({ groupIndex: meta.groupIndex, slotIndex: meta.slotIndex })}
+            onClick={() => handleEmptySlotClick(meta)}
           >
             <span aria-hidden="true">＋</span>
           </button>

@@ -8,7 +8,7 @@
 
 ## 사용 방법
 1. 상위에서 `FeedbackProvide
-2. r`로 감싸기 (현재 `src/App.jsx`에서 적용).
+r`로 감싸기 (현재 `src/App.jsx`에서 적용).
 2. 컴포넌트에서 `useFeedback()`로 `notify`, `confirm` 사용.
 
 예시:
