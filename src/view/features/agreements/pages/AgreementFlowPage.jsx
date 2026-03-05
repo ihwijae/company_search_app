@@ -312,8 +312,10 @@ export default function AgreementFlowPage({
           : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
       }
       if (key === 'lh-50to100') {
+        const type = toFileType(form.industry);
+        const multiplier = type === 'sobang' ? 3 : 2;
         return base > 0
-          ? { perfectPerformanceAmount: base * 2, perfectPerformanceBasis: '기초금액 × 2배' }
+          ? { perfectPerformanceAmount: base * multiplier, perfectPerformanceBasis: `기초금액 × ${multiplier}배` }
           : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
       }
     }

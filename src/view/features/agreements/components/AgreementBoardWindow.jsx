@@ -2067,8 +2067,10 @@ export default function AgreementBoardWindow({
           : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
       }
       if (rangeKey === 'lh-50to100') {
+        const normalizedType = String(fileType || '').toLowerCase();
+        const multiplier = normalizedType === 'sobang' ? 3 : 2;
         return base > 0
-          ? { perfectPerformanceAmount: base * 2, perfectPerformanceBasis: '기초금액 × 2배' }
+          ? { perfectPerformanceAmount: base * multiplier, perfectPerformanceBasis: `기초금액 × ${multiplier}배` }
           : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
       }
     }
