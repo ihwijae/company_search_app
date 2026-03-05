@@ -149,6 +149,7 @@ export default function KakaoSendPage() {
     const next = String(initialUiState?.industryFilter || 'auto');
     return ['auto', 'eung', 'tongsin', 'sobang'].includes(next) ? next : 'auto';
   });
+  const [companySearchKeyword, setCompanySearchKeyword] = React.useState('');
   const [selectedManagerId, setSelectedManagerId] = React.useState(() => String(initialUiState?.selectedManagerId || ''));
   const [companyConflictSelections, setCompanyConflictSelections] = React.useState({});
   const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
@@ -224,6 +225,19 @@ export default function KakaoSendPage() {
     }
     return order.map((key) => map.get(key));
   }, [splitEntries, messageOverrides]);
+
+  const filteredEntries = React.useMemo(() => {
+    const keyword = String(companySearchKeyword || '').trim();
+    if (!keyword) return splitEntries;
+    const normalizedKeyword = normalizeCompanyName(keyword);
+    return (splitEntries || []).filter((entry) => {
+      const companyName = String(entry?.companyName || '').trim();
+      const companyLine = String(entry?.company || '').trim();
+      const normalizedName = normalizeCompanyName(companyName);
+      const normalizedLine = normalizeCompanyName(companyLine);
+      return normalizedName.includes(normalizedKeyword) || normalizedLine.includes(normalizedKeyword);
+    });
+  }, [splitEntries, companySearchKeyword]);
 
   React.useEffect(() => {
     if (managerBuckets.length === 0) {
@@ -583,6 +597,14 @@ export default function KakaoSendPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                     <h2 className="section-title" style={{ marginTop: 0 }}>업체별 담당자 목록</h2>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        className="filter-input"
+                        style={{ minWidth: '180px' }}
+                        type="text"
+                        placeholder="업체명 검색"
+                        value={companySearchKeyword}
+                        onChange={(event) => setCompanySearchKeyword(event.target.value)}
+                      />
                       <select
                         className="filter-input"
                         value={industryFilter}
@@ -615,8 +637,14 @@ export default function KakaoSendPage() {
                               문자 분리 후 담당자 목록이 표시됩니다.
                             </td>
                           </tr>
+                        ) : filteredEntries.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                              검색 결과가 없습니다.
+                            </td>
+                          </tr>
                         ) : (
-                          splitEntries.map((entry, index) => (
+                          filteredEntries.map((entry, index) => (
                             <tr key={entry.id}>
                               <td>{index + 1}</td>
                               <td>{entry.company}</td>
