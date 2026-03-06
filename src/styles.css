@@ -2025,22 +2025,24 @@ button.primary:hover { background: var(--accent-2); }
 
 .agreement-candidate-drawer {
   position: absolute;
-  top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
-  width: min(420px, calc(100vw - 32px));
+  height: min(360px, 52vh);
   background: linear-gradient(180deg, #fffef7 0%, #ffffff 100%);
-  border-left: 1px solid #e5e7eb;
-  box-shadow: -20px 0 40px rgba(15, 23, 42, 0.18);
-  transform: translateX(100%);
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 -20px 40px rgba(15, 23, 42, 0.18);
+  transform: translateY(100%);
   transition: transform 0.22s ease;
   z-index: 31;
   display: flex;
   flex-direction: column;
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
 }
 
 .agreement-candidate-drawer.open {
-  transform: translateX(0);
+  transform: translateY(0);
 }
 
 .agreement-candidate-drawer__header {
@@ -2050,6 +2052,18 @@ button.primary:hover { background: var(--accent-2); }
   gap: 12px;
   padding: 16px 18px 12px;
   border-bottom: 1px solid #f1f5f9;
+}
+
+.agreement-candidate-drawer__header::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 5px;
+  border-radius: 999px;
+  background: #cbd5e1;
 }
 
 .agreement-candidate-drawer__header strong {
@@ -2090,12 +2104,13 @@ button.primary:hover { background: var(--accent-2); }
   flex: 1;
   overflow: auto;
   padding: 14px 16px 20px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
 }
 
 .agreement-candidate-drawer__empty {
+  grid-column: 1 / -1;
   padding: 36px 16px;
   border: 1px dashed #cbd5e1;
   border-radius: 14px;
@@ -2218,7 +2233,7 @@ button.primary:hover { background: var(--accent-2); }
 
 @media (max-width: 960px) {
   .agreement-candidate-drawer {
-    width: min(100%, 420px);
+    height: min(72vh, 440px);
   }
 
   .agreement-candidate-card__top {
@@ -2230,6 +2245,10 @@ button.primary:hover { background: var(--accent-2); }
   }
 
   .agreement-candidate-card__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .agreement-candidate-drawer__body {
     grid-template-columns: 1fr;
   }
 }
