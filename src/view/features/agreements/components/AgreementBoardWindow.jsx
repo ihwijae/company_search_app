@@ -20,6 +20,7 @@ import { generateMany } from '../../../../shared/agreements/generator.js';
 import { AGREEMENT_GROUPS } from '../../../../shared/navigation.js';
 import { sanitizeHtml } from '../../../../shared/sanitizeHtml.js';
 import { AGREEMENT_BAN_CONFIG } from '../../../../shared/agreements/banConfig.js';
+import { buildAgreementExportPayload } from '../utils/agreementExportPayload.js';
 
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
@@ -4159,184 +4160,61 @@ export default function AgreementBoardWindow({
       const dutyRateNumber = parseNumeric(regionDutyRate);
       const dutySummaryText = buildDutySummary(dutyRegions, dutyRateNumber, safeParticipantLimit);
       const formattedDeadline = formatBidDeadline(bidDeadline);
-
-      let exportIndex = 1;
-      const groupPayloads = groupAssignments.flatMap((memberIds, groupIndex) => {
-        const hasMembers = Array.isArray(memberIds) && memberIds.some((uid) => Boolean(uid));
-        if (!hasMembers) return [];
-        const summaryEntry = summaryByGroup.get(groupIndex) || null;
-        const resolvedNetCostBonus = isLHOwner
-          ? (summaryEntry?.netCostBonusScore ?? (netCostBonusScore ?? null))
-          : null;
-        const approvalValue = String(groupApprovals[groupIndex] || '').trim();
-        const members = memberIds.map((uid, slotIndex) => {
-          if (!uid) {
-            return {
-              slotIndex,
-              role: slotIndex === 0 ? 'representative' : 'member',
-              empty: true,
-            };
-          }
-          const entry = participantMap.get(uid);
-          if (!entry || !entry.candidate) {
-            return {
-              slotIndex,
-              role: slotIndex === 0 ? 'representative' : 'member',
-              empty: true,
-            };
-          }
-          const candidate = entry.candidate;
-          const storedShare = groupShares[groupIndex]?.[slotIndex];
-          const shareSource = (storedShare !== undefined && storedShare !== null && storedShare !== '')
-            ? storedShare
-            : getSharePercent(groupIndex, slotIndex, candidate);
-          const sharePercent = parseNumeric(shareSource);
-          const managementScore = getCandidateManagementScore(candidate);
-          const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
-          const technicianValue = technicianEnabled
-            ? getTechnicianValue(groupIndex, slotIndex)
-            : null;
-          const sipyung = getCandidateSipyungAmount(candidate);
-          const credibilitySource = credibilityEnabled ? groupCredibility[groupIndex]?.[slotIndex] : null;
-          const credibilityBonus = credibilityEnabled ? parseNumeric(credibilitySource) : null;
-          const isRegionMember = entry.type === 'region' || isDutyRegionCompany(candidate);
-          const companyName = sanitizeCompanyName(getCompanyName(candidate));
-          const managerName = getCandidateManagerName(candidate);
-          const possibleShareRatio = (includePossibleShare && possibleShareBase && sipyung && sipyung > 0)
-            ? (sipyung / possibleShareBase) * 100
-            : null;
-          const shareLabel = (includePossibleShare && possibleShareRatio != null && possibleShareRatio < 100)
-            ? formatShareForName(possibleShareRatio)
-            : '';
-          const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
-          const qualityScore = isLHOwner
-            ? getQualityScoreValue(groupIndex, slotIndex, candidate)
-            : null;
-          const displayName = managerName ? `${nameLine}\n${managerName}` : nameLine;
-          return {
-            slotIndex,
-            role: slotIndex === 0 ? 'representative' : 'member',
-            type: entry.type,
-            isRegion: Boolean(isRegionMember),
-            name: displayName,
-            manager: managerName,
-            region: getRegionLabel(candidate),
-            bizNo: normalizeBizNo(getBizNo(candidate)),
-            sharePercent,
-            managementScore: managementScore != null ? Number(managementScore) : null,
-            performanceAmount: performanceAmount != null ? Number(performanceAmount) : null,
-            technicianScore: technicianValue != null ? Number(technicianValue) : null,
-            sipyung,
-            credibilityBonus: credibilityBonus != null ? Number(credibilityBonus) : null,
-            qualityScore: qualityScore != null ? Number(qualityScore) : null,
-          };
-        });
-        let qualityPoints = null;
-        if (isLHOwner) {
-          let qualityTotal = 0;
-          let hasQuality = false;
-          members.forEach((member) => {
-            const shareValue = Number(member.sharePercent);
-            const scoreValue = Number(member.qualityScore);
-            if (!Number.isFinite(shareValue) || !Number.isFinite(scoreValue)) return;
-            if (shareValue <= 0) return;
-            qualityTotal += scoreValue * (shareValue / 100);
-            hasQuality = true;
-          });
-          if (hasQuality) {
-            qualityPoints = resolveQualityPoints(qualityTotal, selectedRangeOption?.key);
-          }
-        }
-        const summaryPayload = summaryEntry ? {
-          shareSum: summaryEntry.shareSum ?? null,
-          shareComplete: Boolean(summaryEntry.shareComplete),
-          shareReady: Boolean(summaryEntry.shareReady),
-          managementScore: summaryEntry.managementScore ?? null,
-          performanceScore: summaryEntry.performanceScore ?? null,
-          performanceAmount: summaryEntry.performanceAmount ?? null,
-          performanceBase: summaryEntry.performanceBase ?? null,
-          credibilityScore: summaryEntry.credibilityScore ?? null,
-          credibilityMax: summaryEntry.credibilityMax ?? null,
-          totalScoreBase: summaryEntry.totalScoreBase ?? null,
-          totalScoreWithCred: summaryEntry.totalScoreWithCred ?? null,
-          totalScore: summaryEntry.totalScoreWithCred ?? null,
-          bidScore: summaryEntry.bidScore ?? null,
-          managementMax: summaryEntry.managementMax ?? null,
-          performanceMax: summaryEntry.performanceMax ?? null,
-          totalMaxBase: summaryEntry.totalMaxBase ?? null,
-          totalMaxWithCred: summaryEntry.totalMaxWithCred ?? null,
-          totalMax: summaryEntry.totalMaxBase ?? null,
-          netCostBonusScore: resolvedNetCostBonus,
-          subcontractScore: summaryEntry.subcontractScore ?? null,
-          materialScore: summaryEntry.materialScore ?? null,
-          qualityPoints,
-          managementBonusApplied: Boolean(groupManagementBonus[groupIndex]),
-        } : (resolvedNetCostBonus != null ? { netCostBonusScore: resolvedNetCostBonus } : null);
-
-        const payload = {
-          index: exportIndex,
-          approval: approvalValue,
-          members,
-          summary: summaryPayload,
-        };
-        exportIndex += 1;
-        return payload;
-      });
-
-      const candidatePayloads = candidateDrawerEntries.map((entry, index) => {
-        const candidate = entry?.candidate;
-        if (!candidate) return null;
-        const companyName = sanitizeCompanyName(getCompanyName(candidate));
-        const managerName = getCandidateManagerName(candidate);
-        const shareLabel = entry.possibleShareText ? String(entry.possibleShareText).replace(/%$/, '') : '';
-        const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
-        const displayName = managerName ? `${nameLine}\n${managerName}` : nameLine;
-        return {
-          candidateIndex: index + 1,
-          isRegion: Boolean(entry.isDutyRegion),
-          name: displayName,
-          manager: managerName,
-          region: getRegionLabel(candidate),
-          bizNo: normalizeBizNo(getBizNo(candidate)),
-          managementScore: entry.managementScore != null ? Number(entry.managementScore) : null,
-          performanceAmount: entry.performanceAmount != null ? Number(entry.performanceAmount) : null,
-          sipyung: entry.sipyungAmount != null ? Number(entry.sipyungAmount) : null,
-          possibleShareText: entry.possibleShareText || '',
-        };
-      }).filter(Boolean);
-
-      const payload = {
+      const payload = buildAgreementExportPayload({
         templateKey,
         appendTargetPath: options.appendTargetPath || '',
         sheetName: options.sheetName || '',
-        context: {
-          ownerId,
-          rangeId,
-        },
-        header: {
-          noticeNo: noticeNo || '',
-          noticeTitle: noticeTitle || '',
-          industryLabel: industryLabel || '',
-          baseAmount: baseValue ?? null,
-          estimatedAmount: estimatedValue ?? null,
-          bidAmount: bidAmountValue ?? null,
-          ratioBaseAmount: ratioBaseValue ?? null,
-          entryAmount: entryAmountValue ?? null,
-          entryMode: entryModeResolved || 'none',
-          amountForScore: amountForScoreResolved,
-          bidDeadline: formattedDeadline,
-          rawBidDeadline: bidDeadline || '',
-          dutyRegions: Array.isArray(dutyRegions) ? dutyRegions : [],
-          dutyRegionRate: dutyRateNumber,
-          dutySummary: dutySummaryText,
-          teamSize: safeGroupSize,
-          summary,
-          memoHtml,
-          netCostPenaltyNotice: Boolean(netCostPenaltyNotice),
-        },
-        groups: groupPayloads,
-        candidates: candidatePayloads,
-      };
+        ownerId,
+        rangeId,
+        noticeNo,
+        noticeTitle,
+        industryLabel,
+        baseValue,
+        estimatedValue,
+        bidAmountValue,
+        ratioBaseValue,
+        entryAmountValue,
+        entryModeResolved,
+        amountForScoreResolved,
+        formattedDeadline,
+        bidDeadline,
+        dutyRegions,
+        dutyRateNumber,
+        dutySummaryText,
+        safeGroupSize,
+        summary,
+        memoHtml,
+        netCostPenaltyNotice,
+        groupAssignments,
+        groupApprovals,
+        groupShares,
+        groupCredibility,
+        groupManagementBonus,
+        participantMap,
+        summaryByGroup,
+        netCostBonusScore,
+        isLHOwner,
+        technicianEnabled,
+        selectedRangeKey: selectedRangeOption?.key,
+        includePossibleShare,
+        possibleShareBase,
+        candidateDrawerEntries,
+        parseNumeric,
+        getSharePercent,
+        getCandidateManagementScore,
+        getCandidatePerformanceAmountForCurrentRange,
+        getTechnicianValue,
+        getCandidateSipyungAmount,
+        isDutyRegionCompany,
+        sanitizeCompanyName,
+        getCompanyName,
+        getCandidateManagerName,
+        getRegionLabel,
+        normalizeBizNo,
+        getBizNo,
+        getQualityScoreValue,
+        resolveQualityPoints,
+      });
 
       const response = await api.agreementsExportExcel(payload);
       if (response?.success) {
@@ -4372,21 +4250,41 @@ export default function AgreementBoardWindow({
     noticeTitle,
     industryLabel,
     dutyRegions,
+    parseAmountValue,
+    parseNumeric,
+    buildDutySummary,
+    formatBidDeadline,
     groupAssignments,
-    groupShares,
-    getSharePercent,
-    getTechnicianValue,
     groupApprovals,
+    groupShares,
+    groupCredibility,
+    groupManagementBonus,
     participantMap,
     summaryByGroup,
+    netCostBonusScore,
     summary,
     safeGroupSize,
     isLHOwner,
     technicianEnabled,
-    resolveQualityPoints,
     selectedRangeOption?.key,
-    groupManagementBonus,
+    entryModeResolved,
+    memoHtml,
+    netCostPenaltyNotice,
+    candidateDrawerEntries,
+    getSharePercent,
+    getCandidateManagementScore,
     getCandidatePerformanceAmountForCurrentRange,
+    getTechnicianValue,
+    getCandidateSipyungAmount,
+    isDutyRegionCompany,
+    sanitizeCompanyName,
+    getCompanyName,
+    getCandidateManagerName,
+    getRegionLabel,
+    normalizeBizNo,
+    getBizNo,
+    getQualityScoreValue,
+    resolveQualityPoints,
   ]);
 
   const handleGenerateText = React.useCallback(async () => {
