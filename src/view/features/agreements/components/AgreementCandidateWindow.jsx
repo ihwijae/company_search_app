@@ -54,8 +54,6 @@ export default function AgreementCandidateWindow({
               <thead>
                 <tr>
                   <th>업체명</th>
-                  <th>지역</th>
-                  <th>담당자</th>
                   <th>경영</th>
                   <th>{performanceAmountLabel}</th>
                   <th>시평액</th>
@@ -75,12 +73,18 @@ export default function AgreementCandidateWindow({
                   >
                     <td className="agreement-candidate-table__company">
                       <strong title={entry.companyName}>{entry.companyName}</strong>
+                      <div className="agreement-candidate-table__meta-badges">
+                        {entry.regionLabel && (
+                          <span className="agreement-candidate-table__meta-badge">{entry.regionLabel}</span>
+                        )}
+                        {entry.managerName && (
+                          <span className="agreement-candidate-table__meta-badge">{entry.managerName}</span>
+                        )}
+                      </div>
                       {entry.creditGrade && (
                         <span className="agreement-candidate-table__credit">{entry.creditGrade}</span>
                       )}
                     </td>
-                    <td>{entry.regionLabel || '-'}</td>
-                    <td>{entry.managerName || '-'}</td>
                     <td>{entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}</td>
                     <td>{entry.performanceAmount != null ? formatAmount(entry.performanceAmount) : '-'}</td>
                     <td>{entry.sipyungAmount != null ? formatAmount(entry.sipyungAmount) : '-'}</td>
