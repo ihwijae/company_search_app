@@ -41,6 +41,12 @@ import {
   getCandidateManagementScore as resolveCandidateManagementScore,
   isCreditScoreExpired,
 } from '../../../../shared/agreements/calculations/managementScore.js';
+import {
+  getCandidatePerformanceAmount as resolveCandidatePerformanceAmount,
+  getCandidatePerformanceAmountForCurrentRange as resolveCandidatePerformanceAmountForCurrentRange,
+  PERFORMANCE_DIRECT_KEYS,
+  PERFORMANCE_KEYWORDS,
+} from '../../../../shared/agreements/calculations/performanceValue.js';
 
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
@@ -602,9 +608,6 @@ const resolveBoardConstraintRules = (rawRules) => {
 const SHARE_DIRECT_KEYS = ['_share', '_pct', 'candidateShare', 'share', '지분', '기본지분'];
 const SHARE_KEYWORDS = [['지분', 'share', '비율']];
 
-const PERFORMANCE_DIRECT_KEYS = ['_performance5y', 'performance5y', 'perf5y', '_performance3y', 'performance3y', 'perf3y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적', '3년 실적', '3년실적', '3년 실적 합계', '최근3년실적', '최근3년실적합계', '3년실적금액', '최근3년시공실적'];
-const PERFORMANCE_KEYWORDS = [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적'], ['3년실적', '최근3년', 'threeyear', 'performance3', '시공실적']];
-
 const SIPYUNG_DIRECT_KEYS = ['_sipyung', 'sipyung', '시평', '시평액', '시평금액', '시평액(원)', '시평금액(원)', '기초금액', '기초금액(원)'];
 const SIPYUNG_KEYWORDS = [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']];
 
@@ -877,49 +880,10 @@ const getCandidateManagementScore = (candidate) => resolveCandidateManagementSco
   managementScoreVersion: MANAGEMENT_SCORE_VERSION,
 });
 
-const getCandidatePerformanceAmount = (candidate) => {
-  if (!candidate || typeof candidate !== 'object') return null;
-  if (candidate._agreementPerformanceCleared) return null;
-  const directCandidates = [
-    candidate._agreementPerformance5y,
-    candidate._performance5y,
-    candidate.performance5y,
-    candidate.perf5y,
-    candidate._performance3y,
-    candidate.performance3y,
-    candidate.perf3y,
-    candidate.performanceTotal,
-    candidate['performance5y'],
-    candidate['5년 실적'],
-    candidate['5년실적'],
-    candidate['5년 실적 합계'],
-    candidate['최근5년실적'],
-    candidate['최근5년실적합계'],
-    candidate['5년실적금액'],
-    candidate['최근5년시공실적'],
-    candidate['3년 실적'],
-    candidate['3년실적'],
-    candidate['3년 실적 합계'],
-    candidate['최근3년실적'],
-    candidate['최근3년실적합계'],
-    candidate['3년실적금액'],
-    candidate['최근3년시공실적'],
-  ];
-  for (const value of directCandidates) {
-    const parsed = toNumber(value);
-    if (parsed != null) {
-      candidate._agreementPerformance5y = parsed;
-      return parsed;
-    }
-  }
-  const extracted = extractAmountValue(candidate, PERFORMANCE_DIRECT_KEYS, PERFORMANCE_KEYWORDS);
-  const parsed = toNumber(extracted);
-  if (parsed != null) {
-    candidate._agreementPerformance5y = parsed;
-    return parsed;
-  }
-  return null;
-};
+const getCandidatePerformanceAmount = (candidate) => resolveCandidatePerformanceAmount(candidate, {
+  toNumber,
+  extractAmountValue,
+});
 
 
 const extractValue = (candidate, keys = []) => {
@@ -1254,44 +1218,12 @@ export default function AgreementBoardWindow({
   const managementScale = isMois30To50 ? (10 / 15) : 1;
   const performanceAmountLabel = isMois50To100 ? '3년 실적' : '5년 실적';
   const getCandidatePerformanceAmountForCurrentRange = React.useCallback((candidate) => {
-    if (!candidate || typeof candidate !== 'object') return null;
-    if (!isMois50To100) return getCandidatePerformanceAmount(candidate);
-
-    if (candidate._agreementPerformanceCleared) return null;
-    const hasManualOverride = Object.prototype.hasOwnProperty.call(candidate, '_agreementPerformanceInput');
-    if (hasManualOverride) {
-      const manual = toNumber(candidate._agreementPerformance5y ?? candidate._agreementPerformanceInput);
-      if (manual != null) return manual;
-    }
-
-    const direct3yCandidates = [
-      candidate._agreementPerformance3y,
-      candidate._performance3y,
-      candidate.performance3y,
-      candidate.perf3y,
-      candidate['performance3y'],
-      candidate['3년 실적'],
-      candidate['3년실적'],
-      candidate['3년 실적 합계'],
-      candidate['최근3년실적'],
-      candidate['최근3년실적합계'],
-      candidate['3년실적금액'],
-      candidate['최근3년시공실적'],
-    ];
-    for (const value of direct3yCandidates) {
-      const parsed = toNumber(value);
-      if (parsed != null) return parsed;
-    }
-
-    const extracted3y = extractAmountValue(
-      candidate,
-      ['_performance3y', 'performance3y', 'perf3y', '3년 실적', '3년실적', '3년 실적 합계', '최근3년실적', '최근3년실적합계', '3년실적금액', '최근3년시공실적'],
-      [['3년실적', '최근3년', 'threeyear', 'performance3', '시공실적']],
-    );
-    const parsed3y = toNumber(extracted3y);
-    if (parsed3y != null) return parsed3y;
-
-    return getCandidatePerformanceAmount(candidate);
+    return resolveCandidatePerformanceAmountForCurrentRange(candidate, {
+      isMois50To100,
+      toNumber,
+      extractAmountValue,
+      getCandidatePerformanceAmount: resolveCandidatePerformanceAmount,
+    });
   }, [isMois50To100]);
   const roundForKrailUnder50 = React.useCallback(
     (value) => (isKrailUnder50 ? roundTo(value, 2) : value),
