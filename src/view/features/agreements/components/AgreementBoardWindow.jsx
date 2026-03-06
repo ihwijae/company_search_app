@@ -5083,11 +5083,16 @@ export default function AgreementBoardWindow({
     const sourceEntry = participantMap.get(selectedCandidateUid);
     const sourceName = getCompanyName(sourceEntry?.candidate) || '업체';
     const targetName = meta.companyName || '업체';
-    const ok = window.confirm(
-      meta.empty
+    const ok = await confirm({
+      title: meta.empty ? '업체를 배치하시겠습니까?' : '업체를 교체하시겠습니까?',
+      message: meta.empty
         ? `${sourceName} 업체를 ${meta.groupIndex + 1}번 협정 ${meta.label} 위치에 배치하시겠습니까?`
-        : `${sourceName} 업체를 넣고, ${targetName} 업체를 후보로 되돌리시겠습니까?`
-    );
+        : `${sourceName} 업체를 넣고, ${targetName} 업체를 후보로 되돌리시겠습니까?`,
+      confirmText: '예',
+      cancelText: '아니오',
+      tone: 'info',
+      portalTarget: portalContainer || null,
+    });
     if (!ok) return true;
 
     placeEntryInSlot(selectedCandidateUid, meta.groupIndex, meta.slotIndex);
@@ -5098,7 +5103,7 @@ export default function AgreementBoardWindow({
         : `${targetName} 업체를 ${sourceName} 업체로 교체했습니다.`
     );
     return true;
-  }, [selectedCandidateUid, participantMap, placeEntryInSlot, showHeaderAlert]);
+  }, [selectedCandidateUid, participantMap, placeEntryInSlot, showHeaderAlert, confirm, portalContainer]);
 
   const handleCardMoveClick = React.useCallback(async (meta) => {
     if (!meta) return;
