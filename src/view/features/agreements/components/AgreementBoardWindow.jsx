@@ -2926,13 +2926,6 @@ export default function AgreementBoardWindow({
     updateCandidateOverride(target, { [CANDIDATE_POOL_FLAG]: listed });
   }, [updateCandidateOverride]);
 
-  const resolveCandidateBySlot = React.useCallback((groupIndex, slotIndex) => {
-    const uid = groupAssignments[groupIndex]?.[slotIndex];
-    if (!uid) return null;
-    const entry = participantMap.get(uid);
-    return entry?.candidate || null;
-  }, [groupAssignments, participantMap]);
-
   React.useEffect(() => {
     if (!open) {
       setRepresentativeSearchOpen(false);
@@ -3528,6 +3521,13 @@ export default function AgreementBoardWindow({
     }
     return map;
   }, [representativeEntries, regionEntries]);
+
+  const resolveCandidateBySlot = React.useCallback((groupIndex, slotIndex) => {
+    const uid = groupAssignments[groupIndex]?.[slotIndex];
+    if (!uid) return null;
+    const entry = participantMap.get(uid);
+    return entry?.candidate || null;
+  }, [groupAssignments, participantMap]);
 
   const normalizedBoardSearchQuery = React.useMemo(
     () => String(boardSearchQuery || '').trim().toLowerCase(),
