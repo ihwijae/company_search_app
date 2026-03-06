@@ -48,68 +48,77 @@ export default function AgreementCandidateWindow({
       <div className="agreement-candidate-window__body">
         {entries.length === 0 ? (
           <div className="agreement-candidate-window__empty">표시할 후보가 없습니다.</div>
-        ) : entries.map((entry) => (
-          <div
-            key={entry.uid}
-            className={`agreement-candidate-card${entry.isDutyRegion ? ' duty-region' : ''}${draggingId === entry.uid ? ' dragging' : ''}${selectedUid === entry.uid ? ' selected' : ''}`}
-            draggable
-            onClick={() => onSelect(entry.uid)}
-            onDragStart={onDragStart(entry.uid)}
-            onDragEnd={onDragEnd}
-          >
-            <div className="agreement-candidate-card__top">
-              <div className="agreement-candidate-card__title-wrap">
-                <strong className="agreement-candidate-card__title" title={entry.companyName}>{entry.companyName}</strong>
-                <div className="agreement-candidate-card__identity">
-                  <span>{entry.regionLabel || '지역 미지정'}</span>
-                  <span>{entry.managerName || '담당자 미지정'}</span>
-                </div>
-                <div className="agreement-candidate-card__badges">
-                  {entry.isDutyRegion && <span className="agreement-candidate-card__badge region">지역사</span>}
-                  {entry.creditGrade && <span className="agreement-candidate-card__badge">{entry.creditGrade}</span>}
-                </div>
-              </div>
-              <div className="agreement-candidate-card__actions">
-                <button
-                  type="button"
-                  className={`excel-btn${selectedUid === entry.uid ? ' primary' : ''}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSelect(entry.uid);
-                  }}
-                >
-                  {selectedUid === entry.uid ? '선택중' : '선택'}
-                </button>
-                {!entry.synthetic && (
-                  <button
-                    type="button"
-                    className="excel-btn"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onDelete(entry.uid);
-                    }}
+        ) : (
+          <div className="agreement-candidate-table-wrap">
+            <table className="agreement-candidate-table">
+              <thead>
+                <tr>
+                  <th>업체명</th>
+                  <th>지역</th>
+                  <th>담당자</th>
+                  <th>경영</th>
+                  <th>{performanceAmountLabel}</th>
+                  <th>시평액</th>
+                  <th>상태</th>
+                  <th>작업</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((entry) => (
+                  <tr
+                    key={entry.uid}
+                    className={`${entry.isDutyRegion ? ' duty-region' : ''}${draggingId === entry.uid ? ' dragging' : ''}${selectedUid === entry.uid ? ' selected' : ''}`}
+                    draggable
+                    onClick={() => onSelect(entry.uid)}
+                    onDragStart={onDragStart(entry.uid)}
+                    onDragEnd={onDragEnd}
                   >
-                    삭제
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="agreement-candidate-card__stats">
-              <div className="agreement-candidate-card__stat agreement-candidate-card__stat--management">
-                <span>경영</span>
-                <strong>{entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}</strong>
-              </div>
-              <div className="agreement-candidate-card__stat agreement-candidate-card__stat--performance">
-                <span>{performanceAmountLabel}</span>
-                <strong>{entry.performanceAmount != null ? formatAmount(entry.performanceAmount) : '-'}</strong>
-              </div>
-              <div className="agreement-candidate-card__stat agreement-candidate-card__stat--sipyung">
-                <span>시평액</span>
-                <strong>{entry.sipyungAmount != null ? formatAmount(entry.sipyungAmount) : '-'}</strong>
-              </div>
-            </div>
+                    <td className="agreement-candidate-table__company">
+                      <strong title={entry.companyName}>{entry.companyName}</strong>
+                      {entry.creditGrade && (
+                        <span className="agreement-candidate-table__credit">{entry.creditGrade}</span>
+                      )}
+                    </td>
+                    <td>{entry.regionLabel || '-'}</td>
+                    <td>{entry.managerName || '-'}</td>
+                    <td>{entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}</td>
+                    <td>{entry.performanceAmount != null ? formatAmount(entry.performanceAmount) : '-'}</td>
+                    <td>{entry.sipyungAmount != null ? formatAmount(entry.sipyungAmount) : '-'}</td>
+                    <td>
+                      {entry.isDutyRegion && <span className="agreement-candidate-table__pill region">지역사</span>}
+                    </td>
+                    <td>
+                      <div className="agreement-candidate-table__actions">
+                        <button
+                          type="button"
+                          className={`excel-btn${selectedUid === entry.uid ? ' primary' : ''}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onSelect(entry.uid);
+                          }}
+                        >
+                          {selectedUid === entry.uid ? '선택중' : '선택'}
+                        </button>
+                        {!entry.synthetic && (
+                          <button
+                            type="button"
+                            className="excel-btn"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onDelete(entry.uid);
+                            }}
+                          >
+                            삭제
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
+        )}
       </div>
       {searchOpen && (
         <CompanySearchModal
