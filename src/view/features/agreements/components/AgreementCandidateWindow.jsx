@@ -4,6 +4,9 @@ export default function AgreementCandidateWindow({
   entries = [],
   query = '',
   onQueryChange = () => {},
+  onOpenSearch = () => {},
+  selectedUid = null,
+  onSelect = () => {},
   onAssign = () => {},
   onDelete = () => {},
   onClose = () => {},
@@ -24,6 +27,9 @@ export default function AgreementCandidateWindow({
         <button type="button" className="agreement-candidate-window__close" onClick={onClose}>닫기</button>
       </div>
       <div className="agreement-candidate-window__search">
+        <div className="agreement-candidate-window__search-actions">
+          <button type="button" className="excel-btn" onClick={onOpenSearch}>업체 검색</button>
+        </div>
         <input
           className="input"
           value={query}
@@ -40,8 +46,9 @@ export default function AgreementCandidateWindow({
         ) : entries.map((entry) => (
           <div
             key={entry.uid}
-            className={`agreement-candidate-card${entry.isDutyRegion ? ' duty-region' : ''}${draggingId === entry.uid ? ' dragging' : ''}`}
+            className={`agreement-candidate-card${entry.isDutyRegion ? ' duty-region' : ''}${draggingId === entry.uid ? ' dragging' : ''}${selectedUid === entry.uid ? ' selected' : ''}`}
             draggable
+            onClick={() => onSelect(entry.uid)}
             onDragStart={onDragStart(entry.uid)}
             onDragEnd={onDragEnd}
           >
@@ -54,9 +61,37 @@ export default function AgreementCandidateWindow({
                 </div>
               </div>
               <div className="agreement-candidate-card__actions">
-                <button type="button" className="excel-btn" onClick={() => onAssign(entry.uid)}>바로 넣기</button>
+                <button
+                  type="button"
+                  className={`excel-btn${selectedUid === entry.uid ? ' primary' : ''}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSelect(entry.uid);
+                  }}
+                >
+                  {selectedUid === entry.uid ? '선택중' : '선택'}
+                </button>
+                <button
+                  type="button"
+                  className="excel-btn"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onAssign(entry.uid);
+                  }}
+                >
+                  바로 넣기
+                </button>
                 {!entry.synthetic && (
-                  <button type="button" className="excel-btn" onClick={() => onDelete(entry.uid)}>삭제</button>
+                  <button
+                    type="button"
+                    className="excel-btn"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDelete(entry.uid);
+                    }}
+                  >
+                    삭제
+                  </button>
                 )}
               </div>
             </div>

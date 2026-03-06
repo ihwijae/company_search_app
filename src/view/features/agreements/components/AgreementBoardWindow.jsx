@@ -1473,6 +1473,8 @@ export default function AgreementBoardWindow({
   ));
   const [candidateWindowOpen, setCandidateWindowOpen] = React.useState(false);
   const [candidateDrawerQuery, setCandidateDrawerQuery] = React.useState('');
+  const [candidateSearchOpen, setCandidateSearchOpen] = React.useState(false);
+  const [selectedCandidateUid, setSelectedCandidateUid] = React.useState(null);
   const [selectedGroups, setSelectedGroups] = React.useState(() => new Set());
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState(() => (
@@ -2910,9 +2912,23 @@ export default function AgreementBoardWindow({
     searchTargetRef.current = null;
   }, []);
 
+  const openCandidateSearch = React.useCallback(() => {
+    if (!String(industryLabel || '').trim()) {
+      showHeaderAlert('공종을 먼저 선택해 주세요.');
+      return;
+    }
+    setCandidateSearchOpen(true);
+  }, [industryLabel, showHeaderAlert]);
+
+  const closeCandidateSearch = React.useCallback(() => {
+    setCandidateSearchOpen(false);
+  }, []);
+
   React.useEffect(() => {
     if (!open) {
       setRepresentativeSearchOpen(false);
+      setCandidateSearchOpen(false);
+      setSelectedCandidateUid(null);
     }
   }, [open]);
 
@@ -3801,6 +3817,19 @@ export default function AgreementBoardWindow({
     }
     closeRepresentativeSearch();
   }, [onAddRepresentatives, closeRepresentativeSearch, derivePendingPlacementHint, attemptPendingPlacement]);
+
+  const handleCandidatePicked = React.useCallback((picked) => {
+    if (!picked) return;
+    onAddRepresentatives?.([picked]);
+    setCandidateWindowOpen(true);
+    closeCandidateSearch();
+  }, [onAddRepresentatives, closeCandidateSearch]);
+
+  React.useEffect(() => {
+    if (!selectedCandidateUid) return;
+    const exists = candidateDrawerEntries.some((entry) => entry.uid === selectedCandidateUid);
+    if (!exists) setSelectedCandidateUid(null);
+  }, [candidateDrawerEntries, selectedCandidateUid]);
 
   const buildInitialAssignments = React.useCallback(() => {
     const baseCount = representativeEntries.length > 0
@@ -5059,6 +5088,7 @@ export default function AgreementBoardWindow({
     event.dataTransfer.setData('text/plain', id);
     setDraggingId(id);
     setDragSource(null);
+    setSelectedCandidateUid(id);
   };
 
   const handleDragEnd = () => {
@@ -5154,12 +5184,18 @@ export default function AgreementBoardWindow({
 
   const handleEmptySlotClick = React.useCallback((meta) => {
     if (!meta || !meta.empty) return;
+    if (selectedCandidateUid && participantMap.has(selectedCandidateUid)) {
+      placeEntryInSlot(selectedCandidateUid, meta.groupIndex, meta.slotIndex);
+      setSelectedCandidateUid(null);
+      showHeaderAlert(`${meta.groupIndex + 1}번 협정 ${meta.label} 위치로 배치했습니다.`);
+      return;
+    }
     if (pendingMoveSource?.uid) {
       void handleCardMoveClick(meta);
       return;
     }
     openRepresentativeSearch({ groupIndex: meta.groupIndex, slotIndex: meta.slotIndex });
-  }, [handleCardMoveClick, openRepresentativeSearch, pendingMoveSource]);
+  }, [selectedCandidateUid, participantMap, placeEntryInSlot, showHeaderAlert, pendingMoveSource, handleCardMoveClick, openRepresentativeSearch]);
 
   const handleRemove = (groupIndex, slotIndex) => {
     setGroupAssignments((prev) => {
@@ -5230,6 +5266,7 @@ export default function AgreementBoardWindow({
       showHeaderAlert('후보를 협정테이블에 넣지 못했습니다.');
       return;
     }
+    setSelectedCandidateUid(null);
     showHeaderAlert('후보를 협정테이블에 넣었습니다.');
   }, [placeCandidateOnBoard, showHeaderAlert]);
 
@@ -5425,6 +5462,7 @@ export default function AgreementBoardWindow({
     const candidate = participantMap.get(uid)?.candidate;
     if (!candidate) return;
     removeCandidatesFromBoard([candidate]);
+    setSelectedCandidateUid((prev) => (prev === uid ? null : prev));
   }, [participantMap, removeCandidatesFromBoard]);
 
   const handleDeleteGroups = async () => {
@@ -7136,6 +7174,13 @@ export default function AgreementBoardWindow({
                 >
                   검색
                 </button>
+                <button
+                  type="button"
+                  className={`excel-btn excel-btn-candidate${candidateWindowOpen ? ' active' : ''}`}
+                  onClick={() => setCandidateWindowOpen((prev) => !prev)}
+                >
+                  후보 {candidateDrawerEntries.length > 0 ? `(${candidateDrawerEntries.length})` : ''}
+                </button>
               </div>
             <div className="excel-toolbar-actions">
                 <button
@@ -7156,13 +7201,6 @@ export default function AgreementBoardWindow({
                 >엑셀로 내보내기</button>
                 <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
                 <button type="button" className="excel-btn" onClick={openCopyModal}>복사</button>
-                <button
-                  type="button"
-                  className={`excel-btn${candidateWindowOpen ? ' primary' : ''}`}
-                  onClick={() => setCandidateWindowOpen((prev) => !prev)}
-                >
-                  후보 {candidateDrawerEntries.length > 0 ? `(${candidateDrawerEntries.length})` : ''}
-                </button>
                 <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="excel-btn" onClick={handleDeleteGroups}>선택 삭제</button>
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
@@ -7541,6 +7579,15 @@ export default function AgreementBoardWindow({
           allowAll={false}
         />
       )}
+      {candidateSearchOpen && (
+        <CompanySearchModal
+          open={candidateSearchOpen}
+          onClose={closeCandidateSearch}
+          onPick={handleCandidatePicked}
+          fileType={searchFileType}
+          allowAll={false}
+        />
+      )}
       <Modal
         open={memoOpen}
         title="메모"
@@ -7864,6 +7911,9 @@ export default function AgreementBoardWindow({
       entries={filteredCandidateDrawerEntries}
       query={candidateDrawerQuery}
       onQueryChange={setCandidateDrawerQuery}
+      onOpenSearch={openCandidateSearch}
+      selectedUid={selectedCandidateUid}
+      onSelect={(uid) => setSelectedCandidateUid((prev) => (prev === uid ? null : uid))}
       onAssign={handleCandidateDrawerAssign}
       onDelete={handleCandidateDrawerDelete}
       onClose={() => setCandidateWindowOpen(false)}
