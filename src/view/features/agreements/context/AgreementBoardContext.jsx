@@ -6,6 +6,7 @@ const DEFAULT_GROUP_SIZE = 5;
 const DEFAULT_OWNER_ID = 'LH';
 const DEFAULT_FILE_TYPE = 'eung';
 const AGREEMENT_BOARD_DRAFT_KEY = 'agreementBoard:draft';
+const AGREEMENT_CANDIDATE_LISTED_FLAG = '_agreementCandidateListed';
 
 const AgreementBoardContext = React.createContext(null);
 
@@ -143,6 +144,10 @@ const buildCandidateFromSearchEntry = (entry) => {
     source: 'search',
     _forceRepresentative: true,
   };
+
+  if (entry?.[AGREEMENT_CANDIDATE_LISTED_FLAG] === true) {
+    candidate[AGREEMENT_CANDIDATE_LISTED_FLAG] = true;
+  }
 
   const sipyungValue = extractAmountValue(
     candidate,
