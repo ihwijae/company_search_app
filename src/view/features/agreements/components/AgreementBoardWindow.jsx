@@ -540,28 +540,6 @@ const getCandidateManagerName = (candidate) => {
   return '';
 };
 
-const PHONE_KEYS = [
-  '전화번호', '연락처', '휴대폰', '핸드폰', '핸드폰번호', '휴대폰번호',
-  '전화', '연락처1', '연락처2', 'mobile', 'mobileNo', 'phone', 'phoneNo',
-  'tel', 'telephone', 'managerPhone', 'contactPhone',
-];
-const PHONE_KEY_SET = new Set(PHONE_KEYS.map((key) => key.replace(/\s+/g, '').toLowerCase()));
-
-const getCandidatePhoneNumber = (candidate) => {
-  if (!candidate || typeof candidate !== 'object') return '';
-  const sources = [candidate, candidate.snapshot].filter(Boolean);
-  for (const source of sources) {
-    for (const [key, value] of Object.entries(source)) {
-      if (value == null || value === '') continue;
-      const normalizedKey = key.replace(/\s+/g, '').toLowerCase();
-      if (!PHONE_KEY_SET.has(normalizedKey) && !normalizedKey.includes('phone') && !normalizedKey.includes('tel')) continue;
-      const text = String(value).trim();
-      if (text) return text;
-    }
-  }
-  return '';
-};
-
 const resolveBoardConstraintRules = (rawRules) => {
   const base = rawRules && typeof rawRules === 'object' ? rawRules : {};
   const merged = {
@@ -3900,13 +3878,11 @@ export default function AgreementBoardWindow({
         if (!candidate || assignedIds.has(entry.uid)) return null;
         const companyName = getCompanyName(candidate);
         const managerName = getCandidateManagerName(candidate);
-        const phoneNumber = getCandidatePhoneNumber(candidate);
         const regionLabel = getRegionLabel(candidate);
         const creditGrade = getCandidateCreditGrade(candidate);
         const searchText = [
           companyName,
           managerName,
-          phoneNumber,
           regionLabel,
           candidate.bizNo,
           creditGrade,
@@ -3916,7 +3892,6 @@ export default function AgreementBoardWindow({
           candidate,
           companyName,
           managerName,
-          phoneNumber,
           regionLabel,
           isDutyRegion: entry.type === 'region' || isDutyRegionCompany(candidate),
           managementScore: getCandidateManagementScore(candidate),
@@ -7579,15 +7554,6 @@ export default function AgreementBoardWindow({
           allowAll={false}
         />
       )}
-      {candidateSearchOpen && (
-        <CompanySearchModal
-          open={candidateSearchOpen}
-          onClose={closeCandidateSearch}
-          onPick={handleCandidatePicked}
-          fileType={searchFileType}
-          allowAll={false}
-        />
-      )}
       <Modal
         open={memoOpen}
         title="메모"
@@ -7912,6 +7878,10 @@ export default function AgreementBoardWindow({
       query={candidateDrawerQuery}
       onQueryChange={setCandidateDrawerQuery}
       onOpenSearch={openCandidateSearch}
+      searchOpen={candidateSearchOpen}
+      searchFileType={searchFileType}
+      onCloseSearch={closeCandidateSearch}
+      onPickSearch={handleCandidatePicked}
       selectedUid={selectedCandidateUid}
       onSelect={(uid) => setSelectedCandidateUid((prev) => (prev === uid ? null : uid))}
       onAssign={handleCandidateDrawerAssign}
