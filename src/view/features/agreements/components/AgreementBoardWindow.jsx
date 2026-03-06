@@ -2898,6 +2898,41 @@ export default function AgreementBoardWindow({
     setCandidateSearchOpen(false);
   }, []);
 
+  const updateCandidateOverride = React.useCallback((candidate, updates) => {
+    if (!candidate || typeof candidate !== 'object') return;
+    if (typeof onUpdateBoard !== 'function') return;
+    const candidateId = candidate.id;
+    const candidateBiz = normalizeBizNo(getBizNo(candidate));
+    const candidateName = String(getCompanyName(candidate) || '').trim();
+    const nextCandidates = (candidates || []).map((item) => {
+      if (!item || typeof item !== 'object') return item;
+      let matched = false;
+      if (candidateId && item.id === candidateId) matched = true;
+      if (!matched && candidateBiz) {
+        const itemBiz = normalizeBizNo(getBizNo(item));
+        if (itemBiz && itemBiz === candidateBiz) matched = true;
+      }
+      if (!matched && candidateName) {
+        const itemName = String(getCompanyName(item) || '').trim();
+        if (itemName && itemName === candidateName) matched = true;
+      }
+      return matched ? { ...item, ...updates } : item;
+    });
+    onUpdateBoard({ candidates: nextCandidates });
+  }, [candidates, onUpdateBoard]);
+
+  const markCandidatePoolListed = React.useCallback((target, listed = true) => {
+    if (!target || typeof target !== 'object') return;
+    updateCandidateOverride(target, { [CANDIDATE_POOL_FLAG]: listed });
+  }, [updateCandidateOverride]);
+
+  const resolveCandidateBySlot = React.useCallback((groupIndex, slotIndex) => {
+    const uid = groupAssignments[groupIndex]?.[slotIndex];
+    if (!uid) return null;
+    const entry = participantMap.get(uid);
+    return entry?.candidate || null;
+  }, [groupAssignments, participantMap]);
+
   React.useEffect(() => {
     if (!open) {
       setRepresentativeSearchOpen(false);
@@ -5424,41 +5459,6 @@ export default function AgreementBoardWindow({
   };
 
   const clearSelectedGroups = () => setSelectedGroups(new Set());
-
-  const updateCandidateOverride = React.useCallback((candidate, updates) => {
-    if (!candidate || typeof candidate !== 'object') return;
-    if (typeof onUpdateBoard !== 'function') return;
-    const candidateId = candidate.id;
-    const candidateBiz = normalizeBizNo(getBizNo(candidate));
-    const candidateName = String(getCompanyName(candidate) || '').trim();
-    const nextCandidates = (candidates || []).map((item) => {
-      if (!item || typeof item !== 'object') return item;
-      let matched = false;
-      if (candidateId && item.id === candidateId) matched = true;
-      if (!matched && candidateBiz) {
-        const itemBiz = normalizeBizNo(getBizNo(item));
-        if (itemBiz && itemBiz === candidateBiz) matched = true;
-      }
-      if (!matched && candidateName) {
-        const itemName = String(getCompanyName(item) || '').trim();
-        if (itemName && itemName === candidateName) matched = true;
-      }
-      return matched ? { ...item, ...updates } : item;
-    });
-    onUpdateBoard({ candidates: nextCandidates });
-  }, [candidates, onUpdateBoard]);
-
-  const markCandidatePoolListed = React.useCallback((target, listed = true) => {
-    if (!target || typeof target !== 'object') return;
-    updateCandidateOverride(target, { [CANDIDATE_POOL_FLAG]: listed });
-  }, [updateCandidateOverride]);
-
-  const resolveCandidateBySlot = React.useCallback((groupIndex, slotIndex) => {
-    const uid = groupAssignments[groupIndex]?.[slotIndex];
-    if (!uid) return null;
-    const entry = participantMap.get(uid);
-    return entry?.candidate || null;
-  }, [groupAssignments, participantMap]);
 
   const removeCandidatesFromBoard = React.useCallback((targets = []) => {
     if (!Array.isArray(targets) || targets.length === 0) return;
