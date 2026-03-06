@@ -2118,7 +2118,7 @@ button.primary:hover { background: var(--accent-2); }
 .agreement-candidate-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .agreement-candidate-table th,
@@ -2136,7 +2136,7 @@ button.primary:hover { background: var(--accent-2); }
   z-index: 1;
   background: #f8fafc;
   color: #475569;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -2167,7 +2167,7 @@ button.primary:hover { background: var(--accent-2); }
 
 .agreement-candidate-table__company strong {
   color: #0f172a;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .agreement-candidate-table__meta-badges {
@@ -2185,7 +2185,7 @@ button.primary:hover { background: var(--accent-2); }
   border-radius: 999px;
   background: #f1f5f9;
   color: #475569;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -2199,7 +2199,7 @@ button.primary:hover { background: var(--accent-2); }
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
