@@ -2189,31 +2189,46 @@ button.primary:hover { background: var(--accent-2); }
 .agreement-candidate-card__stats {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
-.agreement-candidate-card__stats > div {
+.agreement-candidate-card__stat {
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
   padding: 8px 10px;
   border-radius: 10px;
   background: rgba(248, 250, 252, 0.92);
   border: 1px solid #e2e8f0;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+}
+
+.agreement-candidate-card__stat--management {
+  width: 96px;
+}
+
+.agreement-candidate-card__stat--performance,
+.agreement-candidate-card__stat--sipyung {
+  width: 206px;
 }
 
 .agreement-candidate-card__stats span {
   font-size: 11px;
   color: #64748b;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .agreement-candidate-card__stats strong {
   font-size: 12px;
   color: #0f172a;
-  word-break: break-all;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 @media (max-width: 960px) {
@@ -2228,6 +2243,13 @@ button.primary:hover { background: var(--accent-2); }
   .agreement-candidate-card__stats {
     flex-direction: column;
     align-items: stretch;
+    overflow-x: visible;
+  }
+
+  .agreement-candidate-card__stat--management,
+  .agreement-candidate-card__stat--performance,
+  .agreement-candidate-card__stat--sipyung {
+    width: 100%;
   }
 
   .agreement-candidate-window__body {

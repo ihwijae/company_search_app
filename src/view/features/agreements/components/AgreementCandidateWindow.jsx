@@ -105,15 +105,15 @@ export default function AgreementCandidateWindow({
               </div>
             </div>
             <div className="agreement-candidate-card__stats">
-              <div>
+              <div className="agreement-candidate-card__stat agreement-candidate-card__stat--management">
                 <span>경영</span>
                 <strong>{entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}</strong>
               </div>
-              <div>
+              <div className="agreement-candidate-card__stat agreement-candidate-card__stat--performance">
                 <span>{performanceAmountLabel}</span>
                 <strong>{entry.performanceAmount != null ? formatAmount(entry.performanceAmount) : '-'}</strong>
               </div>
-              <div>
+              <div className="agreement-candidate-card__stat agreement-candidate-card__stat--sipyung">
                 <span>시평액</span>
                 <strong>{entry.sipyungAmount != null ? formatAmount(entry.sipyungAmount) : '-'}</strong>
               </div>
