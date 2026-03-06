@@ -1306,6 +1306,8 @@ const stripAgreementAmountOverrides = (candidate) => {
   return next;
 };
 
+const CANDIDATE_POOL_FLAG = '_agreementCandidateListed';
+
 const getBizNo = (company = {}) => {
   const raw = company.bizNo
     || company.biz_no
@@ -3792,7 +3794,7 @@ export default function AgreementBoardWindow({
 
   const handleCandidatePicked = React.useCallback((picked) => {
     if (!picked) return;
-    onAddRepresentatives?.([picked]);
+    onAddRepresentatives?.([{ ...picked, [CANDIDATE_POOL_FLAG]: true }]);
     setCandidateWindowOpen(true);
     closeCandidateSearch();
   }, [onAddRepresentatives, closeCandidateSearch]);
@@ -3876,6 +3878,7 @@ export default function AgreementBoardWindow({
           candidate = { ...entry.ruleSnapshot, ...candidate };
         }
         if (!candidate || assignedIds.has(entry.uid)) return null;
+        if (candidate[CANDIDATE_POOL_FLAG] !== true) return null;
         const companyName = getCompanyName(candidate);
         const managerName = getCandidateManagerName(candidate);
         const regionLabel = getRegionLabel(candidate);
@@ -5095,6 +5098,13 @@ export default function AgreementBoardWindow({
     });
     if (!ok) return true;
 
+    if (!meta.empty && meta.uid) {
+      const targetCandidate = participantMap.get(meta.uid)?.candidate;
+      if (targetCandidate) {
+        markCandidatePoolListed(targetCandidate, true);
+      }
+    }
+
     placeEntryInSlot(selectedCandidateUid, meta.groupIndex, meta.slotIndex);
     setSelectedCandidateUid(null);
     showHeaderAlert(
@@ -5103,7 +5113,7 @@ export default function AgreementBoardWindow({
         : `${targetName} 업체를 ${sourceName} 업체로 교체했습니다.`
     );
     return true;
-  }, [selectedCandidateUid, participantMap, placeEntryInSlot, showHeaderAlert, confirm, portalContainer]);
+  }, [selectedCandidateUid, participantMap, placeEntryInSlot, showHeaderAlert, confirm, portalContainer, markCandidatePoolListed]);
 
   const handleCardMoveClick = React.useCallback(async (meta) => {
     if (!meta) return;
@@ -5209,6 +5219,10 @@ export default function AgreementBoardWindow({
   }, [selectedCandidateUid, participantMap, pendingMoveSource, handleCardMoveClick, handleSelectedCandidatePlacement, openRepresentativeSearch]);
 
   const handleRemove = (groupIndex, slotIndex) => {
+    const candidate = resolveCandidateBySlot(groupIndex, slotIndex);
+    if (candidate) {
+      markCandidatePoolListed(candidate, true);
+    }
     setGroupAssignments((prev) => {
       const next = prev.map((group) => group.slice());
       if (next[groupIndex]) next[groupIndex][slotIndex] = null;
@@ -5283,6 +5297,12 @@ export default function AgreementBoardWindow({
 
   const handleDropInternal = (groupIndex, slotIndex, id) => {
     if (!id || !participantMap.has(id)) return;
+    const targetCandidate = groupAssignments[groupIndex]?.[slotIndex]
+      ? participantMap.get(groupAssignments[groupIndex][slotIndex])?.candidate
+      : null;
+    if (targetCandidate && (!dragSource || dragSource.id !== id)) {
+      markCandidatePoolListed(targetCandidate, true);
+    }
     setGroupAssignments((prev) => {
       const next = prev.map((group) => group.slice());
       if (!next[groupIndex]) {
@@ -5358,15 +5378,14 @@ export default function AgreementBoardWindow({
     setGroupApprovals([]);
     setGroupManagementBonus([]);
     setGroupQualityScores([]);
+    setSelectedCandidateUid(null);
+    setCandidateDrawerQuery('');
     setMemoDraft('');
     setEditableBidAmount('');
     setEditableEntryAmount('');
     setBaseTouched(false);
     setBidTouched(false);
     if (typeof onUpdateBoard === 'function') {
-      const clearedCandidates = Array.isArray(candidates)
-        ? candidates.map((item) => stripAgreementAmountOverrides(item))
-        : [];
       onUpdateBoard({
         memoHtml: '',
         noticeNo: '',
@@ -5387,7 +5406,10 @@ export default function AgreementBoardWindow({
         dutyRegions: [],
         regionDutyRate: '',
         participantLimit: safeGroupSize,
-        candidates: clearedCandidates,
+        candidates: [],
+        pinned: [],
+        excluded: [],
+        alwaysInclude: [],
       });
     }
   };
@@ -5425,6 +5447,11 @@ export default function AgreementBoardWindow({
     });
     onUpdateBoard({ candidates: nextCandidates });
   }, [candidates, onUpdateBoard]);
+
+  const markCandidatePoolListed = React.useCallback((target, listed = true) => {
+    if (!target || typeof target !== 'object') return;
+    updateCandidateOverride(target, { [CANDIDATE_POOL_FLAG]: listed });
+  }, [updateCandidateOverride]);
 
   const resolveCandidateBySlot = React.useCallback((groupIndex, slotIndex) => {
     const uid = groupAssignments[groupIndex]?.[slotIndex];
@@ -7205,7 +7232,7 @@ export default function AgreementBoardWindow({
             <div className="excel-toolbar-actions">
                 <button
                   type="button"
-                  className="excel-btn"
+                  className={`excel-btn excel-btn-header-toggle${headerCollapsed ? ' active' : ''}`}
                   onClick={() => setHeaderCollapsed((prev) => !prev)}
                 >{headerCollapsed ? '헤더 펼치기' : '헤더 접기'}</button>
                 {headerCollapsed && (
