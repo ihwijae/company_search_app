@@ -3868,7 +3868,13 @@ export default function AgreementBoardWindow({
     const list = [...representativeEntries, ...regionEntries]
       .map((entry) => {
         const merged = participantMap.get(entry.uid) || entry;
-        const candidate = merged?.candidate || entry?.candidate;
+        let candidate = merged?.candidate || entry?.candidate;
+        if (candidate?.snapshot && typeof candidate.snapshot === 'object') {
+          candidate = { ...candidate.snapshot, ...candidate };
+        }
+        if (entry?.ruleSnapshot && typeof entry.ruleSnapshot === 'object') {
+          candidate = { ...entry.ruleSnapshot, ...candidate };
+        }
         if (!candidate || assignedIds.has(entry.uid)) return null;
         const companyName = getCompanyName(candidate);
         const managerName = getCandidateManagerName(candidate);

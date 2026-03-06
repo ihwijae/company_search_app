@@ -2082,10 +2082,10 @@ button.primary:hover { background: var(--accent-2); }
 .agreement-candidate-window__body {
   flex: 1;
   overflow: auto;
-  padding: 14px 16px 20px;
+  padding: 10px 12px 14px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .agreement-candidate-window__empty {
@@ -2103,10 +2103,10 @@ button.primary:hover { background: var(--accent-2); }
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   background: #fff;
-  padding: 12px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   cursor: grab;
 }
 
@@ -2128,19 +2128,20 @@ button.primary:hover { background: var(--accent-2); }
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 
 .agreement-candidate-card__title-wrap {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
 }
 
 .agreement-candidate-card__title {
   display: block;
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.25;
   color: #0f172a;
   word-break: break-all;
 }
@@ -2148,8 +2149,9 @@ button.primary:hover { background: var(--accent-2); }
 .agreement-candidate-card__identity {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  font-size: 12px;
+  gap: 4px 8px;
+  font-size: 11px;
+  line-height: 1.2;
   color: #475569;
 }
 
@@ -2161,17 +2163,17 @@ button.primary:hover { background: var(--accent-2); }
 .agreement-candidate-card__badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .agreement-candidate-card__badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 1px 7px;
   border-radius: 999px;
   background: #eef2ff;
   color: #3730a3;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -2183,14 +2185,14 @@ button.primary:hover { background: var(--accent-2); }
 .agreement-candidate-card__actions {
   display: flex;
   flex-shrink: 0;
-  gap: 6px;
+  gap: 4px;
 }
 
 .agreement-candidate-card__stats {
-  display: flex;
+  display: grid;
+  grid-template-columns: 96px 206px 206px;
   align-items: center;
-  flex-wrap: nowrap;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: thin;
 }
@@ -2199,12 +2201,11 @@ button.primary:hover { background: var(--accent-2); }
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 8px;
   background: rgba(248, 250, 252, 0.92);
   border: 1px solid #e2e8f0;
-  flex: 0 0 auto;
   box-sizing: border-box;
 }
 
@@ -2218,14 +2219,14 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .agreement-candidate-card__stats span {
-  font-size: 11px;
+  font-size: 10px;
   color: #64748b;
   white-space: nowrap;
   flex: 0 0 auto;
 }
 
 .agreement-candidate-card__stats strong {
-  font-size: 12px;
+  font-size: 11px;
   color: #0f172a;
   white-space: nowrap;
   flex: 0 0 auto;
@@ -2242,6 +2243,10 @@ button.primary:hover { background: var(--accent-2); }
 
   .agreement-candidate-window__body {
     grid-template-columns: 1fr;
+  }
+
+  .agreement-candidate-card__stats {
+    grid-template-columns: 96px 206px 206px;
   }
 }
 

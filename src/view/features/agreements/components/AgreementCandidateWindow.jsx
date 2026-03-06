@@ -80,16 +80,6 @@ export default function AgreementCandidateWindow({
                 >
                   {selectedUid === entry.uid ? '선택중' : '선택'}
                 </button>
-                <button
-                  type="button"
-                  className="excel-btn"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onAssign(entry.uid);
-                  }}
-                >
-                  바로 넣기
-                </button>
                 {!entry.synthetic && (
                   <button
                     type="button"
