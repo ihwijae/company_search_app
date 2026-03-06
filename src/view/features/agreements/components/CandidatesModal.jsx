@@ -8,6 +8,11 @@ import {
   getCandidateTextField,
   extractManagerNames,
 } from '../../../../utils/companyIndicators.js';
+import {
+  extractCreditGrade,
+  getCandidateManagementScore,
+  isCreditScoreExpired,
+} from '../../../../shared/agreements/calculations/managementScore.js';
 
 const REGION_WINDOW_STORAGE_KEY = '__regionSearchWindow';
 
@@ -1363,21 +1368,22 @@ const industryToLabel = (type) => {
                   const creditGradeTextRaw = c.creditGradeText || creditGradePure;
                   const creditGradeTextLower = creditGradeTextRaw.trim().toLowerCase();
                   const creditScoreValue = Number.isFinite(creditScore) ? Number(creditScore) : null;
-                  const creditExpiredFlag = /expired|만료|기한경과|유효\s*기간\s*만료/.test(creditNoteLower)
-                    || /만료|기한경과|유효\s*기간\s*만료/.test(creditGradeTextLower)
-                    || /만료|기한경과|유효\s*기간\s*만료/.test(creditNoteTextLower);
+                  const creditExpiredFlag = isCreditScoreExpired(c);
                   const creditOverAge = /over-age|기간\s*초과|인정\s*기간\s*초과|인정기간\s*초과/.test(creditNoteLower)
                     || /기간\s*초과|인정\s*기간\s*초과|인정기간\s*초과/.test(creditGradeTextLower)
                     || /기간\s*초과|인정\s*기간\s*초과|인정기간\s*초과/.test(creditNoteTextLower);
-                  const expiryFromGrade = extractExpiryDate(creditGradeTextRaw);
-                  const expiryFromNote = extractExpiryDate(creditNoteTextRaw);
-                  const expiryDate = expiryFromGrade || expiryFromNote;
-                  const isExpiredByDate = expiryDate ? expiryDate < today : false;
-                  const creditUsable = creditScoreValue != null && !(creditExpiredFlag || creditOverAge || isExpiredByDate);
-                  const effectiveCreditScore = creditUsable ? creditScoreValue : null;
-                  let managementScore = Number.isFinite(effectiveCreditScore)
-                    ? Math.max(combinedScore, effectiveCreditScore)
-                    : combinedScore;
+                  const creditUsable = creditScoreValue != null && !(creditExpiredFlag || creditOverAge);
+                  const managementScore = getCandidateManagementScore(c, {
+                    toNumber: (value) => parseNumeric(value),
+                    clampScore: (value, max = 15) => {
+                      const numeric = parseNumeric(value);
+                      if (numeric == null) return null;
+                      const limit = Number.isFinite(Number(max)) && Number(max) > 0 ? Number(max) : 15;
+                      return Math.max(0, Math.min(numeric, limit));
+                    },
+                    managementScoreMax: 15,
+                    managementScoreVersion: 1,
+                  });
                   const combinedIsMax = combinedMax > 0 && Math.abs(combinedScore - combinedMax) < 1e-6;
                   const creditIsMax = creditUsable
                     && Number.isFinite(creditScoreValue)
@@ -1391,16 +1397,13 @@ const industryToLabel = (type) => {
                     && Math.abs(managementMax - creditMax) < 1e-6;
                   const shouldSnapToMax = (combinedMatchesManagement && combinedIsMax)
                     || (creditMatchesManagement && creditIsMax);
-                  if (shouldSnapToMax) {
-                    managementScore = managementMax;
-                  }
                   const managementIsMax = managementMax > 0 && Math.abs(managementScore - managementMax) < 1e-6;
                   const hasManagementScores = Number.isFinite(debtScore)
                     || Number.isFinite(currentScore)
                     || Number.isFinite(bizYearsScore)
                     || Number.isFinite(creditScoreValue);
                   const hasCreditScoreValue = creditScoreValue != null && creditScoreValue > 0;
-                  const creditDisplayLabel = creditGradeTextRaw.trim() || creditGradePure;
+                  const creditDisplayLabel = extractCreditGrade(c) || creditGradeTextRaw.trim() || creditGradePure;
                   const normalizedGrade = creditGradePure.replace(/\s+/g, '').toUpperCase();
                   const gradeIndicatesNone = !normalizedGrade
                     || normalizedGrade === 'N/A'
@@ -1408,7 +1411,7 @@ const industryToLabel = (type) => {
                     || normalizedGrade.startsWith('N/');
                   const noteSuggestsMissing = /자료없음|미제출|평가없음|미발급/.test(creditNoteTextLower)
                     || /자료없음|미제출|평가없음|미발급/.test(creditGradeTextLower);
-                  const creditExpired = creditExpiredFlag || isExpiredByDate;
+                  const creditExpired = creditExpiredFlag;
                   const creditDataMissing = !creditExpired && !creditOverAge && (gradeIndicatesNone || noteSuggestsMissing) && !hasCreditScoreValue;
                   const managementScoreValue = hasManagementScores && Number.isFinite(managementScore) ? Number(managementScore) : null;
                   const managementScoreIs15 = managementScoreValue != null && Math.abs(managementScoreValue - 15) < 1e-3;
