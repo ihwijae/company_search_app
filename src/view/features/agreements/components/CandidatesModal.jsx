@@ -1372,7 +1372,6 @@ const industryToLabel = (type) => {
                   const creditOverAge = /over-age|기간\s*초과|인정\s*기간\s*초과|인정기간\s*초과/.test(creditNoteLower)
                     || /기간\s*초과|인정\s*기간\s*초과|인정기간\s*초과/.test(creditGradeTextLower)
                     || /기간\s*초과|인정\s*기간\s*초과|인정기간\s*초과/.test(creditNoteTextLower);
-                  const creditUsable = creditScoreValue != null && !(creditExpiredFlag || creditOverAge);
                   const managementScore = getCandidateManagementScore(c, {
                     toNumber: (value) => parseNumeric(value),
                     clampScore: (value, max = 15) => {
@@ -1384,19 +1383,6 @@ const industryToLabel = (type) => {
                     managementScoreMax: 15,
                     managementScoreVersion: 1,
                   });
-                  const combinedIsMax = combinedMax > 0 && Math.abs(combinedScore - combinedMax) < 1e-6;
-                  const creditIsMax = creditUsable
-                    && Number.isFinite(creditScoreValue)
-                    && Number.isFinite(creditMax)
-                    && creditMax > 0
-                    && Math.abs(creditScoreValue - creditMax) < 1e-6;
-                  const combinedMatchesManagement = managementMax > 0
-                    && Math.abs(managementMax - combinedMax) < 1e-6;
-                  const creditMatchesManagement = managementMax > 0
-                    && Number.isFinite(creditMax)
-                    && Math.abs(managementMax - creditMax) < 1e-6;
-                  const shouldSnapToMax = (combinedMatchesManagement && combinedIsMax)
-                    || (creditMatchesManagement && creditIsMax);
                   const managementIsMax = managementMax > 0 && Math.abs(managementScore - managementMax) < 1e-6;
                   const hasManagementScores = Number.isFinite(debtScore)
                     || Number.isFinite(currentScore)
@@ -1413,8 +1399,6 @@ const industryToLabel = (type) => {
                     || /자료없음|미제출|평가없음|미발급/.test(creditGradeTextLower);
                   const creditExpired = creditExpiredFlag;
                   const creditDataMissing = !creditExpired && !creditOverAge && (gradeIndicatesNone || noteSuggestsMissing) && !hasCreditScoreValue;
-                  const managementScoreValue = hasManagementScores && Number.isFinite(managementScore) ? Number(managementScore) : null;
-                  const managementScoreIs15 = managementScoreValue != null && Math.abs(managementScoreValue - 15) < 1e-3;
                   const singleBidAllowed = !!c.singleBidEligible;
                   const singleBidBadgeStyle = singleBidAllowed
                     ? { background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }
