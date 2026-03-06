@@ -20,7 +20,16 @@ import { generateMany } from '../../../../shared/agreements/generator.js';
 import { AGREEMENT_GROUPS } from '../../../../shared/navigation.js';
 import { sanitizeHtml } from '../../../../shared/sanitizeHtml.js';
 import { AGREEMENT_BAN_CONFIG } from '../../../../shared/agreements/banConfig.js';
-import { buildAgreementExportPayload } from '../utils/agreementExportPayload.js';
+import { buildAgreementExportPayload } from '../../../../shared/agreements/agreementExportPayload.js';
+import {
+  calculatePossibleShareRatio,
+  formatPossibleShareText,
+  formatPossibleShareValue,
+} from '../../../../shared/agreements/calculations/possibleShare.js';
+import {
+  buildCandidateDrawerEntries,
+  filterCandidateDrawerEntries,
+} from '../../../../shared/agreements/calculations/candidateSelectors.js';
 
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
@@ -850,15 +859,6 @@ const parseAmountValue = (value) => {
 };
 
 const normalizeAmountToken = (value) => String(value ?? '').replace(/[,\s]/g, '');
-
-const formatShareForName = (value) => {
-  if (value === null || value === undefined || value === '') return '';
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return '';
-  const normalized = numeric > 0 && numeric < 1 ? numeric * 100 : numeric;
-  const fixed = normalized.toFixed(2);
-  return fixed.replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
-};
 
 const clampScore = (value, max = MANAGEMENT_SCORE_MAX) => {
   if (value === null || value === undefined) return null;
@@ -3903,62 +3903,27 @@ export default function AgreementBoardWindow({
   }, [groupAssignments]);
 
   const candidateDrawerEntries = React.useMemo(() => {
-    const list = [...representativeEntries, ...regionEntries]
-      .map((entry) => {
-        const merged = participantMap.get(entry.uid) || entry;
-        let candidate = merged?.candidate || entry?.candidate;
-        if (candidate?.snapshot && typeof candidate.snapshot === 'object') {
-          candidate = { ...candidate.snapshot, ...candidate };
-        }
-        if (entry?.ruleSnapshot && typeof entry.ruleSnapshot === 'object') {
-          candidate = { ...entry.ruleSnapshot, ...candidate };
-        }
-        if (!candidate || assignedIds.has(entry.uid)) return null;
-        if (candidate[CANDIDATE_POOL_FLAG] !== true) return null;
-        const companyName = getCompanyName(candidate);
-        const managerName = getCandidateManagerName(candidate);
-        const regionLabel = getRegionLabel(candidate);
-        const creditGrade = getCandidateCreditGrade(candidate);
-        const perSlotMax = isMois30To50 ? MANAGEMENT_SCORE_MAX : managementMax;
-        const managementScore = clampScore(toNumber(getCandidateManagementScore(candidate)), perSlotMax);
-        const sipyungAmount = getCandidateSipyungAmount(candidate);
-        const possibleShare = (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount && sipyungAmount > 0)
-          ? (sipyungAmount / possibleShareBase) * 100
-          : null;
-        const possibleShareText = (possibleShare != null && possibleShare > 0 && possibleShare < 100)
-          ? `${possibleShare >= 100 ? possibleShare.toFixed(0) : possibleShare.toFixed(2)}%`
-          : '';
-        const searchText = [
-          companyName,
-          managerName,
-          regionLabel,
-          candidate.bizNo,
-          creditGrade,
-        ].filter(Boolean).join(' ').toLowerCase();
-        return {
-          uid: entry.uid,
-          candidate,
-          companyName,
-          managerName,
-          regionLabel,
-          isDutyRegion: entry.type === 'region' || isDutyRegionCompany(candidate),
-          managementScore,
-          managementAlert: managementScore != null && managementScore < (perSlotMax - 0.01),
-          performanceAmount: getCandidatePerformanceAmountForCurrentRange(candidate),
-          sipyungAmount,
-          possibleShareText,
-          creditGrade,
-          searchText,
-          synthetic: Boolean(entry.synthetic || candidate._synthetic),
-        };
-      })
-      .filter(Boolean);
-
-    list.sort((a, b) => {
-      if (a.isDutyRegion !== b.isDutyRegion) return a.isDutyRegion ? -1 : 1;
-      return a.companyName.localeCompare(b.companyName, 'ko');
+    return buildCandidateDrawerEntries({
+      representativeEntries,
+      regionEntries,
+      participantMap,
+      assignedIds,
+      candidatePoolFlag: CANDIDATE_POOL_FLAG,
+      getCompanyName,
+      getCandidateManagerName,
+      getRegionLabel,
+      getCandidateCreditGrade,
+      getCandidateManagementScore,
+      getCandidateSipyungAmount,
+      getCandidatePerformanceAmountForCurrentRange,
+      isDutyRegionCompany,
+      isMois30To50,
+      managementMax,
+      managementScoreMax: MANAGEMENT_SCORE_MAX,
+      possibleShareBase,
+      toNumber,
+      clampScore,
     });
-    return list;
   }, [
     assignedIds,
     representativeEntries,
@@ -3973,9 +3938,7 @@ export default function AgreementBoardWindow({
   ]);
 
   const filteredCandidateDrawerEntries = React.useMemo(() => {
-    const query = String(candidateDrawerQuery || '').trim().toLowerCase();
-    if (!query) return candidateDrawerEntries;
-    return candidateDrawerEntries.filter((entry) => entry.searchText.includes(query));
+    return filterCandidateDrawerEntries(candidateDrawerEntries, candidateDrawerQuery);
   }, [candidateDrawerEntries, candidateDrawerQuery]);
 
   React.useEffect(() => {
@@ -5788,17 +5751,8 @@ export default function AgreementBoardWindow({
 
       const sipyungAmountRaw = getCandidateSipyungAmount(candidate);
       const sipyungAmount = parseAmountValue(sipyungAmountRaw);
-      let possibleShareDisplay = '';
-      let possibleShareRatio = null;
-      if (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount !== null && sipyungAmount > 0) {
-        const ratio = (sipyungAmount / possibleShareBase) * 100;
-        if (Number.isFinite(ratio) && ratio > 0) {
-          possibleShareRatio = ratio;
-          if (ratio < 100) {
-            possibleShareDisplay = formatNumeric(ratio);
-          }
-        }
-      }
+      const possibleShareRatio = calculatePossibleShareRatio(possibleShareBase, sipyungAmount);
+      const possibleShareDisplay = formatPossibleShareValue(possibleShareRatio);
 
       const lines = [cleanName];
       if (possibleShareDisplay) {
@@ -6002,13 +5956,9 @@ export default function AgreementBoardWindow({
     const sipyungInput = hasSipyungOverride
       ? candidate._agreementSipyungInput
       : (sipyungAmount != null ? formatAmount(sipyungAmount) : '');
-    let possibleShare = null;
-    if (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount && sipyungAmount > 0) {
-      possibleShare = (sipyungAmount / possibleShareBase) * 100;
-    }
-    const possibleShareText = (possibleShare != null && possibleShare > 0 && possibleShare < 100)
-      ? `${possibleShare >= 100 ? possibleShare.toFixed(0) : possibleShare.toFixed(2)}%`
-      : '';
+    const possibleShareText = formatPossibleShareText(
+      calculatePossibleShareRatio(possibleShareBase, sipyungAmount)
+    );
     const tags = [];
     if (isSingleBidEligible(candidate)) {
       tags.push({ key: 'single-bid', label: '단독가능' });

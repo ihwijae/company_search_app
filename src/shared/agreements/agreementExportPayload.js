@@ -1,3 +1,8 @@
+import {
+  calculatePossibleShareRatio,
+  formatPossibleShareValue,
+} from './calculations/possibleShare.js';
+
 export function buildAgreementExportPayload({
   templateKey,
   appendTargetPath = '',
@@ -95,11 +100,11 @@ export function buildAgreementExportPayload({
       const isRegionMember = entry.type === 'region' || isDutyRegionCompany(candidate);
       const companyName = sanitizeCompanyName(getCompanyName(candidate));
       const managerName = getCandidateManagerName(candidate);
-      const possibleShareRatio = (includePossibleShare && possibleShareBase && sipyung && sipyung > 0)
-        ? (sipyung / possibleShareBase) * 100
+      const possibleShareRatio = includePossibleShare
+        ? calculatePossibleShareRatio(possibleShareBase, sipyung)
         : null;
-      const shareLabel = (includePossibleShare && possibleShareRatio != null && possibleShareRatio < 100)
-        ? String(possibleShareRatio.toFixed(2)).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1')
+      const shareLabel = includePossibleShare
+        ? formatPossibleShareValue(possibleShareRatio)
         : '';
       const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
       const qualityScore = isLHOwner
