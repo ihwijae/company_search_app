@@ -2009,43 +2009,14 @@ button.primary:hover { background: var(--accent-2); }
   background: #fef9c3;
 }
 
-.agreement-candidate-drawer-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0);
-  pointer-events: none;
-  transition: background 0.2s ease;
-  z-index: 30;
-}
-
-.agreement-candidate-drawer-backdrop.open {
-  background: rgba(15, 23, 42, 0.18);
-  pointer-events: auto;
-}
-
-.agreement-candidate-drawer {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: min(360px, 52vh);
+.agreement-candidate-window {
+  height: 100%;
   background: linear-gradient(180deg, #fffef7 0%, #ffffff 100%);
-  border-top: 1px solid #e5e7eb;
-  box-shadow: 0 -20px 40px rgba(15, 23, 42, 0.18);
-  transform: translateY(100%);
-  transition: transform 0.22s ease;
-  z-index: 31;
   display: flex;
   flex-direction: column;
-  border-top-left-radius: 18px;
-  border-top-right-radius: 18px;
 }
 
-.agreement-candidate-drawer.open {
-  transform: translateY(0);
-}
-
-.agreement-candidate-drawer__header {
+.agreement-candidate-window__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -2054,40 +2025,31 @@ button.primary:hover { background: var(--accent-2); }
   border-bottom: 1px solid #f1f5f9;
 }
 
-.agreement-candidate-drawer__header::before {
-  content: '';
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 56px;
-  height: 5px;
-  border-radius: 999px;
-  background: #cbd5e1;
-}
-
-.agreement-candidate-drawer__header strong {
+.agreement-candidate-window__header strong {
   display: block;
   font-size: 16px;
   color: #0f172a;
 }
 
-.agreement-candidate-drawer__header p {
+.agreement-candidate-window__header p {
   margin: 4px 0 0;
   font-size: 12px;
   color: #64748b;
 }
 
-.agreement-candidate-drawer__close {
-  border: none;
-  background: transparent;
+.agreement-candidate-window__close {
+  border: 1px solid #cbd5e1;
+  background: #fff;
   color: #334155;
-  font-size: 24px;
-  line-height: 1;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 8px 12px;
+  border-radius: 10px;
   cursor: pointer;
 }
 
-.agreement-candidate-drawer__search {
+.agreement-candidate-window__search {
   padding: 12px 18px;
   border-bottom: 1px solid #f1f5f9;
   display: flex;
@@ -2095,12 +2057,12 @@ button.primary:hover { background: var(--accent-2); }
   gap: 8px;
 }
 
-.agreement-candidate-drawer__count {
+.agreement-candidate-window__count {
   font-size: 12px;
   color: #64748b;
 }
 
-.agreement-candidate-drawer__body {
+.agreement-candidate-window__body {
   flex: 1;
   overflow: auto;
   padding: 14px 16px 20px;
@@ -2109,7 +2071,7 @@ button.primary:hover { background: var(--accent-2); }
   gap: 12px;
 }
 
-.agreement-candidate-drawer__empty {
+.agreement-candidate-window__empty {
   grid-column: 1 / -1;
   padding: 36px 16px;
   border: 1px dashed #cbd5e1;
@@ -2232,10 +2194,6 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 @media (max-width: 960px) {
-  .agreement-candidate-drawer {
-    height: min(72vh, 440px);
-  }
-
   .agreement-candidate-card__top {
     flex-direction: column;
   }
@@ -2248,7 +2206,7 @@ button.primary:hover { background: var(--accent-2); }
     grid-template-columns: 1fr;
   }
 
-  .agreement-candidate-drawer__body {
+  .agreement-candidate-window__body {
     grid-template-columns: 1fr;
   }
 }

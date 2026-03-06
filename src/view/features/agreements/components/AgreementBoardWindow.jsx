@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import AgreementLoadModal from './AgreementLoadModal.jsx';
 import TechnicianScoreWindow from './TechnicianScoreWindow.jsx';
+import AgreementCandidateWindow from './AgreementCandidateWindow.jsx';
 import useAgreementBoardStorage from '../hooks/useAgreementBoardStorage.js';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import Modal from '../../../../components/Modal.jsx';
@@ -1448,7 +1449,9 @@ export default function AgreementBoardWindow({
   }, [headerCollapsed]);
   const rangeId = _rangeId;
   const boardWindowRef = React.useRef(null);
+  const candidateWindowRef = React.useRef(null);
   const [portalContainer, setPortalContainer] = React.useState(null);
+  const [candidatePortalContainer, setCandidatePortalContainer] = React.useState(null);
   const [groupAssignments, setGroupAssignments] = React.useState(() => (
     Array.isArray(initialGroupAssignments) ? initialGroupAssignments.map((row) => (Array.isArray(row) ? row.slice() : [])) : []
   ));
@@ -1468,7 +1471,7 @@ export default function AgreementBoardWindow({
   const [groupManagementBonus, setGroupManagementBonus] = React.useState(() => (
     Array.isArray(initialGroupManagementBonus) ? initialGroupManagementBonus.slice() : []
   ));
-  const [candidateDrawerOpen, setCandidateDrawerOpen] = React.useState(false);
+  const [candidateWindowOpen, setCandidateWindowOpen] = React.useState(false);
   const [candidateDrawerQuery, setCandidateDrawerQuery] = React.useState('');
   const [selectedGroups, setSelectedGroups] = React.useState(() => new Set());
   const [groupSummaries, setGroupSummaries] = React.useState([]);
@@ -2968,6 +2971,19 @@ export default function AgreementBoardWindow({
     setTechnicianPortalContainer(null);
   }, []);
 
+  const closeCandidateWindow = React.useCallback(() => {
+    const win = candidateWindowRef.current;
+    if (win && !win.closed) {
+      if (win.__agreementBoardCleanup) {
+        try { win.__agreementBoardCleanup(); } catch {}
+        delete win.__agreementBoardCleanup;
+      }
+      win.close();
+    }
+    candidateWindowRef.current = null;
+    setCandidatePortalContainer(null);
+  }, []);
+
   const ensureTechnicianWindow = React.useCallback(() => {
     if (typeof window === 'undefined') return;
     if (!technicianModalOpen) return;
@@ -3021,6 +3037,59 @@ export default function AgreementBoardWindow({
     }
   }, [technicianModalOpen, technicianPortalContainer]);
 
+  const ensureCandidateWindow = React.useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (!candidateWindowOpen) return;
+    if (candidateWindowRef.current && candidateWindowRef.current.closed) {
+      candidateWindowRef.current = null;
+      setCandidatePortalContainer(null);
+    }
+
+    if (!candidateWindowRef.current) {
+      const width = Math.min(720, Math.max(560, window.innerWidth - 420));
+      const height = Math.min(860, Math.max(620, window.innerHeight - 120));
+      const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
+      const dualScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
+      const left = Math.max(40, dualScreenLeft + window.innerWidth - width - 32);
+      const top = Math.max(32, dualScreenTop + Math.max(0, (window.innerHeight - height) / 2));
+      const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+      const child = window.open('', 'company-search-agreement-candidates', features);
+      if (!child) return;
+      child.document.title = '후보 보관함';
+      child.document.documentElement.style.height = '100%';
+      child.document.documentElement.style.overflow = 'hidden';
+      child.document.body.style.margin = '0';
+      child.document.body.style.height = '100%';
+      child.document.body.style.background = '#f8fafc';
+      child.document.body.innerHTML = '';
+      const root = child.document.createElement('div');
+      root.id = 'agreement-candidate-root';
+      root.style.height = '100%';
+      child.document.body.appendChild(root);
+      copyDocumentStyles(document, child.document);
+      candidateWindowRef.current = child;
+      setCandidatePortalContainer(root);
+      const handleBeforeUnload = () => {
+        candidateWindowRef.current = null;
+        setCandidatePortalContainer(null);
+        setCandidateWindowOpen(false);
+      };
+      child.addEventListener('beforeunload', handleBeforeUnload);
+      child.__agreementBoardCleanup = () => child.removeEventListener('beforeunload', handleBeforeUnload);
+    } else {
+      const win = candidateWindowRef.current;
+      if (win.document && win.document.readyState === 'complete') {
+        copyDocumentStyles(document, win.document);
+      }
+      if (!candidatePortalContainer && win.document) {
+        const existingRoot = win.document.getElementById('agreement-candidate-root');
+        if (existingRoot) setCandidatePortalContainer(existingRoot);
+      }
+      win.document.title = '후보 보관함';
+      try { win.focus(); } catch {}
+    }
+  }, [candidateWindowOpen, candidatePortalContainer]);
+
   const closeWindow = React.useCallback(() => {
     if (inlineMode) return;
     const win = boardWindowRef.current;
@@ -3034,7 +3103,8 @@ export default function AgreementBoardWindow({
     boardWindowRef.current = null;
     setPortalContainer(null);
     closeTechnicianWindow();
-  }, [inlineMode, closeTechnicianWindow]);
+    closeCandidateWindow();
+  }, [inlineMode, closeTechnicianWindow, closeCandidateWindow]);
 
   const ensureWindow = React.useCallback(() => {
     if (inlineMode) return;
@@ -3102,6 +3172,22 @@ export default function AgreementBoardWindow({
   }, [inlineMode, open, ensureWindow, closeWindow]);
 
   React.useEffect(() => () => { closeWindow(); }, [closeWindow]);
+
+  React.useEffect(() => {
+    if (!open || !candidateWindowOpen) {
+      closeCandidateWindow();
+      return;
+    }
+    ensureCandidateWindow();
+  }, [open, candidateWindowOpen, ensureCandidateWindow, closeCandidateWindow]);
+
+  React.useEffect(() => {
+    if (!open && candidateWindowOpen) {
+      setCandidateWindowOpen(false);
+    }
+  }, [open, candidateWindowOpen]);
+
+  React.useEffect(() => () => { closeCandidateWindow(); }, [closeCandidateWindow]);
 
   React.useEffect(() => {
     if (!open || !technicianModalOpen) {
@@ -7072,8 +7158,8 @@ export default function AgreementBoardWindow({
                 <button type="button" className="excel-btn" onClick={openCopyModal}>복사</button>
                 <button
                   type="button"
-                  className={`excel-btn${candidateDrawerOpen ? ' primary' : ''}`}
-                  onClick={() => setCandidateDrawerOpen((prev) => !prev)}
+                  className={`excel-btn${candidateWindowOpen ? ' primary' : ''}`}
+                  onClick={() => setCandidateWindowOpen((prev) => !prev)}
                 >
                   후보 {candidateDrawerEntries.length > 0 ? `(${candidateDrawerEntries.length})` : ''}
                 </button>
@@ -7103,78 +7189,6 @@ export default function AgreementBoardWindow({
               </div>
             </div>
           </div>
-
-        <div className={`agreement-candidate-drawer-backdrop${candidateDrawerOpen ? ' open' : ''}`} onClick={() => setCandidateDrawerOpen(false)} />
-        <aside className={`agreement-candidate-drawer${candidateDrawerOpen ? ' open' : ''}`}>
-          <div className="agreement-candidate-drawer__header">
-            <div>
-              <strong>후보 보관함</strong>
-              <p>드래그하거나 바로 넣기로 협정테이블에 배치하세요.</p>
-            </div>
-            <button type="button" className="agreement-candidate-drawer__close" onClick={() => setCandidateDrawerOpen(false)}>×</button>
-          </div>
-          <div className="agreement-candidate-drawer__search">
-            <input
-              className="input"
-              value={candidateDrawerQuery}
-              onChange={(event) => setCandidateDrawerQuery(event.target.value)}
-              placeholder="업체명, 담당자, 지역, 연락처 검색"
-            />
-            <div className="agreement-candidate-drawer__count">
-              후보 {filteredCandidateDrawerEntries.length} / 전체 {candidateDrawerEntries.length}
-            </div>
-          </div>
-          <div className="agreement-candidate-drawer__body">
-            {filteredCandidateDrawerEntries.length === 0 ? (
-              <div className="agreement-candidate-drawer__empty">
-                {candidateDrawerEntries.length === 0 ? '보관 중인 후보가 없습니다.' : '검색 결과가 없습니다.'}
-              </div>
-            ) : filteredCandidateDrawerEntries.map((entry) => (
-              <div
-                key={entry.uid}
-                className={`agreement-candidate-card${entry.isDutyRegion ? ' duty-region' : ''}${draggingId === entry.uid ? ' dragging' : ''}`}
-                draggable
-                onDragStart={handleCandidateDrawerDragStart(entry.uid)}
-                onDragEnd={handleDragEnd}
-              >
-                <div className="agreement-candidate-card__top">
-                  <div className="agreement-candidate-card__title-wrap">
-                    <strong className="agreement-candidate-card__title" title={entry.companyName}>{entry.companyName}</strong>
-                    <div className="agreement-candidate-card__badges">
-                      {entry.isDutyRegion && <span className="agreement-candidate-card__badge region">지역사</span>}
-                      {entry.creditGrade && <span className="agreement-candidate-card__badge">{entry.creditGrade}</span>}
-                    </div>
-                  </div>
-                  <div className="agreement-candidate-card__actions">
-                    <button type="button" className="excel-btn" onClick={() => handleCandidateDrawerAssign(entry.uid)}>바로 넣기</button>
-                    {!entry.synthetic && (
-                      <button type="button" className="excel-btn" onClick={() => handleCandidateDrawerDelete(entry.uid)}>삭제</button>
-                    )}
-                  </div>
-                </div>
-                <div className="agreement-candidate-card__meta">
-                  <span>{entry.regionLabel || '지역 미지정'}</span>
-                  <span>{entry.managerName || '담당자 미지정'}</span>
-                  {entry.phoneNumber && <span>{entry.phoneNumber}</span>}
-                </div>
-                <div className="agreement-candidate-card__stats">
-                  <div>
-                    <span>경영</span>
-                    <strong>{entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}</strong>
-                  </div>
-                  <div>
-                    <span>{performanceAmountLabel}</span>
-                    <strong>{entry.performanceAmount != null ? formatAmount(entry.performanceAmount) : '-'}</strong>
-                  </div>
-                  <div>
-                    <span>시평액</span>
-                    <strong>{entry.sipyungAmount != null ? formatAmount(entry.sipyungAmount) : '-'}</strong>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
 
         <div className="excel-table-wrapper" ref={boardMainRef}>
           <div className="excel-table-inner">
@@ -7845,6 +7859,25 @@ export default function AgreementBoardWindow({
       managementOptions={TECHNICIAN_MANAGEMENT_OPTIONS}
     />
   );
+  const candidateWindowMarkup = (
+    <AgreementCandidateWindow
+      entries={filteredCandidateDrawerEntries}
+      query={candidateDrawerQuery}
+      onQueryChange={setCandidateDrawerQuery}
+      onAssign={handleCandidateDrawerAssign}
+      onDelete={handleCandidateDrawerDelete}
+      onClose={() => setCandidateWindowOpen(false)}
+      onDragStart={handleCandidateDrawerDragStart}
+      onDragEnd={handleDragEnd}
+      draggingId={draggingId}
+      performanceAmountLabel={performanceAmountLabel}
+      formatAmount={formatAmount}
+      formatScore={formatScore}
+    />
+  );
+  const candidatePortal = (open && candidateWindowOpen && candidatePortalContainer)
+    ? createPortal(candidateWindowMarkup, candidatePortalContainer)
+    : null;
   const technicianPortal = (open && technicianModalOpen && technicianPortalContainer)
     ? createPortal(technicianWindowMarkup, technicianPortalContainer)
     : null;
@@ -7854,6 +7887,7 @@ export default function AgreementBoardWindow({
     return (
       <>
         {boardMarkup}
+        {candidatePortal}
         {technicianPortal}
       </>
     );
@@ -7863,6 +7897,7 @@ export default function AgreementBoardWindow({
   return (
     <>
       {createPortal(boardMarkup, portalContainer)}
+      {candidatePortal}
       {technicianPortal}
     </>
   );
