@@ -52,6 +52,10 @@ import {
   SIPYUNG_DIRECT_KEYS,
   SIPYUNG_KEYWORDS,
 } from '../../../../shared/agreements/calculations/sipyungValue.js';
+import {
+  evaluateAgreementPerformanceScore,
+  resolvePerformanceCap,
+} from '../../../../shared/agreements/calculations/performanceScore.js';
 
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
@@ -319,15 +323,6 @@ const deriveManagementMax = (managementRules) => {
     .filter((value) => value != null && value > 0);
   if (methodMaxes.length) return Math.max(...methodMaxes);
   return null;
-};
-
-const resolvePerformanceCap = (value, fallback = PERFORMANCE_DEFAULT_MAX) => {
-  if (value === null || value === undefined) return fallback;
-  const parsed = Number(value);
-  if (Number.isFinite(parsed) && parsed > 0) {
-    return Math.max(parsed, fallback);
-  }
-  return fallback;
 };
 
 const resolveTemplateKey = (ownerId, rangeId, fileType) => {
@@ -4049,47 +4044,19 @@ export default function AgreementBoardWindow({
 
     let canceled = false;
 
-    const evaluatePerformanceScore = async (perfAmount) => {
-      if (!performanceBaseReady || perfAmount == null) return null;
-      const payload = {
-        agencyId: ownerKey,
-        fileType,
-        amount: evaluationAmount != null ? evaluationAmount : (perfBase != null ? perfBase : 0),
-        inputs: {
-          perf5y: perfAmount,
-          perf3y: perfAmount,
-          baseAmount: perfBase,
-          estimatedAmount: estimatedValue,
-          fileType,
-        },
-      };
-      if (typeof window !== 'undefined' && window.electronAPI?.formulasEvaluate) {
-        try {
-          const response = await window.electronAPI.formulasEvaluate(payload);
-          if (response?.success && response.data?.performance) {
-            const perfData = response.data.performance;
-            const perfMax = updatePerformanceCap(perfData.maxScore);
-            const { score, capped, raw } = perfData;
-            const numericCandidates = [score, capped, raw]
-              .map((value) => toNumber(value))
-              .filter((value) => value !== null);
-            if (numericCandidates.length > 0) {
-              const resolved = clampScore(Math.max(...numericCandidates), perfMax);
-              if (resolved != null) return resolved;
-            }
-          }
-        } catch (err) {
-          console.warn('[AgreementBoard] performance evaluate failed:', err?.message || err);
-        }
-      }
-
-      if (!performanceBaseReady || perfBase <= 0) return null;
-      const ratio = perfAmount / perfBase;
-      if (!Number.isFinite(ratio)) return null;
-      const cap = getPerformanceCap();
-      const fallback = Math.max(1, ratio * cap);
-      return clampScore(fallback, cap);
-    };
+    const evaluatePerformanceScore = async (perfAmount) => evaluateAgreementPerformanceScore(perfAmount, {
+      performanceBaseReady,
+      agencyId: ownerKey,
+      fileType,
+      evaluationAmount,
+      perfBase,
+      estimatedValue,
+      formulasEvaluate: typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null,
+      updatePerformanceCap,
+      getPerformanceCap,
+      toNumber,
+      clampScore,
+    });
 
     const run = async () => {
       const results = await computeGroupSummaries({
