@@ -56,6 +56,7 @@ import {
   evaluateAgreementPerformanceScore,
   resolvePerformanceCap,
 } from '../../../../shared/agreements/calculations/performanceScore.js';
+import { runAgreementCandidateScoreEvaluation } from '../../../../shared/agreements/runner/candidateScoreRunner.js';
 
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
@@ -4188,7 +4189,7 @@ export default function AgreementBoardWindow({
 
     let canceled = false;
 
-    const normalizeCandidateKey = (candidate) => {
+    const buildCandidateKey = (candidate) => {
       if (!candidate || typeof candidate !== 'object') return '';
       if (candidate.id) return String(candidate.id);
       const biz = normalizeBizNo(getBizNo(candidate));
@@ -4198,156 +4199,33 @@ export default function AgreementBoardWindow({
     };
 
     const resolveCandidateScores = async () => {
-      let updated = 0;
-
-      for (const candidate of entries) {
-        if (canceled || !candidate || typeof candidate !== 'object') continue;
-
-        const currentManagement = getCandidateManagementScore(candidate);
-        const storedPerformanceMax = Number(candidate._agreementPerformanceMax);
-        const storedCapVersion = Number(candidate._agreementPerformanceCapVersion);
-        const capIsValid = Number.isFinite(storedPerformanceMax) && storedPerformanceMax > 0;
-        const capVersionFresh = storedCapVersion === PERFORMANCE_CAP_VERSION;
-        if (capIsValid && capVersionFresh) {
-          updatePerformanceCap(storedPerformanceMax);
-        }
-        const capForStored = (capIsValid && capVersionFresh)
-          ? storedPerformanceMax
-          : getPerformanceCap();
-        const currentPerformanceScore = (candidate._agreementPerformanceScore != null && capVersionFresh)
-          ? clampScore(candidate._agreementPerformanceScore, capForStored)
-          : null;
-        const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
-        const needsManagement = currentManagement == null;
-        const needsPerformanceScore = performanceAmount != null && performanceAmount > 0
-          && performanceBaseReady && currentPerformanceScore == null;
-
-        if (!needsManagement && !needsPerformanceScore) continue;
-
-        const candidateKey = normalizeCandidateKey(candidate);
-        if (!candidateKey) continue;
-        const cacheKey = `${ownerKey}|${String(fileType || '')}|${selectedRangeOption?.key || ''}|${evaluationAmount || ''}|${perfBase || ''}|${candidateKey}`;
-        const cacheEntry = candidateScoreCacheRef.current.get(cacheKey);
-        if (cacheEntry === 'pending') continue;
-        if (cacheEntry === 'done' && !needsManagement && !needsPerformanceScore) continue;
-        candidateScoreCacheRef.current.set(cacheKey, 'pending');
-
-        const debtRatio = getCandidateNumericValue(
-          candidate,
-          ['debtRatio', '부채비율', '부채율', '부채비율(%)'],
-          [['부채', 'debt']]
-        );
-        const currentRatio = getCandidateNumericValue(
-          candidate,
-          ['currentRatio', '유동비율', '유동자산비율', '유동비율(%)'],
-          [['유동', 'current']]
-        );
-        const bizYears = resolveCandidateBizYears(candidate, noticeDate);
-        const qualityEval = getCandidateNumericValue(
-          candidate,
-          ['qualityEval', '품질평가', '품질점수'],
-          [['품질', 'quality']]
-        );
-        const creditGradeRaw = extractCreditGrade(candidate);
-        const creditExpired = isCreditScoreExpired(candidate);
-        const creditGrade = creditExpired ? '' : creditGradeRaw;
-        const candidatePerfAmount = performanceAmount;
-
-        let resolvedManagement = currentManagement;
-        let resolvedPerformanceScore = currentPerformanceScore;
-
-        const payload = {
-          agencyId: ownerKey,
-          fileType,
-          amount: Number.isFinite(evaluationAmount) && evaluationAmount > 0
-            ? evaluationAmount
-            : (Number.isFinite(perfBase) && perfBase > 0 ? perfBase : 0),
-          inputs: {
-            debtRatio,
-            currentRatio,
-            bizYears,
-            qualityEval,
-            perf5y: candidatePerfAmount,
-            perf3y: candidatePerfAmount,
-            baseAmount: perfBase,
-            estimatedAmount: estimatedValue,
-            fileType,
-            creditGrade,
-          },
-        };
-
-        if (!Number.isFinite(payload.inputs.debtRatio)) delete payload.inputs.debtRatio;
-        if (!Number.isFinite(payload.inputs.currentRatio)) delete payload.inputs.currentRatio;
-        if (!Number.isFinite(payload.inputs.bizYears)) delete payload.inputs.bizYears;
-        if (!Number.isFinite(payload.inputs.qualityEval)) delete payload.inputs.qualityEval;
-        if (!Number.isFinite(payload.inputs.perf5y)) delete payload.inputs.perf5y;
-        if (!Number.isFinite(payload.inputs.perf3y)) delete payload.inputs.perf3y;
-        if (!Number.isFinite(payload.inputs.baseAmount)) delete payload.inputs.baseAmount;
-        if (!Number.isFinite(payload.inputs.estimatedAmount)) delete payload.inputs.estimatedAmount;
-        if (!payload.inputs.fileType) delete payload.inputs.fileType;
-        if (!payload.inputs.creditGrade) delete payload.inputs.creditGrade;
-
-        try {
-          if (evalApi) {
-            const response = await evalApi(payload);
-            if (canceled) {
-              candidateScoreCacheRef.current.delete(cacheKey);
-              return;
-            }
-            if (response?.success && response.data) {
-              const { management, performance } = response.data;
-              if (needsManagement && management && management.score != null) {
-                const mgmtScore = clampScore(management.score);
-                if (mgmtScore != null) {
-                  resolvedManagement = mgmtScore;
-                  candidate._agreementManagementScore = mgmtScore;
-                  candidate._agreementManagementScoreVersion = MANAGEMENT_SCORE_VERSION;
-                }
-              }
-              if (needsPerformanceScore && performance && performance.score != null) {
-                const perfMax = updatePerformanceCap(performance.maxScore);
-                const perfScore = clampScore(performance.score, perfMax);
-                if (perfScore != null) {
-                  candidate._agreementPerformanceScore = perfScore;
-                  candidate._agreementPerformanceMax = perfMax;
-                  candidate._agreementPerformanceCapVersion = PERFORMANCE_CAP_VERSION;
-                  resolvedPerformanceScore = perfScore;
-                }
-              }
-            } else if (!response?.success) {
-              console.warn('[AgreementBoard] formulasEvaluate failed:', response?.message);
-            } else if (process.env.NODE_ENV !== 'production') {
-              console.debug('[AgreementBoard] formulasEvaluate returned no data', getCompanyName(candidate), response);
-            }
-          } else if (needsPerformanceScore && performanceAmount != null && performanceBaseReady) {
-            const ratio = performanceAmount / perfBase;
-            if (Number.isFinite(ratio)) {
-              const cap = getPerformanceCap();
-              const fallbackScore = clampScore(Math.max(1, ratio * cap), cap);
-              if (fallbackScore != null) {
-                candidate._agreementPerformanceScore = fallbackScore;
-                candidate._agreementPerformanceMax = cap;
-                candidate._agreementPerformanceCapVersion = PERFORMANCE_CAP_VERSION;
-                resolvedPerformanceScore = fallbackScore;
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('[AgreementBoard] candidate score evaluate failed:', err?.message || err);
-        } finally {
-          candidateScoreCacheRef.current.set(cacheKey, 'done');
-        }
-
-        if ((needsManagement && resolvedManagement != null) || (needsPerformanceScore && resolvedPerformanceScore != null)) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.debug('[AgreementBoard] candidate score updated', getCompanyName(candidate), {
-              management: resolvedManagement,
-              performance: resolvedPerformanceScore,
-            });
-          }
-          updated += 1;
-        }
-      }
+      const updated = await runAgreementCandidateScoreEvaluation({
+        entries,
+        isCanceled: () => canceled,
+        getCandidateManagementScore,
+        getCandidatePerformanceAmountForCurrentRange,
+        performanceBaseReady,
+        perfBase,
+        ownerKey,
+        fileType,
+        selectedRangeKey: selectedRangeOption?.key || '',
+        evaluationAmount,
+        candidateScoreCache: candidateScoreCacheRef.current,
+        buildCandidateKey,
+        getCandidateNumericValue,
+        resolveCandidateBizYears,
+        noticeDate,
+        estimatedValue,
+        extractCreditGrade,
+        isCreditScoreExpired,
+        formulasEvaluate: evalApi,
+        getCompanyName,
+        clampScore,
+        getPerformanceCap,
+        updatePerformanceCap,
+        performanceCapVersion: PERFORMANCE_CAP_VERSION,
+        managementScoreVersion: MANAGEMENT_SCORE_VERSION,
+      });
 
       if (!canceled && updated > 0) {
         setCandidateMetricsVersion((prev) => prev + 1);
