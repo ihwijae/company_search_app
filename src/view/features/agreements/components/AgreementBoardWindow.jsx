@@ -880,6 +880,14 @@ const resolveConstructionExperienceScore = (performanceScore, qualityPoints) => 
 
 const getCandidateManagementScore = (candidate) => {
   if (!candidate || typeof candidate !== 'object') return null;
+  const pickValue = (...keys) => {
+    for (const key of keys) {
+      if (!key) continue;
+      if (candidate[key] != null && candidate[key] !== '') return candidate[key];
+      if (candidate.snapshot?.[key] != null && candidate.snapshot[key] !== '') return candidate.snapshot[key];
+    }
+    return null;
+  };
   const manualRaw = candidate._agreementManagementManual;
   if (manualRaw !== null && manualRaw !== undefined && manualRaw !== '') {
     const manual = clampScore(toNumber(manualRaw));
@@ -921,22 +929,21 @@ const getCandidateManagementScore = (candidate) => {
     '경영점수합',
   ];
   for (const field of directFields) {
-    if (candidate[field] != null) {
-      const parsed = clampScore(toNumber(candidate[field]));
-      if (parsed != null) {
-        candidate._agreementManagementScore = parsed;
-        candidate._agreementManagementScoreVersion = MANAGEMENT_SCORE_VERSION;
-        return parsed;
-      }
+    const raw = pickValue(field);
+    const parsed = clampScore(toNumber(raw));
+    if (parsed != null) {
+      candidate._agreementManagementScore = parsed;
+      candidate._agreementManagementScoreVersion = MANAGEMENT_SCORE_VERSION;
+      return parsed;
     }
   }
 
   const compositeCandidates = [
-    candidate.managementTotalScore,
-    candidate.totalManagementScore,
-    candidate.managementScoreTotal,
-    candidate['경영점수합'],
-    candidate['경영점수총점'],
+    pickValue('managementTotalScore'),
+    pickValue('totalManagementScore'),
+    pickValue('managementScoreTotal'),
+    pickValue('경영점수합'),
+    pickValue('경영점수총점'),
   ];
   let composite = null;
   for (const value of compositeCandidates) {
@@ -946,16 +953,10 @@ const getCandidateManagementScore = (candidate) => {
 
   if (composite == null) {
     const debt = clampScore(toNumber(
-      candidate.debtScore
-      ?? candidate.debtRatioScore
-      ?? candidate['부채점수']
-      ?? candidate['부채비율점수']
+      pickValue('debtScore', 'debtRatioScore', '부채점수', '부채비율점수')
     ), MANAGEMENT_SCORE_MAX);
     const current = clampScore(toNumber(
-      candidate.currentScore
-      ?? candidate.currentRatioScore
-      ?? candidate['유동점수']
-      ?? candidate['유동비율점수']
+      pickValue('currentScore', 'currentRatioScore', '유동점수', '유동비율점수')
     ), MANAGEMENT_SCORE_MAX);
     if (debt != null || current != null) {
       const sum = (debt || 0) + (current || 0);
@@ -963,17 +964,10 @@ const getCandidateManagementScore = (candidate) => {
     }
   }
 
-  let credit = clampScore(toNumber(candidate.creditScore));
-  if (credit == null && candidate._creditScore != null) {
-    credit = clampScore(toNumber(candidate._creditScore));
-  }
-  if (credit == null && candidate['신용점수'] != null) {
-    credit = clampScore(toNumber(candidate['신용점수']));
-  }
-  if (credit == null && candidate['신용평가점수'] != null) {
-    credit = clampScore(toNumber(candidate['신용평가점수']));
-  }
-  if (credit == null && candidate.creditGrade != null && composite != null) {
+  let credit = clampScore(toNumber(
+    pickValue('creditScore', '_creditScore', '신용점수', '신용평가점수')
+  ));
+  if (credit == null && pickValue('creditGrade') != null && composite != null) {
     // 일부 데이터는 신용점수를 별도로 주지 않고 composite에 포함시킴
     credit = null;
   }
