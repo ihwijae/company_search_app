@@ -2201,6 +2201,11 @@ button.primary:hover { background: var(--accent-2); }
   font-weight: 700;
 }
 
+.agreement-candidate-table td.agreement-candidate-table__management.warn {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
 @media (max-width: 960px) {
   .agreement-candidate-table {
     min-width: 860px;
