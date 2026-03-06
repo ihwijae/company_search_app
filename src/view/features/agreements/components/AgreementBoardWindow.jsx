@@ -3920,6 +3920,13 @@ export default function AgreementBoardWindow({
         const creditGrade = getCandidateCreditGrade(candidate);
         const perSlotMax = isMois30To50 ? MANAGEMENT_SCORE_MAX : managementMax;
         const managementScore = clampScore(toNumber(getCandidateManagementScore(candidate)), perSlotMax);
+        const sipyungAmount = getCandidateSipyungAmount(candidate);
+        const possibleShare = (possibleShareBase !== null && possibleShareBase > 0 && sipyungAmount && sipyungAmount > 0)
+          ? (sipyungAmount / possibleShareBase) * 100
+          : null;
+        const possibleShareText = (possibleShare != null && possibleShare > 0 && possibleShare < 100)
+          ? `${possibleShare >= 100 ? possibleShare.toFixed(0) : possibleShare.toFixed(2)}%`
+          : '';
         const searchText = [
           companyName,
           managerName,
@@ -3937,7 +3944,8 @@ export default function AgreementBoardWindow({
           managementScore,
           managementAlert: managementScore != null && managementScore < (perSlotMax - 0.01),
           performanceAmount: getCandidatePerformanceAmountForCurrentRange(candidate),
-          sipyungAmount: getCandidateSipyungAmount(candidate),
+          sipyungAmount,
+          possibleShareText,
           creditGrade,
           searchText,
           synthetic: Boolean(entry.synthetic || candidate._synthetic),
@@ -3958,6 +3966,7 @@ export default function AgreementBoardWindow({
     candidateMetricsVersion,
     managementMax,
     isMois30To50,
+    possibleShareBase,
     isDutyRegionCompany,
     getCandidatePerformanceAmountForCurrentRange,
   ]);
@@ -4277,16 +4286,22 @@ export default function AgreementBoardWindow({
       const candidatePayloads = candidateDrawerEntries.map((entry, index) => {
         const candidate = entry?.candidate;
         if (!candidate) return null;
+        const companyName = sanitizeCompanyName(getCompanyName(candidate));
+        const managerName = getCandidateManagerName(candidate);
+        const shareLabel = entry.possibleShareText || '';
+        const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
+        const displayName = managerName ? `${nameLine}\n${managerName}` : nameLine;
         return {
           candidateIndex: index + 1,
           isRegion: Boolean(entry.isDutyRegion),
-          name: sanitizeCompanyName(getCompanyName(candidate)),
-          manager: getCandidateManagerName(candidate),
+          name: displayName,
+          manager: managerName,
           region: getRegionLabel(candidate),
           bizNo: normalizeBizNo(getBizNo(candidate)),
           managementScore: entry.managementScore != null ? Number(entry.managementScore) : null,
           performanceAmount: entry.performanceAmount != null ? Number(entry.performanceAmount) : null,
           sipyung: entry.sipyungAmount != null ? Number(entry.sipyungAmount) : null,
+          possibleShareText: entry.possibleShareText || '',
         };
       }).filter(Boolean);
 

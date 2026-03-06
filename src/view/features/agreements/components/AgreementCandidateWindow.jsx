@@ -84,6 +84,9 @@ export default function AgreementCandidateWindow({
                         {entry.managerName && (
                           <span className="agreement-candidate-table__meta-badge">{entry.managerName}</span>
                         )}
+                        {entry.possibleShareText && (
+                          <span className="agreement-candidate-table__meta-badge share">가능 {entry.possibleShareText}</span>
+                        )}
                       </div>
                     </td>
                     <td className="agreement-candidate-table__management">
