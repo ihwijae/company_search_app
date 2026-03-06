@@ -3914,6 +3914,7 @@ export default function AgreementBoardWindow({
     representativeEntries,
     regionEntries,
     participantMap,
+    candidateMetricsVersion,
     isDutyRegionCompany,
     getCandidatePerformanceAmountForCurrentRange,
   ]);
