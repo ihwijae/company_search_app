@@ -71,6 +71,10 @@ export default function AgreementCandidateWindow({
                     onDragStart={onDragStart(entry.uid)}
                     onDragEnd={onDragEnd}
                   >
+                    {(() => {
+                      const managementWarn = entry.managementScore != null && entry.managementScore < (managementMax - 0.01);
+                      return (
+                        <>
                     <td className="agreement-candidate-table__company">
                       <strong title={entry.companyName}>{entry.companyName}</strong>
                       <div className="agreement-candidate-table__meta-badges">
@@ -82,8 +86,10 @@ export default function AgreementCandidateWindow({
                         )}
                       </div>
                     </td>
-                    <td className={entry.managementScore != null && entry.managementScore < (managementMax - 0.01) ? 'agreement-candidate-table__management warn' : 'agreement-candidate-table__management'}>
-                      {entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}
+                    <td className="agreement-candidate-table__management">
+                      <span style={managementWarn ? { color: '#b91c1c', fontWeight: 700 } : undefined}>
+                        {entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}
+                      </span>
                     </td>
                     <td>{entry.performanceAmount != null ? formatAmount(entry.performanceAmount) : '-'}</td>
                     <td>{entry.sipyungAmount != null ? formatAmount(entry.sipyungAmount) : '-'}</td>
@@ -116,6 +122,9 @@ export default function AgreementCandidateWindow({
                         )}
                       </div>
                     </td>
+                        </>
+                      );
+                    })()}
                   </tr>
                 ))}
               </tbody>

@@ -5073,34 +5073,38 @@ export default function AgreementBoardWindow({
     setDragSource(null);
   };
 
-  const handleCardMoveClick = React.useCallback(async (meta) => {
-    if (!meta) return;
+  const handleSelectedCandidatePlacement = React.useCallback(async (meta) => {
+    if (!meta || !selectedCandidateUid || !participantMap.has(selectedCandidateUid)) return false;
+    const sourceEntry = participantMap.get(selectedCandidateUid);
+    const sourceName = getCompanyName(sourceEntry?.candidate) || '업체';
 
-    if (selectedCandidateUid && participantMap.has(selectedCandidateUid)) {
-      const sourceEntry = participantMap.get(selectedCandidateUid);
-      const sourceName = getCompanyName(sourceEntry?.candidate) || '업체';
-      if (meta.empty) {
-        placeEntryInSlot(selectedCandidateUid, meta.groupIndex, meta.slotIndex);
-        setSelectedCandidateUid(null);
-        showHeaderAlert(`${meta.groupIndex + 1}번 협정 ${meta.label} 위치로 배치했습니다.`);
-        return;
-      }
-
-      const targetName = meta.companyName || '업체';
-      const ok = await confirm({
-        title: '업체를 교체하시겠습니까?',
-        message: `${sourceName} 업체를 넣고, ${targetName} 업체를 후보로 되돌리시겠습니까?`,
-        confirmText: '예',
-        cancelText: '아니오',
-        tone: 'info',
-        portalTarget: portalContainer || null,
-      });
-      if (!ok) return;
+    if (meta.empty) {
       placeEntryInSlot(selectedCandidateUid, meta.groupIndex, meta.slotIndex);
       setSelectedCandidateUid(null);
-      showHeaderAlert(`${targetName} 업체를 ${sourceName} 업체로 교체했습니다.`);
-      return;
+      showHeaderAlert(`${meta.groupIndex + 1}번 협정 ${meta.label} 위치로 배치했습니다.`);
+      return true;
     }
+
+    const targetName = meta.companyName || '업체';
+    const ok = await confirm({
+      title: '업체를 교체하시겠습니까?',
+      message: `${sourceName} 업체를 넣고, ${targetName} 업체를 후보로 되돌리시겠습니까?`,
+      confirmText: '예',
+      cancelText: '아니오',
+      tone: 'info',
+      portalTarget: portalContainer || null,
+    });
+    if (!ok) return true;
+
+    placeEntryInSlot(selectedCandidateUid, meta.groupIndex, meta.slotIndex);
+    setSelectedCandidateUid(null);
+    showHeaderAlert(`${targetName} 업체를 ${sourceName} 업체로 교체했습니다.`);
+    return true;
+  }, [selectedCandidateUid, participantMap, placeEntryInSlot, showHeaderAlert, confirm, portalContainer]);
+
+  const handleCardMoveClick = React.useCallback(async (meta) => {
+    if (!meta) return;
+    if (await handleSelectedCandidatePlacement(meta)) return;
 
     if (!pendingMoveSource) {
       if (meta.empty || !meta.uid) return;
@@ -5182,7 +5186,7 @@ export default function AgreementBoardWindow({
     });
 
     setPendingMoveSource(null);
-  }, [selectedCandidateUid, participantMap, placeEntryInSlot, showHeaderAlert, confirm, pendingMoveSource, portalContainer, safeGroupSize]);
+  }, [handleSelectedCandidatePlacement, confirm, pendingMoveSource, portalContainer, safeGroupSize]);
 
   const handleEmptySlotClick = React.useCallback((meta) => {
     if (!meta || !meta.empty) return;
@@ -5191,11 +5195,11 @@ export default function AgreementBoardWindow({
       return;
     }
     if (selectedCandidateUid && participantMap.has(selectedCandidateUid)) {
-      void handleCardMoveClick(meta);
+      void handleSelectedCandidatePlacement(meta);
       return;
     }
     openRepresentativeSearch({ groupIndex: meta.groupIndex, slotIndex: meta.slotIndex });
-  }, [selectedCandidateUid, participantMap, pendingMoveSource, handleCardMoveClick, openRepresentativeSearch]);
+  }, [selectedCandidateUid, participantMap, pendingMoveSource, handleCardMoveClick, handleSelectedCandidatePlacement, openRepresentativeSearch]);
 
   const handleRemove = (groupIndex, slotIndex) => {
     setGroupAssignments((prev) => {
