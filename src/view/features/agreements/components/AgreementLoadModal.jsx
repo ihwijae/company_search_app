@@ -140,7 +140,7 @@ export default function AgreementLoadModal({
           <label>
             <span>정렬</span>
             <select
-              value={filters.sortOrder || 'noticeDateDesc'}
+              value={filters.sortOrder || 'savedAtDesc'}
               onChange={(event) => setFilters((prev) => ({ ...prev, sortOrder: event.target.value }))}
             >
               <option value="noticeDateDesc">개찰일 최신순</option>

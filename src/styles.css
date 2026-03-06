@@ -1164,6 +1164,7 @@ button.primary:hover { background: var(--accent-2); }
   box-sizing: border-box;
   border-radius: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .excel-banner-info {
@@ -2006,6 +2007,231 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-name-cell.duty-region {
   background: #fef9c3;
+}
+
+.agreement-candidate-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0);
+  pointer-events: none;
+  transition: background 0.2s ease;
+  z-index: 30;
+}
+
+.agreement-candidate-drawer-backdrop.open {
+  background: rgba(15, 23, 42, 0.18);
+  pointer-events: auto;
+}
+
+.agreement-candidate-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(420px, calc(100vw - 32px));
+  background: linear-gradient(180deg, #fffef7 0%, #ffffff 100%);
+  border-left: 1px solid #e5e7eb;
+  box-shadow: -20px 0 40px rgba(15, 23, 42, 0.18);
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+}
+
+.agreement-candidate-drawer.open {
+  transform: translateX(0);
+}
+
+.agreement-candidate-drawer__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.agreement-candidate-drawer__header strong {
+  display: block;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.agreement-candidate-drawer__header p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.agreement-candidate-drawer__close {
+  border: none;
+  background: transparent;
+  color: #334155;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.agreement-candidate-drawer__search {
+  padding: 12px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agreement-candidate-drawer__count {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.agreement-candidate-drawer__body {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.agreement-candidate-drawer__empty {
+  padding: 36px 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #64748b;
+  text-align: center;
+  font-size: 13px;
+}
+
+.agreement-candidate-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: grab;
+}
+
+.agreement-candidate-card.duty-region {
+  background: #fef9c3;
+  border-color: #facc15;
+}
+
+.agreement-candidate-card.dragging {
+  opacity: 0.6;
+}
+
+.agreement-candidate-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.agreement-candidate-card__title-wrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agreement-candidate-card__title {
+  display: block;
+  font-size: 15px;
+  color: #0f172a;
+  word-break: break-all;
+}
+
+.agreement-candidate-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agreement-candidate-card__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.agreement-candidate-card__badge.region {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.agreement-candidate-card__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.agreement-candidate-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.agreement-candidate-card__meta span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.agreement-candidate-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.agreement-candidate-card__stats > div {
+  padding: 10px 10px 8px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid #e2e8f0;
+}
+
+.agreement-candidate-card__stats span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.agreement-candidate-card__stats strong {
+  display: block;
+  font-size: 12px;
+  color: #0f172a;
+  word-break: break-all;
+}
+
+@media (max-width: 960px) {
+  .agreement-candidate-drawer {
+    width: min(100%, 420px);
+  }
+
+  .agreement-candidate-card__top {
+    flex-direction: column;
+  }
+
+  .agreement-candidate-card__actions {
+    width: 100%;
+  }
+
+  .agreement-candidate-card__stats {
+    grid-template-columns: 1fr;
+  }
 }
 
 .excel-share-cell {

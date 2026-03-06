@@ -7,7 +7,7 @@ const DEFAULT_FILTERS = {
   dutyRegion: '',
   amountMin: '',
   amountMax: '',
-  sortOrder: 'noticeDateDesc',
+  sortOrder: 'savedAtDesc',
 };
 
 export default function useAgreementBoardStorage({
@@ -352,7 +352,7 @@ export default function useAgreementBoardStorage({
       if (value === 'noticeDateAsc') return 'noticeDateAsc';
       if (value === 'savedAtAsc') return 'savedAtAsc';
       if (value === 'savedAtDesc') return 'savedAtDesc';
-      return 'noticeDateDesc';
+      return 'savedAtDesc';
     };
     const filtered = (loadItems || []).filter((item) => {
       const meta = item?.meta || {};

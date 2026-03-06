@@ -539,6 +539,28 @@ const getCandidateManagerName = (candidate) => {
   return '';
 };
 
+const PHONE_KEYS = [
+  '전화번호', '연락처', '휴대폰', '핸드폰', '핸드폰번호', '휴대폰번호',
+  '전화', '연락처1', '연락처2', 'mobile', 'mobileNo', 'phone', 'phoneNo',
+  'tel', 'telephone', 'managerPhone', 'contactPhone',
+];
+const PHONE_KEY_SET = new Set(PHONE_KEYS.map((key) => key.replace(/\s+/g, '').toLowerCase()));
+
+const getCandidatePhoneNumber = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') return '';
+  const sources = [candidate, candidate.snapshot].filter(Boolean);
+  for (const source of sources) {
+    for (const [key, value] of Object.entries(source)) {
+      if (value == null || value === '') continue;
+      const normalizedKey = key.replace(/\s+/g, '').toLowerCase();
+      if (!PHONE_KEY_SET.has(normalizedKey) && !normalizedKey.includes('phone') && !normalizedKey.includes('tel')) continue;
+      const text = String(value).trim();
+      if (text) return text;
+    }
+  }
+  return '';
+};
+
 const resolveBoardConstraintRules = (rawRules) => {
   const base = rawRules && typeof rawRules === 'object' ? rawRules : {};
   const merged = {
@@ -1446,6 +1468,8 @@ export default function AgreementBoardWindow({
   const [groupManagementBonus, setGroupManagementBonus] = React.useState(() => (
     Array.isArray(initialGroupManagementBonus) ? initialGroupManagementBonus.slice() : []
   ));
+  const [candidateDrawerOpen, setCandidateDrawerOpen] = React.useState(false);
+  const [candidateDrawerQuery, setCandidateDrawerQuery] = React.useState('');
   const [selectedGroups, setSelectedGroups] = React.useState(() => new Set());
   const [groupSummaries, setGroupSummaries] = React.useState([]);
   const [groupCredibility, setGroupCredibility] = React.useState(() => (
@@ -3759,6 +3783,63 @@ export default function AgreementBoardWindow({
     return set;
   }, [groupAssignments]);
 
+  const candidateDrawerEntries = React.useMemo(() => {
+    const list = [...representativeEntries, ...regionEntries]
+      .map((entry) => {
+        const merged = participantMap.get(entry.uid) || entry;
+        const candidate = merged?.candidate || entry?.candidate;
+        if (!candidate || assignedIds.has(entry.uid)) return null;
+        const companyName = getCompanyName(candidate);
+        const managerName = getCandidateManagerName(candidate);
+        const phoneNumber = getCandidatePhoneNumber(candidate);
+        const regionLabel = getRegionLabel(candidate);
+        const creditGrade = getCandidateCreditGrade(candidate);
+        const searchText = [
+          companyName,
+          managerName,
+          phoneNumber,
+          regionLabel,
+          candidate.bizNo,
+          creditGrade,
+        ].filter(Boolean).join(' ').toLowerCase();
+        return {
+          uid: entry.uid,
+          candidate,
+          companyName,
+          managerName,
+          phoneNumber,
+          regionLabel,
+          isDutyRegion: entry.type === 'region' || isDutyRegionCompany(candidate),
+          managementScore: getCandidateManagementScore(candidate),
+          performanceAmount: getCandidatePerformanceAmountForCurrentRange(candidate),
+          sipyungAmount: getCandidateSipyungAmount(candidate),
+          creditGrade,
+          searchText,
+          synthetic: Boolean(entry.synthetic || candidate._synthetic),
+        };
+      })
+      .filter(Boolean);
+
+    list.sort((a, b) => {
+      if (a.isDutyRegion !== b.isDutyRegion) return a.isDutyRegion ? -1 : 1;
+      return a.companyName.localeCompare(b.companyName, 'ko');
+    });
+    return list;
+  }, [
+    assignedIds,
+    representativeEntries,
+    regionEntries,
+    participantMap,
+    isDutyRegionCompany,
+    getCandidatePerformanceAmountForCurrentRange,
+  ]);
+
+  const filteredCandidateDrawerEntries = React.useMemo(() => {
+    const query = String(candidateDrawerQuery || '').trim().toLowerCase();
+    if (!query) return candidateDrawerEntries;
+    return candidateDrawerEntries.filter((entry) => entry.searchText.includes(query));
+  }, [candidateDrawerEntries, candidateDrawerQuery]);
+
   const summaryByGroup = React.useMemo(() => {
     const map = new Map();
     groupSummaries.forEach((entry) => {
@@ -4886,6 +4967,14 @@ export default function AgreementBoardWindow({
     setDragSource({ groupIndex, slotIndex, id });
   };
 
+  const handleCandidateDrawerDragStart = (id) => (event) => {
+    if (!id) return;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id);
+    setDraggingId(id);
+    setDragSource(null);
+  };
+
   const handleDragEnd = () => {
     setDraggingId(null);
     setDropTarget(null);
@@ -4987,11 +5076,6 @@ export default function AgreementBoardWindow({
   }, [handleCardMoveClick, openRepresentativeSearch, pendingMoveSource]);
 
   const handleRemove = (groupIndex, slotIndex) => {
-    const removedUid = groupAssignments[groupIndex]?.[slotIndex];
-    const removedCandidate = removedUid ? participantMap.get(removedUid)?.candidate : null;
-    if (removedCandidate) {
-      removeCandidatesFromBoard([removedCandidate]);
-    }
     setGroupAssignments((prev) => {
       const next = prev.map((group) => group.slice());
       if (next[groupIndex]) next[groupIndex][slotIndex] = null;
@@ -5019,6 +5103,49 @@ export default function AgreementBoardWindow({
       return next;
     });
   };
+
+  const placeCandidateOnBoard = React.useCallback((uid) => {
+    if (!uid || !participantMap.has(uid)) return false;
+    let placed = false;
+    setGroupAssignments((prev) => {
+      const next = prev.map((group) => (Array.isArray(group) ? group.slice() : Array(safeGroupSize).fill(null)));
+      let targetGroupIndex = -1;
+      let targetSlotIndex = -1;
+
+      next.forEach((group, groupIndex) => {
+        group.forEach((value, slotIndex) => {
+          if (value === uid) {
+            group[slotIndex] = null;
+          }
+          if (targetGroupIndex >= 0) return;
+          if (!value) {
+            targetGroupIndex = groupIndex;
+            targetSlotIndex = slotIndex;
+          }
+        });
+      });
+
+      if (targetGroupIndex < 0 || targetSlotIndex < 0) {
+        next.push(Array(safeGroupSize).fill(null));
+        targetGroupIndex = next.length - 1;
+        targetSlotIndex = 0;
+      }
+
+      next[targetGroupIndex][targetSlotIndex] = uid;
+      placed = true;
+      return next;
+    });
+    return placed;
+  }, [participantMap, safeGroupSize]);
+
+  const handleCandidateDrawerAssign = React.useCallback((uid) => {
+    const ok = placeCandidateOnBoard(uid);
+    if (!ok) {
+      showHeaderAlert('후보를 협정테이블에 넣지 못했습니다.');
+      return;
+    }
+    showHeaderAlert('후보를 협정테이블에 넣었습니다.');
+  }, [placeCandidateOnBoard, showHeaderAlert]);
 
   const handleDropInternal = (groupIndex, slotIndex, id) => {
     if (!id || !participantMap.has(id)) return;
@@ -5207,6 +5334,13 @@ export default function AgreementBoardWindow({
     }
   }, [candidates, onRemoveRepresentative, onUpdateBoard]);
 
+  const handleCandidateDrawerDelete = React.useCallback((uid) => {
+    if (!uid) return;
+    const candidate = participantMap.get(uid)?.candidate;
+    if (!candidate) return;
+    removeCandidatesFromBoard([candidate]);
+  }, [participantMap, removeCandidatesFromBoard]);
+
   const handleDeleteGroups = async () => {
     if (selectedGroups.size === 0) {
       showHeaderAlert('삭제할 협정을 선택해 주세요.');
@@ -5222,16 +5356,6 @@ export default function AgreementBoardWindow({
     });
     if (!ok) return;
     const selected = new Set(selectedGroups);
-    const removedCandidates = [];
-    groupAssignments.forEach((row, idx) => {
-      if (!selected.has(idx) || !Array.isArray(row)) return;
-      row.forEach((uid) => {
-        if (!uid) return;
-        const candidate = participantMap.get(uid)?.candidate;
-        if (candidate) removedCandidates.push(candidate);
-      });
-    });
-    removeCandidatesFromBoard(removedCandidates);
     setGroupAssignments((prev) => prev.filter((_, idx) => !selected.has(idx)));
     // Shares/credibility/technician are slot-index arrays.
     // If we filter them here before `groupAssignments` sync runs, old/new indices can desync.
@@ -6927,7 +7051,7 @@ export default function AgreementBoardWindow({
                   검색
                 </button>
               </div>
-              <div className="excel-toolbar-actions">
+            <div className="excel-toolbar-actions">
                 <button
                   type="button"
                   className="excel-btn"
@@ -6946,6 +7070,13 @@ export default function AgreementBoardWindow({
                 >엑셀로 내보내기</button>
                 <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
                 <button type="button" className="excel-btn" onClick={openCopyModal}>복사</button>
+                <button
+                  type="button"
+                  className={`excel-btn${candidateDrawerOpen ? ' primary' : ''}`}
+                  onClick={() => setCandidateDrawerOpen((prev) => !prev)}
+                >
+                  후보 {candidateDrawerEntries.length > 0 ? `(${candidateDrawerEntries.length})` : ''}
+                </button>
                 <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="excel-btn" onClick={handleDeleteGroups}>선택 삭제</button>
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
@@ -6972,6 +7103,78 @@ export default function AgreementBoardWindow({
               </div>
             </div>
           </div>
+
+        <div className={`agreement-candidate-drawer-backdrop${candidateDrawerOpen ? ' open' : ''}`} onClick={() => setCandidateDrawerOpen(false)} />
+        <aside className={`agreement-candidate-drawer${candidateDrawerOpen ? ' open' : ''}`}>
+          <div className="agreement-candidate-drawer__header">
+            <div>
+              <strong>후보 보관함</strong>
+              <p>드래그하거나 바로 넣기로 협정테이블에 배치하세요.</p>
+            </div>
+            <button type="button" className="agreement-candidate-drawer__close" onClick={() => setCandidateDrawerOpen(false)}>×</button>
+          </div>
+          <div className="agreement-candidate-drawer__search">
+            <input
+              className="input"
+              value={candidateDrawerQuery}
+              onChange={(event) => setCandidateDrawerQuery(event.target.value)}
+              placeholder="업체명, 담당자, 지역, 연락처 검색"
+            />
+            <div className="agreement-candidate-drawer__count">
+              후보 {filteredCandidateDrawerEntries.length} / 전체 {candidateDrawerEntries.length}
+            </div>
+          </div>
+          <div className="agreement-candidate-drawer__body">
+            {filteredCandidateDrawerEntries.length === 0 ? (
+              <div className="agreement-candidate-drawer__empty">
+                {candidateDrawerEntries.length === 0 ? '보관 중인 후보가 없습니다.' : '검색 결과가 없습니다.'}
+              </div>
+            ) : filteredCandidateDrawerEntries.map((entry) => (
+              <div
+                key={entry.uid}
+                className={`agreement-candidate-card${entry.isDutyRegion ? ' duty-region' : ''}${draggingId === entry.uid ? ' dragging' : ''}`}
+                draggable
+                onDragStart={handleCandidateDrawerDragStart(entry.uid)}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="agreement-candidate-card__top">
+                  <div className="agreement-candidate-card__title-wrap">
+                    <strong className="agreement-candidate-card__title" title={entry.companyName}>{entry.companyName}</strong>
+                    <div className="agreement-candidate-card__badges">
+                      {entry.isDutyRegion && <span className="agreement-candidate-card__badge region">지역사</span>}
+                      {entry.creditGrade && <span className="agreement-candidate-card__badge">{entry.creditGrade}</span>}
+                    </div>
+                  </div>
+                  <div className="agreement-candidate-card__actions">
+                    <button type="button" className="excel-btn" onClick={() => handleCandidateDrawerAssign(entry.uid)}>바로 넣기</button>
+                    {!entry.synthetic && (
+                      <button type="button" className="excel-btn" onClick={() => handleCandidateDrawerDelete(entry.uid)}>삭제</button>
+                    )}
+                  </div>
+                </div>
+                <div className="agreement-candidate-card__meta">
+                  <span>{entry.regionLabel || '지역 미지정'}</span>
+                  <span>{entry.managerName || '담당자 미지정'}</span>
+                  {entry.phoneNumber && <span>{entry.phoneNumber}</span>}
+                </div>
+                <div className="agreement-candidate-card__stats">
+                  <div>
+                    <span>경영</span>
+                    <strong>{entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}</strong>
+                  </div>
+                  <div>
+                    <span>{performanceAmountLabel}</span>
+                    <strong>{entry.performanceAmount != null ? formatAmount(entry.performanceAmount) : '-'}</strong>
+                  </div>
+                  <div>
+                    <span>시평액</span>
+                    <strong>{entry.sipyungAmount != null ? formatAmount(entry.sipyungAmount) : '-'}</strong>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
 
         <div className="excel-table-wrapper" ref={boardMainRef}>
           <div className="excel-table-inner">
