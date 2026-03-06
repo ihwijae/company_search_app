@@ -57,6 +57,17 @@ import {
   resolvePerformanceCap,
 } from '../../../../shared/agreements/calculations/performanceScore.js';
 import { runAgreementCandidateScoreEvaluation } from '../../../../shared/agreements/runner/candidateScoreRunner.js';
+import {
+  applyDropToAssignments,
+  buildBoardMoveConfirmPayload,
+  buildCandidatePlacementNotice,
+  createPendingMoveSource,
+  placeEntryInAssignments,
+  placeEntryOnBoard,
+  resetSlotInMatrix,
+  shouldResetPendingMove,
+  swapOrMoveBoardEntries,
+} from '../../../../shared/agreements/placement/boardPlacement.js';
 
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
@@ -2560,42 +2571,10 @@ export default function AgreementBoardWindow({
 
   const placeEntryInSlot = React.useCallback((uid, groupIndex, slotIndex) => {
     if (groupIndex == null || slotIndex == null) return;
-    setGroupAssignments((prev) => {
-      const next = prev.map((group) => group.slice());
-      next.forEach((group) => {
-        for (let i = 0; i < group.length; i += 1) {
-          if (group[i] === uid) group[i] = null;
-        }
-      });
-      while (next.length <= groupIndex) {
-        next.push(Array(safeGroupSize).fill(null));
-      }
-      const targetRow = next[groupIndex];
-      while (targetRow.length < safeGroupSize) targetRow.push(null);
-      targetRow[slotIndex] = uid;
-      return next;
-    });
-    setGroupShares((prev) => {
-      const next = prev.map((row) => row.slice());
-      while (next.length <= groupIndex) next.push([]);
-      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
-      next[groupIndex][slotIndex] = '';
-      return next;
-    });
-    setGroupShareRawInputs((prev) => {
-      const next = prev.map((row) => row.slice());
-      while (next.length <= groupIndex) next.push([]);
-      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
-      next[groupIndex][slotIndex] = '';
-      return next;
-    });
-    setGroupTechnicianScores((prev) => {
-      const next = prev.map((row) => row.slice());
-      while (next.length <= groupIndex) next.push([]);
-      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
-      if (next[groupIndex][slotIndex] == null) next[groupIndex][slotIndex] = '';
-      return next;
-    });
+    setGroupAssignments((prev) => placeEntryInAssignments(prev, uid, groupIndex, slotIndex, safeGroupSize));
+    setGroupShares((prev) => resetSlotInMatrix(prev, groupIndex, slotIndex, ''));
+    setGroupShareRawInputs((prev) => resetSlotInMatrix(prev, groupIndex, slotIndex, ''));
+    setGroupTechnicianScores((prev) => resetSlotInMatrix(prev, groupIndex, slotIndex, ''));
   }, [safeGroupSize]);
 
   // handleRepresentativePicked defined later after participant map is ready
@@ -4288,11 +4267,7 @@ export default function AgreementBoardWindow({
 
     placeEntryInSlot(selectedCandidateUid, meta.groupIndex, meta.slotIndex);
     setSelectedCandidateUid(null);
-    showHeaderAlert(
-      meta.empty
-        ? `${meta.groupIndex + 1}번 협정 ${meta.label} 위치로 배치했습니다.`
-        : `${targetName} 업체를 ${sourceName} 업체로 교체했습니다.`
-    );
+    showHeaderAlert(buildCandidatePlacementNotice(meta, sourceName, targetName));
     return true;
   }, [selectedCandidateUid, participantMap, placeEntryInSlot, showHeaderAlert, confirm, portalContainer, markCandidatePoolListed]);
 
@@ -4301,13 +4276,9 @@ export default function AgreementBoardWindow({
     if (await handleSelectedCandidatePlacement(meta)) return;
 
     if (!pendingMoveSource) {
-      if (meta.empty || !meta.uid) return;
-      setPendingMoveSource({
-        uid: meta.uid,
-        groupIndex: meta.groupIndex,
-        slotIndex: meta.slotIndex,
-        companyName: meta.companyName || '업체',
-      });
+      const nextPendingSource = createPendingMoveSource(meta);
+      if (!nextPendingSource) return;
+      setPendingMoveSource(nextPendingSource);
       return;
     }
 
@@ -4317,27 +4288,15 @@ export default function AgreementBoardWindow({
       setPendingMoveSource(null);
       return;
     }
-    if (
-      sourceUid === targetUid
-      || (
-        pendingMoveSource.groupIndex === meta.groupIndex
-        && pendingMoveSource.slotIndex === meta.slotIndex
-      )
-    ) {
+    if (shouldResetPendingMove(pendingMoveSource, meta)) {
       setPendingMoveSource(null);
       return;
     }
-
-    const sourceName = pendingMoveSource.companyName || '업체';
-    const targetName = meta.companyName || '업체';
-    const targetLabel = `${meta.groupIndex + 1}번 협정 ${meta.label}`;
-    const swapping = Boolean(targetUid);
+    const confirmPayload = buildBoardMoveConfirmPayload(pendingMoveSource, meta);
 
     const ok = await confirm({
-      title: swapping ? '업체 위치를 변경하시겠습니까?' : '업체를 이동하시겠습니까?',
-      message: swapping
-        ? `${sourceName} 업체와 ${targetName} 업체의 위치를 변경하시겠습니까?`
-        : `${sourceName} 업체를 ${targetLabel} 위치로 이동하시겠습니까?`,
+      title: confirmPayload.title,
+      message: confirmPayload.message,
       confirmText: '예',
       cancelText: '아니오',
       tone: 'info',
@@ -4345,39 +4304,13 @@ export default function AgreementBoardWindow({
     });
     if (!ok) return;
 
-    setGroupAssignments((prev) => {
-      const next = prev.map((group) => group.slice());
-      let sourceGroupIndex = -1;
-      let sourceSlotIndex = -1;
-      let targetGroupIndex = meta.groupIndex;
-      let targetSlotIndex = meta.slotIndex;
-
-      next.forEach((group, gIdx) => {
-        group.forEach((uid, sIdx) => {
-          if (uid === sourceUid) {
-            sourceGroupIndex = gIdx;
-            sourceSlotIndex = sIdx;
-          }
-          if (targetUid && uid === targetUid) {
-            targetGroupIndex = gIdx;
-            targetSlotIndex = sIdx;
-          }
-        });
-      });
-
-      if (sourceGroupIndex < 0 || sourceSlotIndex < 0) return next;
-      if (targetGroupIndex == null || targetGroupIndex < 0 || targetSlotIndex == null || targetSlotIndex < 0) return next;
-      while (next.length <= targetGroupIndex) {
-        next.push(Array(safeGroupSize).fill(null));
-      }
-      while (next[targetGroupIndex].length < safeGroupSize) {
-        next[targetGroupIndex].push(null);
-      }
-
-      next[sourceGroupIndex][sourceSlotIndex] = targetUid || null;
-      next[targetGroupIndex][targetSlotIndex] = sourceUid;
-      return next;
-    });
+    setGroupAssignments((prev) => swapOrMoveBoardEntries(prev, {
+      sourceUid,
+      targetUid,
+      targetGroupIndex: meta.groupIndex,
+      targetSlotIndex: meta.slotIndex,
+      safeGroupSize,
+    }));
 
     setPendingMoveSource(null);
   }, [handleSelectedCandidatePlacement, confirm, pendingMoveSource, portalContainer, safeGroupSize]);
@@ -4404,64 +4337,19 @@ export default function AgreementBoardWindow({
     if (candidate) {
       markCandidatePoolListed(candidate, true);
     }
-    setGroupAssignments((prev) => {
-      const next = prev.map((group) => group.slice());
-      if (next[groupIndex]) next[groupIndex][slotIndex] = null;
-      return next;
-    });
-    setGroupShares((prev) => {
-      const next = prev.map((row) => row.slice());
-      if (next[groupIndex] && next[groupIndex][slotIndex] !== undefined) {
-        next[groupIndex][slotIndex] = '';
-      }
-      return next;
-    });
-    setGroupShareRawInputs((prev) => {
-      const next = prev.map((row) => row.slice());
-      if (next[groupIndex] && next[groupIndex][slotIndex] !== undefined) {
-        next[groupIndex][slotIndex] = '';
-      }
-      return next;
-    });
-    setGroupCredibility((prev) => {
-      const next = prev.map((row) => row.slice());
-      if (next[groupIndex] && next[groupIndex][slotIndex] !== undefined) {
-        next[groupIndex][slotIndex] = '';
-      }
-      return next;
-    });
+    setGroupAssignments((prev) => resetSlotInMatrix(prev, groupIndex, slotIndex, null));
+    setGroupShares((prev) => resetSlotInMatrix(prev, groupIndex, slotIndex, ''));
+    setGroupShareRawInputs((prev) => resetSlotInMatrix(prev, groupIndex, slotIndex, ''));
+    setGroupCredibility((prev) => resetSlotInMatrix(prev, groupIndex, slotIndex, ''));
   };
 
   const placeCandidateOnBoard = React.useCallback((uid) => {
     if (!uid || !participantMap.has(uid)) return false;
     let placed = false;
     setGroupAssignments((prev) => {
-      const next = prev.map((group) => (Array.isArray(group) ? group.slice() : Array(safeGroupSize).fill(null)));
-      let targetGroupIndex = -1;
-      let targetSlotIndex = -1;
-
-      next.forEach((group, groupIndex) => {
-        group.forEach((value, slotIndex) => {
-          if (value === uid) {
-            group[slotIndex] = null;
-          }
-          if (targetGroupIndex >= 0) return;
-          if (!value) {
-            targetGroupIndex = groupIndex;
-            targetSlotIndex = slotIndex;
-          }
-        });
-      });
-
-      if (targetGroupIndex < 0 || targetSlotIndex < 0) {
-        next.push(Array(safeGroupSize).fill(null));
-        targetGroupIndex = next.length - 1;
-        targetSlotIndex = 0;
-      }
-
-      next[targetGroupIndex][targetSlotIndex] = uid;
-      placed = true;
-      return next;
+      const result = placeEntryOnBoard(prev, uid, safeGroupSize);
+      placed = result.placed;
+      return result.assignments;
     });
     return placed;
   }, [participantMap, safeGroupSize]);
@@ -4484,33 +4372,13 @@ export default function AgreementBoardWindow({
     if (targetCandidate && (!dragSource || dragSource.id !== id)) {
       markCandidatePoolListed(targetCandidate, true);
     }
-    setGroupAssignments((prev) => {
-      const next = prev.map((group) => group.slice());
-      if (!next[groupIndex]) {
-        next[groupIndex] = Array(safeGroupSize).fill(null);
-      }
-      const targetId = next[groupIndex][slotIndex] || null;
-      const isSource = dragSource && dragSource.id === id;
-      if (isSource && dragSource.groupIndex === groupIndex && dragSource.slotIndex === slotIndex) {
-        return next;
-      }
-      if (isSource) {
-        if (next[dragSource.groupIndex]) {
-          next[dragSource.groupIndex][dragSource.slotIndex] = targetId;
-        }
-        next[groupIndex][slotIndex] = id;
-        return next;
-      }
-      next.forEach((group, gIdx) => {
-        for (let i = 0; i < group.length; i += 1) {
-          if (group[i] === id) {
-            next[gIdx][i] = null;
-          }
-        }
-      });
-      next[groupIndex][slotIndex] = id;
-      return next;
-    });
+    setGroupAssignments((prev) => applyDropToAssignments(prev, {
+      groupIndex,
+      slotIndex,
+      id,
+      dragSource,
+      safeGroupSize,
+    }));
     setDraggingId(null);
     setDropTarget(null);
     setDragSource(null);
