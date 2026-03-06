@@ -4288,7 +4288,7 @@ export default function AgreementBoardWindow({
         if (!candidate) return null;
         const companyName = sanitizeCompanyName(getCompanyName(candidate));
         const managerName = getCandidateManagerName(candidate);
-        const shareLabel = entry.possibleShareText || '';
+        const shareLabel = entry.possibleShareText ? String(entry.possibleShareText).replace(/%$/, '') : '';
         const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
         const displayName = managerName ? `${nameLine}\n${managerName}` : nameLine;
         return {
