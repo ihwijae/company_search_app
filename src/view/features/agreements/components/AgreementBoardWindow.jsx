@@ -3825,12 +3825,6 @@ export default function AgreementBoardWindow({
     closeCandidateSearch();
   }, [onAddRepresentatives, closeCandidateSearch]);
 
-  React.useEffect(() => {
-    if (!selectedCandidateUid) return;
-    const exists = candidateDrawerEntries.some((entry) => entry.uid === selectedCandidateUid);
-    if (!exists) setSelectedCandidateUid(null);
-  }, [candidateDrawerEntries, selectedCandidateUid]);
-
   const buildInitialAssignments = React.useCallback(() => {
     const baseCount = representativeEntries.length > 0
       ? Math.ceil(representativeEntries.length / safeGroupSize)
@@ -3954,6 +3948,12 @@ export default function AgreementBoardWindow({
     if (!query) return candidateDrawerEntries;
     return candidateDrawerEntries.filter((entry) => entry.searchText.includes(query));
   }, [candidateDrawerEntries, candidateDrawerQuery]);
+
+  React.useEffect(() => {
+    if (!selectedCandidateUid) return;
+    const exists = candidateDrawerEntries.some((entry) => entry.uid === selectedCandidateUid);
+    if (!exists) setSelectedCandidateUid(null);
+  }, [candidateDrawerEntries, selectedCandidateUid]);
 
   const summaryByGroup = React.useMemo(() => {
     const map = new Map();
