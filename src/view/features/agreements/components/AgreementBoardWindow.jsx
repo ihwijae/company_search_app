@@ -47,6 +47,11 @@ import {
   PERFORMANCE_DIRECT_KEYS,
   PERFORMANCE_KEYWORDS,
 } from '../../../../shared/agreements/calculations/performanceValue.js';
+import {
+  getCandidateSipyungAmount as resolveCandidateSipyungAmount,
+  SIPYUNG_DIRECT_KEYS,
+  SIPYUNG_KEYWORDS,
+} from '../../../../shared/agreements/calculations/sipyungValue.js';
 
 const DEFAULT_GROUP_SIZE = 5;
 const MIN_GROUPS = 4;
@@ -608,9 +613,6 @@ const resolveBoardConstraintRules = (rawRules) => {
 const SHARE_DIRECT_KEYS = ['_share', '_pct', 'candidateShare', 'share', '지분', '기본지분'];
 const SHARE_KEYWORDS = [['지분', 'share', '비율']];
 
-const SIPYUNG_DIRECT_KEYS = ['_sipyung', 'sipyung', '시평', '시평액', '시평금액', '시평액(원)', '시평금액(원)', '기초금액', '기초금액(원)'];
-const SIPYUNG_KEYWORDS = [['시평', '심평', 'sipyung', '기초금액', '추정가격', '시평총액']];
-
 const getCandidateNumericValue = (candidate, directKeys = [], keywordGroups = []) => {
   if (!candidate || typeof candidate !== 'object') return null;
   const value = extractAmountValue(candidate, directKeys, keywordGroups);
@@ -618,24 +620,10 @@ const getCandidateNumericValue = (candidate, directKeys = [], keywordGroups = []
   return parsed;
 };
 
-const getCandidateSipyungAmount = (candidate) => {
-  if (!candidate || typeof candidate !== 'object') return null;
-  if (candidate._agreementSipyungCleared) return null;
-  if (candidate._agreementSipyungAmount != null) {
-    const cached = toNumber(candidate._agreementSipyungAmount);
-    if (cached != null) return cached;
-  }
-  const raw = candidate._sipyung ?? extractAmountValue(candidate, SIPYUNG_DIRECT_KEYS, SIPYUNG_KEYWORDS);
-  const parsed = toNumber(raw);
-  if (parsed != null) {
-    candidate._agreementSipyungAmount = parsed;
-    return parsed;
-  }
-  if (raw != null) {
-    candidate._agreementSipyungAmount = raw;
-  }
-  return null;
-};
+const getCandidateSipyungAmount = (candidate) => resolveCandidateSipyungAmount(candidate, {
+  toNumber,
+  extractAmountValue,
+});
 
 const getCandidateCreditGrade = (candidate) => extractCreditGrade(candidate);
 
