@@ -3880,6 +3880,8 @@ export default function AgreementBoardWindow({
         const managerName = getCandidateManagerName(candidate);
         const regionLabel = getRegionLabel(candidate);
         const creditGrade = getCandidateCreditGrade(candidate);
+        const perSlotMax = isMois30To50 ? MANAGEMENT_SCORE_MAX : managementMax;
+        const managementScore = clampScore(toNumber(getCandidateManagementScore(candidate)), perSlotMax);
         const searchText = [
           companyName,
           managerName,
@@ -3894,7 +3896,8 @@ export default function AgreementBoardWindow({
           managerName,
           regionLabel,
           isDutyRegion: entry.type === 'region' || isDutyRegionCompany(candidate),
-          managementScore: getCandidateManagementScore(candidate),
+          managementScore,
+          managementAlert: managementScore != null && managementScore < (perSlotMax - 0.01),
           performanceAmount: getCandidatePerformanceAmountForCurrentRange(candidate),
           sipyungAmount: getCandidateSipyungAmount(candidate),
           creditGrade,
@@ -3915,6 +3918,8 @@ export default function AgreementBoardWindow({
     regionEntries,
     participantMap,
     candidateMetricsVersion,
+    managementMax,
+    isMois30To50,
     isDutyRegionCompany,
     getCandidatePerformanceAmountForCurrentRange,
   ]);
@@ -5077,30 +5082,23 @@ export default function AgreementBoardWindow({
     if (!meta || !selectedCandidateUid || !participantMap.has(selectedCandidateUid)) return false;
     const sourceEntry = participantMap.get(selectedCandidateUid);
     const sourceName = getCompanyName(sourceEntry?.candidate) || '업체';
-
-    if (meta.empty) {
-      placeEntryInSlot(selectedCandidateUid, meta.groupIndex, meta.slotIndex);
-      setSelectedCandidateUid(null);
-      showHeaderAlert(`${meta.groupIndex + 1}번 협정 ${meta.label} 위치로 배치했습니다.`);
-      return true;
-    }
-
     const targetName = meta.companyName || '업체';
-    const ok = await confirm({
-      title: '업체를 교체하시겠습니까?',
-      message: `${sourceName} 업체를 넣고, ${targetName} 업체를 후보로 되돌리시겠습니까?`,
-      confirmText: '예',
-      cancelText: '아니오',
-      tone: 'info',
-      portalTarget: portalContainer || null,
-    });
+    const ok = window.confirm(
+      meta.empty
+        ? `${sourceName} 업체를 ${meta.groupIndex + 1}번 협정 ${meta.label} 위치에 배치하시겠습니까?`
+        : `${sourceName} 업체를 넣고, ${targetName} 업체를 후보로 되돌리시겠습니까?`
+    );
     if (!ok) return true;
 
     placeEntryInSlot(selectedCandidateUid, meta.groupIndex, meta.slotIndex);
     setSelectedCandidateUid(null);
-    showHeaderAlert(`${targetName} 업체를 ${sourceName} 업체로 교체했습니다.`);
+    showHeaderAlert(
+      meta.empty
+        ? `${meta.groupIndex + 1}번 협정 ${meta.label} 위치로 배치했습니다.`
+        : `${targetName} 업체를 ${sourceName} 업체로 교체했습니다.`
+    );
     return true;
-  }, [selectedCandidateUid, participantMap, placeEntryInSlot, showHeaderAlert, confirm, portalContainer]);
+  }, [selectedCandidateUid, participantMap, placeEntryInSlot, showHeaderAlert]);
 
   const handleCardMoveClick = React.useCallback(async (meta) => {
     if (!meta) return;
@@ -5188,14 +5186,18 @@ export default function AgreementBoardWindow({
     setPendingMoveSource(null);
   }, [handleSelectedCandidatePlacement, confirm, pendingMoveSource, portalContainer, safeGroupSize]);
 
-  const handleEmptySlotClick = React.useCallback((meta) => {
-    if (!meta || !meta.empty) return;
+  const handleBoardSlotClick = React.useCallback((meta) => {
+    if (!meta) return;
     if (pendingMoveSource?.uid) {
       void handleCardMoveClick(meta);
       return;
     }
     if (selectedCandidateUid && participantMap.has(selectedCandidateUid)) {
       void handleSelectedCandidatePlacement(meta);
+      return;
+    }
+    if (!meta.empty) {
+      void handleCardMoveClick(meta);
       return;
     }
     openRepresentativeSearch({ groupIndex: meta.groupIndex, slotIndex: meta.slotIndex });
@@ -6135,7 +6137,7 @@ export default function AgreementBoardWindow({
             type="button"
             className="excel-add-button"
             aria-label="업체 검색"
-            onClick={() => handleEmptySlotClick(meta)}
+            onClick={() => handleBoardSlotClick(meta)}
           >
             <span aria-hidden="true">＋</span>
           </button>
@@ -6145,7 +6147,7 @@ export default function AgreementBoardWindow({
             draggable
             onDragStart={handleDragStart(meta.uid, meta.groupIndex, meta.slotIndex)}
             onDragEnd={handleDragEnd}
-            onClick={() => { void handleCardMoveClick(meta); }}
+            onClick={() => { void handleBoardSlotClick(meta); }}
             ref={(node) => {
               if (node) boardSearchCardRefs.current.set(searchKey, node);
               else boardSearchCardRefs.current.delete(searchKey);

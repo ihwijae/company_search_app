@@ -72,7 +72,7 @@ export default function AgreementCandidateWindow({
                     onDragEnd={onDragEnd}
                   >
                     {(() => {
-                      const managementWarn = entry.managementScore != null && entry.managementScore < (managementMax - 0.01);
+                      const managementWarn = Boolean(entry.managementAlert);
                       return (
                         <>
                     <td className="agreement-candidate-table__company">
@@ -87,9 +87,13 @@ export default function AgreementCandidateWindow({
                       </div>
                     </td>
                     <td className="agreement-candidate-table__management">
-                      <span style={managementWarn ? { color: '#b91c1c', fontWeight: 700 } : undefined}>
-                        {entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}
-                      </span>
+                      {managementWarn ? (
+                        <strong style={{ color: '#b91c1c', fontWeight: 700 }}>
+                          {entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}
+                        </strong>
+                      ) : (
+                        <span>{entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}</span>
+                      )}
                     </td>
                     <td>{entry.performanceAmount != null ? formatAmount(entry.performanceAmount) : '-'}</td>
                     <td>{entry.sipyungAmount != null ? formatAmount(entry.sipyungAmount) : '-'}</td>
