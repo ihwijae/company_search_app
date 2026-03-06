@@ -12,13 +12,13 @@ export default function AgreementCandidateWindow({
   onPickSearch = () => {},
   selectedUid = null,
   onSelect = () => {},
-  onAssign = () => {},
   onDelete = () => {},
   onClose = () => {},
   onDragStart = () => () => {},
   onDragEnd = () => {},
   draggingId = null,
   performanceAmountLabel = '실적',
+  managementMax = 15,
   formatAmount = (value) => String(value ?? ''),
   formatScore = (value) => String(value ?? ''),
 }) {
@@ -81,11 +81,10 @@ export default function AgreementCandidateWindow({
                           <span className="agreement-candidate-table__meta-badge">{entry.managerName}</span>
                         )}
                       </div>
-                      {entry.creditGrade && (
-                        <span className="agreement-candidate-table__credit">{entry.creditGrade}</span>
-                      )}
                     </td>
-                    <td>{entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}</td>
+                    <td className={entry.managementScore != null && entry.managementScore < (managementMax - 0.01) ? 'agreement-candidate-table__management warn' : 'agreement-candidate-table__management'}>
+                      {entry.managementScore != null ? formatScore(entry.managementScore, 2) : '-'}
+                    </td>
                     <td>{entry.performanceAmount != null ? formatAmount(entry.performanceAmount) : '-'}</td>
                     <td>{entry.sipyungAmount != null ? formatAmount(entry.sipyungAmount) : '-'}</td>
                     <td>

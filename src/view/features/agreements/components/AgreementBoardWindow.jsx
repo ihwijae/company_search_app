@@ -3034,8 +3034,8 @@ export default function AgreementBoardWindow({
     }
 
     if (!candidateWindowRef.current) {
-      const width = Math.min(720, Math.max(560, window.innerWidth - 420));
-      const height = Math.min(860, Math.max(620, window.innerHeight - 120));
+      const width = Math.min(1080, Math.max(900, window.innerWidth - 180));
+      const height = Math.min(920, Math.max(720, window.innerHeight - 80));
       const dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
       const dualScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
       const left = Math.max(40, dualScreenLeft + window.innerWidth - width - 32);
@@ -5433,13 +5433,22 @@ export default function AgreementBoardWindow({
     }
   }, [candidates, onRemoveRepresentative, onUpdateBoard]);
 
-  const handleCandidateDrawerDelete = React.useCallback((uid) => {
+  const handleCandidateDrawerDelete = React.useCallback(async (uid) => {
     if (!uid) return;
     const candidate = participantMap.get(uid)?.candidate;
     if (!candidate) return;
+    const ok = await confirm({
+      title: '후보 업체를 삭제하시겠습니까?',
+      message: '삭제하면 후보 목록에서 제거되며 복구할 수 없습니다.',
+      confirmText: '삭제',
+      cancelText: '취소',
+      tone: 'warning',
+      portalTarget: candidatePortalContainer || portalContainer || null,
+    });
+    if (!ok) return;
     removeCandidatesFromBoard([candidate]);
     setSelectedCandidateUid((prev) => (prev === uid ? null : prev));
-  }, [participantMap, removeCandidatesFromBoard]);
+  }, [participantMap, removeCandidatesFromBoard, confirm, candidatePortalContainer, portalContainer]);
 
   const handleDeleteGroups = async () => {
     if (selectedGroups.size === 0) {
@@ -7892,6 +7901,7 @@ export default function AgreementBoardWindow({
       onDragEnd={handleDragEnd}
       draggingId={draggingId}
       performanceAmountLabel={performanceAmountLabel}
+      managementMax={managementMax}
       formatAmount={formatAmount}
       formatScore={formatScore}
     />
