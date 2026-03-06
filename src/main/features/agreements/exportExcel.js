@@ -194,7 +194,7 @@ async function exportAgreementExcel({
 }) {
   if (!config || !config.path) throw new Error('템플릿 설정이 올바르지 않습니다.');
   if (!payload) throw new Error('엑셀 내보내기 데이터가 없습니다.');
-  const { header = {}, groups = [] } = payload;
+  const { header = {}, groups = [], candidates = [] } = payload;
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(config.path);
@@ -560,6 +560,70 @@ async function exportAgreementExcel({
       }
     }
   });
+
+  if (slotCount > 0 && Array.isArray(candidates) && candidates.length > 0) {
+    const candidateStartRow = groups.length > 0
+      ? (config.startRow + ((groups.length - 1) * rowStep) + 3)
+      : (config.startRow + 3);
+
+    candidates.forEach((candidate, index) => {
+      if (!candidate || typeof candidate !== 'object') return;
+      const rowIndex = candidateStartRow + Math.floor(index / slotCount);
+      const slotIndex = index % slotCount;
+      const nameColumn = slotColumns.name?.[slotIndex];
+      const managementColumn = slotColumns.management?.[slotIndex];
+      const performanceColumn = slotColumns.performance?.[slotIndex];
+      const abilityColumn = slotColumns.ability?.[slotIndex];
+      if (!nameColumn) return;
+
+      const nameCell = worksheet.getCell(`${nameColumn}${rowIndex}`);
+      const managementCell = managementColumn ? worksheet.getCell(`${managementColumn}${rowIndex}`) : null;
+      const performanceCell = performanceColumn ? worksheet.getCell(`${performanceColumn}${rowIndex}`) : null;
+      const abilityCell = abilityColumn ? worksheet.getCell(`${abilityColumn}${rowIndex}`) : null;
+
+      nameCell.value = typeof candidate.name === 'string' ? candidate.name : '';
+      if (candidate.isRegion && regionFillTemplate) {
+        regionCells.push({ column: nameColumn, row: rowIndex });
+        const baseStyle = nameCell.style ? { ...nameCell.style } : {};
+        nameCell.style = {
+          ...baseStyle,
+          fill: cloneFill(regionFillTemplate),
+        };
+      } else {
+        nonRegionCells.push({ column: nameColumn, row: rowIndex });
+        const baseStyle = nameCell.style ? { ...nameCell.style } : {};
+        nameCell.style = {
+          ...baseStyle,
+          fill: { type: 'pattern', pattern: 'none' },
+        };
+      }
+
+      if (managementCell) {
+        const managementValue = toExcelNumber(candidate.managementScore);
+        managementCell.value = managementValue;
+        const baseStyle = managementCell.style ? { ...managementCell.style } : {};
+        managementCell.style = {
+          ...baseStyle,
+          fill: cloneFill(CLEAR_FILL),
+        };
+        if (managementValue != null && managementValue < MANAGEMENT_SCORE_MAX) {
+          managementCell.style = {
+            ...baseStyle,
+            fill: cloneFill(ORANGE_FILL),
+          };
+        }
+      }
+
+      if (performanceCell) {
+        performanceCell.value = toExcelNumber(candidate.performanceAmount);
+        performanceCell.fill = undefined;
+      }
+      if (abilityCell) {
+        abilityCell.value = toExcelNumber(candidate.sipyung);
+        abilityCell.fill = undefined;
+      }
+    });
+  }
 
   if (Array.isArray(preservedColumns) && preservedColumns.length > 0) {
     worksheet.columns.forEach((column, index) => {

@@ -4274,6 +4274,22 @@ export default function AgreementBoardWindow({
         return payload;
       });
 
+      const candidatePayloads = candidateDrawerEntries.map((entry, index) => {
+        const candidate = entry?.candidate;
+        if (!candidate) return null;
+        return {
+          candidateIndex: index + 1,
+          isRegion: Boolean(entry.isDutyRegion),
+          name: sanitizeCompanyName(getCompanyName(candidate)),
+          manager: getCandidateManagerName(candidate),
+          region: getRegionLabel(candidate),
+          bizNo: normalizeBizNo(getBizNo(candidate)),
+          managementScore: entry.managementScore != null ? Number(entry.managementScore) : null,
+          performanceAmount: entry.performanceAmount != null ? Number(entry.performanceAmount) : null,
+          sipyung: entry.sipyungAmount != null ? Number(entry.sipyungAmount) : null,
+        };
+      }).filter(Boolean);
+
       const payload = {
         templateKey,
         appendTargetPath: options.appendTargetPath || '',
@@ -4304,6 +4320,7 @@ export default function AgreementBoardWindow({
           netCostPenaltyNotice: Boolean(netCostPenaltyNotice),
         },
         groups: groupPayloads,
+        candidates: candidatePayloads,
       };
 
       const response = await api.agreementsExportExcel(payload);
