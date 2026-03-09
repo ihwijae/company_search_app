@@ -143,6 +143,9 @@ const DEFAULT_LH_BODY_TEMPLATE = `
   <p style="margin:12px 0;color:#0455c0;font-weight:bold;font-size:24px;">ENC 파일만 첨부하세요!!!</p>
   <p style="margin:4px 0;">투찰마감일 {{closingDate}}</p>
 </div>`;
+const DEFAULT_PPS_BODY_TEMPLATE = DEFAULT_LH_BODY_TEMPLATE
+  .replace('ENC 파일', 'BID 파일')
+  .replace('ENC 파일만 첨부하세요!!!', 'BID 파일만 첨부하세요!!!');
 const DEFAULT_EX_BODY_TEMPLATE = `
 <div style="font-family:'Malgun Gothic',Dotum,Arial,sans-serif;font-size:19px;color:#1f2933;line-height:1.7;">
   <p style="margin:0 0 12px;color:#0455c0;font-size:22px;font-weight:bold;">
@@ -187,10 +190,12 @@ const makeSmtpProfileId = () => `${Date.now().toString(36)}-${Math.random().toSt
 const MAIL_OWNER_OPTIONS = [
   { id: 'LH', label: '한국토지주택공사' },
   { id: 'EX', label: '한국도로공사' },
+  { id: 'PPS', label: '조달청' },
 ];
 const MAIL_DEFAULT_TEMPLATE_BY_OWNER = {
   LH: DEFAULT_LH_BODY_TEMPLATE,
   EX: DEFAULT_EX_BODY_TEMPLATE,
+  PPS: DEFAULT_PPS_BODY_TEMPLATE,
 };
 const resolveOwnerLabel = (ownerId) => MAIL_OWNER_OPTIONS.find((option) => option.id === ownerId)?.label || '';
 const resolveDefaultBodyTemplateByOwner = (ownerId) => MAIL_DEFAULT_TEMPLATE_BY_OWNER[ownerId] || DEFAULT_LH_BODY_TEMPLATE;
