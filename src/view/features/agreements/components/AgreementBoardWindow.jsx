@@ -31,7 +31,6 @@ import {
   filterCandidateDrawerEntries,
 } from '../../../../shared/agreements/calculations/candidateSelectors.js';
 import { buildBoardMemberMeta } from '../../../../shared/agreements/calculations/boardMemberMeta.js';
-import { buildBoardNameCellText } from '../../../../shared/agreements/calculations/displayText.js';
 import {
   buildGroupSummaryMetrics,
   computeGroupSummaries,
@@ -103,18 +102,6 @@ const KRAIL_50_TO_100_KEY = 'krail-50to100';
 const EX_UNDER_50_KEY = 'ex-under50';
 const EX_50_TO_100_KEY = 'ex-50to100';
 const KOREAN_UNIT = 100000000;
-const BOARD_COPY_SLOT_COUNT = 5;
-const BOARD_COPY_ACTIONS = [
-  { kind: 'names', label: '업체명 복사', successMessage: '업체명 데이터가 복사되었습니다.' },
-  { kind: 'shares', label: '지분 복사', successMessage: '지분 값이 복사되었습니다.' },
-  { kind: 'management', label: '경영점수 복사', successMessage: '경영점수가 복사되었습니다.' },
-  { kind: 'performance', label: '실적 복사', successMessage: '실적 데이터가 복사되었습니다.' },
-  { kind: 'sipyung', label: '시평액 복사', successMessage: '시평액이 복사되었습니다.' },
-];
-const BOARD_COPY_LOOKUP = BOARD_COPY_ACTIONS.reduce((acc, action) => {
-  acc[action.kind] = action;
-  return acc;
-}, {});
 const LH_FULL_SCORE = 95;
 const PPS_FULL_SCORE = 95;
 const INDUSTRY_OPTIONS = ['전기', '통신', '소방'];
@@ -225,13 +212,6 @@ const COLLAPSED_COLUMN_WIDTHS = {
   sipyungSummary: 28,
 };
 const BOARD_ACTION_BUTTON_STYLE = { fontSize: '13px' };
-const BOARD_COPY_BUTTON_STYLE_MAP = {
-  names: { backgroundColor: '#ede9fe', color: '#5b21b6', borderColor: '#c4b5fd' },
-  shares: { backgroundColor: '#ccfbf1', color: '#0f766e', borderColor: '#99f6e4' },
-  management: { backgroundColor: '#fef9c3', color: '#92400e', borderColor: '#fde68a' },
-  performance: { backgroundColor: '#ffe4e6', color: '#be123c', borderColor: '#fecdd3' },
-  sipyung: { backgroundColor: '#dbeafe', color: '#1d4ed8', borderColor: '#bfdbfe' },
-};
 const resolveOwnerPerformanceMax = (ownerId) => {
   const upper = String(ownerId || '').toUpperCase();
   if (upper === 'MOIS') return PERFORMANCE_MOIS_DEFAULT_MAX;
@@ -1131,7 +1111,6 @@ export default function AgreementBoardWindow({
   const [memoOpen, setMemoOpen] = React.useState(false);
   const [memoDraft, setMemoDraft] = React.useState('');
   const memoEditorRef = React.useRef(null);
-  const [copyModalOpen, setCopyModalOpen] = React.useState(false);
   const [exportModalOpen, setExportModalOpen] = React.useState(false);
   const [exportTargetPath, setExportTargetPath] = React.useState('');
   const [exportTargetName, setExportTargetName] = React.useState('');
@@ -1412,14 +1391,6 @@ export default function AgreementBoardWindow({
     setMemoOpen(false);
   }, []);
 
-  const openCopyModal = React.useCallback(() => {
-    setCopyModalOpen(true);
-  }, []);
-
-  const closeCopyModal = React.useCallback(() => {
-    setCopyModalOpen(false);
-  }, []);
-
   const openTechnicianModal = React.useCallback(() => {
     setTechnicianModalOpen(true);
   }, []);
@@ -1623,7 +1594,6 @@ export default function AgreementBoardWindow({
   const [editableBidAmount, setEditableBidAmount] = React.useState(bidAmount);
   const [editableEntryAmount, setEditableEntryAmount] = React.useState(entryAmount);
   const [excelCopying, setExcelCopying] = React.useState(false);
-  const [copyingKind, setCopyingKind] = React.useState(null);
   const [baseTouched, setBaseTouched] = React.useState(false);
   const [bidTouched, setBidTouched] = React.useState(false);
   const [bidRateTouched, setBidRateTouched] = React.useState(false);
@@ -4796,207 +4766,6 @@ export default function AgreementBoardWindow({
     }))
   ), [groupAssignments, participantMap, summaryByGroup, candidateMetricsVersion]);
 
-  const formatShareDecimal = (value) => {
-    if (value === null || value === undefined) return '';
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) return '';
-    let text = numeric.toFixed(6);
-    text = text.replace(/(\.\d*?[1-9])0+$/u, '$1');
-    text = text.replace(/\.0+$/u, '');
-    if (text === '' || text === '-0') return '0';
-    return text;
-  };
-
-  const copyToClipboard = React.useCallback(async (payload) => {
-    if (window.electronAPI?.clipboardWriteText) {
-      const result = await window.electronAPI.clipboardWriteText(payload);
-      if (!result?.success) {
-        throw new Error(result?.message || 'clipboard failed');
-      }
-      return;
-    }
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(payload);
-      return;
-    }
-    throw new Error('clipboard unavailable');
-  }, []);
-
-  const copyBoardDataset = React.useCallback(async (kind) => {
-    if (excelCopying) return;
-    const action = BOARD_COPY_LOOKUP[kind];
-    if (!action) return;
-
-    const formatNumeric = (value) => {
-      const numeric = toNumber(value);
-      if (numeric === null) return '0';
-      if (Math.abs(numeric - Math.round(numeric)) < 0.0001) return String(Math.round(numeric));
-      return numeric.toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
-    };
-
-    const formatAmountForExcel = (value) => {
-      const plain = formatPlainAmount(value);
-      if (!plain || plain === '-') return '0';
-      return plain;
-    };
-
-    const encodeCell = (value) => {
-      if (value === null || value === undefined) return '';
-      const str = String(value);
-      if (!str) return '';
-      if (/[\t\n\r"]/g.test(str)) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-
-    const getShareDisplayValue = (groupIndex, slotIndex) => {
-      const rawInput = groupShareRawInputs[groupIndex]?.[slotIndex];
-      if (rawInput !== undefined && rawInput !== null) {
-        const trimmed = String(rawInput).trim();
-        if (trimmed) return trimmed;
-      }
-      const stored = groupShares[groupIndex]?.[slotIndex];
-      if (stored !== undefined && stored !== null) {
-        const trimmed = String(stored).trim();
-        if (trimmed) return trimmed;
-      }
-      return '';
-    };
-
-    const rows = groups
-      .map((group, groupIndex) => {
-        if (!group || !Array.isArray(group.memberIds) || group.memberIds.every((id) => !id)) return null;
-        const row = new Array(BOARD_COPY_SLOT_COUNT).fill('');
-        for (let slotIndex = 0; slotIndex < BOARD_COPY_SLOT_COUNT; slotIndex += 1) {
-          const uid = group.memberIds[slotIndex];
-          if (!uid) continue;
-          const entry = participantMap.get(uid);
-          if (!entry || !entry.candidate) continue;
-          const candidate = entry.candidate;
-          let value = '';
-          if (kind === 'names') {
-            value = buildBoardNameCellText({
-              candidate,
-              groupIndex,
-              slotIndex,
-              getCompanyName,
-              sanitizeCompanyName,
-              getCandidateManagerName,
-              getShareDisplayValue,
-              getCandidateSipyungAmount,
-              parseAmountValue,
-              possibleShareBase,
-              toNumber,
-            });
-          } else if (kind === 'shares') {
-            const shareStored = groupShares[groupIndex]?.[slotIndex];
-            if (shareStored !== undefined && shareStored !== null && String(shareStored).trim() !== '') {
-              const numeric = Number(shareStored);
-              if (Number.isFinite(numeric)) {
-                value = formatShareDecimal(numeric / 100);
-              } else {
-                value = String(shareStored).trim();
-              }
-            } else {
-              value = '';
-            }
-          } else if (kind === 'management') {
-        const managementScore = getCandidateManagementScore(candidate);
-            if (managementScore != null && managementScore !== '') {
-              value = formatNumeric(managementScore);
-            }
-          } else if (kind === 'performance') {
-            const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
-            if (performanceAmount != null && performanceAmount !== '') {
-              value = formatAmountForExcel(performanceAmount);
-            }
-          } else if (kind === 'sipyung') {
-            const sipyungAmount = getCandidateSipyungAmount(candidate);
-            if (sipyungAmount != null && sipyungAmount !== '') {
-              value = formatAmountForExcel(sipyungAmount);
-            }
-          }
-          row[slotIndex] = value ?? '';
-        }
-        return row.map(encodeCell).join('\t');
-      })
-      .filter(Boolean);
-
-    const payload = rows.join('\r\n');
-    if (!payload.trim()) {
-      showHeaderAlert('복사할 협정이 없습니다.');
-      return;
-    }
-
-    try {
-      setExcelCopying(true);
-      setCopyingKind(kind);
-      await copyToClipboard(payload);
-      showHeaderAlert(action.successMessage || '복사가 완료되었습니다.');
-    } catch (error) {
-      console.error('[AgreementBoard] Excel copy failed:', error);
-      showHeaderAlert('복사에 실패했습니다. 다시 시도해 주세요.');
-    } finally {
-      setCopyingKind(null);
-      setExcelCopying(false);
-    }
-  }, [copyToClipboard, excelCopying, groups, participantMap, groupShares, groupShareRawInputs, possibleShareBase, getCandidatePerformanceAmountForCurrentRange]);
-
-
-  const copyGroupMetric = React.useCallback(async (groupIndex, metric) => {
-    const group = groups[groupIndex];
-    if (!group) {
-      showHeaderAlert('협정 조합을 찾을 수 없습니다.');
-      return;
-    }
-
-    const metricConfig = {
-      management: {
-        label: '경영점수',
-        extractor: (candidate) => {
-          const scoreRaw = getCandidateManagementScore(candidate);
-          const numeric = scoreRaw != null ? toNumber(scoreRaw) : null;
-          return numeric == null ? '' : formatScore(numeric);
-        },
-      },
-      perf5y: {
-        label: performanceAmountLabel,
-        extractor: (candidate) => formatPlainAmount(getCandidatePerformanceAmountForCurrentRange(candidate)),
-      },
-      sipyung: {
-        label: '시평액',
-        extractor: (candidate) => formatPlainAmount(getCandidateSipyungAmount(candidate)),
-      },
-    };
-
-    const config = metricConfig[metric];
-    if (!config) return;
-
-    const values = group.members.map((entry) => {
-      const candidate = entry && entry.candidate;
-      if (!candidate) return '';
-      const value = config.extractor(candidate);
-      return value != null ? String(value) : '';
-    });
-
-    const text = values.join('\t');
-    try {
-      if (window.electronAPI?.clipboardWriteText) {
-        const result = await window.electronAPI.clipboardWriteText(text);
-        if (!result?.success) throw new Error(result?.message || 'clipboard write failed');
-      } else if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        throw new Error('clipboard unavailable');
-      }
-      showHeaderAlert(`${config.label} 복사 완료`);
-    } catch (err) {
-      console.error('[AgreementBoard] copy failed', err);
-      showHeaderAlert('복사에 실패했습니다. 다시 시도해 주세요.');
-    }
-  }, [groups, showHeaderAlert, performanceAmountLabel, getCandidatePerformanceAmountForCurrentRange]);
-
   const tableColumnCount = React.useMemo(() => {
     const baseColumns = 12
       + (credibilityEnabled ? 1 : 0)
@@ -6164,7 +5933,6 @@ export default function AgreementBoardWindow({
                   disabled={exporting}
                 >엑셀로 내보내기</button>
                 <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
-                <button type="button" className="excel-btn" onClick={openCopyModal}>복사</button>
                 <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="excel-btn" onClick={handleDeleteGroups}>선택 삭제</button>
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
@@ -6667,30 +6435,6 @@ export default function AgreementBoardWindow({
             />
             <p className="export-sheet-hint">통신/소방 공고는 자동으로 (통신)/(소방)이 붙습니다.</p>
           </div>
-        </div>
-      </Modal>
-      <Modal
-        open={copyModalOpen}
-        title="복사"
-        onClose={closeCopyModal}
-        onCancel={closeCopyModal}
-        onSave={closeCopyModal}
-        closeOnSave
-        size="sm"
-        boxClassName="copy-modal"
-      >
-        <div className="copy-modal-body">
-          {BOARD_COPY_ACTIONS.map((action) => (
-            <button
-              key={action.kind}
-              type="button"
-              className="excel-btn"
-              onClick={() => copyBoardDataset(action.kind)}
-              disabled={excelCopying}
-            >
-              {excelCopying && copyingKind === action.kind ? '복사 중…' : action.label}
-            </button>
-          ))}
         </div>
       </Modal>
       <Modal
