@@ -4766,6 +4766,17 @@ export default function AgreementBoardWindow({
     }))
   ), [groupAssignments, participantMap, summaryByGroup, candidateMetricsVersion]);
 
+  const formatShareDecimal = (value) => {
+    if (value === null || value === undefined) return '';
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '';
+    let text = numeric.toFixed(6);
+    text = text.replace(/(\.\d*?[1-9])0+$/u, '$1');
+    text = text.replace(/\.0+$/u, '');
+    if (text === '' || text === '-0') return '0';
+    return text;
+  };
+
   const tableColumnCount = React.useMemo(() => {
     const baseColumns = 12
       + (credibilityEnabled ? 1 : 0)
