@@ -5,6 +5,7 @@ import AgreementLoadModal from './AgreementLoadModal.jsx';
 import TechnicianScoreWindow from './TechnicianScoreWindow.jsx';
 import AgreementCandidateWindow from './AgreementCandidateWindow.jsx';
 import useAgreementBoardStorage from '../hooks/useAgreementBoardStorage.js';
+import useBoardSearch from '../hooks/useBoardSearch.js';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
@@ -1598,10 +1599,6 @@ export default function AgreementBoardWindow({
   const [bidTouched, setBidTouched] = React.useState(false);
   const [bidRateTouched, setBidRateTouched] = React.useState(false);
   const [adjustmentRateTouched, setAdjustmentRateTouched] = React.useState(false);
-  const [boardSearchOpen, setBoardSearchOpen] = React.useState(false);
-  const [boardSearchField, setBoardSearchField] = React.useState('name');
-  const [boardSearchQuery, setBoardSearchQuery] = React.useState('');
-  const [boardSearchActiveIndex, setBoardSearchActiveIndex] = React.useState(-1);
   const baseAutoRef = React.useRef('');
   const bidAutoRef = React.useRef('');
   const { notify, confirm, showLoading, hideLoading } = useFeedback();
@@ -1609,10 +1606,6 @@ export default function AgreementBoardWindow({
   const pendingPlacementRef = React.useRef(null);
   const rootRef = React.useRef(null);
   const boardMainRef = React.useRef(null);
-  const boardSearchInputRef = React.useRef(null);
-  const boardSearchCardRefs = React.useRef(new Map());
-  const boardSearchSignatureRef = React.useRef('');
-  const boardSearchNavigationRef = React.useRef(false);
   const skipAssignmentSyncRef = React.useRef(false);
 
   const markSkipAssignmentSync = React.useCallback(() => {
@@ -3102,136 +3095,28 @@ export default function AgreementBoardWindow({
     return entry?.candidate || null;
   }, [groupAssignments, participantMap]);
 
-  const normalizedBoardSearchQuery = React.useMemo(
-    () => String(boardSearchQuery || '').trim().toLowerCase(),
-    [boardSearchQuery],
-  );
-
-  const boardSearchMatches = React.useMemo(() => {
-    if (!normalizedBoardSearchQuery) return [];
-    const byManager = boardSearchField === 'manager';
-    const matches = [];
-    groupAssignments.forEach((row, groupIndex) => {
-      if (!Array.isArray(row)) return;
-      row.forEach((uid, slotIndex) => {
-        if (!uid) return;
-        const entry = participantMap.get(uid);
-        const candidate = entry?.candidate;
-        if (!candidate) return;
-        const companyName = String(getCompanyName(candidate) || '');
-        const managerName = String(getCandidateManagerName(candidate) || '');
-        const target = byManager ? managerName : companyName;
-        if (!target || !target.toLowerCase().includes(normalizedBoardSearchQuery)) return;
-        matches.push({
-          key: buildBoardSearchKey(groupIndex, slotIndex),
-          companyName,
-          managerName,
-        });
-      });
-    });
-    return matches;
-  }, [groupAssignments, participantMap, boardSearchField, normalizedBoardSearchQuery]);
-
-  const boardSearchMatchKeySet = React.useMemo(
-    () => new Set(boardSearchMatches.map((match) => match.key)),
-    [boardSearchMatches],
-  );
-
-  React.useEffect(() => {
-    const signature = `${boardSearchField}:${normalizedBoardSearchQuery}`;
-    const signatureChanged = boardSearchSignatureRef.current !== signature;
-    boardSearchSignatureRef.current = signature;
-
-    if (!normalizedBoardSearchQuery || boardSearchMatches.length === 0) {
-      setBoardSearchActiveIndex(-1);
-      return;
-    }
-    if (signatureChanged) {
-      setBoardSearchActiveIndex(0);
-      return;
-    }
-    setBoardSearchActiveIndex((prev) => {
-      if (prev < 0) return 0;
-      if (prev >= boardSearchMatches.length) return boardSearchMatches.length - 1;
-      return prev;
-    });
-  }, [boardSearchField, normalizedBoardSearchQuery, boardSearchMatches.length]);
-
-  const moveBoardSearchMatch = React.useCallback((step) => {
-    if (!boardSearchMatches.length) return;
-    boardSearchNavigationRef.current = true;
-    setBoardSearchActiveIndex((prev) => {
-      const size = boardSearchMatches.length;
-      const base = prev >= 0 ? prev : 0;
-      return (base + step + size) % size;
-    });
-  }, [boardSearchMatches.length]);
-
-  const boardSearchActiveMatch = (
-    boardSearchActiveIndex >= 0 && boardSearchActiveIndex < boardSearchMatches.length
-      ? boardSearchMatches[boardSearchActiveIndex]
-      : null
-  );
-  const boardSearchActiveKey = boardSearchActiveMatch?.key || '';
-  const boardSearchCurrentLabel = (
-    boardSearchMatches.length > 0 && boardSearchActiveIndex >= 0
-      ? `${boardSearchActiveIndex + 1}/${boardSearchMatches.length} · 총 ${boardSearchMatches.length}건`
-      : `총 ${boardSearchMatches.length}건`
-  );
-  const openBoardSearchPopup = React.useCallback(() => {
-    setBoardSearchOpen(true);
-  }, []);
-  const closeBoardSearchPopup = React.useCallback(() => {
-    setBoardSearchOpen(false);
-  }, []);
-
-  React.useEffect(() => {
-    if (!boardSearchOpen) return;
-    const timer = window.setTimeout(() => {
-      boardSearchInputRef.current?.focus();
-      boardSearchInputRef.current?.select();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [boardSearchOpen]);
-
-  React.useEffect(() => {
-    if (!boardSearchOpen || !boardSearchActiveKey) return;
-    const node = boardSearchCardRefs.current.get(boardSearchActiveKey);
-    if (!node) return;
-    node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-    if (boardSearchNavigationRef.current && typeof node.focus === 'function') {
-      try { node.focus({ preventScroll: true }); } catch { node.focus(); }
-    }
-    boardSearchNavigationRef.current = false;
-  }, [boardSearchOpen, boardSearchActiveKey]);
-
-  React.useEffect(() => {
-    const onKeyDown = (event) => {
-      const key = String(event.key || '').toLowerCase();
-      const ctrlOrMeta = event.ctrlKey || event.metaKey;
-
-      if (!boardSearchOpen) return;
-
-      if (key === 'escape') {
-        event.preventDefault();
-        closeBoardSearchPopup();
-        return;
-      }
-
-      if (ctrlOrMeta && key === 'g') {
-        event.preventDefault();
-        moveBoardSearchMatch(event.shiftKey ? -1 : 1);
-        return;
-      }
-
-      if (key === 'enter' && document.activeElement === boardSearchInputRef.current) {
-        event.preventDefault();
-        moveBoardSearchMatch(event.shiftKey ? -1 : 1);
-      }
-    };
-    window.addEventListener('keydown', onKeyDown, true);
-    return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [boardSearchOpen, moveBoardSearchMatch, closeBoardSearchPopup]);
+  const {
+    boardSearchOpen,
+    boardSearchField,
+    setBoardSearchField,
+    boardSearchQuery,
+    setBoardSearchQuery,
+    boardSearchMatches,
+    boardSearchMatchKeySet,
+    boardSearchActiveKey,
+    boardSearchCurrentLabel,
+    boardSearchInputRef,
+    openBoardSearchPopup,
+    closeBoardSearchPopup,
+    moveBoardSearchMatch,
+    registerBoardSearchCardRef,
+  } = useBoardSearch({
+    groupAssignments,
+    participantMap,
+    getCompanyName,
+    getCandidateManagerName,
+    buildBoardSearchKey,
+  });
 
   const resolveTechnicianStorageKeyBySlot = React.useCallback((groupIndex, slotIndex) => {
     const uid = groupAssignments?.[groupIndex]?.[slotIndex];
@@ -4877,10 +4762,7 @@ export default function AgreementBoardWindow({
             onDragStart={handleDragStart(meta.uid, meta.groupIndex, meta.slotIndex)}
             onDragEnd={handleDragEnd}
             onClick={() => { void handleBoardSlotClick(meta); }}
-            ref={(node) => {
-              if (node) boardSearchCardRefs.current.set(searchKey, node);
-              else boardSearchCardRefs.current.delete(searchKey);
-            }}
+            ref={(node) => registerBoardSearchCardRef(searchKey, node)}
             tabIndex={isBoardSearchMatch ? -1 : undefined}
           >
             <div className="excel-member-tags">
