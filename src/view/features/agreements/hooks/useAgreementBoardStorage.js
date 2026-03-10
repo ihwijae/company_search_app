@@ -5,6 +5,8 @@ const DEFAULT_FILTERS = {
   rangeId: '',
   industryLabel: '',
   dutyRegion: '',
+  noticeNo: '',
+  noticeTitle: '',
   amountMin: '',
   amountMax: '',
   sortOrder: 'savedAtDesc',
@@ -334,6 +336,8 @@ export default function useAgreementBoardStorage({
     const rangeFilter = String(loadFilters.rangeId || '').trim();
     const industryFilter = String(loadFilters.industryLabel || '').trim();
     const dutyFilter = String(loadFilters.dutyRegion || '').trim();
+    const noticeNoFilter = String(loadFilters.noticeNo || '').trim().toLowerCase();
+    const noticeTitleFilter = String(loadFilters.noticeTitle || '').trim().toLowerCase();
     const amountMin = parseNumeric(loadFilters.amountMin);
     const amountMax = parseNumeric(loadFilters.amountMax);
     const getNoticeDateValue = (value) => {
@@ -359,6 +363,8 @@ export default function useAgreementBoardStorage({
       if (ownerFilter && String(meta.ownerId || '') !== ownerFilter) return false;
       if (rangeFilter && String(meta.rangeId || '') !== rangeFilter) return false;
       if (industryFilter && String(meta.industryLabel || '') !== industryFilter) return false;
+      if (noticeNoFilter && !String(meta.noticeNo || '').toLowerCase().includes(noticeNoFilter)) return false;
+      if (noticeTitleFilter && !String(meta.noticeTitle || '').toLowerCase().includes(noticeTitleFilter)) return false;
       if (dutyFilter) {
         const regions = Array.isArray(meta.dutyRegions) ? meta.dutyRegions : [];
         if (!regions.some((region) => String(region || '') === dutyFilter)) return false;

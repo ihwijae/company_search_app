@@ -74,6 +74,22 @@ export default function AgreementLoadModal({
         </div>
         <div className="agreement-load-filters">
           <label>
+            <span>공고번호 검색</span>
+            <input
+              value={filters.noticeNo || ''}
+              onChange={(event) => setFilters((prev) => ({ ...prev, noticeNo: event.target.value }))}
+              placeholder="공고번호 입력"
+            />
+          </label>
+          <label>
+            <span>공고명 검색</span>
+            <input
+              value={filters.noticeTitle || ''}
+              onChange={(event) => setFilters((prev) => ({ ...prev, noticeTitle: event.target.value }))}
+              placeholder="공고명 입력"
+            />
+          </label>
+          <label>
             <span>발주처</span>
             <select
               value={filters.ownerId}
