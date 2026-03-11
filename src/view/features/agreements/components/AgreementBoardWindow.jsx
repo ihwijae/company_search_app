@@ -103,6 +103,7 @@ const LH_QUALITY_DEFAULT_UNDER_100B = 85;
 const LH_QUALITY_DEFAULT_OVER_100B = 88;
 const LH_UNDER_50_KEY = 'lh-under50';
 const LH_50_TO_100_KEY = 'lh-50to100';
+const LH_100_TO_300_KEY = 'lh-100to300';
 const PPS_UNDER_50_KEY = 'pps-under50';
 const MOIS_UNDER_30_KEY = 'mois-under30';
 const MOIS_30_TO_50_KEY = 'mois-30to50';
@@ -187,6 +188,7 @@ const resolveOwnerPerformanceMax = (ownerId) => {
 const resolveLhQualityDefaultByRange = (rangeLabel, rangeKey) => {
   const label = String(rangeLabel || '').trim();
   const key = String(rangeKey || '').trim().toLowerCase();
+  if (key === LH_100_TO_300_KEY) return LH_QUALITY_DEFAULT_OVER_100B;
   if (key === LH_50_TO_100_KEY) {
     return LH_QUALITY_DEFAULT_UNDER_100B;
   }
@@ -291,6 +293,7 @@ const resolveTemplateKey = (ownerId, rangeId, fileType) => {
   if (ownerKey === 'MOIS' && rangeKey === MOIS_50_TO_100_KEY) return 'mois-50to100';
   if (ownerKey === 'PPS' && rangeKey === PPS_UNDER_50_KEY) return 'pps-under50';
   if (ownerKey === 'LH' && rangeKey === LH_UNDER_50_KEY) return 'lh-under50';
+  if (ownerKey === 'LH' && rangeKey === LH_100_TO_300_KEY) return '';
   if (ownerKey === 'LH' && rangeKey === LH_50_TO_100_KEY) {
     if (normalizedType === 'sobang') return 'lh-50to100-sobang';
     return 'lh-50to100-et';
@@ -1012,6 +1015,8 @@ export default function AgreementBoardWindow({
   ratioBaseAmount = '',
   bidRate = '',
   adjustmentRate = '',
+  performanceCoefficient = '',
+  regionAdjustmentCoefficient = '',
   bidDeadline = '',
   regionDutyRate = '',
   participantLimit = DEFAULT_GROUP_SIZE,
@@ -1126,6 +1131,7 @@ export default function AgreementBoardWindow({
     rangeOptions.find((item) => item.key === rangeId) || rangeOptions[0] || null
   ), [rangeId, rangeOptions]);
   const selectedRangeKey = selectedRangeOption?.key || '';
+  const isLh100To300 = isLHOwner && selectedRangeKey === LH_100_TO_300_KEY;
   const isMois30To50 = isMoisOwner && selectedRangeKey === MOIS_30_TO_50_KEY;
   const isMois50To100 = isMoisOwner && selectedRangeKey === MOIS_50_TO_100_KEY;
   const isMoisUnderOr30To50 = isMoisOwner && (selectedRangeKey === MOIS_UNDER_30_KEY || selectedRangeKey === MOIS_30_TO_50_KEY);
@@ -1376,6 +1382,20 @@ export default function AgreementBoardWindow({
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ adjustmentRate: nextValue });
   }, [onUpdateBoard]);
 
+  const handlePerformanceCoefficientChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard !== 'function') return;
+    const nextValue = String(event.target.value || '').replace(/[^0-9.]/g, '');
+    if ((nextValue.match(/\./g) || []).length > 1) return;
+    onUpdateBoard({ performanceCoefficient: nextValue });
+  }, [onUpdateBoard]);
+
+  const handleRegionAdjustmentCoefficientChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard !== 'function') return;
+    const nextValue = String(event.target.value || '').replace(/[^0-9.]/g, '');
+    if ((nextValue.match(/\./g) || []).length > 1) return;
+    onUpdateBoard({ regionAdjustmentCoefficient: nextValue });
+  }, [onUpdateBoard]);
+
   const handleBidRateChange = React.useCallback((event) => {
     const nextValue = event.target.value;
     setBidRateTouched(Boolean(String(nextValue || '').trim()));
@@ -1482,15 +1502,17 @@ export default function AgreementBoardWindow({
   }, [minRatingOpen, regionDutyRate]);
 
   const credibilityConfig = React.useMemo(() => {
-    if (ownerKeyUpper === 'LH') return { enabled: true, max: null };
+    if (ownerKeyUpper === 'LH') return { enabled: true, max: isLh100To300 ? 0.3 : null };
     if (ownerKeyUpper === 'PPS') return { enabled: true, max: null };
     if (ownerKeyUpper === 'KRAIL') return { enabled: true, max: null };
     if (ownerKeyUpper === 'EX') return { enabled: true, max: null };
     return { enabled: false, max: null };
-  }, [ownerKeyUpper]);
+  }, [isLh100To300, ownerKeyUpper]);
   const credibilityEnabled = credibilityConfig.enabled;
   const ownerCredibilityMax = credibilityConfig.max;
+  const credibilityLabel = isLh100To300 ? '지역경제 기여도' : '신인도';
   const ownerPerformanceFallback = React.useMemo(() => {
+    if (isLh100To300) return 11;
     if (isKrailUnder50) {
       const normalizedType = String(fileType || '').toLowerCase();
       if (normalizedType === 'sobang') return 15;
@@ -1498,7 +1520,7 @@ export default function AgreementBoardWindow({
     }
     if (isKrail50To100) return 15;
     return resolveOwnerPerformanceMax(ownerKeyUpper);
-  }, [fileType, isKrail50To100, isKrailUnder50, ownerKeyUpper]);
+  }, [fileType, isKrail50To100, isKrailUnder50, isLh100To300, ownerKeyUpper]);
   const candidateScoreCacheRef = React.useRef(new Map());
   const performanceCapRef = React.useRef(ownerPerformanceFallback);
   const getPerformanceCap = React.useCallback(() => (
@@ -1540,6 +1562,26 @@ export default function AgreementBoardWindow({
     if (!message) return;
     notify({ type: 'info', message, portalTarget: portalContainer || null });
   }, [notify, portalContainer]);
+
+  const lhSimplePerformanceCoefficient = React.useMemo(() => {
+    if (!isLh100To300) return null;
+    const parsed = parseNumeric(performanceCoefficient);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 3;
+  }, [isLh100To300, parseNumeric, performanceCoefficient]);
+
+  const lhRegionalAdjustmentCoefficient = React.useMemo(() => {
+    if (!isLh100To300) return null;
+    const parsed = parseNumeric(regionAdjustmentCoefficient);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  }, [isLh100To300, parseNumeric, regionAdjustmentCoefficient]);
+
+  React.useEffect(() => {
+    if (!isLh100To300 || typeof onUpdateBoard !== 'function') return;
+    const nextPayload = {};
+    if (!String(performanceCoefficient || '').trim()) nextPayload.performanceCoefficient = '3';
+    if (!String(regionAdjustmentCoefficient || '').trim()) nextPayload.regionAdjustmentCoefficient = '1';
+    if (Object.keys(nextPayload).length > 0) onUpdateBoard(nextPayload);
+  }, [isLh100To300, onUpdateBoard, performanceCoefficient, regionAdjustmentCoefficient]);
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -1591,6 +1633,12 @@ export default function AgreementBoardWindow({
           ? { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' }
           : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
       }
+      if (rangeKey === LH_100_TO_300_KEY) {
+        const multiplier = lhSimplePerformanceCoefficient || 3;
+        return base > 0
+          ? { perfectPerformanceAmount: base * multiplier, perfectPerformanceBasis: `기초금액 × ${multiplier}배` }
+          : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+      }
       if (rangeKey === 'lh-50to100') {
         const normalizedType = String(fileType || '').toLowerCase();
         const multiplier = normalizedType === 'sobang' ? 3 : 2;
@@ -1626,7 +1674,7 @@ export default function AgreementBoardWindow({
     }
 
     return { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
-  }, [ownerKeyUpper, selectedRangeOption?.key, estimatedAmount, baseAmount, fileType]);
+  }, [ownerKeyUpper, selectedRangeOption?.key, estimatedAmount, baseAmount, fileType, lhSimplePerformanceCoefficient]);
 
   const perfectPerformanceDisplay = React.useMemo(() => {
     if (!perfectPerformanceAmount || perfectPerformanceAmount <= 0) return '';
@@ -1650,6 +1698,8 @@ export default function AgreementBoardWindow({
     bidAmount,
     bidRate,
     adjustmentRate,
+    performanceCoefficient,
+    regionAdjustmentCoefficient,
     perfectPerformanceAmount,
     dutyRegions,
     ratioBaseAmount: isPpsUnder50 ? (bidAmount || ratioBaseAmount || '') : (ratioBaseAmount || bidAmount || ''),
@@ -1670,6 +1720,8 @@ export default function AgreementBoardWindow({
     bidAmount,
     bidRate,
     adjustmentRate,
+    performanceCoefficient,
+    regionAdjustmentCoefficient,
     perfectPerformanceAmount,
     dutyRegions,
     ratioBaseAmount,
@@ -1752,6 +1804,13 @@ export default function AgreementBoardWindow({
 
   const resolveQualityPoints = React.useCallback((qualityTotal, rangeKey) => {
     if (!Number.isFinite(qualityTotal)) return null;
+    if (rangeKey === LH_100_TO_300_KEY) {
+      if (qualityTotal >= 94) return 4;
+      if (qualityTotal >= 91) return 3.5;
+      if (qualityTotal >= 88) return 3;
+      if (qualityTotal >= 85) return 2.5;
+      return 2;
+    }
     if (rangeKey === LH_50_TO_100_KEY) {
       if (qualityTotal >= 90) return 5;
       if (qualityTotal >= 88) return 3;
@@ -1768,7 +1827,7 @@ export default function AgreementBoardWindow({
   }, []);
 
   const resolveQualityPointsMax = React.useCallback((rangeKey) => (
-    rangeKey === LH_50_TO_100_KEY ? 5 : 3
+    rangeKey === LH_100_TO_300_KEY ? 4 : (rangeKey === LH_50_TO_100_KEY ? 5 : 3)
   ), []);
 
   const netCostBonusScore = React.useMemo(() => {
@@ -3710,6 +3769,11 @@ export default function AgreementBoardWindow({
       technicianEditable,
       getTechnicianValue,
       credibilityEnabled,
+      credibilityMode: isLh100To300 ? 'regional-share' : 'manual',
+      regionalContributionTargetShare: 20,
+      regionalContributionMaxScore: 0.3,
+      regionalContributionAdjustmentCoefficient: lhRegionalAdjustmentCoefficient,
+      isDutyRegionCompany,
       getCredibilityValue,
       getCandidateSipyungAmount,
       entryModeResolved: entryModeForCalc,
@@ -3727,6 +3791,7 @@ export default function AgreementBoardWindow({
       evaluationAmount,
       perfBase,
       estimatedValue,
+      perfCoefficient: lhSimplePerformanceCoefficient,
       formulasEvaluate: typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null,
       updatePerformanceCap,
       getPerformanceCap,
@@ -3786,7 +3851,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange]);
+  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -3891,6 +3956,7 @@ export default function AgreementBoardWindow({
         resolveCandidateBizYears,
         noticeDate,
         estimatedValue,
+        perfCoefficient: lhSimplePerformanceCoefficient,
         extractCreditGrade,
         isCreditScoreExpired,
         formulasEvaluate: evalApi,
@@ -3900,6 +3966,8 @@ export default function AgreementBoardWindow({
         updatePerformanceCap,
         performanceCapVersion: PERFORMANCE_CAP_VERSION,
         managementScoreVersion: MANAGEMENT_SCORE_VERSION,
+        forceManagementEvaluation: isLh100To300,
+        forcePerformanceEvaluation: isLh100To300,
       });
 
       if (!canceled && updated > 0) {
@@ -3912,7 +3980,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50]);
+  }, [open, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, lhSimplePerformanceCoefficient, isLh100To300]);
 
   const handleDragStart = (id, groupIndex, slotIndex) => (event) => {
     if (!id) return;
@@ -4676,27 +4744,31 @@ export default function AgreementBoardWindow({
     <td key={`cred-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-credibility-cell" rowSpan={rowSpan}>
       {meta.empty ? null : (
         <>
-          {isAmountCellEditing(meta, 'credibility') ? (
-            <input
-              type="text"
-              className="excel-amount-input excel-credibility-input"
-              value={meta.credibilityValue || ''}
-              onChange={(event) => handleCredibilityInput(meta.groupIndex, meta.slotIndex, event.target.value)}
-              onBlur={() => finishAmountCellEdit(meta, 'credibility')}
-              onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'credibility')}
-              placeholder="0"
-              autoFocus
-            />
+          {isLh100To300 ? (
+            <div className="readonly-value">{meta.isDutyRegion ? '지역' : '-'}</div>
           ) : (
-            <button
-              type="button"
-              className="excel-inline-edit-display"
-              {...getInlineEditTriggerProps(meta, 'credibility')}
-            >
-              {meta.credibilityValue || '0'}
-            </button>
+            isAmountCellEditing(meta, 'credibility') ? (
+              <input
+                type="text"
+                className="excel-amount-input excel-credibility-input"
+                value={meta.credibilityValue || ''}
+                onChange={(event) => handleCredibilityInput(meta.groupIndex, meta.slotIndex, event.target.value)}
+                onBlur={() => finishAmountCellEdit(meta, 'credibility')}
+                onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'credibility')}
+                placeholder="0"
+                autoFocus
+              />
+            ) : (
+              <button
+                type="button"
+                className="excel-inline-edit-display"
+                {...getInlineEditTriggerProps(meta, 'credibility')}
+              >
+                {meta.credibilityValue || '0'}
+              </button>
+            )
           )}
-          {meta.credibilityProduct && (
+          {!isLh100To300 && meta.credibilityProduct && (
             <div className="excel-hint">반영 {meta.credibilityProduct}</div>
           )}
         </>
@@ -4900,7 +4972,9 @@ export default function AgreementBoardWindow({
 
   const renderQualityRow = (group, groupIndex, slotMetas, qualityTotal, entryFailed) => {
     if (!isLHOwner) return null;
-    const qualityGuide = (selectedRangeOption?.key === 'lh-50to100')
+    const qualityGuide = (selectedRangeOption?.key === LH_100_TO_300_KEY)
+      ? '94점이상:4점/91점이상:3.5점/88점이상:3점/85점이상:2.5점/85점미만:2점'
+      : (selectedRangeOption?.key === 'lh-50to100')
       ? '90점이상:5점/88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점'
       : '품질 88점이상:3점/85점이상:2점/83점이상:1.5점/80점이상:1점';
     const nameSpan = columnSpans.nameSpan;
@@ -5361,7 +5435,7 @@ export default function AgreementBoardWindow({
                   )}
                   <AmountInput value={baseAmount || ''} onChange={handleBaseAmountChange} placeholder="원" />
                 </div>
-                {(isLH || isMois50To100) && (
+                {((isLH && !isLh100To300) || isMois50To100) && (
                   <>
                     <div className="excel-field-block size-lg">
                       <span className="field-label">순공사원가</span>
@@ -5384,7 +5458,7 @@ export default function AgreementBoardWindow({
           <span className="field-label">투찰율</span>
           <input className="input" value={bidRate || ''} onChange={handleBidRateChange} placeholder="예: 86.745" />
         </div>
-        {isLH && (
+        {isLH && !isLh100To300 && (
           <>
             <div className="excel-field-block size-xs readonly">
               <span className="field-label">순공사원가가점</span>
@@ -5429,6 +5503,17 @@ export default function AgreementBoardWindow({
                     placeholder="금액 입력 시 자동 계산"
                   />
                 </div>
+                {isLh100To300 && (
+                  <div className="excel-field-block size-xs">
+                    <span className="field-label">실적계수</span>
+                    <input
+                      className="input"
+                      value={performanceCoefficient || ''}
+                      onChange={handlePerformanceCoefficientChange}
+                      placeholder="기본 3"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="header-stack stack-notice">
@@ -5540,6 +5625,17 @@ export default function AgreementBoardWindow({
                     </div>
                   </div>
                 </div>
+                {isLh100To300 && (
+                  <div className="excel-field-block size-xs">
+                    <span className="field-label">지역업체 조정계수</span>
+                    <input
+                      className="input"
+                      value={regionAdjustmentCoefficient || ''}
+                      onChange={handleRegionAdjustmentCoefficientChange}
+                      placeholder="기본 1"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -5759,14 +5855,14 @@ export default function AgreementBoardWindow({
                         rowSpan={collapsedColumns.credibility ? 2 : undefined}
                         className="col-header credibility-header"
                       >
-                        {renderColToggle('credibility', '신인도')}
+                    {renderColToggle('credibility', credibilityLabel)}
                       </th>
                     )}
                   {credibilityEnabled && (
                     <th rowSpan="2" className="col-header credibility-total-header">
                       {Number.isFinite(ownerCredibilityMax)
-                        ? `신인도 합(${formatScore(ownerCredibilityMax, 1)}점)`
-                        : '신인도 합'}
+                        ? `${credibilityLabel} 합(${formatScore(ownerCredibilityMax, 1)}점)`
+                        : `${credibilityLabel} 합`}
                     </th>
                   )}
                 <th
@@ -6103,17 +6199,17 @@ export default function AgreementBoardWindow({
             />
           </div>
           <div className="export-sheet-field">
-            <span className="export-sheet-label">신인도가점</span>
+            <span className="export-sheet-label">{credibilityLabel}</span>
             <input
               type="text"
               value={minRatingCredibilityScore}
               onChange={(event) => setMinRatingCredibilityScore(event.target.value)}
               placeholder="예: 1.5"
             />
-            <p className="export-sheet-hint">신인도 가점이 없으면 비워두세요.</p>
+            <p className="export-sheet-hint">{isLh100To300 ? '지역경제 기여도는 자동 계산됩니다.' : '신인도 가점이 없으면 비워두세요.'}</p>
           </div>
           <div className="export-sheet-field">
-            <span className="export-sheet-label">신인도 적용 지분(%)</span>
+            <span className="export-sheet-label">{isLh100To300 ? '지역업체 참여비율(%)' : '신인도 적용 지분(%)'}</span>
             <input
               type="text"
               value={minRatingCredibilityShare}

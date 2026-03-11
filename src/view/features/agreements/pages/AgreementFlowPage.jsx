@@ -311,6 +311,11 @@ export default function AgreementFlowPage({
           ? { perfectPerformanceAmount: base, perfectPerformanceBasis: '기초금액 × 1배' }
           : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
       }
+      if (key === 'lh-100to300') {
+        return base > 0
+          ? { perfectPerformanceAmount: base * 3, perfectPerformanceBasis: '기초금액 × 3배' }
+          : { perfectPerformanceAmount: 0, perfectPerformanceBasis: '' };
+      }
       if (key === 'lh-50to100') {
         const type = toFileType(form.industry);
         const multiplier = type === 'sobang' ? 3 : 2;

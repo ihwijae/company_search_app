@@ -7,6 +7,11 @@ export function buildGroupSummaryMetrics({
   technicianEditable = false,
   getTechnicianValue,
   credibilityEnabled = false,
+  credibilityMode = 'manual',
+  regionalContributionTargetShare = 20,
+  regionalContributionMaxScore = 0.3,
+  regionalContributionAdjustmentCoefficient = 1,
+  isDutyRegionCompany = () => false,
   getCredibilityValue,
   getCandidateSipyungAmount,
   entryModeResolved = 'ratio',
@@ -32,6 +37,7 @@ export function buildGroupSummaryMetrics({
         performanceAmount,
         technicianScore,
         credibility: credibilityBonus,
+        isDutyRegion: credibilityMode === 'regional-share' ? Boolean(isDutyRegionCompany(candidate)) : false,
         sipyungAmount,
       };
     }).filter(Boolean);
@@ -60,11 +66,34 @@ export function buildGroupSummaryMetrics({
       : false;
     const technicianMissing = technicianEditable ? !technicianProvided : false;
     const sipyungMissing = normalizedMembers.some((member) => member.sipyungAmount == null);
-    let aggregatedCredibility = credibilityEnabled
-      ? (shareValid
+    let aggregatedCredibility = null;
+    if (credibilityEnabled && credibilityMode === 'regional-share') {
+      if (shareValid) {
+        const dutyRegionShare = normalizedMembers.reduce((acc, member) => {
+          const rawShare = Number(member.sharePercent);
+          if (!member.isDutyRegion || !Number.isFinite(rawShare)) return acc;
+          return acc + Math.max(rawShare, 0);
+        }, 0);
+        const coefficientRaw = Number(regionalContributionAdjustmentCoefficient);
+        const coefficient = Number.isFinite(coefficientRaw) && coefficientRaw > 0 ? coefficientRaw : 1;
+        const thresholdShare = Number.isFinite(Number(regionalContributionTargetShare)) && Number(regionalContributionTargetShare) > 0
+          ? Number(regionalContributionTargetShare)
+          : 20;
+        const maxScore = Number.isFinite(Number(regionalContributionMaxScore)) && Number(regionalContributionMaxScore) > 0
+          ? Number(regionalContributionMaxScore)
+          : 0.3;
+        if (dutyRegionShare >= thresholdShare) {
+          aggregatedCredibility = maxScore;
+        } else {
+          const rawScore = maxScore * (dutyRegionShare / (thresholdShare * coefficient));
+          aggregatedCredibility = Math.min(maxScore, Math.max(0, rawScore));
+        }
+      }
+    } else if (credibilityEnabled) {
+      aggregatedCredibility = shareValid
         ? normalizedMembers.reduce((acc, member) => acc + (member.credibility || 0) * member.weight, 0)
-        : null)
-      : null;
+        : null;
+    }
     if (aggregatedCredibility != null && isKrailOwner) {
       aggregatedCredibility *= krailCredibilityScale;
     }

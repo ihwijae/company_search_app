@@ -24,6 +24,9 @@ export async function runAgreementCandidateScoreEvaluation({
   updatePerformanceCap,
   performanceCapVersion,
   managementScoreVersion,
+  perfCoefficient,
+  forceManagementEvaluation = false,
+  forcePerformanceEvaluation = false,
 }) {
   let updated = 0;
 
@@ -45,9 +48,15 @@ export async function runAgreementCandidateScoreEvaluation({
       ? clampScore(candidate._agreementPerformanceScore, capForStored)
       : null;
     const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
-    const needsManagement = currentManagement == null;
+    const hasManualManagement = candidate._agreementManagementManual !== null
+      && candidate._agreementManagementManual !== undefined
+      && candidate._agreementManagementManual !== '';
+    const hasManualPerformance = candidate._agreementPerformanceInput !== null
+      && candidate._agreementPerformanceInput !== undefined
+      && candidate._agreementPerformanceInput !== '';
+    const needsManagement = (!hasManualManagement) && (forceManagementEvaluation || currentManagement == null);
     const needsPerformanceScore = performanceAmount != null && performanceAmount > 0
-      && performanceBaseReady && currentPerformanceScore == null;
+      && performanceBaseReady && ((!hasManualPerformance && forcePerformanceEvaluation) || currentPerformanceScore == null);
 
     if (!needsManagement && !needsPerformanceScore) continue;
 
@@ -98,6 +107,7 @@ export async function runAgreementCandidateScoreEvaluation({
         perf3y: candidatePerfAmount,
         baseAmount: perfBase,
         estimatedAmount: estimatedValue,
+        perfCoefficient,
         fileType,
         creditGrade,
       },
@@ -111,6 +121,7 @@ export async function runAgreementCandidateScoreEvaluation({
     if (!Number.isFinite(payload.inputs.perf3y)) delete payload.inputs.perf3y;
     if (!Number.isFinite(payload.inputs.baseAmount)) delete payload.inputs.baseAmount;
     if (!Number.isFinite(payload.inputs.estimatedAmount)) delete payload.inputs.estimatedAmount;
+    if (!Number.isFinite(payload.inputs.perfCoefficient)) delete payload.inputs.perfCoefficient;
     if (!payload.inputs.fileType) delete payload.inputs.fileType;
     if (!payload.inputs.creditGrade) delete payload.inputs.creditGrade;
 

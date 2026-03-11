@@ -19,6 +19,7 @@ export const AGREEMENT_GROUPS = [
     items: [
       { key: 'lh-under50', hash: '#/lh/under50', label: '50억 미만', rangeLabel: '50억 미만' },
       { key: 'lh-50to100', hash: '#/lh/50to100', label: '50억~100억', rangeLabel: '50억~100억' },
+      { key: 'lh-100to300', hash: '#/lh/100to300', label: '100억~300억', rangeLabel: '100억~300억' },
     ],
   },
   {

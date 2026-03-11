@@ -4,7 +4,7 @@ export function resolvePerformanceCap(value, fallback = PERFORMANCE_DEFAULT_MAX)
   if (value === null || value === undefined) return fallback;
   const parsed = Number(value);
   if (Number.isFinite(parsed) && parsed > 0) {
-    return Math.max(parsed, fallback);
+    return parsed;
   }
   return fallback;
 }
@@ -16,6 +16,7 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
   evaluationAmount,
   perfBase,
   estimatedValue,
+  perfCoefficient,
   formulasEvaluate,
   updatePerformanceCap,
   getPerformanceCap,
@@ -33,6 +34,7 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
       perf3y: perfAmount,
       baseAmount: perfBase,
       estimatedAmount: estimatedValue,
+      perfCoefficient,
       fileType,
     },
   };

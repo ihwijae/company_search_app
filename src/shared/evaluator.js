@@ -171,8 +171,14 @@ function resolvePerformanceVariant(perf, inputs = {}) {
 function evalPerformanceFormula(formula, context) {
   if (!formula || typeof formula !== 'string') return null;
   try {
-    const fn = new Function('perf5y', 'perf3y', 'baseAmount', 'estimatedAmount', `return (${formula});`);
-    const value = fn(context.perf5y, context.perf3y, context.baseAmount, context.estimatedAmount);
+    const fn = new Function('perf5y', 'perf3y', 'baseAmount', 'estimatedAmount', 'perfCoefficient', `return (${formula});`);
+    const value = fn(
+      context.perf5y,
+      context.perf3y,
+      context.baseAmount,
+      context.estimatedAmount,
+      context.perfCoefficient,
+    );
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : null;
   } catch {
@@ -243,6 +249,7 @@ function evalPerformance(inputs, rules) {
     perf3y,
     baseAmount: base,
     estimatedAmount,
+    perfCoefficient: toNumber(inputs.perfCoefficient) || 0,
   });
   const raw = formulaScore != null ? formulaScore : (base > 0 ? ratio * maxScore : 0);
   const capped = maxScore != null ? Math.min(raw, maxScore) : raw;

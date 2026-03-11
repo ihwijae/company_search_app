@@ -44,6 +44,8 @@ const initialState = {
   ratioBaseAmount: '',
   bidRate: '',
   adjustmentRate: '',
+  performanceCoefficient: '',
+  regionAdjustmentCoefficient: '',
   entryAmount: '',
   entryMode: 'none',
   netCostAmount: '',
@@ -588,6 +590,8 @@ const appendCandidates = React.useCallback((entries = []) => {
           ratioBaseAmount={boardState.ratioBaseAmount || ''}
           bidRate={boardState.bidRate || ''}
           adjustmentRate={boardState.adjustmentRate || ''}
+          performanceCoefficient={boardState.performanceCoefficient || ''}
+          regionAdjustmentCoefficient={boardState.regionAdjustmentCoefficient || ''}
           bidDeadline={boardState.bidDeadline || ''}
           regionDutyRate={boardState.regionDutyRate || ''}
           participantLimit={boardState.participantLimit || DEFAULT_GROUP_SIZE}
