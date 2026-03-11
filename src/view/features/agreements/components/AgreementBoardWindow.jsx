@@ -1182,6 +1182,11 @@ export default function AgreementBoardWindow({
   const isLh50To100 = isLHOwner && selectedRangeKey === LH_50_TO_100_KEY;
   const isExUnder50 = isExOwner && selectedRangeKey === EX_UNDER_50_KEY;
   const isEx50To100 = isExOwner && selectedRangeKey === EX_50_TO_100_KEY;
+  const showManagementBonus = !isLh100To300;
+  const showNetCostBonus = !isLh100To300;
+  const showConstructionExperience = isLHOwner && !isLh100To300;
+  const placeCredibilityAfterQuality = isLh100To300;
+  const effectiveGroupManagementBonus = showManagementBonus ? groupManagementBonus : [];
   const technicianEnabled = isKrailOwner;
   const technicianEditable = technicianEnabled && String(fileType || '').toLowerCase() !== 'sobang';
   const technicianAbilityMax = technicianEnabled ? KRAIL_TECHNICIAN_ABILITY_MAX : null;
@@ -1551,6 +1556,8 @@ export default function AgreementBoardWindow({
   }, [isLh100To300, ownerKeyUpper]);
   const credibilityEnabled = credibilityConfig.enabled;
   const ownerCredibilityMax = credibilityConfig.max;
+  const showCredibilityBeforeStatus = credibilityEnabled && !placeCredibilityAfterQuality;
+  const showCredibilityAfterQuality = credibilityEnabled && placeCredibilityAfterQuality;
   const credibilityLabel = isLh100To300 ? '지역경제 기여도' : '신인도';
   const ownerPerformanceFallback = React.useMemo(() => {
     if (isLh100To300) return 11;
@@ -1937,6 +1944,7 @@ export default function AgreementBoardWindow({
     const rMax = roundTo((bidMax - aValueNumber) / (expectedMax - aValueNumber), 4);
     return Number.isFinite(rMin) && Number.isFinite(rMax) && (rMin > 0.9 || rMax > 0.9);
   }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
+  const effectiveNetCostBonusScore = showNetCostBonus ? netCostBonusScore : 0;
 
   React.useEffect(() => {
     if (!minRatingOpen) return;
@@ -2169,10 +2177,12 @@ export default function AgreementBoardWindow({
       + (collapsedColumns.select ? COLLAPSED_COLUMN_WIDTHS.select : COLUMN_WIDTHS.select)
       + (collapsedColumns.approval ? COLLAPSED_COLUMN_WIDTHS.approval : COLUMN_WIDTHS.approval)
       + COLUMN_WIDTHS.management
-      + (collapsedColumns.managementBonus ? COLLAPSED_COLUMN_WIDTHS.managementBonus : COLUMN_WIDTHS.managementBonus)
+      + (showManagementBonus
+        ? (collapsedColumns.managementBonus ? COLLAPSED_COLUMN_WIDTHS.managementBonus : COLUMN_WIDTHS.managementBonus)
+        : 0)
       + COLUMN_WIDTHS.shareTotal
       + (isLHOwner ? COLUMN_WIDTHS.qualityPoints : 0)
-      + (isLHOwner ? COLUMN_WIDTHS.constructionExperience : 0)
+      + (showConstructionExperience ? COLUMN_WIDTHS.constructionExperience : 0)
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
       + (technicianEnabled
@@ -2184,7 +2194,7 @@ export default function AgreementBoardWindow({
         : 0)
       + (isLh50To100 ? (COLUMN_WIDTHS.subcontract + COLUMN_WIDTHS.material) : 0)
       + COLUMN_WIDTHS.bid
-      + COLUMN_WIDTHS.netCostBonus
+      + (showNetCostBonus ? COLUMN_WIDTHS.netCostBonus : 0)
       + COLUMN_WIDTHS.total
       + COLUMN_WIDTHS.sipyungSummary;
     const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth
@@ -2194,6 +2204,9 @@ export default function AgreementBoardWindow({
     columnSpans,
     credibilityEnabled,
     isLHOwner,
+    showManagementBonus,
+    showConstructionExperience,
+    showNetCostBonus,
     isMois30To50,
     isEx50To100,
     isKrail50To100,
@@ -3560,10 +3573,10 @@ export default function AgreementBoardWindow({
         groupApprovals,
         groupShares,
         groupCredibility,
-        groupManagementBonus,
+        groupManagementBonus: effectiveGroupManagementBonus,
         participantMap,
         summaryByGroup,
-        netCostBonusScore,
+        netCostBonusScore: effectiveNetCostBonusScore,
         isLHOwner,
         technicianEnabled,
         selectedRangeKey: selectedRangeOption?.key,
@@ -3629,10 +3642,10 @@ export default function AgreementBoardWindow({
     groupApprovals,
     groupShares,
     groupCredibility,
-    groupManagementBonus,
+    effectiveGroupManagementBonus,
     participantMap,
     summaryByGroup,
-    netCostBonusScore,
+    effectiveNetCostBonusScore,
     summary,
     safeGroupSize,
     isLHOwner,
@@ -3856,7 +3869,7 @@ export default function AgreementBoardWindow({
         evaluatePerformanceScore,
         performanceBaseReady,
         perfBase,
-        groupManagementBonus,
+        groupManagementBonus: effectiveGroupManagementBonus,
         managementScale,
         managementMax,
         managementScoreMax: MANAGEMENT_SCORE_MAX,
@@ -3880,7 +3893,7 @@ export default function AgreementBoardWindow({
         technicianEnabled,
         technicianEditable,
         technicianAbilityMax,
-        netCostBonusScore,
+        netCostBonusScore: effectiveNetCostBonusScore,
         bidScoreDefault: BID_SCORE_DEFAULT,
         subcontractScoreDefault: SUBCONTRACT_SCORE,
         mois50To100SubcontractScore: MOIS_50_TO_100_SUBCONTRACT_SCORE,
@@ -3902,7 +3915,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, groupManagementBonus, netCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
+  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, effectiveGroupManagementBonus, effectiveNetCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -4613,11 +4626,13 @@ export default function AgreementBoardWindow({
     const baseColumns = 12
       + (credibilityEnabled ? 1 : 0)
       + (technicianEnabled ? 2 : 0)
-      + (isLHOwner ? 1 : 0)
+      + (showConstructionExperience ? 1 : 0)
       + ((isMois30To50 || isEx50To100) ? 1 : 0)
       + (isKrail50To100 ? 1 : 0)
       + (isMois50To100 ? 2 : 0)
-      + (isLh50To100 ? 2 : 0);
+      + (isLh50To100 ? 2 : 0)
+      - (showManagementBonus ? 0 : 1)
+      - (showNetCostBonus ? 0 : 1);
     const variableColumns = columnSpans.nameSpan
       + columnSpans.shareSpan
       + columnSpans.credibilitySpan
@@ -4628,7 +4643,9 @@ export default function AgreementBoardWindow({
     return baseColumns + variableColumns;
   }, [
     credibilityEnabled,
-    isLHOwner,
+    showConstructionExperience,
+    showManagementBonus,
+    showNetCostBonus,
     isMois30To50,
     isMois50To100,
     isEx50To100,
@@ -5144,18 +5161,22 @@ export default function AgreementBoardWindow({
       ? summaryInfo?.totalMaxWithCred
       : summaryInfo?.totalMaxBase;
     const qualityPoints = isLHOwner ? resolveQualityPoints(qualityTotal, selectedRangeOption?.key) : null;
-    const constructionExperienceScore = isLHOwner
+    const constructionExperienceScore = showConstructionExperience
       ? resolveConstructionExperienceScore(summaryInfo?.performanceScore, qualityPoints)
       : null;
     const performanceScoreForTotal = summaryInfo?.performanceScore;
     const totalScore = baseTotalScore != null
       ? (isLHOwner
-        ? baseTotalScore - (performanceScoreForTotal || 0) + (constructionExperienceScore || 0)
+        ? (showConstructionExperience
+          ? baseTotalScore - (performanceScoreForTotal || 0) + (constructionExperienceScore || 0)
+          : baseTotalScore)
         : baseTotalScore)
       : null;
     const totalMax = baseTotalMax != null
       ? (isLHOwner
-        ? baseTotalMax - (summaryInfo?.performanceMax || 0) + CONSTRUCTION_EXPERIENCE_SCORE_MAX
+        ? (showConstructionExperience
+          ? baseTotalMax - (summaryInfo?.performanceMax || 0) + CONSTRUCTION_EXPERIENCE_SCORE_MAX
+          : baseTotalMax)
         : baseTotalMax)
       : null;
     if (totalScore != null && (isLHOwner ? LH_FULL_SCORE : (ownerKeyUpper === 'PPS' ? PPS_FULL_SCORE : totalMax)) != null) {
@@ -5195,10 +5216,10 @@ export default function AgreementBoardWindow({
     const qualityPointsDisplay = isLHOwner
       ? (qualityPoints != null ? formatScore(qualityPoints, resolveSummaryDigits('quality')) : '-')
       : null;
-    const constructionExperienceDisplay = isLHOwner
+    const constructionExperienceDisplay = showConstructionExperience
       ? (constructionExperienceScore != null ? formatScore(constructionExperienceScore, resolveSummaryDigits('performance')) : '-')
       : null;
-    const constructionExperienceWarn = isLHOwner
+    const constructionExperienceWarn = showConstructionExperience
       && constructionExperienceScore != null
       && constructionExperienceScore < CONSTRUCTION_EXPERIENCE_SCORE_MAX;
     const qualityPointsState = (isLHOwner && qualityPoints != null && qualityPoints < 2) ? 'warn' : '';
@@ -5209,9 +5230,9 @@ export default function AgreementBoardWindow({
       ? (summaryInfo?.materialScore != null ? formatScore(summaryInfo.materialScore, resolveSummaryDigits('material')) : '-')
       : null;
     const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore, resolveSummaryDigits('bid')) : '-';
-    const netCostBonusDisplay = summaryInfo?.netCostBonusScore != null
+    const netCostBonusDisplay = showNetCostBonus && summaryInfo?.netCostBonusScore != null
       ? formatScore(summaryInfo.netCostBonusScore, resolveSummaryDigits('netCost'))
-      : '0';
+      : (showNetCostBonus ? '0' : null);
     const totalScoreDisplay = totalScore != null ? formatScore(totalScore, resolveSummaryDigits('total')) : '-';
     const entryDisabled = entryModeResolved === 'none';
     const sipyungValue = entryModeResolved === 'sum'
@@ -5220,7 +5241,7 @@ export default function AgreementBoardWindow({
     const sipyungSummaryDisplay = sipyungValue != null ? formatAmount(sipyungValue) : '-';
     const approvalValue = groupApprovals[groupIndex] || '';
     const rightRowSpan = isLHOwner ? 2 : undefined;
-    const bonusChecked = Boolean(groupManagementBonus[groupIndex]);
+    const bonusChecked = showManagementBonus && Boolean(groupManagementBonus[groupIndex]);
 
     const managementState = summaryInfo?.managementScore != null
       ? (summaryInfo.managementScore >= ((summaryInfo.managementMax ?? managementMax) - 0.01) ? 'ok' : 'warn')
@@ -5292,10 +5313,10 @@ export default function AgreementBoardWindow({
             <div className="excel-warning">의무지분 미충족</div>
           )}
         </td>
-        {credibilityEnabled && (collapsedColumns.credibility
+        {showCredibilityBeforeStatus && (collapsedColumns.credibility
           ? renderCollapsedStubCell('credibility', rightRowSpan)
           : slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan)))}
-        {credibilityEnabled && (
+        {showCredibilityBeforeStatus && (
           <td className="excel-cell total-cell credibility-total-cell" rowSpan={rightRowSpan}>{credibilitySummary}</td>
         )}
         {collapsedColumns.status
@@ -5304,14 +5325,16 @@ export default function AgreementBoardWindow({
         <td className={`excel-cell total-cell management-summary-cell ${managementState}`} rowSpan={rightRowSpan}>
           {managementSummary}
         </td>
-        <td className="excel-cell management-bonus-cell" rowSpan={rightRowSpan}>
-          <input
-            type="checkbox"
-            checked={bonusChecked}
-            onChange={() => handleManagementBonusToggle(groupIndex)}
-            aria-label="경영점수 가점 적용"
-          />
-        </td>
+        {showManagementBonus && (
+          <td className="excel-cell management-bonus-cell" rowSpan={rightRowSpan}>
+            <input
+              type="checkbox"
+              checked={bonusChecked}
+              onChange={() => handleManagementBonusToggle(groupIndex)}
+              aria-label="경영점수 가점 적용"
+            />
+          </td>
+        )}
         {collapsedColumns.performance
           ? renderCollapsedStubCell('performance', rightRowSpan)
           : slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
@@ -5349,7 +5372,13 @@ export default function AgreementBoardWindow({
             {qualityPointsDisplay}
           </td>
         )}
-        {isLHOwner && (
+        {showCredibilityAfterQuality && (collapsedColumns.credibility
+          ? renderCollapsedStubCell('credibility', rightRowSpan)
+          : slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan)))}
+        {showCredibilityAfterQuality && (
+          <td className="excel-cell total-cell credibility-total-cell" rowSpan={rightRowSpan}>{credibilitySummary}</td>
+        )}
+        {showConstructionExperience && (
           <td
             className={`excel-cell total-cell construction-experience-cell${constructionExperienceWarn ? ' construction-experience-warn' : ''}`}
             rowSpan={rightRowSpan}
@@ -5367,7 +5396,9 @@ export default function AgreementBoardWindow({
           <td className="excel-cell total-cell subcontract-cell" rowSpan={rightRowSpan}>{subcontractDisplay}</td>
         )}
         <td className="excel-cell total-cell bid-score-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
-        <td className="excel-cell total-cell netcost-bonus-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
+        {showNetCostBonus && (
+          <td className="excel-cell total-cell netcost-bonus-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
+        )}
         <td
           className={`excel-cell total-cell total-score-cell total-score${scoreState ? ` score-${scoreState}` : ''}`}
           rowSpan={rightRowSpan}
@@ -5795,7 +5826,7 @@ export default function AgreementBoardWindow({
                   ))
                 )}
                 <col className="col-share-total" style={{ width: `${COLUMN_WIDTHS.shareTotal}px` }} />
-                {credibilityEnabled && (
+                {showCredibilityBeforeStatus && (
                   collapsedColumns.credibility ? (
                     <col
                       className="col-credibility-slot col-collapsed-stub"
@@ -5811,7 +5842,7 @@ export default function AgreementBoardWindow({
                     ))
                   )
                 )}
-                {credibilityEnabled && (
+                {showCredibilityBeforeStatus && (
                   <col className="col-credibility" style={{ width: `${COLUMN_WIDTHS.credibility}px` }} />
                 )}
                   {collapsedColumns.status ? (
@@ -5822,7 +5853,7 @@ export default function AgreementBoardWindow({
                     ))
                   )}
                   <col className="col-management" style={{ width: `${COLUMN_WIDTHS.management}px` }} />
-                  <col className="col-management-bonus" style={{ width: resolveColWidth('managementBonus') }} />
+                  {showManagementBonus && <col className="col-management-bonus" style={{ width: resolveColWidth('managementBonus') }} />}
               {collapsedColumns.performance ? (
                 <col
                   className="col-performance col-collapsed-stub"
@@ -5864,14 +5895,33 @@ export default function AgreementBoardWindow({
                 />
               )}
               {isLHOwner && <col className="col-quality-points" style={{ width: `${COLUMN_WIDTHS.qualityPoints}px` }} />}
-              {isLHOwner && <col className="col-construction-experience" style={{ width: `${COLUMN_WIDTHS.constructionExperience}px` }} />}
+              {showConstructionExperience && <col className="col-construction-experience" style={{ width: `${COLUMN_WIDTHS.constructionExperience}px` }} />}
+              {showCredibilityAfterQuality && (
+                collapsedColumns.credibility ? (
+                  <col
+                    className="col-credibility-slot col-collapsed-stub"
+                    style={{ width: resolveColWidth('credibilityCell', 'credibility') }}
+                  />
+                ) : (
+                  slotLabels.map((_, index) => (
+                    <col
+                      key={`col-credibility-slot-late-${index}`}
+                      className="col-credibility-slot"
+                      style={{ width: resolveColWidth('credibilityCell', 'credibility') }}
+                    />
+                  ))
+                )
+              )}
+              {showCredibilityAfterQuality && (
+                <col className="col-credibility" style={{ width: `${COLUMN_WIDTHS.credibility}px` }} />
+              )}
               {(isLh50To100 || isMois50To100) && <col className="col-subcontract" style={{ width: `${COLUMN_WIDTHS.subcontract}px` }} />}
               {(isLh50To100 || isMois50To100) && <col className="col-material" style={{ width: `${COLUMN_WIDTHS.material}px` }} />}
               {(isMois30To50 || isEx50To100 || isKrail50To100) && (
                 <col className="col-subcontract" style={{ width: resolveColWidth('subcontract') }} />
               )}
               <col className="col-bid" style={{ width: `${COLUMN_WIDTHS.bid}px` }} />
-              <col className="col-netcost-bonus" style={{ width: `${COLUMN_WIDTHS.netCostBonus}px` }} />
+              {showNetCostBonus && <col className="col-netcost-bonus" style={{ width: `${COLUMN_WIDTHS.netCostBonus}px` }} />}
               <col className="col-total" style={{ width: `${COLUMN_WIDTHS.total}px` }} />
               {collapsedColumns.sipyung ? (
                 <col
@@ -5918,7 +5968,7 @@ export default function AgreementBoardWindow({
                       '지분합계'
                     )}
                   </th>
-                    {credibilityEnabled && (
+                    {showCredibilityBeforeStatus && (
                       <th
                         colSpan={collapsedColumns.credibility ? 1 : slotLabels.length}
                         rowSpan={collapsedColumns.credibility ? 2 : undefined}
@@ -5927,7 +5977,7 @@ export default function AgreementBoardWindow({
                     {renderColToggle('credibility', credibilityLabel)}
                       </th>
                     )}
-                  {credibilityEnabled && (
+                  {showCredibilityBeforeStatus && (
                     <th rowSpan="2" className="col-header credibility-total-header">
                       {Number.isFinite(ownerCredibilityMax)
                         ? `${credibilityLabel} 합(${formatScore(ownerCredibilityMax, 1)}점)`
@@ -5944,7 +5994,9 @@ export default function AgreementBoardWindow({
                 <th rowSpan="2" className="col-header management-header">
                   {`경영(${formatScore(managementHeaderMax, 0)}점)`}
                 </th>
-                <th rowSpan="2" className="col-header management-bonus-header">{renderColToggle('managementBonus', '가점')}</th>
+                {showManagementBonus && (
+                  <th rowSpan="2" className="col-header management-bonus-header">{renderColToggle('managementBonus', '가점')}</th>
+                )}
                 <th
                   colSpan={collapsedColumns.performance ? 1 : slotLabels.length}
                   rowSpan={collapsedColumns.performance ? 2 : undefined}
@@ -5987,9 +6039,25 @@ export default function AgreementBoardWindow({
                     품질점수
                   </th>
                 )}
-                {isLHOwner && (
+                {showConstructionExperience && (
                   <th rowSpan="2" className="col-header construction-experience-header">
                     시공경험점수
+                  </th>
+                )}
+                {showCredibilityAfterQuality && (
+                  <th
+                    colSpan={collapsedColumns.credibility ? 1 : slotLabels.length}
+                    rowSpan={collapsedColumns.credibility ? 2 : undefined}
+                    className="col-header credibility-header"
+                  >
+                    {renderColToggle('credibility', credibilityLabel)}
+                  </th>
+                )}
+                {showCredibilityAfterQuality && (
+                  <th rowSpan="2" className="col-header credibility-total-header">
+                    {Number.isFinite(ownerCredibilityMax)
+                      ? `${credibilityLabel} 합(${formatScore(ownerCredibilityMax, 1)}점)`
+                      : `${credibilityLabel} 합`}
                   </th>
                 )}
                 {(isLh50To100 || isMois50To100) && (
@@ -6018,7 +6086,7 @@ export default function AgreementBoardWindow({
                   </th>
                 )}
                 <th rowSpan="2" className="col-header bid-header">입찰점수</th>
-                <th rowSpan="2" className="col-header netcost-header">순공사원가가점</th>
+                {showNetCostBonus && <th rowSpan="2" className="col-header netcost-header">순공사원가가점</th>}
                 <th rowSpan="2" className="col-header total-header">예상점수</th>
                 <th
                   colSpan={collapsedColumns.sipyung ? 1 : slotLabels.length}
@@ -6038,7 +6106,7 @@ export default function AgreementBoardWindow({
                 {!collapsedColumns.share && slotLabels.map((label, index) => (
                   <th key={`share-head-${index}`} className="subheader-share">{label}</th>
                 ))}
-                {credibilityEnabled && !collapsedColumns.credibility && slotLabels.map((label, index) => (
+                {showCredibilityBeforeStatus && !collapsedColumns.credibility && slotLabels.map((label, index) => (
                   <th key={`credibility-head-${index}`} className="subheader-credibility">{label}</th>
                 ))}
                 {!collapsedColumns.status && slotLabels.map((label, index) => (
@@ -6049,6 +6117,9 @@ export default function AgreementBoardWindow({
                 ))}
                 {technicianEnabled && !collapsedColumns.technician && slotLabels.map((label, index) => (
                   <th key={`tech-head-${index}`} className="subheader-technician">{label}</th>
+                ))}
+                {showCredibilityAfterQuality && !collapsedColumns.credibility && slotLabels.map((label, index) => (
+                  <th key={`credibility-head-late-${index}`} className="subheader-credibility">{label}</th>
                 ))}
                 {!collapsedColumns.sipyung && slotLabels.map((label, index) => (
                   <th key={`sipyung-head-${index}`} className="subheader-sipyung">{label}</th>
