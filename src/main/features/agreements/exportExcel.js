@@ -562,13 +562,14 @@ async function exportAgreementExcel({
   });
 
   if (slotCount > 0 && Array.isArray(candidates) && candidates.length > 0) {
+    const candidateRowStep = rowStep > 0 ? rowStep : 1;
     const candidateStartRow = groups.length > 0
-      ? (config.startRow + ((groups.length - 1) * rowStep) + 3)
-      : (config.startRow + 3);
+      ? (config.startRow + ((groups.length - 1) * rowStep) + (3 * candidateRowStep))
+      : (config.startRow + (3 * candidateRowStep));
 
     candidates.forEach((candidate, index) => {
       if (!candidate || typeof candidate !== 'object') return;
-      const rowIndex = candidateStartRow + Math.floor(index / slotCount);
+      const rowIndex = candidateStartRow + (Math.floor(index / slotCount) * candidateRowStep);
       const slotIndex = index % slotCount;
       const nameColumn = slotColumns.name?.[slotIndex];
       const managementColumn = slotColumns.management?.[slotIndex];
@@ -621,6 +622,14 @@ async function exportAgreementExcel({
       if (abilityCell) {
         abilityCell.value = toExcelNumber(candidate.sipyung);
         abilityCell.fill = undefined;
+      }
+      if (qualityColumns.length > 0 && candidate.qualityScore != null && qualityRowOffset > 0) {
+        const qualityColumn = qualityColumns[slotIndex];
+        if (qualityColumn) {
+          const qualityCell = worksheet.getCell(`${qualityColumn}${rowIndex + qualityRowOffset}`);
+          const qualityValue = toExcelNumber(candidate.qualityScore);
+          if (qualityValue != null) qualityCell.value = qualityValue;
+        }
       }
     });
   }
