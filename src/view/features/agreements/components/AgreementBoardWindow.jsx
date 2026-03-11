@@ -1856,10 +1856,10 @@ export default function AgreementBoardWindow({
     if (!Number.isFinite(qualityTotal)) return null;
     if (rangeKey === LH_100_TO_300_KEY) {
       if (qualityTotal >= 94) return 4;
-      if (qualityTotal >= 91) return 3.5;
-      if (qualityTotal >= 88) return 3;
-      if (qualityTotal >= 85) return 2.5;
-      return 2;
+      if (qualityTotal >= 91) return 3.9;
+      if (qualityTotal >= 88) return 3.8;
+      if (qualityTotal >= 85) return 3.7;
+      return 3.6;
     }
     if (rangeKey === LH_50_TO_100_KEY) {
       if (qualityTotal >= 90) return 5;
@@ -5176,7 +5176,8 @@ export default function AgreementBoardWindow({
     const lhSimpleTotalScore = showMiscScore
       ? Math.min(
         40,
-        (toNumber(summaryInfo?.performanceScore) || 0)
+        (toNumber(summaryInfo?.managementScore) || 0)
+          + (toNumber(summaryInfo?.performanceScore) || 0)
           + (toNumber(qualityPoints) || 0)
           + (toNumber(summaryInfo?.credibilityScore) || 0)
           + (miscScore || 0),
