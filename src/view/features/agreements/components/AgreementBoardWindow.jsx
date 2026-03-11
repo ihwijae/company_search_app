@@ -7,6 +7,7 @@ import AgreementCandidateWindow from './AgreementCandidateWindow.jsx';
 import useAgreementBoardStorage from '../hooks/useAgreementBoardStorage.js';
 import useBoardSearch from '../hooks/useBoardSearch.js';
 import useBoardInlineEditing from '../hooks/useBoardInlineEditing.js';
+import useTechnicianScoreWorkflow from '../hooks/useTechnicianScoreWorkflow.js';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
@@ -57,6 +58,13 @@ import {
   evaluateAgreementPerformanceScore,
   resolvePerformanceCap,
 } from '../../../../shared/agreements/calculations/performanceScore.js';
+import {
+  TECHNICIAN_CAREER_OPTIONS,
+  TECHNICIAN_GRADE_OPTIONS,
+  TECHNICIAN_MANAGEMENT_OPTIONS,
+  computeTechnicianScore,
+  formatTechnicianScore,
+} from '../../../../shared/agreements/calculations/technicianScore.js';
 import { runAgreementCandidateScoreEvaluation } from '../../../../shared/agreements/runner/candidateScoreRunner.js';
 import {
   applyDropToAssignments,
@@ -107,51 +115,6 @@ const KOREAN_UNIT = 100000000;
 const LH_FULL_SCORE = 95;
 const PPS_FULL_SCORE = 95;
 const INDUSTRY_OPTIONS = ['전기', '통신', '소방'];
-const TECHNICIAN_GRADE_OPTIONS = [
-  { value: 'special', label: '특급 (1)', points: 1.0 },
-  { value: 'advanced', label: '고급 (0.75)', points: 0.75 },
-  { value: 'intermediate', label: '중급 (0.5)', points: 0.5 },
-  { value: 'entry', label: '초급 (0.25)', points: 0.25 },
-];
-const TECHNICIAN_CAREER_OPTIONS = [
-  { value: 'none', label: '없음 (1.0)', multiplier: 1.0 },
-  { value: '5plus', label: '5년 이상 (1.1)', multiplier: 1.1 },
-  { value: '9plus', label: '9년 이상 (1.15)', multiplier: 1.15 },
-  { value: '12plus', label: '12년 이상 (1.2)', multiplier: 1.2 },
-];
-const TECHNICIAN_MANAGEMENT_OPTIONS = [
-  { value: 'none', label: '없음 (1.0)', multiplier: 1.0 },
-  { value: '3plus', label: '3년 이상 (1.1)', multiplier: 1.1 },
-  { value: '6plus', label: '6년 이상 (1.15)', multiplier: 1.15 },
-  { value: '9plus', label: '9년 이상 (1.2)', multiplier: 1.2 },
-];
-const getTechnicianGradePoints = (value) => {
-  const target = TECHNICIAN_GRADE_OPTIONS.find((option) => option.value === value);
-  return target ? Number(target.points) : 0;
-};
-const getTechnicianMultiplier = (value, options) => {
-  const target = options.find((option) => option.value === value);
-  return target ? Number(target.multiplier) : 1;
-};
-const getTechnicianCount = (value) => {
-  const num = Number(value);
-  if (!Number.isFinite(num) || num < 1) return 1;
-  return Math.floor(num);
-};
-const computeTechnicianScore = (entry) => {
-  if (!entry) return 0;
-  const base = getTechnicianGradePoints(entry.grade);
-  if (base <= 0) return 0;
-  const career = getTechnicianMultiplier(entry.careerCoeff, TECHNICIAN_CAREER_OPTIONS);
-  const management = getTechnicianMultiplier(entry.managementCoeff, TECHNICIAN_MANAGEMENT_OPTIONS);
-  const count = getTechnicianCount(entry.count);
-  return base * career * management * count;
-};
-const formatTechnicianScore = (value, digits = 2) => {
-  const rounded = roundTo(value, digits);
-  if (rounded == null) return '-';
-  return rounded.toFixed(digits);
-};
 const industryToFileType = (label) => {
   const normalized = String(label || '').trim();
   if (normalized === '전기') return 'eung';
@@ -1120,10 +1083,6 @@ export default function AgreementBoardWindow({
   const exportFileInputRef = React.useRef(null);
   const regionSearchSessionRef = React.useRef(null);
   const [technicianModalOpen, setTechnicianModalOpen] = React.useState(false);
-  const [technicianEntries, setTechnicianEntries] = React.useState([]);
-  const technicianEntriesByTargetRef = React.useRef({});
-  const technicianEntriesTargetKeyRef = React.useRef('0:0');
-  const [technicianTarget, setTechnicianTarget] = React.useState({ groupIndex: 0, slotIndex: 0 });
   const technicianWindowRef = React.useRef(null);
   const [technicianPortalContainer, setTechnicianPortalContainer] = React.useState(null);
   const [minRatingOpen, setMinRatingOpen] = React.useState(false);
@@ -1392,14 +1351,6 @@ export default function AgreementBoardWindow({
     setMemoOpen(false);
   }, []);
 
-  const openTechnicianModal = React.useCallback(() => {
-    setTechnicianModalOpen(true);
-  }, []);
-
-  const closeTechnicianModal = React.useCallback(() => {
-    setTechnicianModalOpen(false);
-  }, []);
-
   const handleMemoSave = React.useCallback(() => {
     const cleaned = sanitizeHtml(memoDraft || '');
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ memoHtml: cleaned });
@@ -1418,33 +1369,6 @@ export default function AgreementBoardWindow({
     document.execCommand(command, false, value);
     setMemoDraft(memoEditorRef.current.innerHTML);
   }, []);
-
-  const addTechnicianEntry = React.useCallback(() => {
-    setTechnicianEntries((prev) => [
-      ...prev,
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        grade: '',
-        careerCoeff: 'none',
-        managementCoeff: 'none',
-        count: '1',
-      },
-    ]);
-  }, []);
-
-  const updateTechnicianEntry = React.useCallback((id, field, value) => {
-    setTechnicianEntries((prev) => prev.map((entry) => (
-      entry.id === id ? { ...entry, [field]: value } : entry
-    )));
-  }, []);
-
-  const removeTechnicianEntry = React.useCallback((id) => {
-    setTechnicianEntries((prev) => prev.filter((entry) => entry.id !== id));
-  }, []);
-
-  const technicianScoreTotal = React.useMemo(() => (
-    technicianEntries.reduce((sum, entry) => sum + computeTechnicianScore(entry), 0)
-  ), [technicianEntries]);
 
   const handleAdjustmentRateChange = React.useCallback((event) => {
     const nextValue = event.target.value;
@@ -3117,115 +3041,32 @@ export default function AgreementBoardWindow({
     getCandidateManagerName,
     buildBoardSearchKey,
   });
-
-  const resolveTechnicianStorageKeyBySlot = React.useCallback((groupIndex, slotIndex) => {
-    const uid = groupAssignments?.[groupIndex]?.[slotIndex];
-    if (!uid) return '';
-    const entry = participantMap.get(uid);
-    const candidate = entry?.candidate;
-    if (candidate && typeof candidate === 'object') {
-      const bizNo = normalizeBizNo(getBizNo(candidate));
-      if (bizNo) return `biz:${bizNo}`;
-      if (candidate.id != null && candidate.id !== '') return `id:${String(candidate.id)}`;
-      const name = String(getCompanyName(candidate) || '').trim().toLowerCase();
-      if (name) return `name:${name}`;
-    }
-    return `uid:${uid}`;
-  }, [groupAssignments, participantMap]);
-
-  const resolveTechnicianStorageKeyByTarget = React.useCallback((target) => {
-    if (!target || typeof target !== 'object') return '';
-    return resolveTechnicianStorageKeyBySlot(target.groupIndex, target.slotIndex);
-  }, [resolveTechnicianStorageKeyBySlot]);
-
-  React.useEffect(() => {
-    const incoming = (
-      initialTechnicianEntriesByTarget && typeof initialTechnicianEntriesByTarget === 'object'
-        ? { ...initialTechnicianEntriesByTarget }
-        : {}
-    );
-    const migrated = { ...incoming };
-    Object.entries(incoming).forEach(([legacyKey, entries]) => {
-      if (!Array.isArray(entries)) return;
-      const match = /^(\d+):(\d+)$/.exec(String(legacyKey));
-      if (!match) return;
-      const groupIndex = Number(match[1]);
-      const slotIndex = Number(match[2]);
-      if (!Number.isInteger(groupIndex) || !Number.isInteger(slotIndex)) return;
-      const candidateKey = resolveTechnicianStorageKeyBySlot(groupIndex, slotIndex);
-      if (!candidateKey) return;
-      if (!Array.isArray(migrated[candidateKey])) {
-        migrated[candidateKey] = entries;
-      }
-      delete migrated[legacyKey];
-    });
-    technicianEntriesByTargetRef.current = migrated;
-  }, [initialTechnicianEntriesByTarget, resolveTechnicianStorageKeyBySlot]);
-
-  React.useEffect(() => {
-    if (!technicianModalOpen) return;
-    const activeKey = resolveTechnicianStorageKeyByTarget(technicianTarget);
-    technicianEntriesTargetKeyRef.current = activeKey;
-    const stored = activeKey ? technicianEntriesByTargetRef.current[activeKey] : [];
-    setTechnicianEntries(Array.isArray(stored) ? stored : []);
-  }, [technicianModalOpen, technicianTarget, resolveTechnicianStorageKeyByTarget]);
-
-  React.useEffect(() => {
-    if (!technicianModalOpen) return;
-    const key = technicianEntriesTargetKeyRef.current || resolveTechnicianStorageKeyByTarget(technicianTarget);
-    if (!key) return;
-    const nextMap = { ...technicianEntriesByTargetRef.current, [key]: technicianEntries };
-    technicianEntriesByTargetRef.current = nextMap;
-    if (typeof onUpdateBoard === 'function') onUpdateBoard({ technicianEntriesByTarget: nextMap });
-  }, [technicianEntries, technicianModalOpen, onUpdateBoard, technicianTarget, resolveTechnicianStorageKeyByTarget]);
-
-  const technicianTargetOptions = React.useMemo(() => (
-    groupAssignments.flatMap((row, groupIndex) => (
-      slotLabels.map((label, slotIndex) => {
-        const uid = row?.[slotIndex];
-        const entry = uid ? participantMap.get(uid) : null;
-        const name = entry?.candidate ? getCompanyName(entry.candidate) : '';
-        const suffix = name ? ` - ${name}` : '';
-        return {
-          key: `${groupIndex}:${slotIndex}`,
-          groupIndex,
-          slotIndex,
-          label: `${groupIndex + 1}번 ${label}${suffix}`,
-        };
-      })
-    ))
-  ), [groupAssignments, participantMap, slotLabels]);
-
-  React.useEffect(() => {
-    if (!technicianTargetOptions.length) return;
-    const exists = technicianTargetOptions.some(
-      (option) => option.groupIndex === technicianTarget.groupIndex && option.slotIndex === technicianTarget.slotIndex,
-    );
-    if (!exists) {
-      const first = technicianTargetOptions[0];
-      setTechnicianTarget({ groupIndex: first.groupIndex, slotIndex: first.slotIndex });
-    }
-  }, [technicianTargetOptions, technicianTarget.groupIndex, technicianTarget.slotIndex]);
-
-  const applyTechnicianScoreToTarget = React.useCallback(() => {
-    if (!technicianEditable) return;
-    if (!technicianTargetOptions.length) return;
-    const resolved = roundTo(technicianScoreTotal, 2);
-    if (resolved == null) return;
-    setGroupTechnicianScores((prev) => {
-      const next = prev.map((row) => row.slice());
-      const { groupIndex, slotIndex } = technicianTarget;
-      while (next.length <= groupIndex) next.push([]);
-      while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
-      next[groupIndex][slotIndex] = String(resolved);
-      return next;
-    });
-  }, [technicianEditable, technicianScoreTotal, technicianTarget, technicianTargetOptions.length]);
-
-  const handleSaveTechnicianScore = React.useCallback(() => {
-    applyTechnicianScoreToTarget();
-    closeTechnicianModal();
-  }, [applyTechnicianScoreToTarget, closeTechnicianModal]);
+  const {
+    technicianEntries,
+    technicianTarget,
+    setTechnicianTarget,
+    technicianScoreTotal,
+    technicianTargetOptions,
+    openTechnicianModal,
+    closeTechnicianModal,
+    addTechnicianEntry,
+    updateTechnicianEntry,
+    removeTechnicianEntry,
+    handleSaveTechnicianScore,
+  } = useTechnicianScoreWorkflow({
+    technicianModalOpen,
+    setTechnicianModalOpen,
+    initialTechnicianEntriesByTarget,
+    groupAssignments,
+    participantMap,
+    slotLabels,
+    getCompanyName,
+    getBizNo,
+    normalizeBizNo,
+    onUpdateBoard,
+    technicianEditable,
+    setGroupTechnicianScores,
+  });
 
   const attemptPendingPlacement = React.useCallback(() => {
     const pending = pendingPlacementRef.current;
