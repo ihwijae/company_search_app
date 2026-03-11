@@ -76,8 +76,18 @@ export default function AgreementCandidateWindow({
                       return (
                         <>
                     <td className="agreement-candidate-table__company">
-                      <strong title={entry.companyName}>{entry.companyName}</strong>
+                      <strong
+                        title={entry.companyName}
+                        style={entry.hasRecentAwardHistory ? { color: '#b91c1c', fontWeight: 800 } : undefined}
+                      >
+                        {entry.companyName}
+                      </strong>
                       <div className="agreement-candidate-table__meta-badges">
+                        {entry.hasRecentAwardHistory && (
+                          <span className="agreement-candidate-table__meta-badge" style={{ color: '#b91c1c', borderColor: '#fecaca', background: '#fef2f2' }}>
+                            낙찰이력
+                          </span>
+                        )}
                         {entry.regionLabel && (
                           <span className="agreement-candidate-table__meta-badge">{entry.regionLabel}</span>
                         )}

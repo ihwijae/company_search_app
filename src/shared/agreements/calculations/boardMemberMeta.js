@@ -34,6 +34,8 @@ export function buildBoardMemberMeta({
   groupTechnicianScores,
   conflictNotesByGroup,
   getCompanyName,
+  hasRecentAwardHistory = () => false,
+  noticeDate = '',
 }) {
   const memberIds = Array.isArray(group?.memberIds) ? group.memberIds : [];
   const uid = memberIds[slotIndex];
@@ -118,6 +120,7 @@ export function buildBoardMemberMeta({
     label,
     uid,
     companyName: getCompanyName(candidate),
+    hasRecentAwardHistory: hasRecentAwardHistory(getCompanyName(candidate), noticeDate),
     isDutyRegion,
     managerName,
     tags,

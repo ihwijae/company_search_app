@@ -4,10 +4,12 @@ import CompanySearchModal from '../../../../components/CompanySearchModal.jsx';
 import AgreementLoadModal from './AgreementLoadModal.jsx';
 import TechnicianScoreWindow from './TechnicianScoreWindow.jsx';
 import AgreementCandidateWindow from './AgreementCandidateWindow.jsx';
+import LhAwardHistoryWindow from './LhAwardHistoryWindow.jsx';
 import useAgreementBoardStorage from '../hooks/useAgreementBoardStorage.js';
 import useBoardSearch from '../hooks/useBoardSearch.js';
 import useBoardInlineEditing from '../hooks/useBoardInlineEditing.js';
 import useTechnicianScoreWorkflow from '../hooks/useTechnicianScoreWorkflow.js';
+import useLhAwardHistoryWindow from '../hooks/useLhAwardHistoryWindow.js';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
@@ -66,6 +68,10 @@ import {
   formatTechnicianScore,
 } from '../../../../shared/agreements/calculations/technicianScore.js';
 import { runAgreementCandidateScoreEvaluation } from '../../../../shared/agreements/runner/candidateScoreRunner.js';
+import {
+  getLhAwardHistoryText,
+  hasRecentLhAwardHistory,
+} from '../../../../shared/agreements/lhAwardHistory.js';
 import {
   applyDropToAssignments,
   buildBoardMoveConfirmPayload,
@@ -1064,6 +1070,7 @@ export default function AgreementBoardWindow({
     Array.isArray(initialGroupManagementBonus) ? initialGroupManagementBonus.slice() : []
   ));
   const [candidateWindowOpen, setCandidateWindowOpen] = React.useState(false);
+  const [awardHistoryWindowOpen, setAwardHistoryWindowOpen] = React.useState(false);
   const [candidateDrawerQuery, setCandidateDrawerQuery] = React.useState('');
   const [candidateSearchOpen, setCandidateSearchOpen] = React.useState(false);
   const [selectedCandidateUid, setSelectedCandidateUid] = React.useState(null);
@@ -1083,6 +1090,14 @@ export default function AgreementBoardWindow({
   const [memoDraft, setMemoDraft] = React.useState('');
   const memoEditorRef = React.useRef(null);
   const [exportModalOpen, setExportModalOpen] = React.useState(false);
+  const {
+    portalContainer: awardHistoryPortalContainer,
+    closeWindow: closeAwardHistoryWindow,
+  } = useLhAwardHistoryWindow({
+    open: open && awardHistoryWindowOpen,
+    setOpen: setAwardHistoryWindowOpen,
+    sourceDocument: typeof document !== 'undefined' ? document : null,
+  });
   const [exportTargetPath, setExportTargetPath] = React.useState('');
   const [exportTargetName, setExportTargetName] = React.useState('');
   const [exportSheetName, setExportSheetName] = React.useState('');
@@ -2552,6 +2567,11 @@ export default function AgreementBoardWindow({
     setCandidatePortalContainer(null);
   }, []);
 
+  const isRecentAwardHistoryCompany = React.useCallback((companyName, baseNoticeDate = noticeDate) => {
+    if (!isLh100To300) return false;
+    return hasRecentLhAwardHistory(companyName, baseNoticeDate);
+  }, [isLh100To300, noticeDate]);
+
   const ensureTechnicianWindow = React.useCallback(() => {
     if (typeof window === 'undefined') return;
     if (!technicianModalOpen) return;
@@ -2672,7 +2692,8 @@ export default function AgreementBoardWindow({
     setPortalContainer(null);
     closeTechnicianWindow();
     closeCandidateWindow();
-  }, [inlineMode, closeTechnicianWindow, closeCandidateWindow]);
+    closeAwardHistoryWindow();
+  }, [inlineMode, closeTechnicianWindow, closeCandidateWindow, closeAwardHistoryWindow]);
 
   const ensureWindow = React.useCallback(() => {
     if (inlineMode) return;
@@ -3281,6 +3302,8 @@ export default function AgreementBoardWindow({
       possibleShareBase,
       toNumber,
       clampScore,
+      hasRecentAwardHistory: isRecentAwardHistoryCompany,
+      noticeDate,
     });
   }, [
     assignedIds,
@@ -3293,6 +3316,8 @@ export default function AgreementBoardWindow({
     possibleShareBase,
     isDutyRegionCompany,
     getCandidatePerformanceAmountForCurrentRange,
+    isRecentAwardHistoryCompany,
+    noticeDate,
   ]);
 
   const filteredCandidateDrawerEntries = React.useMemo(() => {
@@ -4623,6 +4648,8 @@ export default function AgreementBoardWindow({
       groupTechnicianScores,
       conflictNotesByGroup,
       getCompanyName,
+      hasRecentAwardHistory: isRecentAwardHistoryCompany,
+      noticeDate,
     });
   };
 
@@ -4668,7 +4695,13 @@ export default function AgreementBoardWindow({
               ))}
             </div>
             <div className="excel-member-header">
-              <div className="excel-member-name" title={meta.companyName}>{meta.companyName}</div>
+              <div
+                className="excel-member-name"
+                title={meta.companyName}
+                style={meta.hasRecentAwardHistory ? { color: '#b91c1c', fontWeight: 800 } : undefined}
+              >
+                {meta.companyName}
+              </div>
               <button
                 type="button"
                 className="excel-remove-btn"
@@ -5656,6 +5689,15 @@ export default function AgreementBoardWindow({
                 >
                   후보 {candidateDrawerEntries.length > 0 ? `(${candidateDrawerEntries.length})` : ''}
                 </button>
+                {isLh100To300 && (
+                  <button
+                    type="button"
+                    className={`excel-btn${awardHistoryWindowOpen ? ' primary' : ''}`}
+                    onClick={() => setAwardHistoryWindowOpen((prev) => !prev)}
+                  >
+                    낙찰이력업체
+                  </button>
+                )}
               </div>
             <div className="excel-toolbar-actions">
                 <button
@@ -6374,6 +6416,15 @@ export default function AgreementBoardWindow({
   const candidatePortal = (open && candidateWindowOpen && candidatePortalContainer)
     ? createPortal(candidateWindowMarkup, candidatePortalContainer)
     : null;
+  const awardHistoryPortal = (open && awardHistoryWindowOpen && awardHistoryPortalContainer)
+    ? createPortal(
+      <LhAwardHistoryWindow
+        onClose={() => setAwardHistoryWindowOpen(false)}
+        content={getLhAwardHistoryText()}
+      />,
+      awardHistoryPortalContainer,
+    )
+    : null;
   const technicianPortal = (open && technicianModalOpen && technicianPortalContainer)
     ? createPortal(technicianWindowMarkup, technicianPortalContainer)
     : null;
@@ -6384,6 +6435,7 @@ export default function AgreementBoardWindow({
       <>
         {boardMarkup}
         {candidatePortal}
+        {awardHistoryPortal}
         {technicianPortal}
       </>
     );
@@ -6394,6 +6446,7 @@ export default function AgreementBoardWindow({
     <>
       {createPortal(boardMarkup, portalContainer)}
       {candidatePortal}
+      {awardHistoryPortal}
       {technicianPortal}
     </>
   );

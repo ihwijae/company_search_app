@@ -20,6 +20,8 @@ export function buildCandidateDrawerEntries({
   possibleShareBase,
   toNumber,
   clampScore,
+  hasRecentAwardHistory = () => false,
+  noticeDate = '',
 }) {
   const perSlotMax = isMois30To50 ? managementScoreMax : managementMax;
 
@@ -57,6 +59,7 @@ export function buildCandidateDrawerEntries({
         uid: entry.uid,
         candidate,
         companyName,
+        hasRecentAwardHistory: hasRecentAwardHistory(companyName, noticeDate),
         managerName,
         regionLabel,
         isDutyRegion: entry.type === 'region' || isDutyRegionCompany(candidate),
