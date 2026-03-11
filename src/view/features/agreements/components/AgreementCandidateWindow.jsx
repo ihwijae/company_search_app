@@ -22,6 +22,30 @@ export default function AgreementCandidateWindow({
   formatAmount = (value) => String(value ?? ''),
   formatScore = (value) => String(value ?? ''),
 }) {
+  const renderAwardHistoryMark = (active) => (active ? (
+    <span
+      aria-label="낙찰이력 있음"
+      title="공고일 기준 1년 이내 낙찰이력 있음"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 18,
+        height: 18,
+        marginLeft: 6,
+        borderRadius: '999px',
+        background: '#dc2626',
+        color: '#ffffff',
+        fontSize: 12,
+        fontWeight: 800,
+        lineHeight: 1,
+        verticalAlign: 'middle',
+      }}
+    >
+      !
+    </span>
+  ) : null);
+
   return (
     <div className="agreement-candidate-window">
       <div className="agreement-candidate-window__header">
@@ -81,6 +105,7 @@ export default function AgreementCandidateWindow({
                         style={entry.hasRecentAwardHistory ? { color: '#b91c1c', fontWeight: 800 } : undefined}
                       >
                         {entry.companyName}
+                        {renderAwardHistoryMark(entry.hasRecentAwardHistory)}
                       </strong>
                       <div className="agreement-candidate-table__meta-badges">
                         {entry.hasRecentAwardHistory && (

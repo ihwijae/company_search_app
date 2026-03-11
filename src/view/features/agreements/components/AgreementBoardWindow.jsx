@@ -465,6 +465,31 @@ const sanitizeCompanyName = (value) => {
 
 const normalizeCompanyKey = (value) => sanitizeCompanyName(value).toLowerCase();
 
+const renderAwardHistoryMark = (active) => (active ? (
+  <span
+    aria-label="낙찰이력 있음"
+    title="공고일 기준 1년 이내 낙찰이력 있음"
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: 18,
+      height: 18,
+      marginLeft: 6,
+      borderRadius: '999px',
+      background: '#dc2626',
+      color: '#ffffff',
+      fontSize: 12,
+      fontWeight: 800,
+      lineHeight: 1,
+      verticalAlign: 'middle',
+      flex: '0 0 auto',
+    }}
+  >
+    !
+  </span>
+) : null);
+
 const MANAGER_KEYS = [
   '담당자명', '담당자', '담당', '주담당자', '부담당자', '협력담당자', '현장담당자', '사무담당자',
   'manager', 'managerName', 'manager_name', 'contactPerson', 'contact_person', 'contact',
@@ -4698,9 +4723,10 @@ export default function AgreementBoardWindow({
               <div
                 className="excel-member-name"
                 title={meta.companyName}
-                style={meta.hasRecentAwardHistory ? { color: '#b91c1c', fontWeight: 800 } : undefined}
+                style={meta.hasRecentAwardHistory ? { color: '#b91c1c', fontWeight: 800, display: 'inline-flex', alignItems: 'center' } : undefined}
               >
                 {meta.companyName}
+                {renderAwardHistoryMark(meta.hasRecentAwardHistory)}
               </div>
               <button
                 type="button"
