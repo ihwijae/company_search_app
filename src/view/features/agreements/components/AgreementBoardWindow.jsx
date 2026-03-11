@@ -1184,6 +1184,8 @@ export default function AgreementBoardWindow({
   const isEx50To100 = isExOwner && selectedRangeKey === EX_50_TO_100_KEY;
   const showManagementBonus = !isLh100To300;
   const showNetCostBonus = !isLh100To300;
+  const showBidScore = !isLh100To300;
+  const showMiscScore = isLh100To300;
   const showConstructionExperience = isLHOwner && !isLh100To300;
   const placeCredibilityAfterQuality = isLh100To300;
   const effectiveGroupManagementBonus = showManagementBonus ? groupManagementBonus : [];
@@ -2193,7 +2195,7 @@ export default function AgreementBoardWindow({
         ? (collapsedColumns.subcontract ? COLLAPSED_COLUMN_WIDTHS.subcontract : COLUMN_WIDTHS.subcontract)
         : 0)
       + (isLh50To100 ? (COLUMN_WIDTHS.subcontract + COLUMN_WIDTHS.material) : 0)
-      + COLUMN_WIDTHS.bid
+      + (showBidScore ? COLUMN_WIDTHS.bid : 0)
       + (showNetCostBonus ? COLUMN_WIDTHS.netCostBonus : 0)
       + COLUMN_WIDTHS.total
       + COLUMN_WIDTHS.sipyungSummary;
@@ -2205,6 +2207,7 @@ export default function AgreementBoardWindow({
     credibilityEnabled,
     isLHOwner,
     showManagementBonus,
+    showBidScore,
     showConstructionExperience,
     showNetCostBonus,
     isMois30To50,
@@ -4631,7 +4634,9 @@ export default function AgreementBoardWindow({
       + (isKrail50To100 ? 1 : 0)
       + (isMois50To100 ? 2 : 0)
       + (isLh50To100 ? 2 : 0)
+      + (showMiscScore ? 1 : 0)
       - (showManagementBonus ? 0 : 1)
+      - (showBidScore ? 0 : 1)
       - (showNetCostBonus ? 0 : 1);
     const variableColumns = columnSpans.nameSpan
       + columnSpans.shareSpan
@@ -4645,6 +4650,8 @@ export default function AgreementBoardWindow({
     credibilityEnabled,
     showConstructionExperience,
     showManagementBonus,
+    showBidScore,
+    showMiscScore,
     showNetCostBonus,
     isMois30To50,
     isMois50To100,
@@ -5165,22 +5172,36 @@ export default function AgreementBoardWindow({
       ? resolveConstructionExperienceScore(summaryInfo?.performanceScore, qualityPoints)
       : null;
     const performanceScoreForTotal = summaryInfo?.performanceScore;
-    const totalScore = baseTotalScore != null
-      ? (isLHOwner
-        ? (showConstructionExperience
-          ? baseTotalScore - (performanceScoreForTotal || 0) + (constructionExperienceScore || 0)
+    const miscScore = showMiscScore ? 17 : null;
+    const lhSimpleTotalScore = showMiscScore
+      ? Math.min(
+        40,
+        (toNumber(summaryInfo?.performanceScore) || 0)
+          + (toNumber(qualityPoints) || 0)
+          + (toNumber(summaryInfo?.credibilityScore) || 0)
+          + (miscScore || 0),
+      )
+      : null;
+    const totalScore = lhSimpleTotalScore != null
+      ? lhSimpleTotalScore
+      : (baseTotalScore != null
+        ? (isLHOwner
+          ? (showConstructionExperience
+            ? baseTotalScore - (performanceScoreForTotal || 0) + (constructionExperienceScore || 0)
+            : baseTotalScore)
           : baseTotalScore)
-        : baseTotalScore)
-      : null;
-    const totalMax = baseTotalMax != null
-      ? (isLHOwner
-        ? (showConstructionExperience
-          ? baseTotalMax - (summaryInfo?.performanceMax || 0) + CONSTRUCTION_EXPERIENCE_SCORE_MAX
+        : null);
+    const totalMax = lhSimpleTotalScore != null
+      ? 40
+      : (baseTotalMax != null
+        ? (isLHOwner
+          ? (showConstructionExperience
+            ? baseTotalMax - (summaryInfo?.performanceMax || 0) + CONSTRUCTION_EXPERIENCE_SCORE_MAX
+            : baseTotalMax)
           : baseTotalMax)
-        : baseTotalMax)
-      : null;
-    if (totalScore != null && (isLHOwner ? LH_FULL_SCORE : (ownerKeyUpper === 'PPS' ? PPS_FULL_SCORE : totalMax)) != null) {
-      const threshold = isLHOwner ? LH_FULL_SCORE : (ownerKeyUpper === 'PPS' ? PPS_FULL_SCORE : totalMax);
+        : null);
+    if (totalScore != null && (isLh100To300 ? 40 : (isLHOwner ? LH_FULL_SCORE : (ownerKeyUpper === 'PPS' ? PPS_FULL_SCORE : totalMax))) != null) {
+      const threshold = isLh100To300 ? 40 : (isLHOwner ? LH_FULL_SCORE : (ownerKeyUpper === 'PPS' ? PPS_FULL_SCORE : totalMax));
       scoreState = totalScore >= (threshold - 0.01) ? 'full' : 'partial';
     }
     const managementSummary = summaryInfo?.managementScore != null
@@ -5213,6 +5234,9 @@ export default function AgreementBoardWindow({
         ? formatScore(summaryInfo.credibilityScore, resolveSummaryDigits('credibility'))
         : '-')
       : null;
+    const credibilityFull = showMiscScore
+      && toNumber(summaryInfo?.credibilityScore) != null
+      && toNumber(summaryInfo?.credibilityScore) >= 0.3 - 0.0001;
     const qualityPointsDisplay = isLHOwner
       ? (qualityPoints != null ? formatScore(qualityPoints, resolveSummaryDigits('quality')) : '-')
       : null;
@@ -5230,6 +5254,7 @@ export default function AgreementBoardWindow({
       ? (summaryInfo?.materialScore != null ? formatScore(summaryInfo.materialScore, resolveSummaryDigits('material')) : '-')
       : null;
     const bidScoreDisplay = summaryInfo?.bidScore != null ? formatScore(summaryInfo.bidScore, resolveSummaryDigits('bid')) : '-';
+    const miscScoreDisplay = showMiscScore ? formatScore(miscScore, 0) : null;
     const netCostBonusDisplay = showNetCostBonus && summaryInfo?.netCostBonusScore != null
       ? formatScore(summaryInfo.netCostBonusScore, resolveSummaryDigits('netCost'))
       : (showNetCostBonus ? '0' : null);
@@ -5317,7 +5342,12 @@ export default function AgreementBoardWindow({
           ? renderCollapsedStubCell('credibility', rightRowSpan)
           : slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan)))}
         {showCredibilityBeforeStatus && (
-          <td className="excel-cell total-cell credibility-total-cell" rowSpan={rightRowSpan}>{credibilitySummary}</td>
+          <td
+            className={`excel-cell total-cell credibility-total-cell${credibilityFull ? ' technician-good' : ''}`}
+            rowSpan={rightRowSpan}
+          >
+            {credibilitySummary}
+          </td>
         )}
         {collapsedColumns.status
           ? renderCollapsedStubCell('status', rightRowSpan)
@@ -5376,7 +5406,18 @@ export default function AgreementBoardWindow({
           ? renderCollapsedStubCell('credibility', rightRowSpan)
           : slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan)))}
         {showCredibilityAfterQuality && (
-          <td className="excel-cell total-cell credibility-total-cell" rowSpan={rightRowSpan}>{credibilitySummary}</td>
+          <td
+            className={`excel-cell total-cell credibility-total-cell${credibilityFull ? ' technician-good' : ''}`}
+            rowSpan={rightRowSpan}
+            style={credibilityFull ? { color: '#15803d', fontWeight: 800 } : undefined}
+          >
+            {credibilitySummary}
+          </td>
+        )}
+        {showMiscScore && (
+          <td className="excel-cell total-cell misc-score-cell" rowSpan={rightRowSpan}>
+            {miscScoreDisplay}
+          </td>
         )}
         {showConstructionExperience && (
           <td
@@ -5395,7 +5436,9 @@ export default function AgreementBoardWindow({
         {(isMois30To50 || isEx50To100 || isKrail50To100) && (
           <td className="excel-cell total-cell subcontract-cell" rowSpan={rightRowSpan}>{subcontractDisplay}</td>
         )}
-        <td className="excel-cell total-cell bid-score-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
+        {showBidScore && (
+          <td className="excel-cell total-cell bid-score-cell" rowSpan={rightRowSpan}>{bidScoreDisplay}</td>
+        )}
         {showNetCostBonus && (
           <td className="excel-cell total-cell netcost-bonus-cell" rowSpan={rightRowSpan}>{netCostBonusDisplay}</td>
         )}
@@ -5915,12 +5958,13 @@ export default function AgreementBoardWindow({
               {showCredibilityAfterQuality && (
                 <col className="col-credibility" style={{ width: `${COLUMN_WIDTHS.credibility}px` }} />
               )}
+              {showMiscScore && <col className="col-misc-score" style={{ width: `${COLUMN_WIDTHS.bid}px` }} />}
               {(isLh50To100 || isMois50To100) && <col className="col-subcontract" style={{ width: `${COLUMN_WIDTHS.subcontract}px` }} />}
               {(isLh50To100 || isMois50To100) && <col className="col-material" style={{ width: `${COLUMN_WIDTHS.material}px` }} />}
               {(isMois30To50 || isEx50To100 || isKrail50To100) && (
                 <col className="col-subcontract" style={{ width: resolveColWidth('subcontract') }} />
               )}
-              <col className="col-bid" style={{ width: `${COLUMN_WIDTHS.bid}px` }} />
+              {showBidScore && <col className="col-bid" style={{ width: `${COLUMN_WIDTHS.bid}px` }} />}
               {showNetCostBonus && <col className="col-netcost-bonus" style={{ width: `${COLUMN_WIDTHS.netCostBonus}px` }} />}
               <col className="col-total" style={{ width: `${COLUMN_WIDTHS.total}px` }} />
               {collapsedColumns.sipyung ? (
@@ -6060,6 +6104,11 @@ export default function AgreementBoardWindow({
                       : `${credibilityLabel} 합`}
                   </th>
                 )}
+                {showMiscScore && (
+                  <th rowSpan="2" className="col-header misc-score-header">
+                    기타점수
+                  </th>
+                )}
                 {(isLh50To100 || isMois50To100) && (
                   <th rowSpan="2" className="col-header subcontract-header">
                     하도급
@@ -6085,7 +6134,7 @@ export default function AgreementBoardWindow({
                     {renderColToggle('subcontract', '하도급및자재', { collapsedLabel: '하도급' })}
                   </th>
                 )}
-                <th rowSpan="2" className="col-header bid-header">입찰점수</th>
+                {showBidScore && <th rowSpan="2" className="col-header bid-header">입찰점수</th>}
                 {showNetCostBonus && <th rowSpan="2" className="col-header netcost-header">순공사원가가점</th>}
                 <th rowSpan="2" className="col-header total-header">예상점수</th>
                 <th
