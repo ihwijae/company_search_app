@@ -6,6 +6,7 @@ import TechnicianScoreWindow from './TechnicianScoreWindow.jsx';
 import AgreementCandidateWindow from './AgreementCandidateWindow.jsx';
 import useAgreementBoardStorage from '../hooks/useAgreementBoardStorage.js';
 import useBoardSearch from '../hooks/useBoardSearch.js';
+import useBoardInlineEditing from '../hooks/useBoardInlineEditing.js';
 import AmountInput from '../../../../components/AmountInput.jsx';
 import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
@@ -1130,7 +1131,6 @@ export default function AgreementBoardWindow({
   const [minRatingNetCostBonus, setMinRatingNetCostBonus] = React.useState('');
   const [minRatingCredibilityScore, setMinRatingCredibilityScore] = React.useState('');
   const [minRatingCredibilityShare, setMinRatingCredibilityShare] = React.useState('');
-  const [editingAmountCell, setEditingAmountCell] = React.useState(null);
   const [bidDatePart, setBidDatePart] = React.useState('');
   const [bidTimePeriod, setBidTimePeriod] = React.useState('AM');
   const [bidHourInput, setBidHourInput] = React.useState('');
@@ -4608,30 +4608,17 @@ export default function AgreementBoardWindow({
     setCandidateMetricsVersion((prev) => prev + 1);
   }, [resolveCandidateBySlot, updateCandidateOverride, managementMax]);
 
-  const isAmountCellEditing = React.useCallback((meta, kind) => (
-    Boolean(
-      editingAmountCell
-      && editingAmountCell.groupIndex === meta.groupIndex
-      && editingAmountCell.slotIndex === meta.slotIndex
-      && editingAmountCell.kind === kind
-    )
-  ), [editingAmountCell]);
-
-  const startAmountCellEdit = React.useCallback((meta, kind) => {
-    if (!meta || meta.empty) return;
-    setEditingAmountCell({ groupIndex: meta.groupIndex, slotIndex: meta.slotIndex, kind });
-  }, []);
-
-  const finishAmountCellEdit = React.useCallback((meta, kind, commit = true) => {
-    if (!meta || meta.empty) return;
-    const shouldCommitWithAmountBlur = kind === 'management' || kind === 'performance' || kind === 'sipyung';
-    if (commit && shouldCommitWithAmountBlur) handleAmountBlur(meta.groupIndex, meta.slotIndex, kind);
-    setEditingAmountCell((prev) => {
-      if (!prev) return prev;
-      if (prev.groupIndex !== meta.groupIndex || prev.slotIndex !== meta.slotIndex || prev.kind !== kind) return prev;
-      return null;
-    });
-  }, [handleAmountBlur]);
+  const {
+    isInlineEditing: isAmountCellEditing,
+    finishInlineEdit: finishAmountCellEdit,
+    handleInlineEditKeyDown,
+    getInlineEditTriggerProps,
+  } = useBoardInlineEditing({
+    onCommitEdit: ({ meta, kind }) => {
+      const shouldCommitWithAmountBlur = kind === 'management' || kind === 'performance' || kind === 'sipyung';
+      if (shouldCommitWithAmountBlur) handleAmountBlur(meta.groupIndex, meta.slotIndex, kind);
+    },
+  });
 
   const handleApprovalChange = React.useCallback((groupIndex, value) => {
     setGroupApprovals((prev) => {
@@ -4822,16 +4809,8 @@ export default function AgreementBoardWindow({
             className="excel-amount-input excel-share-input"
             value={meta.shareValue}
             onChange={(event) => handleShareInput(meta.groupIndex, meta.slotIndex, event.target.value)}
-            onBlur={() => finishAmountCellEdit(meta, 'share', true)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                finishAmountCellEdit(meta, 'share', true);
-              } else if (event.key === 'Escape') {
-                event.preventDefault();
-                finishAmountCellEdit(meta, 'share', true);
-              }
-            }}
+            onBlur={() => finishAmountCellEdit(meta, 'share')}
+            onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'share')}
             placeholder={meta.sharePlaceholder}
             autoFocus
           />
@@ -4839,9 +4818,7 @@ export default function AgreementBoardWindow({
             <button
               type="button"
               className="excel-inline-edit-display excel-inline-edit-display-share"
-              onClick={() => startAmountCellEdit(meta, 'share')}
-              onFocus={() => startAmountCellEdit(meta, 'share')}
-              title="클릭하여 수정"
+              {...getInlineEditTriggerProps(meta, 'share')}
             >
             {(() => {
               const base = meta.shareValue || (meta.shareForCalc != null ? formatShareDecimal(meta.shareForCalc) : '');
@@ -4864,16 +4841,8 @@ export default function AgreementBoardWindow({
               className="excel-amount-input excel-credibility-input"
               value={meta.credibilityValue || ''}
               onChange={(event) => handleCredibilityInput(meta.groupIndex, meta.slotIndex, event.target.value)}
-              onBlur={() => finishAmountCellEdit(meta, 'credibility', true)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  finishAmountCellEdit(meta, 'credibility', true);
-                } else if (event.key === 'Escape') {
-                  event.preventDefault();
-                  finishAmountCellEdit(meta, 'credibility', true);
-                }
-              }}
+              onBlur={() => finishAmountCellEdit(meta, 'credibility')}
+              onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'credibility')}
               placeholder="0"
               autoFocus
             />
@@ -4881,9 +4850,7 @@ export default function AgreementBoardWindow({
             <button
               type="button"
               className="excel-inline-edit-display"
-              onClick={() => startAmountCellEdit(meta, 'credibility')}
-              onFocus={() => startAmountCellEdit(meta, 'credibility')}
-              title="클릭하여 수정"
+              {...getInlineEditTriggerProps(meta, 'credibility')}
             >
               {meta.credibilityValue || '0'}
             </button>
@@ -4909,16 +4876,8 @@ export default function AgreementBoardWindow({
             className="excel-amount-input"
             value={meta.technicianValue || ''}
             onChange={(event) => handleTechnicianInput(meta.groupIndex, meta.slotIndex, event.target.value)}
-            onBlur={() => finishAmountCellEdit(meta, 'technician', true)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                finishAmountCellEdit(meta, 'technician', true);
-              } else if (event.key === 'Escape') {
-                event.preventDefault();
-                finishAmountCellEdit(meta, 'technician', true);
-              }
-            }}
+            onBlur={() => finishAmountCellEdit(meta, 'technician')}
+            onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'technician')}
             placeholder="0"
             autoFocus
             disabled={!technicianEditable}
@@ -4927,15 +4886,7 @@ export default function AgreementBoardWindow({
           <button
             type="button"
             className="excel-inline-edit-display"
-            onClick={() => {
-              if (!technicianEditable) return;
-              startAmountCellEdit(meta, 'technician');
-            }}
-            onFocus={() => {
-              if (!technicianEditable) return;
-              startAmountCellEdit(meta, 'technician');
-            }}
-            title={technicianEditable ? '클릭하여 수정' : undefined}
+            {...getInlineEditTriggerProps(meta, 'technician', { disabled: !technicianEditable })}
           >
             {meta.technicianValue || '0'}
           </button>
@@ -4954,16 +4905,8 @@ export default function AgreementBoardWindow({
               className="excel-amount-input excel-status-input"
               value={meta.managementInput || ''}
               onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'management')}
-              onBlur={() => finishAmountCellEdit(meta, 'management', true)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  finishAmountCellEdit(meta, 'management', true);
-                } else if (event.key === 'Escape') {
-                  event.preventDefault();
-                  finishAmountCellEdit(meta, 'management', true);
-                }
-              }}
+              onBlur={() => finishAmountCellEdit(meta, 'management')}
+              onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'management')}
               placeholder={meta.managementDisplay}
               title="경영점수"
               autoFocus
@@ -4972,9 +4915,7 @@ export default function AgreementBoardWindow({
             <button
               type="button"
               className="excel-inline-edit-display"
-              onClick={() => startAmountCellEdit(meta, 'management')}
-              onFocus={() => startAmountCellEdit(meta, 'management')}
-              title="클릭하여 수정"
+              {...getInlineEditTriggerProps(meta, 'management')}
             >
               {meta.managementDisplay || '-'}
             </button>
@@ -4998,16 +4939,8 @@ export default function AgreementBoardWindow({
               className="excel-amount-input"
               value={meta.performanceInput || ''}
               onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'performance')}
-              onBlur={() => finishAmountCellEdit(meta, 'performance', true)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  finishAmountCellEdit(meta, 'performance', true);
-                } else if (event.key === 'Escape') {
-                  event.preventDefault();
-                  finishAmountCellEdit(meta, 'performance', true);
-                }
-              }}
+              onBlur={() => finishAmountCellEdit(meta, 'performance')}
+              onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'performance')}
               placeholder={meta.performanceDisplay}
               autoFocus
             />
@@ -5015,9 +4948,7 @@ export default function AgreementBoardWindow({
             <button
               type="button"
               className="excel-inline-edit-display"
-              onClick={() => startAmountCellEdit(meta, 'performance')}
-              onFocus={() => startAmountCellEdit(meta, 'performance')}
-              title="클릭하여 수정"
+              {...getInlineEditTriggerProps(meta, 'performance')}
             >
               {meta.performanceDisplay || '-'}
             </button>
@@ -5045,16 +4976,8 @@ export default function AgreementBoardWindow({
               className="excel-amount-input"
               value={meta.sipyungInput || ''}
               onChange={(event) => handleAmountInput(meta.groupIndex, meta.slotIndex, event.target.value, 'sipyung')}
-              onBlur={() => finishAmountCellEdit(meta, 'sipyung', true)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  finishAmountCellEdit(meta, 'sipyung', true);
-                } else if (event.key === 'Escape') {
-                  event.preventDefault();
-                  finishAmountCellEdit(meta, 'sipyung', true);
-                }
-              }}
+              onBlur={() => finishAmountCellEdit(meta, 'sipyung')}
+              onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'sipyung')}
               placeholder={meta.sipyungDisplay}
               autoFocus
             />
@@ -5062,9 +4985,7 @@ export default function AgreementBoardWindow({
             <button
               type="button"
               className="excel-inline-edit-display"
-              onClick={() => startAmountCellEdit(meta, 'sipyung')}
-              onFocus={() => startAmountCellEdit(meta, 'sipyung')}
-              title="클릭하여 수정"
+              {...getInlineEditTriggerProps(meta, 'sipyung')}
             >
               {meta.sipyungDisplay || '-'}
             </button>
@@ -5181,16 +5102,8 @@ export default function AgreementBoardWindow({
                       ? String(meta.qualityInput)
                       : (meta.qualityScore != null ? String(meta.qualityScore) : '')}
                     onChange={(event) => handleQualityScoreChange(groupIndex, meta.slotIndex, event.target.value)}
-                    onBlur={() => finishAmountCellEdit(meta, 'quality', true)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        finishAmountCellEdit(meta, 'quality', true);
-                      } else if (event.key === 'Escape') {
-                        event.preventDefault();
-                        finishAmountCellEdit(meta, 'quality', true);
-                      }
-                    }}
+                    onBlur={() => finishAmountCellEdit(meta, 'quality')}
+                    onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'quality')}
                     placeholder={meta.qualityScore != null ? String(meta.qualityScore) : ''}
                     autoFocus
                   />
@@ -5198,9 +5111,7 @@ export default function AgreementBoardWindow({
                   <button
                     type="button"
                     className="excel-inline-edit-display"
-                    onClick={() => startAmountCellEdit(meta, 'quality')}
-                    onFocus={() => startAmountCellEdit(meta, 'quality')}
-                    title="클릭하여 수정"
+                    {...getInlineEditTriggerProps(meta, 'quality')}
                   >
                     {(() => {
                       const shown = meta.qualityInput !== undefined && meta.qualityInput !== null && meta.qualityInput !== ''
