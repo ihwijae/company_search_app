@@ -821,6 +821,7 @@ const getCandidateManagementScore = (candidate) => resolveCandidateManagementSco
   clampScore,
   managementScoreMax: MANAGEMENT_SCORE_MAX,
   managementScoreVersion: MANAGEMENT_SCORE_VERSION,
+  preferCurrentEvaluation: true,
 });
 
 const getCandidatePerformanceAmount = (candidate) => resolveCandidatePerformanceAmount(candidate, {
@@ -3966,8 +3967,8 @@ export default function AgreementBoardWindow({
         updatePerformanceCap,
         performanceCapVersion: PERFORMANCE_CAP_VERSION,
         managementScoreVersion: MANAGEMENT_SCORE_VERSION,
-        forceManagementEvaluation: isLh100To300,
-        forcePerformanceEvaluation: isLh100To300,
+        forceManagementEvaluation: true,
+        forcePerformanceEvaluation: true,
       });
 
       if (!canceled && updated > 0) {
@@ -3980,7 +3981,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, lhSimplePerformanceCoefficient, isLh100To300]);
+  }, [open, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, lhSimplePerformanceCoefficient]);
 
   const handleDragStart = (id, groupIndex, slotIndex) => (event) => {
     if (!id) return;

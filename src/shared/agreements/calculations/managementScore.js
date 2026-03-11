@@ -206,6 +206,7 @@ export function getCandidateManagementScore(candidate, {
   clampScore,
   managementScoreMax,
   managementScoreVersion,
+  preferCurrentEvaluation = false,
 } = {}) {
   if (!candidate || typeof candidate !== 'object') return null;
 
@@ -219,6 +220,16 @@ export function getCandidateManagementScore(candidate, {
     }
   }
 
+  if (
+    candidate._agreementManagementScore != null
+    && candidate._agreementManagementScoreVersion === managementScoreVersion
+  ) {
+    const cached = clampScore(toNumber(candidate._agreementManagementScore));
+    if (cached != null) return cached;
+  }
+
+  if (preferCurrentEvaluation) return null;
+
   const explicitPerfect = [
     candidate.managementIsPerfect,
     candidate.snapshot?.managementIsPerfect,
@@ -227,14 +238,6 @@ export function getCandidateManagementScore(candidate, {
     candidate._agreementManagementScore = managementScoreMax;
     candidate._agreementManagementScoreVersion = managementScoreVersion;
     return managementScoreMax;
-  }
-
-  if (
-    candidate._agreementManagementScore != null
-    && candidate._agreementManagementScoreVersion === managementScoreVersion
-  ) {
-    const cached = clampScore(toNumber(candidate._agreementManagementScore));
-    if (cached != null) return cached;
   }
 
   const directFields = [
