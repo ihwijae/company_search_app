@@ -281,6 +281,28 @@ const resolvePerformanceRules = (performanceRules, { fileType, estimatedAmount }
   return performanceRules;
 };
 
+const equalFlatArray = (left = [], right = []) => {
+  if (left === right) return true;
+  if (!Array.isArray(left) || !Array.isArray(right)) return false;
+  if (left.length !== right.length) return false;
+  for (let i = 0; i < left.length; i += 1) {
+    if (left[i] !== right[i]) return false;
+  }
+  return true;
+};
+
+const equalMatrix = (left = [], right = []) => {
+  if (left === right) return true;
+  if (!Array.isArray(left) || !Array.isArray(right)) return false;
+  if (left.length !== right.length) return false;
+  for (let i = 0; i < left.length; i += 1) {
+    const leftRow = Array.isArray(left[i]) ? left[i] : [];
+    const rightRow = Array.isArray(right[i]) ? right[i] : [];
+    if (!equalFlatArray(leftRow, rightRow)) return false;
+  }
+  return true;
+};
+
 const deriveManagementMax = (managementRules) => {
   const methods = Array.isArray(managementRules?.methods) ? managementRules.methods : [];
   const methodMaxes = methods
@@ -1994,16 +2016,17 @@ export default function AgreementBoardWindow({
 
   React.useEffect(() => {
     if (typeof onUpdateBoard !== 'function') return;
-    onUpdateBoard({
-      groupAssignments,
-      groupShares,
-      groupShareRawInputs,
-      groupCredibility,
-      groupTechnicianScores,
-      groupApprovals,
-      groupManagementBonus,
-      groupQualityScores,
-    });
+    const nextPayload = {};
+    if (!equalMatrix(groupAssignments, initialGroupAssignments)) nextPayload.groupAssignments = groupAssignments;
+    if (!equalMatrix(groupShares, initialGroupShares)) nextPayload.groupShares = groupShares;
+    if (!equalMatrix(groupShareRawInputs, initialGroupShareRawInputs)) nextPayload.groupShareRawInputs = groupShareRawInputs;
+    if (!equalMatrix(groupCredibility, initialGroupCredibility)) nextPayload.groupCredibility = groupCredibility;
+    if (!equalMatrix(groupTechnicianScores, initialGroupTechnicianScores)) nextPayload.groupTechnicianScores = groupTechnicianScores;
+    if (!equalFlatArray(groupApprovals, initialGroupApprovals)) nextPayload.groupApprovals = groupApprovals;
+    if (!equalFlatArray(groupManagementBonus, initialGroupManagementBonus)) nextPayload.groupManagementBonus = groupManagementBonus;
+    if (!equalMatrix(groupQualityScores, initialGroupQualityScores)) nextPayload.groupQualityScores = groupQualityScores;
+    if (Object.keys(nextPayload).length === 0) return;
+    onUpdateBoard(nextPayload);
   }, [
     groupAssignments,
     groupShares,
@@ -2013,6 +2036,14 @@ export default function AgreementBoardWindow({
     groupApprovals,
     groupManagementBonus,
     groupQualityScores,
+    initialGroupAssignments,
+    initialGroupShares,
+    initialGroupShareRawInputs,
+    initialGroupCredibility,
+    initialGroupTechnicianScores,
+    initialGroupApprovals,
+    initialGroupManagementBonus,
+    initialGroupQualityScores,
     onUpdateBoard,
   ]);
 
