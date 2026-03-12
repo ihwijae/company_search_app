@@ -3783,6 +3783,10 @@ export default function AgreementBoardWindow({
       setGroupSummaries((prev) => (Array.isArray(prev) && prev.length === 0 ? prev : []));
       return;
     }
+    if (isLh100To300) {
+      setGroupSummaries((prev) => (Array.isArray(prev) && prev.length === 0 ? prev : []));
+      return;
+    }
     const baseValue = parseAmountValue(baseAmount);
     const estimatedValue = parseAmountValue(estimatedAmount);
     const perfBase = isPpsUnder50
