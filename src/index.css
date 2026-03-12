@@ -2630,12 +2630,6 @@ body {
   padding: 34px 30px 38px;
 }
 
-.records-editor-page__dragbar {
-  height: 28px;
-  margin-bottom: 8px;
-  -webkit-app-region: drag;
-}
-
 .records-editor-page__header {
   display: flex;
   justify-content: space-between;
