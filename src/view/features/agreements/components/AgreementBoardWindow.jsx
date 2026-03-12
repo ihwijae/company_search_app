@@ -1626,6 +1626,7 @@ export default function AgreementBoardWindow({
   const candidateScoreCacheRef = React.useRef(new Map());
   const performanceCapRef = React.useRef(ownerPerformanceFallback);
   const lhSimpleGroupSummaryRunRef = React.useRef(0);
+  const lhSimpleGroupSummarySkipRef = React.useRef(false);
   const prevLhSimpleGroupSummariesRef = React.useRef([]);
   const getPerformanceCap = React.useCallback(() => (
     resolvePerformanceCap(performanceCapRef.current, ownerPerformanceFallback)
@@ -2026,6 +2027,7 @@ export default function AgreementBoardWindow({
   React.useEffect(() => {
     if (open && isLh100To300) return;
     lhSimpleGroupSummaryRunRef.current = 0;
+    lhSimpleGroupSummarySkipRef.current = false;
     prevLhSimpleGroupSummariesRef.current = [];
   }, [open, isLh100To300]);
 
@@ -3923,6 +3925,13 @@ export default function AgreementBoardWindow({
     };
 
     const run = async () => {
+      if (isLh100To300 && lhSimpleGroupSummarySkipRef.current) {
+        console.log('[LHSIMPLE][group-summary]', {
+          skipped: true,
+          run: lhSimpleGroupSummaryRunRef.current,
+        });
+        return;
+      }
       const results = await computeGroupSummaries({
         metrics,
         evaluatePerformanceScore,
@@ -3975,6 +3984,9 @@ export default function AgreementBoardWindow({
             changedGroups: changes,
           });
           prevLhSimpleGroupSummariesRef.current = results.map((item) => ({ ...item }));
+          if (lhSimpleGroupSummaryRunRef.current >= 3) {
+            lhSimpleGroupSummarySkipRef.current = true;
+          }
         }
         setGroupSummaries(results);
       }
