@@ -1188,6 +1188,16 @@ export default function AgreementBoardWindow({
   const showMiscScore = isLh100To300;
   const showConstructionExperience = isLHOwner && !isLh100To300;
   const placeCredibilityAfterQuality = isLh100To300;
+  const lh100DebugCountersRef = React.useRef({
+    defaults: 0,
+    sync: 0,
+    groupSummary: 0,
+    candidateEval: 0,
+  });
+  const logLh100To300Debug = React.useCallback((label, payload = {}) => {
+    if (!isLh100To300) return;
+    console.debug(`[LH100300][${label}]`, payload);
+  }, [isLh100To300]);
   const effectiveGroupManagementBonus = showManagementBonus ? groupManagementBonus : [];
   const technicianEnabled = isKrailOwner;
   const technicianEditable = technicianEnabled && String(fileType || '').toLowerCase() !== 'sobang';
@@ -1630,8 +1640,17 @@ export default function AgreementBoardWindow({
     const nextPayload = {};
     if (!String(performanceCoefficient || '').trim()) nextPayload.performanceCoefficient = '3';
     if (!String(regionAdjustmentCoefficient || '').trim()) nextPayload.regionAdjustmentCoefficient = '1';
-    if (Object.keys(nextPayload).length > 0) onUpdateBoard(nextPayload);
-  }, [isLh100To300, onUpdateBoard, performanceCoefficient, regionAdjustmentCoefficient]);
+    if (Object.keys(nextPayload).length > 0) {
+      lh100DebugCountersRef.current.defaults += 1;
+      logLh100To300Debug('effect:defaults', {
+        count: lh100DebugCountersRef.current.defaults,
+        performanceCoefficient,
+        regionAdjustmentCoefficient,
+        nextPayload,
+      });
+      onUpdateBoard(nextPayload);
+    }
+  }, [isLh100To300, logLh100To300Debug, onUpdateBoard, performanceCoefficient, regionAdjustmentCoefficient]);
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -1994,6 +2013,16 @@ export default function AgreementBoardWindow({
 
   React.useEffect(() => {
     if (typeof onUpdateBoard !== 'function') return;
+    if (isLh100To300) {
+      lh100DebugCountersRef.current.sync += 1;
+      logLh100To300Debug('effect:sync-board', {
+        count: lh100DebugCountersRef.current.sync,
+        assignmentsGroups: Array.isArray(groupAssignments) ? groupAssignments.length : 0,
+        participantSignature,
+        sharesGroups: Array.isArray(groupShares) ? groupShares.length : 0,
+        credibilityGroups: Array.isArray(groupCredibility) ? groupCredibility.length : 0,
+      });
+    }
     onUpdateBoard({
       groupAssignments,
       groupShares,
@@ -2013,6 +2042,9 @@ export default function AgreementBoardWindow({
     groupApprovals,
     groupManagementBonus,
     groupQualityScores,
+    isLh100To300,
+    logLh100To300Debug,
+    participantSignature,
     onUpdateBoard,
   ]);
 
@@ -3806,6 +3838,17 @@ export default function AgreementBoardWindow({
       setGroupSummaries([]);
       return;
     }
+    if (isLh100To300) {
+      lh100DebugCountersRef.current.groupSummary += 1;
+      logLh100To300Debug('effect:group-summary:start', {
+        count: lh100DebugCountersRef.current.groupSummary,
+        participantSignature,
+        selectedRangeKey: selectedRangeOption?.key || '',
+        performanceCoefficient: lhSimplePerformanceCoefficient,
+        regionAdjustmentCoefficient: lhRegionalAdjustmentCoefficient,
+        assignmentsGroups: Array.isArray(groupAssignments) ? groupAssignments.length : 0,
+      });
+    }
 
     const baseValue = parseAmountValue(baseAmount);
     const estimatedValue = parseAmountValue(estimatedAmount);
@@ -3910,7 +3953,15 @@ export default function AgreementBoardWindow({
         lh50To100BidScore: LH_50_TO_100_BID_SCORE,
         mois50To100BidScore: MOIS_50_TO_100_BID_SCORE,
       });
-      if (!canceled) setGroupSummaries(results);
+      if (!canceled) {
+        if (isLh100To300) {
+          logLh100To300Debug('effect:group-summary:done', {
+            count: lh100DebugCountersRef.current.groupSummary,
+            resultCount: Array.isArray(results) ? results.length : 0,
+          });
+        }
+        setGroupSummaries(results);
+      }
     };
 
     run();
@@ -3918,7 +3969,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantSignature, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryModeResolved, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, effectiveGroupManagementBonus, effectiveNetCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
+  }, [open, participantSignature, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryModeResolved, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, effectiveGroupManagementBonus, effectiveNetCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, logLh100To300Debug, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -3926,6 +3977,17 @@ export default function AgreementBoardWindow({
 
   React.useEffect(() => {
     if (!open) return;
+    if (isLh100To300) {
+      lh100DebugCountersRef.current.candidateEval += 1;
+      logLh100To300Debug('effect:candidate-eval:start', {
+        count: lh100DebugCountersRef.current.candidateEval,
+        participantSignature,
+        selectedRangeKey: selectedRangeOption?.key || '',
+        noticeDate,
+        baseAmount,
+        estimatedAmount,
+      });
+    }
     const evalApi = typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null;
     const baseValue = parseAmountValue(baseAmount);
     const estimatedValue = parseAmountValue(estimatedAmount);
@@ -4038,7 +4100,18 @@ export default function AgreementBoardWindow({
       });
 
       if (!canceled && updated > 0) {
+        if (isLh100To300) {
+          logLh100To300Debug('effect:candidate-eval:done', {
+            count: lh100DebugCountersRef.current.candidateEval,
+            updated,
+          });
+        }
         setCandidateMetricsVersion((prev) => prev + 1);
+      } else if (!canceled && isLh100To300) {
+        logLh100To300Debug('effect:candidate-eval:done', {
+          count: lh100DebugCountersRef.current.candidateEval,
+          updated: 0,
+        });
       }
     };
 
@@ -4047,7 +4120,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantSignature, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50]);
+  }, [open, participantSignature, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, isLh100To300, logLh100To300Debug]);
 
   const handleDragStart = (id, groupIndex, slotIndex) => (event) => {
     if (!id) return;
