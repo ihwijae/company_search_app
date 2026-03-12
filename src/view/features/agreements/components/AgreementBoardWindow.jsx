@@ -3116,21 +3116,23 @@ export default function AgreementBoardWindow({
   const participantMap = React.useMemo(() => {
     const map = new Map();
     representativeEntries.forEach((entry) => {
-      let mergedCandidate = entry.candidate;
+      const sourceCandidate = entry.candidate;
+      let mergedCandidate = sourceCandidate;
       if (entry.ruleSnapshot) {
         mergedCandidate = { ...entry.ruleSnapshot, ...mergedCandidate };
       }
       if (mergedCandidate?.snapshot && typeof mergedCandidate.snapshot === 'object') {
         mergedCandidate = { ...mergedCandidate.snapshot, ...mergedCandidate };
       }
-      map.set(entry.uid, { ...entry, candidate: mergedCandidate });
+      map.set(entry.uid, { ...entry, candidate: mergedCandidate, sourceCandidate });
     });
     regionEntries.forEach((entry) => {
-      let mergedCandidate = entry.candidate;
+      const sourceCandidate = entry.candidate;
+      let mergedCandidate = sourceCandidate;
       if (mergedCandidate?.snapshot && typeof mergedCandidate.snapshot === 'object') {
         mergedCandidate = { ...mergedCandidate.snapshot, ...mergedCandidate };
       }
-      map.set(entry.uid, { ...entry, candidate: mergedCandidate });
+      map.set(entry.uid, { ...entry, candidate: mergedCandidate, sourceCandidate });
     });
     if (process.env.NODE_ENV !== 'production') {
       try {
@@ -3148,7 +3150,7 @@ export default function AgreementBoardWindow({
     const uid = groupAssignments[groupIndex]?.[slotIndex];
     if (!uid) return null;
     const entry = participantMap.get(uid);
-    return entry?.candidate || null;
+    return entry?.sourceCandidate || entry?.candidate || null;
   }, [groupAssignments, participantMap]);
 
   const {
@@ -3949,7 +3951,7 @@ export default function AgreementBoardWindow({
     const ownerKey = String(ownerId || 'lh').toLowerCase();
     const performanceBaseReady = perfBase != null && perfBase > 0;
 
-    const entries = Array.from(participantMap.values()).map((entry) => entry?.candidate).filter(Boolean);
+    const entries = Array.from(participantMap.values()).map((entry) => entry?.sourceCandidate || entry?.candidate).filter(Boolean);
     if (entries.length === 0) return;
 
     if (process.env.NODE_ENV !== 'production') {

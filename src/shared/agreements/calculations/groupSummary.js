@@ -24,7 +24,7 @@ export function buildGroupSummaryMetrics({
       if (!uid) return null;
       const entry = participantMap.get(uid);
       if (!entry || !entry.candidate) return null;
-      const candidate = entry.candidate;
+      const candidate = entry.sourceCandidate || entry.candidate;
       const sharePercent = getSharePercent(groupIndex, slotIndex, candidate);
       const managementScore = getCandidateManagementScore(candidate);
       const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
