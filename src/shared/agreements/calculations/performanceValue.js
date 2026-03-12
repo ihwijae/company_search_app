@@ -1,5 +1,5 @@
-export const PERFORMANCE_DIRECT_KEYS = ['_performance5y', 'performance5y', 'perf5y', '_performance3y', 'performance3y', 'perf3y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적', '3년 실적', '3년실적', '3년 실적 합계', '최근3년실적', '최근3년실적합계', '3년실적금액', '최근3년시공실적'];
-export const PERFORMANCE_KEYWORDS = [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적'], ['3년실적', '최근3년', 'threeyear', 'performance3', '시공실적']];
+export const PERFORMANCE_DIRECT_KEYS = ['_performance5y', 'performance5y', 'perf5y', '5년 실적', '5년실적', '5년 실적 합계', '최근5년실적', '최근5년실적합계', '5년실적금액', '최근5년시공실적'];
+export const PERFORMANCE_KEYWORDS = [['5년실적', '최근5년', 'fiveyear', 'performance5', '시공실적']];
 
 const PERFORMANCE_3Y_DIRECT_KEYS = ['_performance3y', 'performance3y', 'perf3y', '3년 실적', '3년실적', '3년 실적 합계', '최근3년실적', '최근3년실적합계', '3년실적금액', '최근3년시공실적'];
 const PERFORMANCE_3Y_KEYWORDS = [['3년실적', '최근3년', 'threeyear', 'performance3', '시공실적']];
@@ -15,10 +15,6 @@ export function getCandidatePerformanceAmount(candidate, {
     candidate._performance5y,
     candidate.performance5y,
     candidate.perf5y,
-    candidate._performance3y,
-    candidate.performance3y,
-    candidate.perf3y,
-    candidate.performanceTotal,
     candidate['performance5y'],
     candidate['5년 실적'],
     candidate['5년실적'],
@@ -27,13 +23,6 @@ export function getCandidatePerformanceAmount(candidate, {
     candidate['최근5년실적합계'],
     candidate['5년실적금액'],
     candidate['최근5년시공실적'],
-    candidate['3년 실적'],
-    candidate['3년실적'],
-    candidate['3년 실적 합계'],
-    candidate['최근3년실적'],
-    candidate['최근3년실적합계'],
-    candidate['3년실적금액'],
-    candidate['최근3년시공실적'],
   ];
   for (const value of directCandidates) {
     const parsed = toNumber(value);

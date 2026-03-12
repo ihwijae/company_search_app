@@ -416,6 +416,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     },
     approvalColumn: 'B',
     summaryColumns: {
+      credibility: 'AF',
       netCostBonus: 'AG',
     },
     managementBonusColumn: 'O',
@@ -465,6 +466,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     },
     approvalColumn: 'B',
     summaryColumns: {
+      credibility: 'AF',
       netCostBonus: 'AG',
     },
     managementBonusColumn: 'O',
