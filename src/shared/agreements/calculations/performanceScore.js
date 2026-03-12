@@ -17,6 +17,7 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
   perfBase,
   estimatedValue,
   perfCoefficient,
+  roundRatioDigits,
   formulasEvaluate,
   updatePerformanceCap,
   getPerformanceCap,
@@ -63,6 +64,10 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
   const ratio = perfAmount / perfBase;
   if (!Number.isFinite(ratio)) return null;
   const cap = getPerformanceCap();
-  const fallback = Math.max(1, ratio * cap);
+  const ratioDigits = Number.isFinite(Number(roundRatioDigits)) ? Number(roundRatioDigits) : null;
+  const normalizedRatio = ratioDigits != null
+    ? Number(ratio.toFixed(ratioDigits))
+    : ratio;
+  const fallback = Math.max(1, normalizedRatio * cap);
   return clampScore(fallback, cap);
 }

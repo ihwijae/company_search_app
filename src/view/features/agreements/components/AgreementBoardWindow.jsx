@@ -3851,6 +3851,7 @@ export default function AgreementBoardWindow({
         perfBase,
         estimatedValue,
         perfCoefficient: lhSimplePerformanceCoefficient,
+        roundRatioDigits: isLh50To100 ? 2 : null,
         formulasEvaluate: typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null,
         updatePerformanceCap,
         getPerformanceCap,
