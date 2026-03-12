@@ -2484,6 +2484,14 @@ export default function AgreementBoardWindow({
     return Number.isFinite(parsed) ? parsed : 0;
   }, [groupCredibility]);
 
+  const getEffectiveCredibilityValue = React.useCallback((groupIndex, slotIndex, candidate) => {
+    if (!isLh100To300) return getCredibilityValue(groupIndex, slotIndex);
+    if (!candidate || !isDutyRegionCompany(candidate)) return 0;
+    const coefficientRaw = Number(lhRegionalAdjustmentCoefficient);
+    const coefficient = Number.isFinite(coefficientRaw) && coefficientRaw > 0 ? coefficientRaw : 1;
+    return 0.3 * (100 / (20 * coefficient));
+  }, [getCredibilityValue, isDutyRegionCompany, isLh100To300, lhRegionalAdjustmentCoefficient]);
+
   const getTechnicianValue = React.useCallback((groupIndex, slotIndex) => {
     const stored = groupTechnicianScores[groupIndex]?.[slotIndex];
     if (stored === undefined || stored === null || stored === '') return null;
@@ -3828,12 +3836,12 @@ export default function AgreementBoardWindow({
       technicianEditable,
       getTechnicianValue,
       credibilityEnabled,
-      credibilityMode: isLh100To300 ? 'regional-share' : 'manual',
+      credibilityMode: 'manual',
       regionalContributionTargetShare: 20,
       regionalContributionMaxScore: 0.3,
       regionalContributionAdjustmentCoefficient: lhRegionalAdjustmentCoefficient,
       isDutyRegionCompany,
-      getCredibilityValue,
+      getCredibilityValue: getEffectiveCredibilityValue,
       getCandidateSipyungAmount,
       entryModeResolved: entryModeForCalc,
       entryLimitValue,
@@ -3916,7 +3924,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantSignature, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryModeResolved, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, effectiveGroupManagementBonus, effectiveNetCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
+  }, [open, participantSignature, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryModeResolved, getSharePercent, getEffectiveCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, effectiveGroupManagementBonus, effectiveNetCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
