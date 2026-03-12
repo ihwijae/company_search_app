@@ -3800,6 +3800,8 @@ export default function AgreementBoardWindow({
     const estimatedValue = parseAmountValue(estimatedAmount);
     const perfBase = isPpsUnder50
       ? (baseValue != null && baseValue > 0 ? baseValue : null)
+      : isLh50To100
+        ? (baseValue != null && baseValue > 0 ? baseValue : null)
       : (ownerKeyUpper === 'EX'
         ? (baseValue != null && baseValue > 0 ? baseValue : (estimatedValue != null && estimatedValue > 0 ? estimatedValue : null))
         : ((estimatedValue != null && estimatedValue > 0)
@@ -3924,6 +3926,8 @@ export default function AgreementBoardWindow({
     const estimatedValue = parseAmountValue(estimatedAmount);
     const perfBase = isPpsUnder50
       ? (baseValue != null && baseValue > 0 ? baseValue : null)
+      : isLh50To100
+        ? (baseValue != null && baseValue > 0 ? baseValue : null)
       : ((estimatedValue != null && estimatedValue > 0)
         ? estimatedValue
         : (baseValue != null && baseValue > 0 ? baseValue : null));
