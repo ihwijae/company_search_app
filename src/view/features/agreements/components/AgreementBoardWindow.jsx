@@ -107,8 +107,6 @@ const PERFORMANCE_CAP_VERSION = 2;
 const MANAGEMENT_SCORE_VERSION = 3;
 const LH_QUALITY_DEFAULT_UNDER_100B = 85;
 const LH_QUALITY_DEFAULT_OVER_100B = 88;
-const LH_100_TO_300_PERFORMANCE_COEFFICIENT = 3;
-const LH_100_TO_300_REGION_ADJUSTMENT_COEFFICIENT = 1;
 const LH_UNDER_50_KEY = 'lh-under50';
 const LH_50_TO_100_KEY = 'lh-50to100';
 const LH_100_TO_300_KEY = 'lh-100to300';
@@ -1190,16 +1188,6 @@ export default function AgreementBoardWindow({
   const showMiscScore = isLh100To300;
   const showConstructionExperience = isLHOwner && !isLh100To300;
   const placeCredibilityAfterQuality = isLh100To300;
-  const lh100DebugCountersRef = React.useRef({
-    defaults: 0,
-    sync: 0,
-    groupSummary: 0,
-    candidateEval: 0,
-  });
-  const logLh100To300Debug = React.useCallback((label, payload = {}) => {
-    if (!isLh100To300) return;
-    console.debug(`[LH100300][${label}]`, payload);
-  }, [isLh100To300]);
   const effectiveGroupManagementBonus = showManagementBonus ? groupManagementBonus : [];
   const technicianEnabled = isKrailOwner;
   const technicianEditable = technicianEnabled && String(fileType || '').toLowerCase() !== 'sobang';
@@ -1442,6 +1430,20 @@ export default function AgreementBoardWindow({
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ adjustmentRate: nextValue });
   }, [onUpdateBoard]);
 
+  const handlePerformanceCoefficientChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard !== 'function') return;
+    const nextValue = String(event.target.value || '').replace(/[^0-9.]/g, '');
+    if ((nextValue.match(/\./g) || []).length > 1) return;
+    onUpdateBoard({ performanceCoefficient: nextValue });
+  }, [onUpdateBoard]);
+
+  const handleRegionAdjustmentCoefficientChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard !== 'function') return;
+    const nextValue = String(event.target.value || '').replace(/[^0-9.]/g, '');
+    if ((nextValue.match(/\./g) || []).length > 1) return;
+    onUpdateBoard({ regionAdjustmentCoefficient: nextValue });
+  }, [onUpdateBoard]);
+
   const handleBidRateChange = React.useCallback((event) => {
     const nextValue = event.target.value;
     setBidRateTouched(Boolean(String(nextValue || '').trim()));
@@ -1611,13 +1613,27 @@ export default function AgreementBoardWindow({
     notify({ type: 'info', message, portalTarget: portalContainer || null });
   }, [notify, portalContainer]);
 
-  const lhSimplePerformanceCoefficient = isLh100To300
-    ? LH_100_TO_300_PERFORMANCE_COEFFICIENT
-    : null;
+  const lhSimplePerformanceCoefficient = React.useMemo(() => {
+    if (!isLh100To300) return null;
+    const parsed = parseNumeric(performanceCoefficient);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 3;
+  }, [isLh100To300, parseNumeric, performanceCoefficient]);
 
-  const lhRegionalAdjustmentCoefficient = isLh100To300
-    ? LH_100_TO_300_REGION_ADJUSTMENT_COEFFICIENT
-    : null;
+  const lhRegionalAdjustmentCoefficient = React.useMemo(() => {
+    if (!isLh100To300) return null;
+    const parsed = parseNumeric(regionAdjustmentCoefficient);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  }, [isLh100To300, parseNumeric, regionAdjustmentCoefficient]);
+
+  React.useEffect(() => {
+    if (!isLh100To300 || typeof onUpdateBoard !== 'function') return;
+    const nextPayload = {};
+    if (!String(performanceCoefficient || '').trim()) nextPayload.performanceCoefficient = '3';
+    if (!String(regionAdjustmentCoefficient || '').trim()) nextPayload.regionAdjustmentCoefficient = '1';
+    if (Object.keys(nextPayload).length > 0) {
+      onUpdateBoard(nextPayload);
+    }
+  }, [isLh100To300, onUpdateBoard, performanceCoefficient, regionAdjustmentCoefficient]);
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -1734,8 +1750,8 @@ export default function AgreementBoardWindow({
     bidAmount,
     bidRate,
     adjustmentRate,
-    performanceCoefficient: isLh100To300 ? String(LH_100_TO_300_PERFORMANCE_COEFFICIENT) : performanceCoefficient,
-    regionAdjustmentCoefficient: isLh100To300 ? String(LH_100_TO_300_REGION_ADJUSTMENT_COEFFICIENT) : regionAdjustmentCoefficient,
+    performanceCoefficient,
+    regionAdjustmentCoefficient,
     perfectPerformanceAmount,
     dutyRegions,
     ratioBaseAmount: isPpsUnder50 ? (bidAmount || ratioBaseAmount || '') : (ratioBaseAmount || bidAmount || ''),
@@ -1756,7 +1772,6 @@ export default function AgreementBoardWindow({
     bidAmount,
     bidRate,
     adjustmentRate,
-    isLh100To300,
     performanceCoefficient,
     regionAdjustmentCoefficient,
     perfectPerformanceAmount,
@@ -1981,15 +1996,6 @@ export default function AgreementBoardWindow({
 
   React.useEffect(() => {
     if (typeof onUpdateBoard !== 'function') return;
-    if (isLh100To300) {
-      lh100DebugCountersRef.current.sync += 1;
-      logLh100To300Debug('effect:sync-board', {
-        count: lh100DebugCountersRef.current.sync,
-        assignmentsGroups: Array.isArray(groupAssignments) ? groupAssignments.length : 0,
-        sharesGroups: Array.isArray(groupShares) ? groupShares.length : 0,
-        credibilityGroups: Array.isArray(groupCredibility) ? groupCredibility.length : 0,
-      });
-    }
     onUpdateBoard({
       groupAssignments,
       groupShares,
@@ -2009,8 +2015,6 @@ export default function AgreementBoardWindow({
     groupApprovals,
     groupManagementBonus,
     groupQualityScores,
-    isLh100To300,
-    logLh100To300Debug,
     onUpdateBoard,
   ]);
 
@@ -3111,14 +3115,14 @@ export default function AgreementBoardWindow({
       if (mergedCandidate?.snapshot && typeof mergedCandidate.snapshot === 'object') {
         mergedCandidate = { ...mergedCandidate.snapshot, ...mergedCandidate };
       }
-      map.set(entry.uid, { ...entry, candidate: mergedCandidate, sourceCandidate: entry.candidate });
+      map.set(entry.uid, { ...entry, candidate: mergedCandidate });
     });
     regionEntries.forEach((entry) => {
       let mergedCandidate = entry.candidate;
       if (mergedCandidate?.snapshot && typeof mergedCandidate.snapshot === 'object') {
         mergedCandidate = { ...mergedCandidate.snapshot, ...mergedCandidate };
       }
-      map.set(entry.uid, { ...entry, candidate: mergedCandidate, sourceCandidate: entry.candidate });
+      map.set(entry.uid, { ...entry, candidate: mergedCandidate });
     });
     if (process.env.NODE_ENV !== 'production') {
       try {
@@ -3804,18 +3808,6 @@ export default function AgreementBoardWindow({
       setGroupSummaries((prev) => (Array.isArray(prev) && prev.length === 0 ? prev : []));
       return;
     }
-    if (isLh100To300) {
-      lh100DebugCountersRef.current.groupSummary += 1;
-      logLh100To300Debug('effect:group-summary:start', {
-        count: lh100DebugCountersRef.current.groupSummary,
-        participantSignature,
-        selectedRangeKey: selectedRangeOption?.key || '',
-        performanceCoefficient: lhSimplePerformanceCoefficient,
-        regionAdjustmentCoefficient: lhRegionalAdjustmentCoefficient,
-        assignmentsGroups: Array.isArray(groupAssignments) ? groupAssignments.length : 0,
-      });
-    }
-
     const baseValue = parseAmountValue(baseAmount);
     const estimatedValue = parseAmountValue(estimatedAmount);
     const perfBase = isPpsUnder50
@@ -3920,12 +3912,6 @@ export default function AgreementBoardWindow({
         mois50To100BidScore: MOIS_50_TO_100_BID_SCORE,
       });
       if (!canceled) {
-        if (isLh100To300) {
-          logLh100To300Debug('effect:group-summary:done', {
-            count: lh100DebugCountersRef.current.groupSummary,
-            resultCount: Array.isArray(results) ? results.length : 0,
-          });
-        }
         setGroupSummaries(results);
       }
     };
@@ -3935,7 +3921,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantSignature, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryModeResolved, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, effectiveGroupManagementBonus, effectiveNetCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, logLh100To300Debug, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
+  }, [open, participantSignature, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryModeResolved, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, effectiveGroupManagementBonus, effectiveNetCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
@@ -3943,17 +3929,6 @@ export default function AgreementBoardWindow({
 
   React.useEffect(() => {
     if (!open) return;
-    if (isLh100To300) {
-      lh100DebugCountersRef.current.candidateEval += 1;
-      logLh100To300Debug('effect:candidate-eval:start', {
-        count: lh100DebugCountersRef.current.candidateEval,
-        participantSignature,
-        selectedRangeKey: selectedRangeOption?.key || '',
-        noticeDate,
-        baseAmount,
-        estimatedAmount,
-      });
-    }
     const evalApi = typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null;
     const baseValue = parseAmountValue(baseAmount);
     const estimatedValue = parseAmountValue(estimatedAmount);
@@ -3967,9 +3942,7 @@ export default function AgreementBoardWindow({
     const ownerKey = String(ownerId || 'lh').toLowerCase();
     const performanceBaseReady = perfBase != null && perfBase > 0;
 
-    const entries = [...representativeEntries, ...regionEntries]
-      .map((entry) => entry?.candidate)
-      .filter(Boolean);
+    const entries = Array.from(participantMap.values()).map((entry) => entry?.candidate).filter(Boolean);
     if (entries.length === 0) return;
 
     if (process.env.NODE_ENV !== 'production') {
@@ -4063,23 +4036,12 @@ export default function AgreementBoardWindow({
         updatePerformanceCap,
         performanceCapVersion: PERFORMANCE_CAP_VERSION,
         managementScoreVersion: MANAGEMENT_SCORE_VERSION,
-        forceManagementEvaluation: !isLh100To300,
+        forceManagementEvaluation: true,
         forcePerformanceEvaluation: false,
       });
 
       if (!canceled && updated > 0) {
-        if (isLh100To300) {
-          logLh100To300Debug('effect:candidate-eval:done', {
-            count: lh100DebugCountersRef.current.candidateEval,
-            updated,
-          });
-        }
         setCandidateMetricsVersion((prev) => prev + 1);
-      } else if (!canceled && isLh100To300) {
-        logLh100To300Debug('effect:candidate-eval:done', {
-          count: lh100DebugCountersRef.current.candidateEval,
-          updated: 0,
-        });
       }
     };
 
@@ -4088,7 +4050,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantSignature, representativeEntries, regionEntries, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, isLh100To300, logLh100To300Debug]);
+  }, [open, participantSignature, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, isLh100To300]);
 
   const handleDragStart = (id, groupIndex, slotIndex) => (event) => {
     if (!id) return;
@@ -5688,6 +5650,17 @@ export default function AgreementBoardWindow({
                     placeholder="금액 입력 시 자동 계산"
                   />
                 </div>
+                {isLh100To300 && (
+                  <div className="excel-field-block size-xs">
+                    <span className="field-label">실적계수</span>
+                    <input
+                      className="input"
+                      value={performanceCoefficient || ''}
+                      onChange={handlePerformanceCoefficientChange}
+                      placeholder="기본 3"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="header-stack stack-notice">
@@ -5799,6 +5772,17 @@ export default function AgreementBoardWindow({
                     </div>
                   </div>
                 </div>
+                {isLh100To300 && (
+                  <div className="excel-field-block size-xs">
+                    <span className="field-label">지역업체 조정계수</span>
+                    <input
+                      className="input"
+                      value={regionAdjustmentCoefficient || ''}
+                      onChange={handleRegionAdjustmentCoefficientChange}
+                      placeholder="기본 1"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
