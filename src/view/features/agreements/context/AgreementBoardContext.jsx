@@ -591,6 +591,7 @@ const appendCandidates = React.useCallback((entries = []) => {
           ratioBaseAmount={boardState.ratioBaseAmount || ''}
           bidRate={boardState.bidRate || ''}
           adjustmentRate={boardState.adjustmentRate || ''}
+          netCostBonusOverride={boardState.netCostBonusOverride || ''}
           performanceCoefficient={boardState.performanceCoefficient || ''}
           regionAdjustmentCoefficient={boardState.regionAdjustmentCoefficient || ''}
           bidDeadline={boardState.bidDeadline || ''}
