@@ -4063,7 +4063,7 @@ export default function AgreementBoardWindow({
         updatePerformanceCap,
         performanceCapVersion: PERFORMANCE_CAP_VERSION,
         managementScoreVersion: MANAGEMENT_SCORE_VERSION,
-        forceManagementEvaluation: true,
+        forceManagementEvaluation: !isLh100To300,
         forcePerformanceEvaluation: false,
       });
 
