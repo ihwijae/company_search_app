@@ -5071,6 +5071,7 @@ export default function AgreementBoardWindow({
   const renderQualityRow = (group, groupIndex, slotMetas, qualityTotal, entryFailed) => {
     if (!isLHOwner) return null;
     const emphasizeQuality = selectedRangeOption?.key === LH_100_TO_300_KEY;
+    const highlightQualityStyle = { backgroundColor: '#fff3b0' };
     const qualityGuide = (selectedRangeOption?.key === LH_100_TO_300_KEY)
       ? '94점이상:4점/91점이상:3.5점/88점이상:3점/85점이상:2.5점/85점미만:2점'
       : (selectedRangeOption?.key === 'lh-50to100')
@@ -5102,17 +5103,26 @@ export default function AgreementBoardWindow({
           <td className="excel-cell collapsed-stub-cell share-stub" />
         ) : (
           slotMetas.map((meta) => (
-            <td
-              key={`quality-share-${groupIndex}-${meta.slotIndex}`}
-              className="excel-cell excel-share-cell quality-score"
-              style={emphasizeQuality ? { fontWeight: 800 } : undefined}
-            >
-              {meta.empty ? '' : (
+            (() => {
+              const qualityScoreValue = toNumber(meta.qualityScore);
+              const isAboveDefault = qualityScoreValue != null && qualityScoreValue > lhQualityDefault;
+              const cellStyle = {
+                ...(emphasizeQuality ? { fontWeight: 800 } : {}),
+                ...(isAboveDefault ? highlightQualityStyle : {}),
+              };
+              return (
+                <td
+                  key={`quality-share-${groupIndex}-${meta.slotIndex}`}
+                  className="excel-cell excel-share-cell quality-score"
+                  style={cellStyle}
+                >
+                  {meta.empty ? '' : (
                 isAmountCellEditing(meta, 'quality') ? (
                   <input
                     type="text"
                     inputMode="decimal"
                     className="excel-amount-input quality-score-input"
+                    style={isAboveDefault ? highlightQualityStyle : undefined}
                     value={meta.qualityInput !== undefined && meta.qualityInput !== null
                       ? String(meta.qualityInput)
                       : (meta.qualityScore != null ? String(meta.qualityScore) : '')}
@@ -5126,7 +5136,7 @@ export default function AgreementBoardWindow({
                   <button
                     type="button"
                     className="excel-inline-edit-display"
-                    style={emphasizeQuality ? { fontWeight: 800 } : undefined}
+                    style={cellStyle}
                     {...getInlineEditTriggerProps(meta, 'quality')}
                   >
                     {(() => {
@@ -5137,8 +5147,10 @@ export default function AgreementBoardWindow({
                     })()}
                   </button>
                 )
-              )}
-            </td>
+                  )}
+                </td>
+              );
+            })()
           ))
         )}
         <td className="excel-cell total-cell quality-total" style={emphasizeQuality ? { fontWeight: 800 } : undefined}>{qualityTotalDisplay}</td>
