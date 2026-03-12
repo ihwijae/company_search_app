@@ -87,6 +87,7 @@ export default function RecordsEditorPage() {
     <div className="records-editor-page">
       <div className="records-editor-page__backdrop" />
       <main className="records-editor-page__shell">
+        <div className="records-editor-page__dragbar" aria-hidden="true" />
         <header className="records-editor-page__header">
           <div className="records-editor-page__header-copy">
             <p className="records-editor-page__eyebrow">Record Studio</p>

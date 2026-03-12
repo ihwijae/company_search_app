@@ -245,14 +245,14 @@ export default function ProjectEditorForm({
   return (
     <form className="records-editor-form" onSubmit={handleSubmit}>
       <div className="records-editor-form__grid">
-        <label>
+        <label className="records-editor-form__field records-editor-form__field--company-type">
           법인 종류
           <select name="companyType" value={form.companyType} onChange={handleChange}>
             <option value="our">우리법인</option>
             <option value="misc">기타</option>
           </select>
         </label>
-        <label>
+        <label className="records-editor-form__field records-editor-form__field--company-name">
           법인명
           <select name="companyId" value={form.companyId} onChange={handleChange} required>
             <option value="">{form.companyType === 'misc' ? '기타 법인 선택' : '우리 법인 선택'}</option>
@@ -264,23 +264,23 @@ export default function ProjectEditorForm({
             <small className="records-editor-form__hint">기존 값: {initialProject.corporationName}</small>
           )}
         </label>
-        <label>
+        <label className="records-editor-form__field">
           공사명
           <input name="projectName" value={form.projectName} onChange={handleChange} required />
         </label>
-        <label>
+        <label className="records-editor-form__field">
           발주처
           <input name="clientName" value={form.clientName} onChange={handleChange} />
         </label>
-        <label>
+        <label className="records-editor-form__field">
           계약금액 (원)
           <input name="contractAmount" value={form.contractAmount} onChange={handleChange} placeholder="예: 128790000" />
         </label>
-        <label>
+        <label className="records-editor-form__field">
           공사기간 - 시작
           <input type="date" name="startDate" value={form.startDate} onChange={handleChange} />
         </label>
-        <label>
+        <label className="records-editor-form__field">
           공사기간 - 종료
           <input type="date" name="endDate" value={form.endDate} onChange={handleChange} />
         </label>

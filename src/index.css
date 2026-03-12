@@ -2630,13 +2630,18 @@ body {
   padding: 34px 30px 38px;
 }
 
+.records-editor-page__dragbar {
+  height: 28px;
+  margin-bottom: 8px;
+  -webkit-app-region: drag;
+}
+
 .records-editor-page__header {
   display: flex;
   justify-content: space-between;
   gap: 24px;
   align-items: flex-start;
   margin-bottom: 24px;
-  -webkit-app-region: drag;
 }
 
 .records-editor-page__header-copy {
@@ -2709,8 +2714,20 @@ body {
 
 .records-editor-form__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(180px, 0.8fr) minmax(340px, 1.2fr);
   gap: 18px 20px;
+}
+
+.records-editor-form__field {
+  min-width: 0;
+}
+
+.records-editor-form__field--company-type {
+  grid-column: 1;
+}
+
+.records-editor-form__field--company-name {
+  grid-column: 2;
 }
 
 .records-editor-form label {
@@ -2730,8 +2747,11 @@ body {
   background: rgba(255, 255, 255, 0.92);
   padding: 13px 16px;
   font-size: 14px;
+  line-height: 1.45;
   color: #0f172a;
   min-width: 0;
+  min-height: 48px;
+  box-sizing: border-box;
 }
 
 .records-editor-form select {
@@ -2934,6 +2954,11 @@ body {
 
   .records-editor-form__grid {
     grid-template-columns: 1fr;
+  }
+
+  .records-editor-form__field--company-type,
+  .records-editor-form__field--company-name {
+    grid-column: auto;
   }
 
   .records-editor-form__panel-head {
