@@ -4,7 +4,6 @@ import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import { recordsClient } from '../../../../shared/recordsClient.js';
 import sanitizeHtml from '../../../../shared/sanitizeHtml.js';
-import ProjectModal from '../components/ProjectModal.jsx';
 
 const formatCurrency = (value) => {
   if (value === null || value === undefined) return '-';
@@ -134,8 +133,6 @@ function CategoryTree({ items, activeId, onSelect }) {
   );
 }
 
-const DEFAULT_MODAL_STATE = { open: false, mode: 'create', project: null, defaultCompanyId: '', defaultCompanyType: 'our' };
-
 export default function RecordsPage() {
   const [activeMenu, setActiveMenu] = React.useState('records');
   const [projects, setProjects] = React.useState([]);
@@ -145,7 +142,6 @@ export default function RecordsPage() {
   const [filters, setFilters] = React.useState({ keyword: '', companyType: 'our', companyId: '', categoryId: null });
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
-  const [modalState, setModalState] = React.useState(DEFAULT_MODAL_STATE);
   const [selectedProjectId, setSelectedProjectId] = React.useState(null);
   const [companyDialog, setCompanyDialog] = React.useState({ open: false, name: '', isMisc: false, saving: false, error: '' });
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -230,6 +226,25 @@ export default function RecordsPage() {
     fetchProjects();
   }, [fetchProjects]);
 
+  React.useEffect(() => {
+    const handleFocus = () => {
+      fetchProjects();
+      fetchTaxonomies();
+    };
+    const cleanup = recordsClient.onProjectSaved((payload) => {
+      if (payload?.projectId) {
+        pendingSelectRef.current = payload.projectId;
+        setSelectedProjectId(payload.projectId);
+      }
+      fetchProjects();
+    });
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      if (typeof cleanup === 'function') cleanup();
+    };
+  }, [fetchProjects, fetchTaxonomies]);
+
   const handleMenuSelect = (key) => {
     if (key === 'records') {
       setActiveMenu('records');
@@ -271,23 +286,6 @@ export default function RecordsPage() {
   React.useEffect(() => {
     setCurrentPage(1);
   }, [filters.keyword, filters.companyId, filters.categoryId, filters.companyType]);
-
-  const closeModal = React.useCallback(() => {
-    setModalState({
-      ...DEFAULT_MODAL_STATE,
-      defaultCompanyId: filters.companyId || '',
-      defaultCompanyType: filters.companyType || 'our',
-    });
-  }, [filters.companyId, filters.companyType]);
-
-  const handleProjectSaved = React.useCallback((project) => {
-    if (project?.id) {
-      pendingSelectRef.current = project.id;
-      setSelectedProjectId(project.id);
-    }
-    closeModal();
-    fetchProjects();
-  }, [fetchProjects, closeModal]);
 
   const handleOpenAttachment = React.useCallback(async (projectId, attachmentId) => {
     try {
@@ -457,32 +455,25 @@ export default function RecordsPage() {
   }, []);
 
   const openCreateModal = React.useCallback(() => {
-    setModalState({
-      open: true,
+    recordsClient.openEditorWindow({
       mode: 'create',
-      project: null,
       defaultCompanyId: filters.companyId || '',
       defaultCompanyType: filters.companyType || 'our',
+    }).catch((err) => {
+      alert(err?.message || '실적 입력 창을 열 수 없습니다.');
     });
   }, [filters.companyId, filters.companyType]);
 
   const openEditModal = React.useCallback((project) => {
     setSelectedProjectId(project.id);
-    setModalState({
-      open: true,
+    recordsClient.openEditorWindow({
       mode: 'edit',
-      project,
-      defaultCompanyId: '',
+      projectId: project?.id,
       defaultCompanyType: project?.primaryCompanyIsMisc ? 'misc' : 'our',
+    }).catch((err) => {
+      alert(err?.message || '실적 수정 창을 열 수 없습니다.');
     });
   }, []);
-
-  const handleAttachmentRemoved = React.useCallback((projectId) => {
-    if (!projectId) return;
-    pendingSelectRef.current = projectId;
-    setSelectedProjectId(projectId);
-    fetchProjects();
-  }, [fetchProjects]);
 
   const handleExportDatabase = React.useCallback(async () => {
     try {
@@ -757,19 +748,6 @@ export default function RecordsPage() {
           </div>
         </div>
       </div>
-
-      <ProjectModal
-        open={modalState.open}
-        mode={modalState.mode}
-        initialProject={modalState.project}
-        onClose={closeModal}
-        onSaved={handleProjectSaved}
-        companies={companies}
-        categories={flatCategories}
-        defaultCompanyId={modalState.mode === 'create' ? (modalState.defaultCompanyId || filters.companyId || '') : ''}
-        defaultCompanyType={modalState.mode === 'create' ? (modalState.defaultCompanyType || filters.companyType || 'our') : (modalState.project?.primaryCompanyIsMisc ? 'misc' : 'our')}
-        onAttachmentRemoved={handleAttachmentRemoved}
-      />
 
       {companyDialog.open && (
         <div className="records-dialog-overlay" role="presentation" onClick={closeCompanyDialog}>

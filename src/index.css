@@ -2601,6 +2601,358 @@ body {
   padding-top: 8px;
 }
 
+.records-editor-page {
+  min-height: 100vh;
+  position: relative;
+  background:
+    radial-gradient(circle at top left, rgba(255, 206, 128, 0.42), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(28, 126, 214, 0.18), transparent 28%),
+    linear-gradient(135deg, #f4eddc 0%, #f8f5ee 52%, #efe7d4 100%);
+  color: #1f2937;
+}
+
+.records-editor-page__backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.65), transparent 90%);
+  pointer-events: none;
+}
+
+.records-editor-page__shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 34px 30px 38px;
+}
+
+.records-editor-page__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.records-editor-page__eyebrow {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #9a3412;
+  font-weight: 700;
+}
+
+.records-editor-page__header h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.1;
+  color: #0f172a;
+}
+
+.records-editor-page__description {
+  max-width: 720px;
+  margin: 12px 0 0;
+  color: #475569;
+  line-height: 1.65;
+}
+
+.records-editor-page__close {
+  flex: 0 0 auto;
+  margin-top: 8px;
+}
+
+.records-editor-page__content {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.records-editor-page__sidebar {
+  display: grid;
+  gap: 14px;
+}
+
+.records-editor-page__info-card {
+  background: rgba(19, 52, 59, 0.92);
+  color: #f8fafc;
+  border-radius: 22px;
+  padding: 18px 18px 20px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+}
+
+.records-editor-page__info-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.68);
+  margin-bottom: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.records-editor-page__info-value {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.records-editor-page__form-wrap {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 30px;
+  box-shadow: 0 20px 50px rgba(148, 163, 184, 0.18);
+  backdrop-filter: blur(10px);
+  padding: 22px;
+}
+
+.records-editor-page__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #fff8eb, #eef6ff);
+  color: #334155;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.records-editor-page__status.is-error {
+  color: #b91c1c;
+  background: linear-gradient(135deg, #fff1f2, #fff7ed);
+}
+
+.records-editor-form {
+  display: grid;
+  gap: 18px;
+}
+
+.records-editor-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.records-editor-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.records-editor-form input,
+.records-editor-form select {
+  width: 100%;
+  border: 1px solid #d6d3d1;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.records-editor-form input:focus,
+.records-editor-form select:focus {
+  outline: none;
+  border-color: #ea580c;
+  box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.18);
+}
+
+.records-editor-form__hint {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.records-editor-form__panel {
+  border-radius: 22px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(255, 250, 240, 0.9), rgba(255, 255, 255, 0.92));
+  border: 1px solid rgba(249, 115, 22, 0.14);
+}
+
+.records-editor-form__panel-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.records-editor-form__panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.records-editor-form .ql-toolbar.ql-snow,
+.records-editor-form .ql-container.ql-snow {
+  border-color: #e7dcc7;
+}
+
+.records-editor-form .ql-toolbar.ql-snow {
+  border-radius: 14px 14px 0 0;
+  background: #fffdf8;
+}
+
+.records-editor-form .ql-container.ql-snow {
+  border-radius: 0 0 14px 14px;
+  min-height: 180px;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.records-editor-form .ql-editor {
+  min-height: 180px;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.records-editor-form__category-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.records-editor-form__category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #f3d6b3;
+  color: #7c2d12;
+  font-weight: 600;
+}
+
+.records-editor-form__category-chip input {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.records-editor-form__upload {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.records-editor-form__upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.records-editor-form__attachment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.records-editor-form__attachment-card {
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.records-editor-form__attachment-card.is-new {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.records-editor-form__attachment-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.records-editor-form__attachment-name {
+  font-size: 14px;
+  color: #0f172a;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.records-editor-form__attachment-remove {
+  justify-self: start;
+}
+
+.records-editor-form__attachment-empty {
+  border: 1px dashed #cbd5e1;
+  border-radius: 18px;
+  padding: 24px;
+  text-align: center;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.records-editor-form__error {
+  margin: 0;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.records-editor-form__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 1080px) {
+  .records-editor-page__content {
+    grid-template-columns: 1fr;
+  }
+
+  .records-editor-page__sidebar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .records-editor-page__shell {
+    padding: 22px 16px 28px;
+  }
+
+  .records-editor-page__header {
+    flex-direction: column;
+  }
+
+  .records-editor-page__sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .records-editor-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .records-editor-form__panel-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 .entry-amount-placeholder {
   display: inline-flex;
   align-items: center;

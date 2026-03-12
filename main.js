@@ -44,6 +44,7 @@ let formulasDefaultsCache = null;
 let recordsDbInstance = null;
 let recordsServiceInstance = null;
 let excelHelperWindow = null;
+let recordsEditorWindow = null;
 const excelAutomation = new ExcelAutomationService();
 const loadMergedFormulasCached = () => {
   if (formulasCache) return formulasCache;
@@ -1018,6 +1019,66 @@ const saveWindowStateDebounced = debounce(() => {
   if (mainWindowRef) saveWindowState(mainWindowRef);
 }, 400);
 
+function buildRecordsEditorHash(payload = {}) {
+  const params = new URLSearchParams();
+  const mode = payload.mode === 'edit' ? 'edit' : 'create';
+  params.set('mode', mode);
+  if (payload.projectId) params.set('projectId', String(payload.projectId));
+  if (payload.defaultCompanyId) params.set('defaultCompanyId', String(payload.defaultCompanyId));
+  if (payload.defaultCompanyType) params.set('defaultCompanyType', String(payload.defaultCompanyType));
+  const query = params.toString();
+  return query ? `/records-editor?${query}` : '/records-editor';
+}
+
+function createRecordsEditorWindow(payload = {}) {
+  const routeHash = buildRecordsEditorHash(payload);
+  if (recordsEditorWindow && !recordsEditorWindow.isDestroyed()) {
+    if (isDev) {
+      recordsEditorWindow.loadURL(`http://localhost:5173/#${routeHash}`);
+    } else {
+      recordsEditorWindow.loadFile(path.join(__dirname, 'dist', 'index.html'), { hash: routeHash });
+    }
+    recordsEditorWindow.focus();
+    return recordsEditorWindow;
+  }
+
+  const editorWindow = new BrowserWindow({
+    width: 1180,
+    height: 920,
+    minWidth: 980,
+    minHeight: 760,
+    backgroundColor: '#f3efe5',
+    title: '실적 입력',
+    icon: APP_ICON_PATH || undefined,
+    autoHideMenuBar: true,
+    showInTaskbar: true,
+    parent: mainWindowRef || undefined,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#ece3cf',
+      symbolColor: '#1b4332',
+      height: 32,
+    },
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+
+  recordsEditorWindow = editorWindow;
+  editorWindow.on('closed', () => {
+    recordsEditorWindow = null;
+  });
+
+  if (isDev) {
+    editorWindow.loadURL(`http://localhost:5173/#${routeHash}`);
+  } else {
+    editorWindow.loadFile(path.join(__dirname, 'dist', 'index.html'), { hash: routeHash });
+  }
+
+  try { editorWindow.setTitle('실적 입력'); } catch {}
+  return editorWindow;
+}
+
 function createWindow() {
   const prevState = loadWindowState();
   const bounds = clampBoundsToDisplay(prevState);
@@ -1136,6 +1197,22 @@ app.whenReady().then(async () => {
 
   console.log('[MAIN] 초기화 완료. 윈도우 생성...');
   createWindow();
+
+  try { ipcMain.removeHandler('records:open-editor-window'); } catch {}
+  ipcMain.handle('records:open-editor-window', async (_event, payload) => {
+    createRecordsEditorWindow(payload || {});
+    return { opened: true };
+  });
+
+  ipcMain.on('records:project-saved', (event, payload) => {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win || win.isDestroyed()) return;
+      if (win.webContents === event.sender) return;
+      try {
+        win.webContents.send('records:project-saved', payload || {});
+      } catch {}
+    });
+  });
 });
 
 app.on('activate', () => {

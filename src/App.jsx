@@ -6,6 +6,7 @@ import AgreementBoardPage from './view/features/agreements/pages/AgreementBoardP
 import RegionSearchPage from './view/features/agreements/pages/RegionSearchPage.jsx';
 import SettingsPage from './view/features/settings/pages/SettingsPage.jsx';
 import RecordsPage from './view/features/records/pages/RecordsPage.jsx';
+import RecordsEditorPage from './view/features/records/pages/RecordsEditorPage.jsx';
 import MailAutomationPage from './view/features/mail/pages/MailAutomationPage.jsx';
 import AutoAgreementPage from './view/features/auto/pages/AutoAgreementPage.jsx';
 import KakaoSendPage from './view/features/kakao/pages/KakaoSendPage.jsx';
@@ -31,7 +32,8 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  const path = (route.replace('#', '') || '/search');
+  const normalizedRoute = route.replace('#', '') || '/search';
+  const [path] = normalizedRoute.split('?');
 
   React.useEffect(() => {
     if (path !== '/excel-helper') {
@@ -76,6 +78,9 @@ export default function App() {
       break;
     case '/records':
       Screen = RecordsPage;
+      break;
+    case '/records-editor':
+      Screen = RecordsEditorPage;
       break;
     case '/mail':
       Screen = MailAutomationPage;

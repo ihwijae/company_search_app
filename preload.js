@@ -89,6 +89,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     createProject: (payload) => ipcRenderer.invoke('records:create-project', payload),
     updateProject: (id, data) => ipcRenderer.invoke('records:update-project', { id, data }),
     deleteProject: (id) => ipcRenderer.invoke('records:delete-project', { id }),
+    openEditorWindow: (payload) => ipcRenderer.invoke('records:open-editor-window', payload),
+    notifyProjectSaved: (payload) => ipcRenderer.send('records:project-saved', payload),
+    onProjectSaved: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('records:project-saved', listener);
+      return () => ipcRenderer.removeListener('records:project-saved', listener);
+    },
     removeAttachment: (projectId, attachmentId) => ipcRenderer.invoke('records:remove-attachment', { projectId, attachmentId }),
     addAttachments: (projectId, attachments) => ipcRenderer.invoke('records:add-attachments', { projectId, attachments }),
     listCompanies: (options) => ipcRenderer.invoke('records:list-companies', options),

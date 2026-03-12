@@ -20,12 +20,23 @@ const wrapInvoke = async (method, ...args) => {
   throw error;
 };
 
+const wrapEvent = (method, ...args) => {
+  const api = ensureApi();
+  if (!api || typeof api[method] !== 'function') {
+    throw new Error(`records API method ${method} is not available`);
+  }
+  return api[method](...args);
+};
+
 export const recordsClient = {
   listProjects: (filters) => wrapInvoke('listProjects', filters),
   getProject: (id) => wrapInvoke('getProject', id),
   createProject: (payload) => wrapInvoke('createProject', payload),
   updateProject: (id, data) => wrapInvoke('updateProject', id, data),
   deleteProject: (id) => wrapInvoke('deleteProject', id),
+  openEditorWindow: (payload) => wrapInvoke('openEditorWindow', payload),
+  notifyProjectSaved: (payload) => wrapEvent('notifyProjectSaved', payload),
+  onProjectSaved: (callback) => wrapEvent('onProjectSaved', callback),
   removeAttachment: (projectId, attachmentId) => wrapInvoke('removeAttachment', projectId, attachmentId),
   addAttachments: (projectId, attachments) => wrapInvoke('addAttachments', projectId, attachments),
   listCompanies: (options) => wrapInvoke('listCompanies', options),
