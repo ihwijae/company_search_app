@@ -3533,6 +3533,7 @@ export default function AgreementBoardWindow({
         : (bidAmountValue != null ? bidAmountValue : null);
       const includePossibleShare = (ownerKeyUpper === 'PPS' && rangeId === PPS_UNDER_50_KEY)
         || (ownerKeyUpper === 'LH' && rangeId === LH_UNDER_50_KEY)
+        || (ownerKeyUpper === 'LH' && rangeId === LH_50_TO_100_KEY)
         || (ownerKeyUpper === 'MOIS' && (rangeId === MOIS_30_TO_50_KEY || rangeId === MOIS_50_TO_100_KEY));
       const dutyRateNumber = parseNumeric(regionDutyRate);
       const dutySummaryText = buildDutySummary(dutyRegions, dutyRateNumber, safeParticipantLimit);
