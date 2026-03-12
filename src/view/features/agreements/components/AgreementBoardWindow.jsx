@@ -2542,6 +2542,8 @@ export default function AgreementBoardWindow({
     const candidateId = candidate.id;
     const candidateBiz = normalizeBizNo(getBizNo(candidate));
     const candidateName = String(getCompanyName(candidate) || '').trim();
+    const candidateNameKey = sanitizeCompanyName(candidateName).toLowerCase();
+    let changed = false;
     const nextCandidates = (candidates || []).map((item) => {
       if (!item || typeof item !== 'object') return item;
       let matched = false;
@@ -2552,10 +2554,18 @@ export default function AgreementBoardWindow({
       }
       if (!matched && candidateName) {
         const itemName = String(getCompanyName(item) || '').trim();
-        if (itemName && itemName === candidateName) matched = true;
+        const itemNameKey = sanitizeCompanyName(itemName).toLowerCase();
+        if (itemName && (itemName === candidateName || (candidateNameKey && itemNameKey === candidateNameKey))) {
+          matched = true;
+        }
       }
-      return matched ? { ...item, ...updates } : item;
+      if (!matched) return item;
+      const merged = { ...item, ...updates };
+      const hasDiff = Object.keys(updates || {}).some((key) => merged[key] !== item[key]);
+      if (hasDiff) changed = true;
+      return hasDiff ? merged : item;
     });
+    if (!changed) return;
     onUpdateBoard({ candidates: nextCandidates });
   }, [candidates, onUpdateBoard]);
 
@@ -5056,6 +5066,7 @@ export default function AgreementBoardWindow({
 
   const renderQualityRow = (group, groupIndex, slotMetas, qualityTotal, entryFailed) => {
     if (!isLHOwner) return null;
+    const emphasizeQuality = selectedRangeOption?.key === LH_100_TO_300_KEY;
     const qualityGuide = (selectedRangeOption?.key === LH_100_TO_300_KEY)
       ? '94점이상:4점/91점이상:3.5점/88점이상:3점/85점이상:2.5점/85점미만:2점'
       : (selectedRangeOption?.key === 'lh-50to100')
@@ -5079,7 +5090,7 @@ export default function AgreementBoardWindow({
     return (
       <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
         <td className="excel-cell quality-empty" />
-        <td className="excel-cell order-cell quality-label">품질</td>
+        <td className="excel-cell order-cell quality-label" style={emphasizeQuality ? { fontWeight: 800 } : undefined}>품질</td>
         <td className="excel-cell quality-guide" colSpan={guideSpan}>
           {qualityGuide}
         </td>
@@ -5090,6 +5101,7 @@ export default function AgreementBoardWindow({
             <td
               key={`quality-share-${groupIndex}-${meta.slotIndex}`}
               className="excel-cell excel-share-cell quality-score"
+              style={emphasizeQuality ? { fontWeight: 800 } : undefined}
             >
               {meta.empty ? '' : (
                 isAmountCellEditing(meta, 'quality') ? (
@@ -5110,6 +5122,7 @@ export default function AgreementBoardWindow({
                   <button
                     type="button"
                     className="excel-inline-edit-display"
+                    style={emphasizeQuality ? { fontWeight: 800 } : undefined}
                     {...getInlineEditTriggerProps(meta, 'quality')}
                   >
                     {(() => {
@@ -5124,7 +5137,7 @@ export default function AgreementBoardWindow({
             </td>
           ))
         )}
-        <td className="excel-cell total-cell quality-total">{qualityTotalDisplay}</td>
+        <td className="excel-cell total-cell quality-total" style={emphasizeQuality ? { fontWeight: 800 } : undefined}>{qualityTotalDisplay}</td>
         {fillerSpan > 0 && (
           <td className="excel-cell quality-empty" colSpan={fillerSpan} />
         )}
@@ -5173,18 +5186,20 @@ export default function AgreementBoardWindow({
       : null;
     const performanceScoreForTotal = summaryInfo?.performanceScore;
     const miscScore = showMiscScore ? 17 : null;
-    const lhSimpleTotalScore = showMiscScore
-      ? Math.min(
-        40,
+    const lhSimpleRawTotalScore = showMiscScore
+      ? (
         (toNumber(summaryInfo?.managementScore) || 0)
           + (toNumber(summaryInfo?.performanceScore) || 0)
           + (toNumber(qualityPoints) || 0)
           + (toNumber(summaryInfo?.credibilityScore) || 0)
-          + (miscScore || 0),
+          + (miscScore || 0)
       )
       : null;
-    const totalScore = lhSimpleTotalScore != null
-      ? lhSimpleTotalScore
+    const lhSimpleCappedTotalScore = lhSimpleRawTotalScore != null
+      ? Math.min(40, lhSimpleRawTotalScore)
+      : null;
+    const totalScore = lhSimpleCappedTotalScore != null
+      ? lhSimpleCappedTotalScore
       : (baseTotalScore != null
         ? (isLHOwner
           ? (showConstructionExperience
@@ -5192,7 +5207,7 @@ export default function AgreementBoardWindow({
             : baseTotalScore)
           : baseTotalScore)
         : null);
-    const totalMax = lhSimpleTotalScore != null
+    const totalMax = lhSimpleCappedTotalScore != null
       ? 40
       : (baseTotalMax != null
         ? (isLHOwner
@@ -5259,7 +5274,10 @@ export default function AgreementBoardWindow({
     const netCostBonusDisplay = showNetCostBonus && summaryInfo?.netCostBonusScore != null
       ? formatScore(summaryInfo.netCostBonusScore, resolveSummaryDigits('netCost'))
       : (showNetCostBonus ? '0' : null);
-    const totalScoreDisplay = totalScore != null ? formatScore(totalScore, resolveSummaryDigits('total')) : '-';
+    const totalScoreDisplayValue = isLh100To300 ? lhSimpleRawTotalScore : totalScore;
+    const totalScoreDisplay = totalScoreDisplayValue != null
+      ? formatScore(totalScoreDisplayValue, resolveSummaryDigits('total'))
+      : '-';
     const entryDisabled = entryModeResolved === 'none';
     const sipyungValue = entryModeResolved === 'sum'
       ? summaryInfo?.sipyungSum
@@ -5399,6 +5417,7 @@ export default function AgreementBoardWindow({
           <td
             className={`excel-cell total-cell quality-points-cell ${qualityPointsState}`}
             rowSpan={rightRowSpan}
+            style={isLh100To300 ? { fontWeight: 800 } : undefined}
           >
             {qualityPointsDisplay}
           </td>
