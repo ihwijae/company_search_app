@@ -425,11 +425,11 @@ const appendCandidates = React.useCallback((entries = []) => {
         const replaceIndex = existingIndex.get(item.id);
         if (replaceIndex !== undefined) {
           const prevItem = next[replaceIndex];
+          const listedFlag = item[AGREEMENT_CANDIDATE_LISTED_FLAG] ?? prevItem?.[AGREEMENT_CANDIDATE_LISTED_FLAG];
           const merged = {
-            ...prevItem,
             ...item,
-            id: prevItem?.id || item.id,
-            snapshot: item.snapshot || prevItem?.snapshot,
+            id: item.id || prevItem?.id,
+            [AGREEMENT_CANDIDATE_LISTED_FLAG]: listedFlag,
             _agreementManagementScore: undefined,
             _agreementManagementScoreVersion: undefined,
             _agreementPerformanceScore: undefined,
