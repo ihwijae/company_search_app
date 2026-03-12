@@ -281,6 +281,14 @@ const resolvePerformanceRules = (performanceRules, { fileType, estimatedAmount }
   return performanceRules;
 };
 
+const safeSerialize = (value) => {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
 const deriveManagementMax = (managementRules) => {
   const methods = Array.isArray(managementRules?.methods) ? managementRules.methods : [];
   const methodMaxes = methods
@@ -3288,6 +3296,8 @@ export default function AgreementBoardWindow({
     const regionIds = regionEntries.map((entry) => entry?.candidate?.id || entry?.uid || 'region');
     return [...repIds, '|', ...regionIds].join('|');
   }, [representativeEntries, regionEntries]);
+  const groupSummaryEvalKeyRef = React.useRef('');
+  const candidateScoreEvalKeyRef = React.useRef('');
 
   React.useEffect(() => {
     candidateScoreCacheRef.current.clear();
@@ -3813,6 +3823,7 @@ export default function AgreementBoardWindow({
 
   React.useEffect(() => {
     if (!open) {
+      groupSummaryEvalKeyRef.current = '';
       setGroupSummaries([]);
       return;
     }
@@ -3836,6 +3847,38 @@ export default function AgreementBoardWindow({
     const performanceFallback = ownerPerformanceFallback;
     const derivedManagementMax = managementMax;
     const derivedPerformanceMax = derivedMaxScores.performanceMax ?? performanceFallback;
+    const groupSummaryEvalKey = safeSerialize({
+      participantSignature,
+      groupAssignments,
+      groupShares,
+      groupCredibility,
+      groupTechnicianScores,
+      ownerId,
+      rangeKey: selectedRangeOption?.key || '',
+      estimatedAmount,
+      baseAmount,
+      entryAmount,
+      entryMode: entryModeResolved,
+      candidateMetricsVersion,
+      lhRegionalAdjustmentCoefficient,
+      lhSimplePerformanceCoefficient,
+      effectiveGroupManagementBonus,
+      effectiveNetCostBonusScore,
+      flags: {
+        credibilityEnabled,
+        ownerCredibilityMax,
+        isMois30To50,
+        isMois50To100,
+        isEx50To100,
+        isKrail50To100,
+        isLh50To100,
+        isLh100To300,
+        technicianEnabled,
+        technicianEditable,
+      },
+    });
+    if (groupSummaryEvalKeyRef.current === groupSummaryEvalKey) return;
+    groupSummaryEvalKeyRef.current = groupSummaryEvalKey;
 
     const metrics = buildGroupSummaryMetrics({
       groupAssignments,
@@ -3928,14 +3971,17 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryMode, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, effectiveGroupManagementBonus, effectiveNetCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
+  }, [open, participantSignature, groupAssignments, groupShares, groupCredibility, groupTechnicianScores, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, estimatedAmount, baseAmount, entryAmount, entryModeResolved, getSharePercent, getCredibilityValue, getTechnicianValue, credibilityEnabled, ownerCredibilityMax, candidateMetricsVersion, derivedMaxScores, effectiveGroupManagementBonus, effectiveNetCostBonusScore, managementScale, managementMax, isMois30To50, isMois50To100, isMoisUnderOr30To50, isKrailUnder50, isKrail50To100, isPpsUnder50, isLh50To100, isLh100To300, roundForLhTotals, roundForMoisManagement, roundForKrailUnder50, roundUpForPpsUnder50, roundForExManagement, resolveKrailTechnicianAbilityScore, resolveSummaryDigits, technicianEditable, technicianEnabled, technicianAbilityMax, getCandidatePerformanceAmountForCurrentRange, lhRegionalAdjustmentCoefficient, lhSimplePerformanceCoefficient, isDutyRegionCompany]);
 
   React.useEffect(() => {
     attemptPendingPlacement();
   }, [participantMap, attemptPendingPlacement]);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      candidateScoreEvalKeyRef.current = '';
+      return;
+    }
     const evalApi = typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null;
     const baseValue = parseAmountValue(baseAmount);
     const estimatedValue = parseAmountValue(estimatedAmount);
@@ -3948,6 +3994,19 @@ export default function AgreementBoardWindow({
     const evaluationAmount = rangeAmountHint > 0 ? rangeAmountHint : 0;
     const ownerKey = String(ownerId || 'lh').toLowerCase();
     const performanceBaseReady = perfBase != null && perfBase > 0;
+    const candidateScoreEvalKey = safeSerialize({
+      participantSignature,
+      ownerId,
+      rangeKey: selectedRangeOption?.key || '',
+      baseAmount,
+      estimatedAmount,
+      fileType,
+      noticeDate,
+      isPpsUnder50,
+      lhSimplePerformanceCoefficient,
+    });
+    if (candidateScoreEvalKeyRef.current === candidateScoreEvalKey) return;
+    candidateScoreEvalKeyRef.current = candidateScoreEvalKey;
 
     const entries = Array.from(participantMap.values()).map((entry) => entry?.candidate).filter(Boolean);
     if (entries.length === 0) return;
@@ -4057,7 +4116,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, lhSimplePerformanceCoefficient]);
+  }, [open, participantSignature, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, lhSimplePerformanceCoefficient]);
 
   const handleDragStart = (id, groupIndex, slotIndex) => (event) => {
     if (!id) return;
