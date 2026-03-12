@@ -3833,7 +3833,7 @@ export default function AgreementBoardWindow({
 
   React.useEffect(() => {
     if (!open) {
-      setGroupSummaries([]);
+      setGroupSummaries((prev) => (Array.isArray(prev) && prev.length === 0 ? prev : []));
       return;
     }
     if (isLh100To300) {
