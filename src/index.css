@@ -2636,6 +2636,11 @@ body {
   gap: 24px;
   align-items: flex-start;
   margin-bottom: 24px;
+  -webkit-app-region: drag;
+}
+
+.records-editor-page__header-copy {
+  min-width: 0;
 }
 
 .records-editor-page__eyebrow {
@@ -2664,40 +2669,11 @@ body {
 .records-editor-page__close {
   flex: 0 0 auto;
   margin-top: 8px;
+  -webkit-app-region: no-drag;
 }
 
 .records-editor-page__content {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 22px;
-  align-items: start;
-}
-
-.records-editor-page__sidebar {
-  display: grid;
-  gap: 14px;
-}
-
-.records-editor-page__info-card {
-  background: rgba(19, 52, 59, 0.92);
-  color: #f8fafc;
-  border-radius: 22px;
-  padding: 18px 18px 20px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
-}
-
-.records-editor-page__info-label {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.68);
-  margin-bottom: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.records-editor-page__info-value {
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.35;
+  display: block;
 }
 
 .records-editor-page__form-wrap {
@@ -2734,7 +2710,7 @@ body {
 .records-editor-form__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px 20px;
 }
 
 .records-editor-form label {
@@ -2752,9 +2728,16 @@ body {
   border: 1px solid #d6d3d1;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.92);
-  padding: 12px 14px;
+  padding: 13px 16px;
   font-size: 14px;
   color: #0f172a;
+  min-width: 0;
+}
+
+.records-editor-form select {
+  padding-right: 42px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .records-editor-form input:focus,
@@ -2791,6 +2774,10 @@ body {
   margin-bottom: 16px;
 }
 
+.records-editor-form__panel-head--stack {
+  align-items: flex-start;
+}
+
 .records-editor-form .ql-toolbar.ql-snow,
 .records-editor-form .ql-container.ql-snow {
   border-color: #e7dcc7;
@@ -2814,22 +2801,30 @@ body {
 }
 
 .records-editor-form__category-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
   margin-top: 14px;
 }
 
 .records-editor-form__category-chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: #fff;
+  gap: 10px;
+  min-height: 56px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fffdf8 0%, #fff7ed 100%);
   border: 1px solid #f3d6b3;
   color: #7c2d12;
-  font-weight: 600;
+  font-weight: 700;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.records-editor-form__category-chip:hover {
+  transform: translateY(-1px);
+  border-color: #fb923c;
+  box-shadow: 0 10px 20px rgba(251, 146, 60, 0.12);
 }
 
 .records-editor-form__category-chip input {
@@ -2837,6 +2832,7 @@ body {
   margin: 0;
   padding: 0;
   box-shadow: none;
+  accent-color: #ea580c;
 }
 
 .records-editor-form__upload {
@@ -2847,8 +2843,9 @@ body {
   justify-content: center;
   border-radius: 999px;
   padding: 10px 16px;
-  background: #1d4ed8;
-  color: #fff;
+  background: linear-gradient(180deg, #c7dcff 0%, #dbeafe 100%);
+  color: #1e3a8a;
+  border: 1px solid #93c5fd;
   font-weight: 700;
   cursor: pointer;
 }
@@ -2921,12 +2918,8 @@ body {
 }
 
 @media (max-width: 1080px) {
-  .records-editor-page__content {
-    grid-template-columns: 1fr;
-  }
-
-  .records-editor-page__sidebar {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .records-editor-page__header h1 {
+    font-size: 30px;
   }
 }
 
@@ -2937,10 +2930,6 @@ body {
 
   .records-editor-page__header {
     flex-direction: column;
-  }
-
-  .records-editor-page__sidebar {
-    grid-template-columns: 1fr;
   }
 
   .records-editor-form__grid {

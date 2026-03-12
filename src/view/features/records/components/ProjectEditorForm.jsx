@@ -287,7 +287,12 @@ export default function ProjectEditorForm({
       </div>
 
       <section className="records-editor-form__panel">
-        <div className="records-editor-form__panel-title">공사 종류</div>
+        <div className="records-editor-form__panel-head records-editor-form__panel-head--stack">
+          <div>
+            <div className="records-editor-form__panel-title">공사 종류</div>
+            <small className="records-editor-form__hint">해당 실적에 맞는 공사 종류를 여러 개 선택할 수 있습니다.</small>
+          </div>
+        </div>
         <div className="records-editor-form__category-grid">
           {categories.map((category) => (
             <label key={category.id} className="records-editor-form__category-chip">

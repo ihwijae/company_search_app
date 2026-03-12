@@ -88,7 +88,7 @@ export default function RecordsEditorPage() {
       <div className="records-editor-page__backdrop" />
       <main className="records-editor-page__shell">
         <header className="records-editor-page__header">
-          <div>
+          <div className="records-editor-page__header-copy">
             <p className="records-editor-page__eyebrow">Record Studio</p>
             <h1>{routeState.mode === 'edit' ? '실적 수정 창' : '실적 등록 창'}</h1>
             <p className="records-editor-page__description">
@@ -101,23 +101,6 @@ export default function RecordsEditorPage() {
         </header>
 
         <section className="records-editor-page__content">
-          <aside className="records-editor-page__sidebar">
-            <div className="records-editor-page__info-card">
-              <div className="records-editor-page__info-label">현재 작업</div>
-              <div className="records-editor-page__info-value">
-                {routeState.mode === 'edit' ? '등록된 실적 수정' : '새 실적 등록'}
-              </div>
-            </div>
-            <div className="records-editor-page__info-card">
-              <div className="records-editor-page__info-label">첨부 파일</div>
-              <div className="records-editor-page__info-value">여러 개 추가 가능</div>
-            </div>
-            <div className="records-editor-page__info-card">
-              <div className="records-editor-page__info-label">저장 방식</div>
-              <div className="records-editor-page__info-value">DB + 첨부 폴더 동시 반영</div>
-            </div>
-          </aside>
-
           <section className="records-editor-page__form-wrap">
             {loading ? (
               <div className="records-editor-page__status">불러오는 중...</div>

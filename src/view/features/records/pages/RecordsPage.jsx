@@ -675,17 +675,6 @@ export default function RecordsPage() {
                             <div className="records-grid__actions">
                               <button
                                 type="button"
-                                className="btn-sm btn-primary"
-                                disabled={!hasAttachment}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  if (hasAttachment) handleOpenAttachment(project.id, attachments[0].id);
-                                }}
-                              >
-                                첫 첨부 열기
-                              </button>
-                              <button
-                                type="button"
                                 className="btn-sm btn-soft"
                                 onClick={(event) => {
                                   event.stopPropagation();
