@@ -3849,6 +3849,7 @@ export default function AgreementBoardWindow({
         fileType,
         evaluationAmount,
         perfBase,
+        roundRatioBaseAmount: isLh50To100 ? perfectPerformanceAmount : null,
         estimatedValue,
         perfCoefficient: lhSimplePerformanceCoefficient,
         roundRatioDigits: isLh50To100 ? 2 : null,

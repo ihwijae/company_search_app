@@ -15,6 +15,7 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
   fileType,
   evaluationAmount,
   perfBase,
+  roundRatioBaseAmount,
   estimatedValue,
   perfCoefficient,
   roundRatioDigits,
@@ -28,8 +29,10 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
 
   const ratioDigits = Number.isFinite(Number(roundRatioDigits)) ? Number(roundRatioDigits) : null;
   const computeRoundedRatioScore = (cap) => {
-    if (!performanceBaseReady || perfBase <= 0) return null;
-    const ratio = perfAmount / perfBase;
+    const ratioBase = Number(roundRatioBaseAmount);
+    const denominator = Number.isFinite(ratioBase) && ratioBase > 0 ? ratioBase : perfBase;
+    if (!performanceBaseReady || denominator <= 0) return null;
+    const ratio = perfAmount / denominator;
     if (!Number.isFinite(ratio)) return null;
     const normalizedRatio = ratioDigits != null
       ? Number(ratio.toFixed(ratioDigits))
