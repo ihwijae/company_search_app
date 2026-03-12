@@ -3827,20 +3827,23 @@ export default function AgreementBoardWindow({
 
     let canceled = false;
 
-    const evaluatePerformanceScore = async (perfAmount) => evaluateAgreementPerformanceScore(perfAmount, {
-      performanceBaseReady,
-      agencyId: ownerKey,
-      fileType,
-      evaluationAmount,
-      perfBase,
-      estimatedValue,
-      perfCoefficient: lhSimplePerformanceCoefficient,
-      formulasEvaluate: typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null,
-      updatePerformanceCap,
-      getPerformanceCap,
-      toNumber,
-      clampScore,
-    });
+    const evaluatePerformanceScore = async (perfAmount) => {
+      if (isLh100To300) return null;
+      return evaluateAgreementPerformanceScore(perfAmount, {
+        performanceBaseReady,
+        agencyId: ownerKey,
+        fileType,
+        evaluationAmount,
+        perfBase,
+        estimatedValue,
+        perfCoefficient: lhSimplePerformanceCoefficient,
+        formulasEvaluate: typeof window !== 'undefined' ? window.electronAPI?.formulasEvaluate : null,
+        updatePerformanceCap,
+        getPerformanceCap,
+        toNumber,
+        clampScore,
+      });
+    };
 
     const run = async () => {
       const results = await computeGroupSummaries({
