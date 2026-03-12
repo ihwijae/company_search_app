@@ -29,6 +29,19 @@ export async function runAgreementCandidateScoreEvaluation({
   forcePerformanceEvaluation = false,
 }) {
   let updated = 0;
+  const evaluationContextKey = [
+    ownerKey || '',
+    String(fileType || ''),
+    selectedRangeKey || '',
+    noticeDate || '',
+    Number.isFinite(evaluationAmount) ? evaluationAmount : '',
+    Number.isFinite(perfBase) ? perfBase : '',
+    Number.isFinite(estimatedValue) ? estimatedValue : '',
+    Number.isFinite(perfCoefficient) ? perfCoefficient : '',
+    performanceBaseReady ? '1' : '0',
+    performanceCapVersion,
+    managementScoreVersion,
+  ].join('|');
 
   for (const candidate of entries) {
     if (isCanceled() || !candidate || typeof candidate !== 'object') continue;
@@ -54,9 +67,15 @@ export async function runAgreementCandidateScoreEvaluation({
     const hasManualPerformance = candidate._agreementPerformanceInput !== null
       && candidate._agreementPerformanceInput !== undefined
       && candidate._agreementPerformanceInput !== '';
-    const needsManagement = (!hasManualManagement) && (forceManagementEvaluation || currentManagement == null);
+    const managementContextChanged = candidate._agreementManagementContextKey !== evaluationContextKey;
+    const performanceContextChanged = candidate._agreementPerformanceContextKey !== evaluationContextKey;
+    const needsManagement = (!hasManualManagement)
+      && ((forceManagementEvaluation && managementContextChanged) || currentManagement == null || managementContextChanged);
     const needsPerformanceScore = performanceAmount != null && performanceAmount > 0
-      && performanceBaseReady && ((!hasManualPerformance && forcePerformanceEvaluation) || currentPerformanceScore == null);
+      && performanceBaseReady
+      && (((!hasManualPerformance && forcePerformanceEvaluation) && performanceContextChanged)
+        || currentPerformanceScore == null
+        || performanceContextChanged);
 
     if (!needsManagement && !needsPerformanceScore) continue;
 
@@ -143,9 +162,11 @@ export async function runAgreementCandidateScoreEvaluation({
               if (
                 candidate._agreementManagementScore !== mgmtScore
                 || candidate._agreementManagementScoreVersion !== managementScoreVersion
+                || candidate._agreementManagementContextKey !== evaluationContextKey
               ) {
                 candidate._agreementManagementScore = mgmtScore;
                 candidate._agreementManagementScoreVersion = managementScoreVersion;
+                candidate._agreementManagementContextKey = evaluationContextKey;
                 managementChanged = true;
               }
             }
@@ -159,10 +180,12 @@ export async function runAgreementCandidateScoreEvaluation({
                 candidate._agreementPerformanceScore !== perfScore
                 || candidate._agreementPerformanceMax !== perfMax
                 || candidate._agreementPerformanceCapVersion !== performanceCapVersion
+                || candidate._agreementPerformanceContextKey !== evaluationContextKey
               ) {
                 candidate._agreementPerformanceScore = perfScore;
                 candidate._agreementPerformanceMax = perfMax;
                 candidate._agreementPerformanceCapVersion = performanceCapVersion;
+                candidate._agreementPerformanceContextKey = evaluationContextKey;
                 performanceChanged = true;
               }
             }
@@ -183,10 +206,12 @@ export async function runAgreementCandidateScoreEvaluation({
               candidate._agreementPerformanceScore !== fallbackScore
               || candidate._agreementPerformanceMax !== cap
               || candidate._agreementPerformanceCapVersion !== performanceCapVersion
+              || candidate._agreementPerformanceContextKey !== evaluationContextKey
             ) {
               candidate._agreementPerformanceScore = fallbackScore;
               candidate._agreementPerformanceMax = cap;
               candidate._agreementPerformanceCapVersion = performanceCapVersion;
+              candidate._agreementPerformanceContextKey = evaluationContextKey;
               performanceChanged = true;
             }
           }
