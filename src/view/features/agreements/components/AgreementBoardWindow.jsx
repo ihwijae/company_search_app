@@ -107,6 +107,8 @@ const PERFORMANCE_CAP_VERSION = 2;
 const MANAGEMENT_SCORE_VERSION = 3;
 const LH_QUALITY_DEFAULT_UNDER_100B = 85;
 const LH_QUALITY_DEFAULT_OVER_100B = 88;
+const LH_SIMPLE_PERFORMANCE_COEFFICIENT = 3;
+const LH_SIMPLE_REGION_ADJUSTMENT_COEFFICIENT = 1;
 const LH_UNDER_50_KEY = 'lh-under50';
 const LH_50_TO_100_KEY = 'lh-50to100';
 const LH_100_TO_300_KEY = 'lh-100to300';
@@ -1430,20 +1432,6 @@ export default function AgreementBoardWindow({
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ adjustmentRate: nextValue });
   }, [onUpdateBoard]);
 
-  const handlePerformanceCoefficientChange = React.useCallback((event) => {
-    if (typeof onUpdateBoard !== 'function') return;
-    const nextValue = String(event.target.value || '').replace(/[^0-9.]/g, '');
-    if ((nextValue.match(/\./g) || []).length > 1) return;
-    onUpdateBoard({ performanceCoefficient: nextValue });
-  }, [onUpdateBoard]);
-
-  const handleRegionAdjustmentCoefficientChange = React.useCallback((event) => {
-    if (typeof onUpdateBoard !== 'function') return;
-    const nextValue = String(event.target.value || '').replace(/[^0-9.]/g, '');
-    if ((nextValue.match(/\./g) || []).length > 1) return;
-    onUpdateBoard({ regionAdjustmentCoefficient: nextValue });
-  }, [onUpdateBoard]);
-
   const handleBidRateChange = React.useCallback((event) => {
     const nextValue = event.target.value;
     setBidRateTouched(Boolean(String(nextValue || '').trim()));
@@ -1613,27 +1601,13 @@ export default function AgreementBoardWindow({
     notify({ type: 'info', message, portalTarget: portalContainer || null });
   }, [notify, portalContainer]);
 
-  const lhSimplePerformanceCoefficient = React.useMemo(() => {
-    if (!isLh100To300) return null;
-    const parsed = parseNumeric(performanceCoefficient);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 3;
-  }, [isLh100To300, parseNumeric, performanceCoefficient]);
+  const lhSimplePerformanceCoefficient = isLh100To300
+    ? LH_SIMPLE_PERFORMANCE_COEFFICIENT
+    : null;
 
-  const lhRegionalAdjustmentCoefficient = React.useMemo(() => {
-    if (!isLh100To300) return null;
-    const parsed = parseNumeric(regionAdjustmentCoefficient);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-  }, [isLh100To300, parseNumeric, regionAdjustmentCoefficient]);
-
-  React.useEffect(() => {
-    if (!isLh100To300 || typeof onUpdateBoard !== 'function') return;
-    const nextPayload = {};
-    if (!String(performanceCoefficient || '').trim()) nextPayload.performanceCoefficient = '3';
-    if (!String(regionAdjustmentCoefficient || '').trim()) nextPayload.regionAdjustmentCoefficient = '1';
-    if (Object.keys(nextPayload).length > 0) {
-      onUpdateBoard(nextPayload);
-    }
-  }, [isLh100To300, onUpdateBoard, performanceCoefficient, regionAdjustmentCoefficient]);
+  const lhRegionalAdjustmentCoefficient = isLh100To300
+    ? LH_SIMPLE_REGION_ADJUSTMENT_COEFFICIENT
+    : null;
 
   const possibleShareBase = React.useMemo(() => {
     const sources = ownerKeyUpper === 'LH'
@@ -1750,8 +1724,8 @@ export default function AgreementBoardWindow({
     bidAmount,
     bidRate,
     adjustmentRate,
-    performanceCoefficient,
-    regionAdjustmentCoefficient,
+    performanceCoefficient: isLh100To300 ? String(LH_SIMPLE_PERFORMANCE_COEFFICIENT) : performanceCoefficient,
+    regionAdjustmentCoefficient: isLh100To300 ? String(LH_SIMPLE_REGION_ADJUSTMENT_COEFFICIENT) : regionAdjustmentCoefficient,
     perfectPerformanceAmount,
     dutyRegions,
     ratioBaseAmount: isPpsUnder50 ? (bidAmount || ratioBaseAmount || '') : (ratioBaseAmount || bidAmount || ''),
@@ -1772,6 +1746,7 @@ export default function AgreementBoardWindow({
     bidAmount,
     bidRate,
     adjustmentRate,
+    isLh100To300,
     performanceCoefficient,
     regionAdjustmentCoefficient,
     perfectPerformanceAmount,
@@ -5650,17 +5625,6 @@ export default function AgreementBoardWindow({
                     placeholder="금액 입력 시 자동 계산"
                   />
                 </div>
-                {isLh100To300 && (
-                  <div className="excel-field-block size-xs">
-                    <span className="field-label">실적계수</span>
-                    <input
-                      className="input"
-                      value={performanceCoefficient || ''}
-                      onChange={handlePerformanceCoefficientChange}
-                      placeholder="기본 3"
-                    />
-                  </div>
-                )}
               </div>
 
               <div className="header-stack stack-notice">
@@ -5772,17 +5736,6 @@ export default function AgreementBoardWindow({
                     </div>
                   </div>
                 </div>
-                {isLh100To300 && (
-                  <div className="excel-field-block size-xs">
-                    <span className="field-label">지역업체 조정계수</span>
-                    <input
-                      className="input"
-                      value={regionAdjustmentCoefficient || ''}
-                      onChange={handleRegionAdjustmentCoefficientChange}
-                      placeholder="기본 1"
-                    />
-                  </div>
-                )}
               </div>
             </div>
 
