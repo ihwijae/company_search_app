@@ -5185,7 +5185,7 @@ export default function AgreementBoardWindow({
       : null;
     const performanceScoreForTotal = summaryInfo?.performanceScore;
     const miscScore = showMiscScore ? 17 : null;
-    const lhSimpleRawTotalScore = showMiscScore
+    const lhSimpleTotalScore = showMiscScore
       ? (
         (toNumber(summaryInfo?.managementScore) || 0)
           + (toNumber(summaryInfo?.performanceScore) || 0)
@@ -5194,11 +5194,8 @@ export default function AgreementBoardWindow({
           + (miscScore || 0)
       )
       : null;
-    const lhSimpleCappedTotalScore = lhSimpleRawTotalScore != null
-      ? Math.min(40, lhSimpleRawTotalScore)
-      : null;
-    const totalScore = lhSimpleCappedTotalScore != null
-      ? lhSimpleCappedTotalScore
+    const totalScore = lhSimpleTotalScore != null
+      ? lhSimpleTotalScore
       : (baseTotalScore != null
         ? (isLHOwner
           ? (showConstructionExperience
@@ -5206,7 +5203,7 @@ export default function AgreementBoardWindow({
             : baseTotalScore)
           : baseTotalScore)
         : null);
-    const totalMax = lhSimpleCappedTotalScore != null
+    const totalMax = lhSimpleTotalScore != null
       ? 40
       : (baseTotalMax != null
         ? (isLHOwner
@@ -5273,9 +5270,8 @@ export default function AgreementBoardWindow({
     const netCostBonusDisplay = showNetCostBonus && summaryInfo?.netCostBonusScore != null
       ? formatScore(summaryInfo.netCostBonusScore, resolveSummaryDigits('netCost'))
       : (showNetCostBonus ? '0' : null);
-    const totalScoreDisplayValue = isLh100To300 ? lhSimpleRawTotalScore : totalScore;
-    const totalScoreDisplay = totalScoreDisplayValue != null
-      ? formatScore(totalScoreDisplayValue, resolveSummaryDigits('total'))
+    const totalScoreDisplay = totalScore != null
+      ? formatScore(totalScore, resolveSummaryDigits('total'))
       : '-';
     const entryDisabled = entryModeResolved === 'none';
     const sipyungValue = entryModeResolved === 'sum'
