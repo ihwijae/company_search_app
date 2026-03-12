@@ -26,6 +26,18 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
 } = {}) {
   if (!performanceBaseReady || perfAmount == null) return null;
 
+  const ratioDigits = Number.isFinite(Number(roundRatioDigits)) ? Number(roundRatioDigits) : null;
+  const computeRoundedRatioScore = (cap) => {
+    if (!performanceBaseReady || perfBase <= 0) return null;
+    const ratio = perfAmount / perfBase;
+    if (!Number.isFinite(ratio)) return null;
+    const normalizedRatio = ratioDigits != null
+      ? Number(ratio.toFixed(ratioDigits))
+      : ratio;
+    const fallback = Math.max(1, normalizedRatio * cap);
+    return clampScore(fallback, cap);
+  };
+
   const payload = {
     agencyId,
     fileType,
@@ -46,6 +58,10 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
       if (response?.success && response.data?.performance) {
         const perfData = response.data.performance;
         const perfMax = updatePerformanceCap(perfData.maxScore);
+        if (ratioDigits != null) {
+          const roundedRatioScore = computeRoundedRatioScore(perfMax);
+          if (roundedRatioScore != null) return roundedRatioScore;
+        }
         const { score, capped, raw } = perfData;
         const numericCandidates = [score, capped, raw]
           .map((value) => toNumber(value))
@@ -61,13 +77,6 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
   }
 
   if (!performanceBaseReady || perfBase <= 0) return null;
-  const ratio = perfAmount / perfBase;
-  if (!Number.isFinite(ratio)) return null;
   const cap = getPerformanceCap();
-  const ratioDigits = Number.isFinite(Number(roundRatioDigits)) ? Number(roundRatioDigits) : null;
-  const normalizedRatio = ratioDigits != null
-    ? Number(ratio.toFixed(ratioDigits))
-    : ratio;
-  const fallback = Math.max(1, normalizedRatio * cap);
-  return clampScore(fallback, cap);
+  return computeRoundedRatioScore(cap);
 }
