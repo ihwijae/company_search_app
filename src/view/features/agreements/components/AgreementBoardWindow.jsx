@@ -2018,7 +2018,6 @@ export default function AgreementBoardWindow({
       logLh100To300Debug('effect:sync-board', {
         count: lh100DebugCountersRef.current.sync,
         assignmentsGroups: Array.isArray(groupAssignments) ? groupAssignments.length : 0,
-        participantSignature,
         sharesGroups: Array.isArray(groupShares) ? groupShares.length : 0,
         credibilityGroups: Array.isArray(groupCredibility) ? groupCredibility.length : 0,
       });
@@ -2044,7 +2043,6 @@ export default function AgreementBoardWindow({
     groupQualityScores,
     isLh100To300,
     logLh100To300Debug,
-    participantSignature,
     onUpdateBoard,
   ]);
 
