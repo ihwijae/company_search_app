@@ -67,10 +67,10 @@ export default function ProjectModal({
 }) {
   const isEdit = mode === 'edit';
   const [form, setForm] = React.useState(DEFAULT_FORM);
-  const [file, setFile] = React.useState(null);
+  const [files, setFiles] = React.useState([]);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState('');
-  const [attachmentRemoved, setAttachmentRemoved] = React.useState(false);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = React.useState([]);
   const allCompanies = React.useMemo(
     () => (Array.isArray(companies) ? companies : []),
     [companies],
@@ -86,6 +86,14 @@ export default function ProjectModal({
   const visibleCompanies = React.useMemo(
     () => (form.companyType === 'misc' ? miscCompanies : ourCompanies),
     [form.companyType, miscCompanies, ourCompanies],
+  );
+  const existingAttachments = React.useMemo(
+    () => (Array.isArray(initialProject?.attachments) ? initialProject.attachments : []),
+    [initialProject],
+  );
+  const visibleExistingAttachments = React.useMemo(
+    () => existingAttachments.filter((attachment) => !removedAttachmentIds.includes(attachment.id)),
+    [existingAttachments, removedAttachmentIds],
   );
 
   React.useEffect(() => {
@@ -131,17 +139,17 @@ export default function ProjectModal({
         scopeNotes: '',
       });
     }
-    setFile(null);
+    setFiles([]);
     setError('');
-    setAttachmentRemoved(false);
+    setRemovedAttachmentIds([]);
   }, [open, isEdit, initialProject, allCompanies, defaultCompanyId, defaultCompanyType]);
 
-  const handleRemoveExistingAttachment = async () => {
-    if (!isEdit || !initialProject?.id || attachmentRemoved || !initialProject.attachment) return;
-    if (!window.confirm('첨부 파일을 삭제할까요?')) return;
+  const handleRemoveExistingAttachment = async (attachment) => {
+    if (!isEdit || !initialProject?.id || !attachment?.id) return;
+    if (!window.confirm(`첨부 파일을 삭제할까요?\n${attachment.displayName || '첨부 파일'}`)) return;
     try {
-      await recordsClient.removeAttachment(initialProject.id);
-      setAttachmentRemoved(true);
+      await recordsClient.removeAttachment(initialProject.id, attachment.id);
+      setRemovedAttachmentIds((prev) => [...prev, attachment.id]);
       if (typeof onAttachmentRemoved === 'function') {
         onAttachmentRemoved(initialProject.id);
       }
@@ -183,6 +191,17 @@ export default function ProjectModal({
     setForm((prev) => ({ ...prev, scopeNotes: html }));
   };
 
+  const handleFileChange = (event) => {
+    const nextFiles = Array.from(event.target.files || []);
+    if (!nextFiles.length) return;
+    setFiles((prev) => [...prev, ...nextFiles]);
+    event.target.value = '';
+  };
+
+  const handleRemovePendingFile = (targetIndex) => {
+    setFiles((prev) => prev.filter((_, index) => index !== targetIndex));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!form.companyId || !form.projectName) {
@@ -192,15 +211,16 @@ export default function ProjectModal({
     setSaving(true);
     setError('');
     try {
-      let attachmentPayload;
-      if (file) {
-        const arrayBuffer = await file.arrayBuffer();
-        attachmentPayload = {
-          buffer: arrayBuffer,
-          originalName: file.name,
-          mimeType: file.type,
-        };
-      }
+      const attachmentPayloads = await Promise.all(
+        files.map(async (file) => {
+          const arrayBuffer = await file.arrayBuffer();
+          return {
+            buffer: arrayBuffer,
+            originalName: file.name,
+            mimeType: file.type,
+          };
+        }),
+      );
 
       const selectedCompany = allCompanies.find((company) => String(company.id) === form.companyId);
       const corporationName = selectedCompany?.name || initialProject?.corporationName || '';
@@ -220,12 +240,12 @@ export default function ProjectModal({
       if (isEdit && initialProject) {
         result = await recordsClient.updateProject(initialProject.id, {
           ...payload,
-          attachment: attachmentPayload,
+          attachments: attachmentPayloads,
         });
       } else {
         result = await recordsClient.createProject({
           ...payload,
-          attachment: attachmentPayload,
+          attachments: attachmentPayloads,
         });
       }
       if (onSaved) onSaved(result);
@@ -322,26 +342,47 @@ export default function ProjectModal({
           </div>
 
           <label className="records-modal__notes">
-            첨부 파일 (PDF/이미지)
+            첨부 파일 (PDF/이미지, 여러 개 가능)
             <input
               type="file"
               accept="application/pdf,image/*"
-              onChange={(event) => setFile(event.target.files && event.target.files[0] ? event.target.files[0] : null)}
+              multiple
+              onChange={handleFileChange}
             />
-            {isEdit && initialProject?.attachment && !attachmentRemoved && !file && (
-              <small className="records-modal__attachment-hint">기존 파일 유지 (새 파일 선택 시 교체됩니다)</small>
+            {isEdit && visibleExistingAttachments.length > 0 && (
+              <div className="records-modal__attachment-list">
+                {visibleExistingAttachments.map((attachment) => (
+                  <div key={attachment.id} className="records-modal__attachment-item">
+                    <small className="records-modal__attachment-hint">{attachment.displayName}</small>
+                    <button
+                      type="button"
+                      className="btn-danger records-modal__remove-attachment"
+                      onClick={() => handleRemoveExistingAttachment(attachment)}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
-            {isEdit && initialProject?.attachment && !attachmentRemoved && (
-              <button
-                type="button"
-                className="btn-danger records-modal__remove-attachment"
-                onClick={handleRemoveExistingAttachment}
-              >
-                실적증명서 삭제
-              </button>
+            {isEdit && existingAttachments.length > 0 && visibleExistingAttachments.length === 0 && (
+              <small className="records-modal__attachment-hint">기존 첨부 파일이 모두 삭제되었습니다.</small>
             )}
-            {isEdit && attachmentRemoved && (
-              <small className="records-modal__attachment-hint">첨부 파일이 삭제되었습니다.</small>
+            {files.length > 0 && (
+              <div className="records-modal__attachment-list">
+                {files.map((selectedFile, index) => (
+                  <div key={`${selectedFile.name}-${selectedFile.size}-${index}`} className="records-modal__attachment-item">
+                    <small className="records-modal__attachment-hint">추가 예정: {selectedFile.name}</small>
+                    <button
+                      type="button"
+                      className="btn-danger records-modal__remove-attachment"
+                      onClick={() => handleRemovePendingFile(index)}
+                    >
+                      제외
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </label>
 

@@ -58,10 +58,14 @@ class RecordsService {
 
   hydrateProject(project) {
     if (!project) return project;
+    const attachments = Array.isArray(project.attachments)
+      ? project.attachments.map((attachment) => this.hydrateAttachment(attachment))
+      : [];
     return {
       ...project,
       primaryCompanyIsMisc: !!project.primaryCompanyIsMisc,
-      attachment: this.hydrateAttachment(project.attachment),
+      attachments,
+      attachment: attachments[0] || this.hydrateAttachment(project.attachment),
     };
   }
 
@@ -72,14 +76,14 @@ class RecordsService {
       if (!Array.isArray(records) || records.length === 0) return;
       const rootPrefix = path.normalize(`${this.attachmentsRoot}${path.sep}`);
       let mutated = false;
-      records.forEach(({ projectId, filePath }) => {
-        if (!projectId || !filePath || typeof filePath !== 'string') return;
+      records.forEach(({ id, filePath }) => {
+        if (!id || !filePath || typeof filePath !== 'string') return;
         if (!path.isAbsolute(filePath)) return;
         const normalizedPath = path.normalize(filePath);
         if (!normalizedPath.startsWith(rootPrefix)) return;
         const relativePath = path.relative(this.attachmentsRoot, normalizedPath);
         if (!relativePath || relativePath === filePath) return;
-        const updated = this.repository.updateAttachmentPath(projectId, relativePath);
+        const updated = this.repository.updateAttachmentPath(id, relativePath);
         if (updated) mutated = true;
       });
       if (mutated) {
@@ -200,8 +204,14 @@ class RecordsService {
     const projectId = this.repository.insertProject(projectData, categoryIds);
     if (!projectId) throw new Error('Failed to create project');
 
-    if (payload.attachment) {
-      this.replaceAttachment(projectId, payload.attachment);
+    const attachments = Array.isArray(payload.attachments)
+      ? payload.attachments
+      : payload.attachment
+        ? [payload.attachment]
+        : [];
+
+    if (attachments.length > 0) {
+      this.addAttachments(projectId, attachments);
     }
 
     persistRecordsDatabase();
@@ -227,8 +237,14 @@ class RecordsService {
     const updated = this.repository.updateProject(projectId, projectData, categoryIds);
     if (!updated) throw new Error('Project update failed');
 
-    if (payload.attachment) {
-      this.replaceAttachment(projectId, payload.attachment);
+    const attachments = Array.isArray(payload.attachments)
+      ? payload.attachments
+      : payload.attachment
+        ? [payload.attachment]
+        : [];
+
+    if (attachments.length > 0) {
+      this.addAttachments(projectId, attachments);
     }
 
     persistRecordsDatabase();
@@ -238,11 +254,23 @@ class RecordsService {
 
   deleteProject(projectId) {
     if (!projectId) throw new Error('Project id is required');
-    const previousStoredPath = this.repository.getAttachmentPath(projectId);
-    const existingPath = this.resolveAttachmentPath(previousStoredPath);
+    const existingProject = this.repository.getProjectById(projectId);
+    const attachmentPaths = Array.isArray(existingProject?.attachments)
+      ? existingProject.attachments
+        .map((attachment) => this.resolveAttachmentPath(attachment.filePath))
+        .filter(Boolean)
+      : [];
     const deleted = this.repository.deleteProject(projectId);
-    if (deleted && existingPath && fs.existsSync(existingPath)) {
-      try { fs.unlinkSync(existingPath); } catch {}
+    if (deleted) {
+      attachmentPaths.forEach((existingPath) => {
+        if (existingPath && fs.existsSync(existingPath)) {
+          try { fs.unlinkSync(existingPath); } catch {}
+        }
+      });
+      const projectDir = path.join(this.attachmentsRoot, String(projectId));
+      if (fs.existsSync(projectDir)) {
+        try { fs.rmSync(projectDir, { recursive: true, force: true }); } catch {}
+      }
     }
     if (deleted) persistRecordsDatabase();
     return deleted;
@@ -389,14 +417,11 @@ class RecordsService {
     }
   }
 
-  replaceAttachment(projectId, attachmentPayload) {
+  saveAttachment(projectId, attachmentPayload) {
     if (!projectId) throw new Error('Project id is required');
     if (!attachmentPayload || (!attachmentPayload.sourcePath && !attachmentPayload.buffer)) {
       throw new Error('Attachment payload must include sourcePath or buffer');
     }
-
-    const previousStoredPath = this.repository.getAttachmentPath(projectId);
-    const previousPath = this.resolveAttachmentPath(previousStoredPath);
 
     let filePath;
     let fileSize = null;
@@ -437,39 +462,78 @@ class RecordsService {
       throw new Error('Attachment payload was not valid');
     }
 
-    this.repository.upsertAttachment(projectId, {
+    const attachmentId = this.repository.addAttachment(projectId, {
       displayName,
       filePath: this.toAttachmentRelative(filePath),
       mimeType,
       fileSize,
     });
-
-    persistRecordsDatabase();
-
-    if (previousPath && previousPath !== filePath && fs.existsSync(previousPath)) {
-      try { fs.unlinkSync(previousPath); } catch {}
-    }
-
-    const attachment = this.repository.getProjectById(projectId)?.attachment;
+    const project = this.repository.getProjectById(projectId);
+    const attachment = Array.isArray(project?.attachments)
+      ? project.attachments.find((item) => Number(item.id) === Number(attachmentId))
+      : null;
     return this.hydrateAttachment(attachment);
   }
 
-  removeAttachment(projectId) {
+  addAttachments(projectId, attachmentPayloads = []) {
     if (!projectId) throw new Error('Project id is required');
-    const storedPath = this.repository.getAttachmentPath(projectId);
-    const existingPath = this.resolveAttachmentPath(storedPath);
-    const removed = this.repository.deleteAttachment(projectId);
-    if (removed && existingPath && fs.existsSync(existingPath)) {
-      try { fs.unlinkSync(existingPath); } catch {}
+    if (!Array.isArray(attachmentPayloads) || attachmentPayloads.length === 0) return [];
+    const attachments = attachmentPayloads
+      .map((attachmentPayload) => this.saveAttachment(projectId, attachmentPayload))
+      .filter(Boolean);
+    if (attachments.length > 0) {
+      persistRecordsDatabase();
+    }
+    return attachments;
+  }
+
+  replaceAttachment(projectId, attachmentPayload) {
+    if (!projectId) throw new Error('Project id is required');
+    this.removeAttachment(projectId);
+    const attachments = this.addAttachments(projectId, attachmentPayload ? [attachmentPayload] : []);
+    return attachments[0] || null;
+  }
+
+  removeAttachment(projectId, attachmentId = null) {
+    if (!projectId) throw new Error('Project id is required');
+    const project = this.repository.getProjectById(projectId);
+    const attachments = Array.isArray(project?.attachments) ? project.attachments : [];
+    const targets = attachmentId
+      ? attachments.filter((attachment) => Number(attachment.id) === Number(attachmentId))
+      : attachments;
+    const resolvedPaths = targets
+      .map((attachment) => this.resolveAttachmentPath(attachment.filePath))
+      .filter(Boolean);
+    const removed = this.repository.deleteAttachment(projectId, attachmentId);
+    if (removed) {
+      resolvedPaths.forEach((existingPath) => {
+        if (existingPath && fs.existsSync(existingPath)) {
+          try { fs.unlinkSync(existingPath); } catch {}
+        }
+      });
+      const projectDir = path.join(this.attachmentsRoot, String(projectId));
+      if (fs.existsSync(projectDir)) {
+        try {
+          const remainingEntries = fs.readdirSync(projectDir);
+          if (remainingEntries.length === 0) {
+            fs.rmSync(projectDir, { recursive: true, force: true });
+          }
+        } catch {}
+      }
     }
     if (removed) persistRecordsDatabase();
     return removed;
   }
 
-  async openAttachment(projectId) {
+  async openAttachment(projectId, attachmentId) {
     if (!projectId) throw new Error('Project id is required');
     const project = this.repository.getProjectById(projectId);
-    const attachment = this.hydrateAttachment(project?.attachment);
+    const rawAttachment = attachmentId
+      ? (Array.isArray(project?.attachments)
+        ? project.attachments.find((item) => Number(item.id) === Number(attachmentId))
+        : null)
+      : project?.attachment;
+    const attachment = this.hydrateAttachment(rawAttachment);
     if (!attachment || !attachment.filePath) {
       throw new Error('첨부 파일이 없습니다.');
     }

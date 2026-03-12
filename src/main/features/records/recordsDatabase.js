@@ -91,6 +91,35 @@ const MIGRATIONS = [
       console.error('[DB][records] Failed to ensure companies.is_misc column:', error);
       throw error;
     }
+  },
+  (db) => {
+    try {
+      const indexInfo = db.exec("PRAGMA index_list('attachments')");
+      const hasUniqueProjectIndex = Array.isArray(indexInfo) && indexInfo.length > 0 && Array.isArray(indexInfo[0].values)
+        && indexInfo[0].values.some((row) => row && row[1] === 'sqlite_autoindex_attachments_1');
+      if (!hasUniqueProjectIndex) return;
+      db.exec(`BEGIN;
+        ALTER TABLE attachments RENAME TO attachments_legacy;
+        CREATE TABLE attachments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id INTEGER NOT NULL,
+          display_name TEXT NOT NULL,
+          file_path TEXT NOT NULL,
+          mime_type TEXT,
+          file_size INTEGER,
+          uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        );
+        INSERT INTO attachments (id, project_id, display_name, file_path, mime_type, file_size, uploaded_at)
+        SELECT id, project_id, display_name, file_path, mime_type, file_size, uploaded_at
+        FROM attachments_legacy;
+        DROP TABLE attachments_legacy;
+        CREATE INDEX IF NOT EXISTS idx_attachments_project ON attachments(project_id);
+      COMMIT;`);
+    } catch (error) {
+      console.error('[DB][records] Failed to migrate attachments table to multi-file:', error);
+      throw error;
+    }
   }
 ];
 

@@ -41,15 +41,15 @@ function registerRecordsIpcHandlers({ ipcMain, recordsService }) {
   });
   handle('records:remove-attachment', (payload) => {
     if (!payload || !payload.projectId) throw new Error('projectId is required');
-    return recordsService.removeAttachment(payload.projectId);
+    return recordsService.removeAttachment(payload.projectId, payload.attachmentId);
   });
-  handle('records:replace-attachment', (payload) => {
+  handle('records:add-attachments', (payload) => {
     if (!payload || !payload.projectId) throw new Error('projectId is required');
-    return recordsService.replaceAttachment(payload.projectId, payload.attachment || {});
+    return recordsService.addAttachments(payload.projectId, Array.isArray(payload.attachments) ? payload.attachments : []);
   });
   handle('records:open-attachment', (payload) => {
     if (!payload || !payload.projectId) throw new Error('projectId is required');
-    return recordsService.openAttachment(payload.projectId);
+    return recordsService.openAttachment(payload.projectId, payload.attachmentId);
   });
   handle('records:export-database', async (_payload, event) => {
     const dbPath = recordsService.getDatabasePath();

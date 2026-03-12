@@ -289,10 +289,10 @@ export default function RecordsPage() {
     fetchProjects();
   }, [fetchProjects, closeModal]);
 
-  const handleOpenAttachment = React.useCallback(async (projectId) => {
+  const handleOpenAttachment = React.useCallback(async (projectId, attachmentId) => {
     try {
       if (!projectId) return;
-      await recordsClient.openAttachment(projectId);
+      await recordsClient.openAttachment(projectId, attachmentId);
     } catch (err) {
       alert(err?.message || '첨부 파일을 열 수 없습니다.');
     }
@@ -601,7 +601,8 @@ export default function RecordsPage() {
                   {projects.length ? (
                     paginatedProjects.map((project) => {
                       const isSelected = selectedProjectId === project.id;
-                      const hasAttachment = !!project.attachment;
+                      const attachments = Array.isArray(project.attachments) ? project.attachments : [];
+                      const hasAttachment = attachments.length > 0;
                       const sanitizedNotes = sanitizeHtml(project.scopeNotes);
                       let isExpired = false;
                       const expirySource = project.endDate || project.startDate;
@@ -660,7 +661,22 @@ export default function RecordsPage() {
                           <div className="records-grid__cell records-grid__cell--actions">
                             <div className="records-grid__attachment-summary">
                               {hasAttachment ? (
-                                <span className="records-grid__attachment-name">{project.attachment.displayName}</span>
+                                <div>
+                                  <div className="records-grid__attachment-name">첨부 {attachments.length}개</div>
+                                  {attachments.map((attachment) => (
+                                    <button
+                                      key={attachment.id}
+                                      type="button"
+                                      className="btn-link records-grid__attachment-name"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        handleOpenAttachment(project.id, attachment.id);
+                                      }}
+                                    >
+                                      {attachment.displayName}
+                                    </button>
+                                  ))}
+                                </div>
                               ) : (
                                 <span className="records-grid__no-attachment">첨부 없음</span>
                               )}
@@ -672,10 +688,10 @@ export default function RecordsPage() {
                                 disabled={!hasAttachment}
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  if (hasAttachment) handleOpenAttachment(project.id);
+                                  if (hasAttachment) handleOpenAttachment(project.id, attachments[0].id);
                                 }}
                               >
-                                실적증명서
+                                첫 첨부 열기
                               </button>
                               <button
                                 type="button"

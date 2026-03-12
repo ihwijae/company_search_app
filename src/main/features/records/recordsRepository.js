@@ -326,16 +326,10 @@ class RecordsRepository {
     return getScalar(this.db, 'SELECT changes()') > 0;
   }
 
-  upsertAttachment(projectId, attachment) {
+  addAttachment(projectId, attachment) {
     this.refreshDb();
     const stmt = this.db.prepare(`INSERT INTO attachments (project_id, display_name, file_path, mime_type, file_size, uploaded_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-      ON CONFLICT(project_id) DO UPDATE SET
-        display_name = excluded.display_name,
-        file_path = excluded.file_path,
-        mime_type = excluded.mime_type,
-        file_size = excluded.file_size,
-        uploaded_at = datetime('now')`);
+      VALUES (?, ?, ?, ?, ?, datetime('now'))`);
     stmt.bind([
       projectId,
       attachment.displayName,
@@ -345,22 +339,26 @@ class RecordsRepository {
     ]);
     stmt.step();
     stmt.free();
-    return true;
+    return getScalar(this.db, 'SELECT last_insert_rowid()');
   }
 
-  deleteAttachment(projectId) {
+  deleteAttachment(projectId, attachmentId = null) {
     this.refreshDb();
-    const stmt = this.db.prepare('DELETE FROM attachments WHERE project_id = ?');
-    stmt.bind([projectId]);
+    const stmt = attachmentId
+      ? this.db.prepare('DELETE FROM attachments WHERE project_id = ? AND id = ?')
+      : this.db.prepare('DELETE FROM attachments WHERE project_id = ?');
+    stmt.bind(attachmentId ? [projectId, attachmentId] : [projectId]);
     stmt.step();
     stmt.free();
     return getScalar(this.db, 'SELECT changes()') > 0;
   }
 
-  getAttachmentPath(projectId) {
+  getAttachmentPath(projectId, attachmentId = null) {
     this.refreshDb();
-    const stmt = this.db.prepare('SELECT file_path FROM attachments WHERE project_id = ?');
-    stmt.bind([projectId]);
+    const stmt = attachmentId
+      ? this.db.prepare('SELECT file_path FROM attachments WHERE project_id = ? AND id = ?')
+      : this.db.prepare('SELECT file_path FROM attachments WHERE project_id = ? ORDER BY uploaded_at DESC, id DESC LIMIT 1');
+    stmt.bind(attachmentId ? [projectId, attachmentId] : [projectId]);
     const row = stmt.step() ? stmt.getAsObject() : null;
     stmt.free();
     return row ? row.file_path : null;
@@ -368,20 +366,20 @@ class RecordsRepository {
 
   listAttachmentRecords() {
     this.refreshDb();
-    const stmt = this.db.prepare('SELECT project_id, file_path FROM attachments');
+    const stmt = this.db.prepare('SELECT id, project_id, file_path FROM attachments');
     const rows = [];
     while (stmt.step()) {
       const row = stmt.getAsObject();
-      rows.push({ projectId: row.project_id, filePath: row.file_path });
+      rows.push({ id: row.id, projectId: row.project_id, filePath: row.file_path });
     }
     stmt.free();
     return rows;
   }
 
-  updateAttachmentPath(projectId, filePath) {
+  updateAttachmentPath(attachmentId, filePath) {
     this.refreshDb();
-    const stmt = this.db.prepare('UPDATE attachments SET file_path = ?, uploaded_at = datetime(\'now\') WHERE project_id = ?');
-    stmt.bind([filePath, projectId]);
+    const stmt = this.db.prepare('UPDATE attachments SET file_path = ?, uploaded_at = datetime(\'now\') WHERE id = ?');
+    stmt.bind([filePath, attachmentId]);
     stmt.step();
     stmt.free();
     return getScalar(this.db, 'SELECT changes()') > 0;
@@ -412,10 +410,22 @@ class RecordsRepository {
     }
     catStmt.free();
 
-    const attachmentStmt = db.prepare(`SELECT display_name, file_path, mime_type, file_size, uploaded_at
-      FROM attachments WHERE project_id = ?`);
+    const attachmentStmt = db.prepare(`SELECT id, display_name, file_path, mime_type, file_size, uploaded_at
+      FROM attachments WHERE project_id = ?
+      ORDER BY uploaded_at DESC, id DESC`);
     attachmentStmt.bind([projectId]);
-    const attachmentRow = attachmentStmt.step() ? attachmentStmt.getAsObject() : null;
+    const attachments = [];
+    while (attachmentStmt.step()) {
+      const row = attachmentStmt.getAsObject();
+      attachments.push({
+        id: row.id,
+        displayName: row.display_name,
+        filePath: row.file_path,
+        mimeType: row.mime_type,
+        fileSize: row.file_size,
+        uploadedAt: row.uploaded_at,
+      });
+    }
     attachmentStmt.free();
 
     return {
@@ -433,13 +443,8 @@ class RecordsRepository {
       primaryCompanyName: row.primary_company_name,
       primaryCompanyIsMisc: toBoolean(row.primary_company_is_misc),
       categories,
-      attachment: attachmentRow ? {
-        displayName: attachmentRow.display_name,
-        filePath: attachmentRow.file_path,
-        mimeType: attachmentRow.mime_type,
-        fileSize: attachmentRow.file_size,
-        uploadedAt: attachmentRow.uploaded_at,
-      } : null,
+      attachments,
+      attachment: attachments[0] || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -512,6 +517,7 @@ class RecordsRepository {
       primaryCompanyName: row.primary_company_name,
       primaryCompanyIsMisc: toBoolean(row.primary_company_is_misc),
       categories: [],
+      attachments: [],
       attachment: null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -534,18 +540,24 @@ class RecordsRepository {
     }
     catStmt.free();
 
-    const attachmentStmt = db.prepare(`SELECT project_id, display_name, file_path, mime_type, file_size, uploaded_at FROM attachments`);
+    const attachmentStmt = db.prepare(`SELECT id, project_id, display_name, file_path, mime_type, file_size, uploaded_at
+      FROM attachments
+      ORDER BY uploaded_at DESC, id DESC`);
     while (attachmentStmt.step()) {
       const row = attachmentStmt.getAsObject();
       const project = projectMap.get(row.project_id);
       if (project) {
-        project.attachment = {
+        const attachment = {
+          id: row.id,
           displayName: row.display_name,
           filePath: row.file_path,
           mimeType: row.mime_type,
           fileSize: row.file_size,
           uploadedAt: row.uploaded_at,
         };
+        if (!Array.isArray(project.attachments)) project.attachments = [];
+        project.attachments.push(attachment);
+        if (!project.attachment) project.attachment = attachment;
       }
     }
     attachmentStmt.free();
