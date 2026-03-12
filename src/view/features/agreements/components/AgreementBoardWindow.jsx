@@ -328,6 +328,17 @@ const parseNumeric = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const equalGroupSummaries = (left, right) => {
+  if (left === right) return true;
+  if (!Array.isArray(left) || !Array.isArray(right)) return false;
+  if (left.length !== right.length) return false;
+  try {
+    return JSON.stringify(left) === JSON.stringify(right);
+  } catch (error) {
+    return false;
+  }
+};
+
 const formatBidDeadline = (value) => {
   if (!value) return '';
   const date = new Date(value);
@@ -3903,7 +3914,7 @@ export default function AgreementBoardWindow({
         mois50To100BidScore: MOIS_50_TO_100_BID_SCORE,
       });
       if (!canceled) {
-        setGroupSummaries(results);
+        setGroupSummaries((prev) => (equalGroupSummaries(prev, results) ? prev : results));
       }
     };
 
