@@ -2772,6 +2772,7 @@ body {
   padding: 18px;
   background: linear-gradient(180deg, rgba(255, 250, 240, 0.9), rgba(255, 255, 255, 0.92));
   border: 1px solid rgba(249, 115, 22, 0.14);
+  overflow: hidden;
 }
 
 .records-editor-form__panel-title {
@@ -2800,18 +2801,25 @@ body {
 .records-editor-form .ql-toolbar.ql-snow {
   border-radius: 14px 14px 0 0;
   background: #fffdf8;
+  box-sizing: border-box;
 }
 
 .records-editor-form .ql-container.ql-snow {
   border-radius: 0 0 14px 14px;
   min-height: 180px;
+  max-height: 180px;
   background: rgba(255, 255, 255, 0.95);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .records-editor-form .ql-editor {
   min-height: 180px;
+  max-height: 180px;
   font-size: 14px;
   color: #1f2937;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .records-editor-form__category-grid {
