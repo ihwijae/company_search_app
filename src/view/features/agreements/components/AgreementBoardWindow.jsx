@@ -1012,6 +1012,62 @@ const buildEntryUid = (prefix, candidate, index, seen) => {
 };
 const buildBoardSearchKey = (groupIndex, slotIndex) => `${groupIndex}:${slotIndex}`;
 
+const GROUP_SUMMARY_DEBUG_FIELDS = [
+  'memberCount',
+  'shareSum',
+  'shareValid',
+  'shareComplete',
+  'missingShares',
+  'managementScore',
+  'performanceAmount',
+  'performanceScore',
+  'performanceRatio',
+  'credibilityScore',
+  'technicianScore',
+  'technicianAbilityScore',
+  'totalScoreBase',
+  'totalScoreWithCred',
+  'totalMaxBase',
+  'totalMaxWithCred',
+  'totalScore',
+  'bidScore',
+  'netCostBonusScore',
+  'subcontractScore',
+  'materialScore',
+  'entryValue',
+  'entrySatisfied',
+];
+
+const isSameSummaryValue = (left, right) => {
+  if (left === right) return true;
+  if (Number.isNaN(left) && Number.isNaN(right)) return true;
+  return false;
+};
+
+const diffGroupSummaryResults = (previous = [], next = []) => {
+  const changes = [];
+  const maxLength = Math.max(previous.length, next.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    const before = previous[index] || null;
+    const after = next[index] || null;
+    if (!before || !after) {
+      changes.push({
+        groupIndex: index,
+        fields: ['group-added-or-removed'],
+      });
+      continue;
+    }
+    const fields = GROUP_SUMMARY_DEBUG_FIELDS.filter((field) => !isSameSummaryValue(before[field], after[field]));
+    if (fields.length > 0) {
+      changes.push({
+        groupIndex: index,
+        fields,
+      });
+    }
+  }
+  return changes;
+};
+
 export default function AgreementBoardWindow({
   open,
   onClose,
@@ -1569,6 +1625,8 @@ export default function AgreementBoardWindow({
   }, [fileType, isKrail50To100, isKrailUnder50, isLh100To300, ownerKeyUpper]);
   const candidateScoreCacheRef = React.useRef(new Map());
   const performanceCapRef = React.useRef(ownerPerformanceFallback);
+  const lhSimpleGroupSummaryRunRef = React.useRef(0);
+  const prevLhSimpleGroupSummariesRef = React.useRef([]);
   const getPerformanceCap = React.useCallback(() => (
     resolvePerformanceCap(performanceCapRef.current, ownerPerformanceFallback)
   ), [ownerPerformanceFallback]);
@@ -1964,6 +2022,12 @@ export default function AgreementBoardWindow({
       canceled = true;
     };
   }, [open]);
+
+  React.useEffect(() => {
+    if (open && isLh100To300) return;
+    lhSimpleGroupSummaryRunRef.current = 0;
+    prevLhSimpleGroupSummariesRef.current = [];
+  }, [open, isLh100To300]);
 
   const agreementConstraintRules = React.useMemo(
     () => resolveBoardConstraintRules(AGREEMENT_BAN_CONFIG),
@@ -3903,6 +3967,15 @@ export default function AgreementBoardWindow({
         mois50To100BidScore: MOIS_50_TO_100_BID_SCORE,
       });
       if (!canceled) {
+        if (isLh100To300) {
+          lhSimpleGroupSummaryRunRef.current += 1;
+          const changes = diffGroupSummaryResults(prevLhSimpleGroupSummariesRef.current, results);
+          console.log('[LHSIMPLE][group-summary]', {
+            run: lhSimpleGroupSummaryRunRef.current,
+            changedGroups: changes,
+          });
+          prevLhSimpleGroupSummariesRef.current = results.map((item) => ({ ...item }));
+        }
         setGroupSummaries(results);
       }
     };
