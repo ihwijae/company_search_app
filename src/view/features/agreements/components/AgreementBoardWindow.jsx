@@ -2542,8 +2542,6 @@ export default function AgreementBoardWindow({
     const candidateId = candidate.id;
     const candidateBiz = normalizeBizNo(getBizNo(candidate));
     const candidateName = String(getCompanyName(candidate) || '').trim();
-    const candidateNameKey = sanitizeCompanyName(candidateName).toLowerCase();
-    let changed = false;
     const nextCandidates = (candidates || []).map((item) => {
       if (!item || typeof item !== 'object') return item;
       let matched = false;
@@ -2554,18 +2552,10 @@ export default function AgreementBoardWindow({
       }
       if (!matched && candidateName) {
         const itemName = String(getCompanyName(item) || '').trim();
-        const itemNameKey = sanitizeCompanyName(itemName).toLowerCase();
-        if (itemName && (itemName === candidateName || (candidateNameKey && itemNameKey === candidateNameKey))) {
-          matched = true;
-        }
+        if (itemName && itemName === candidateName) matched = true;
       }
-      if (!matched) return item;
-      const merged = { ...item, ...updates };
-      const hasDiff = Object.keys(updates || {}).some((key) => merged[key] !== item[key]);
-      if (hasDiff) changed = true;
-      return hasDiff ? merged : item;
+      return matched ? { ...item, ...updates } : item;
     });
-    if (!changed) return;
     onUpdateBoard({ candidates: nextCandidates });
   }, [candidates, onUpdateBoard]);
 
@@ -3116,23 +3106,21 @@ export default function AgreementBoardWindow({
   const participantMap = React.useMemo(() => {
     const map = new Map();
     representativeEntries.forEach((entry) => {
-      const sourceCandidate = entry.candidate;
-      let mergedCandidate = sourceCandidate;
+      let mergedCandidate = entry.candidate;
       if (entry.ruleSnapshot) {
         mergedCandidate = { ...entry.ruleSnapshot, ...mergedCandidate };
       }
       if (mergedCandidate?.snapshot && typeof mergedCandidate.snapshot === 'object') {
         mergedCandidate = { ...mergedCandidate.snapshot, ...mergedCandidate };
       }
-      map.set(entry.uid, { ...entry, candidate: mergedCandidate, sourceCandidate });
+      map.set(entry.uid, { ...entry, candidate: mergedCandidate });
     });
     regionEntries.forEach((entry) => {
-      const sourceCandidate = entry.candidate;
-      let mergedCandidate = sourceCandidate;
+      let mergedCandidate = entry.candidate;
       if (mergedCandidate?.snapshot && typeof mergedCandidate.snapshot === 'object') {
         mergedCandidate = { ...mergedCandidate.snapshot, ...mergedCandidate };
       }
-      map.set(entry.uid, { ...entry, candidate: mergedCandidate, sourceCandidate });
+      map.set(entry.uid, { ...entry, candidate: mergedCandidate });
     });
     if (process.env.NODE_ENV !== 'production') {
       try {
@@ -3150,7 +3138,7 @@ export default function AgreementBoardWindow({
     const uid = groupAssignments[groupIndex]?.[slotIndex];
     if (!uid) return null;
     const entry = participantMap.get(uid);
-    return entry?.sourceCandidate || entry?.candidate || null;
+    return entry?.candidate || null;
   }, [groupAssignments, participantMap]);
 
   const {
@@ -3951,7 +3939,7 @@ export default function AgreementBoardWindow({
     const ownerKey = String(ownerId || 'lh').toLowerCase();
     const performanceBaseReady = perfBase != null && perfBase > 0;
 
-    const entries = Array.from(participantMap.values()).map((entry) => entry?.sourceCandidate || entry?.candidate).filter(Boolean);
+    const entries = Array.from(participantMap.values()).map((entry) => entry?.candidate).filter(Boolean);
     if (entries.length === 0) return;
 
     if (process.env.NODE_ENV !== 'production') {

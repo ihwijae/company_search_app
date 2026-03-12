@@ -29,19 +29,6 @@ export async function runAgreementCandidateScoreEvaluation({
   forcePerformanceEvaluation = false,
 }) {
   let updated = 0;
-  const evaluationContextKey = [
-    ownerKey || '',
-    String(fileType || ''),
-    selectedRangeKey || '',
-    noticeDate || '',
-    Number.isFinite(evaluationAmount) ? evaluationAmount : '',
-    Number.isFinite(perfBase) ? perfBase : '',
-    Number.isFinite(estimatedValue) ? estimatedValue : '',
-    Number.isFinite(perfCoefficient) ? perfCoefficient : '',
-    performanceBaseReady ? '1' : '0',
-    performanceCapVersion,
-    managementScoreVersion,
-  ].join('|');
 
   for (const candidate of entries) {
     if (isCanceled() || !candidate || typeof candidate !== 'object') continue;
@@ -67,15 +54,9 @@ export async function runAgreementCandidateScoreEvaluation({
     const hasManualPerformance = candidate._agreementPerformanceInput !== null
       && candidate._agreementPerformanceInput !== undefined
       && candidate._agreementPerformanceInput !== '';
-    const managementContextChanged = candidate._agreementManagementContextKey !== evaluationContextKey;
-    const performanceContextChanged = candidate._agreementPerformanceContextKey !== evaluationContextKey;
-    const needsManagement = (!hasManualManagement)
-      && ((forceManagementEvaluation && managementContextChanged) || currentManagement == null || managementContextChanged);
+    const needsManagement = (!hasManualManagement) && (forceManagementEvaluation || currentManagement == null);
     const needsPerformanceScore = performanceAmount != null && performanceAmount > 0
-      && performanceBaseReady
-      && (((!hasManualPerformance && forcePerformanceEvaluation) && performanceContextChanged)
-        || currentPerformanceScore == null
-        || performanceContextChanged);
+      && performanceBaseReady && ((!hasManualPerformance && forcePerformanceEvaluation) || currentPerformanceScore == null);
 
     if (!needsManagement && !needsPerformanceScore) continue;
 
@@ -84,7 +65,7 @@ export async function runAgreementCandidateScoreEvaluation({
     const cacheKey = `${ownerKey}|${String(fileType || '')}|${selectedRangeKey || ''}|${evaluationAmount || ''}|${perfBase || ''}|${candidateKey}`;
     const cacheEntry = candidateScoreCache.get(cacheKey);
     if (cacheEntry === 'pending') continue;
-    if (cacheEntry === 'done') continue;
+    if (cacheEntry === 'done' && !needsManagement && !needsPerformanceScore) continue;
     candidateScoreCache.set(cacheKey, 'pending');
 
     const debtRatio = getCandidateNumericValue(
@@ -110,8 +91,6 @@ export async function runAgreementCandidateScoreEvaluation({
 
     let resolvedManagement = currentManagement;
     let resolvedPerformanceScore = currentPerformanceScore;
-    let managementChanged = false;
-    let performanceChanged = false;
 
     const payload = {
       agencyId: ownerKey,
@@ -159,16 +138,8 @@ export async function runAgreementCandidateScoreEvaluation({
             const mgmtScore = clampScore(management.score);
             if (mgmtScore != null) {
               resolvedManagement = mgmtScore;
-              if (
-                candidate._agreementManagementScore !== mgmtScore
-                || candidate._agreementManagementScoreVersion !== managementScoreVersion
-                || candidate._agreementManagementContextKey !== evaluationContextKey
-              ) {
-                candidate._agreementManagementScore = mgmtScore;
-                candidate._agreementManagementScoreVersion = managementScoreVersion;
-                candidate._agreementManagementContextKey = evaluationContextKey;
-                managementChanged = true;
-              }
+              candidate._agreementManagementScore = mgmtScore;
+              candidate._agreementManagementScoreVersion = managementScoreVersion;
             }
           }
           if (needsPerformanceScore && performance && performance.score != null) {
@@ -176,18 +147,9 @@ export async function runAgreementCandidateScoreEvaluation({
             const perfScore = clampScore(performance.score, perfMax);
             if (perfScore != null) {
               resolvedPerformanceScore = perfScore;
-              if (
-                candidate._agreementPerformanceScore !== perfScore
-                || candidate._agreementPerformanceMax !== perfMax
-                || candidate._agreementPerformanceCapVersion !== performanceCapVersion
-                || candidate._agreementPerformanceContextKey !== evaluationContextKey
-              ) {
-                candidate._agreementPerformanceScore = perfScore;
-                candidate._agreementPerformanceMax = perfMax;
-                candidate._agreementPerformanceCapVersion = performanceCapVersion;
-                candidate._agreementPerformanceContextKey = evaluationContextKey;
-                performanceChanged = true;
-              }
+              candidate._agreementPerformanceScore = perfScore;
+              candidate._agreementPerformanceMax = perfMax;
+              candidate._agreementPerformanceCapVersion = performanceCapVersion;
             }
           }
         } else if (!response?.success) {
@@ -202,18 +164,9 @@ export async function runAgreementCandidateScoreEvaluation({
           const fallbackScore = clampScore(Math.max(1, ratio * cap), cap);
           if (fallbackScore != null) {
             resolvedPerformanceScore = fallbackScore;
-            if (
-              candidate._agreementPerformanceScore !== fallbackScore
-              || candidate._agreementPerformanceMax !== cap
-              || candidate._agreementPerformanceCapVersion !== performanceCapVersion
-              || candidate._agreementPerformanceContextKey !== evaluationContextKey
-            ) {
-              candidate._agreementPerformanceScore = fallbackScore;
-              candidate._agreementPerformanceMax = cap;
-              candidate._agreementPerformanceCapVersion = performanceCapVersion;
-              candidate._agreementPerformanceContextKey = evaluationContextKey;
-              performanceChanged = true;
-            }
+            candidate._agreementPerformanceScore = fallbackScore;
+            candidate._agreementPerformanceMax = cap;
+            candidate._agreementPerformanceCapVersion = performanceCapVersion;
           }
         }
       }
@@ -223,7 +176,7 @@ export async function runAgreementCandidateScoreEvaluation({
       candidateScoreCache.set(cacheKey, 'done');
     }
 
-    if (managementChanged || performanceChanged) {
+    if ((needsManagement && resolvedManagement != null) || (needsPerformanceScore && resolvedPerformanceScore != null)) {
       if (process.env.NODE_ENV !== 'production') {
         console.debug('[AgreementBoard] candidate score updated', getCompanyName(candidate), {
           management: resolvedManagement,

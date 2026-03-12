@@ -48,7 +48,7 @@ export function buildBoardMemberMeta({
     return { empty: true, slotIndex, groupIndex, label };
   }
 
-  const candidate = entry.sourceCandidate || entry.candidate;
+  const candidate = entry.candidate;
   const isDutyRegion = entry.type === 'region' || isDutyRegionCompany(candidate);
   const qualityInputRaw = groupQualityScores[groupIndex]?.[slotIndex];
   const qualityScore = isLHOwner

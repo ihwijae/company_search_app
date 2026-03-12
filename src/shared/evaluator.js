@@ -2,7 +2,6 @@
 // CommonJS module to be usable from Electron main and renderer bundles.
 
 const { loadFormulasMerged, loadFormulasDefaults } = require('./formulas');
-const EVAL_DEBUG_ENABLED = process.env.AGREEMENT_EVAL_DEBUG === '1';
 
 function toNumber(v) {
   const n = Number(v);
@@ -82,14 +81,12 @@ function evalManagementComposite(inputs, rules, industryAvg) {
   const qualityScore = evaluateThresholdScore(quality, def.qualityEval && def.qualityEval.thresholds);
     const scoreRaw = toNumber(debtScore) + toNumber(currentScore) + toNumber(yearsScore) + (rules.agencyId !== 'lh' ? toNumber(qualityScore) : 0);
   
-  if (EVAL_DEBUG_ENABLED) {
     console.log('[EVAL DEBUG] Composite Scores:');
     console.log('[EVAL DEBUG]   Debt Score:    ', debtScore);
     console.log('[EVAL DEBUG]   Current Score: ', currentScore);
     console.log('[EVAL DEBUG]   Years Score:   ', yearsScore);
     console.log('[EVAL DEBUG]   Raw Total:     ', scoreRaw);
     console.log('[EVAL DEBUG] --------------------------');
-  }
   
   const score = applyRounding(scoreRaw, rules.management.rounding);
   const debtMax = getThresholdMaxScore(def.debtRatio && def.debtRatio.thresholds);
@@ -282,11 +279,9 @@ function evaluateScores({ agencyId, amount, inputs = {}, industryAvg, useDefault
   if (!tier) return { ok: false, error: 'NO_TIER' };
   const rules = tier.rules || {};
 
-  if (EVAL_DEBUG_ENABLED) {
-    console.log('[EVAL DEBUG] Selected Agency:', agency.name, '(' + agency.id + ')');
-    console.log('[EVAL DEBUG] Selected Tier:', tier.minAmount, '~', tier.maxAmount);
-    console.log('[EVAL DEBUG] Rules for Management:', JSON.stringify(rules.management));
-  }
+  console.log('[EVAL DEBUG] Selected Agency:', agency.name, '(' + agency.id + ')');
+  console.log('[EVAL DEBUG] Selected Tier:', tier.minAmount, '~', tier.maxAmount);
+  console.log('[EVAL DEBUG] Rules for Management:', JSON.stringify(rules.management));
 
   rules.agencyId = agency.id; // Pass agencyId down to subsequent evaluations
 
