@@ -29,7 +29,7 @@ export function buildGroupSummaryMetrics({
       const managementScore = getCandidateManagementScore(candidate);
       const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
       const technicianScore = technicianEditable ? getTechnicianValue(groupIndex, slotIndex) : null;
-      const credibilityBonus = credibilityEnabled ? getCredibilityValue(groupIndex, slotIndex, candidate) : 0;
+      const credibilityBonus = credibilityEnabled ? getCredibilityValue(groupIndex, slotIndex) : 0;
       const sipyungAmount = getCandidateSipyungAmount(candidate);
       return {
         sharePercent,
