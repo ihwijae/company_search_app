@@ -4023,7 +4023,7 @@ export default function AgreementBoardWindow({
         resolveCandidateBizYears,
         noticeDate,
         estimatedValue,
-        perfCoefficient: lhSimplePerformanceCoefficient,
+        perfCoefficient: null,
         extractCreditGrade,
         isCreditScoreExpired,
         formulasEvaluate: evalApi,
@@ -4034,7 +4034,7 @@ export default function AgreementBoardWindow({
         performanceCapVersion: PERFORMANCE_CAP_VERSION,
         managementScoreVersion: MANAGEMENT_SCORE_VERSION,
         forceManagementEvaluation: true,
-        forcePerformanceEvaluation: true,
+        forcePerformanceEvaluation: false,
       });
 
       if (!canceled && updated > 0) {
@@ -4047,7 +4047,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantSignature, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, lhSimplePerformanceCoefficient]);
+  }, [open, participantSignature, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50]);
 
   const handleDragStart = (id, groupIndex, slotIndex) => (event) => {
     if (!id) return;
