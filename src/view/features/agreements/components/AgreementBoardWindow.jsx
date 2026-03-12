@@ -2484,14 +2484,6 @@ export default function AgreementBoardWindow({
     return Number.isFinite(parsed) ? parsed : 0;
   }, [groupCredibility]);
 
-  const getEffectiveCredibilityValue = React.useCallback((groupIndex, slotIndex, candidate) => {
-    if (!isLh100To300) return getCredibilityValue(groupIndex, slotIndex);
-    if (!candidate || !isDutyRegionCompany(candidate)) return 0;
-    const coefficientRaw = Number(lhRegionalAdjustmentCoefficient);
-    const coefficient = Number.isFinite(coefficientRaw) && coefficientRaw > 0 ? coefficientRaw : 1;
-    return 0.3 * (100 / (20 * coefficient));
-  }, [getCredibilityValue, isDutyRegionCompany, isLh100To300, lhRegionalAdjustmentCoefficient]);
-
   const getTechnicianValue = React.useCallback((groupIndex, slotIndex) => {
     const stored = groupTechnicianScores[groupIndex]?.[slotIndex];
     if (stored === undefined || stored === null || stored === '') return null;
@@ -2882,6 +2874,14 @@ export default function AgreementBoardWindow({
     }
     return false;
   }, [dutyRegionSet]);
+
+  const getEffectiveCredibilityValue = React.useCallback((groupIndex, slotIndex, candidate) => {
+    if (!isLh100To300) return getCredibilityValue(groupIndex, slotIndex);
+    if (!candidate || !isDutyRegionCompany(candidate)) return 0;
+    const coefficientRaw = Number(lhRegionalAdjustmentCoefficient);
+    const coefficient = Number.isFinite(coefficientRaw) && coefficientRaw > 0 ? coefficientRaw : 1;
+    return 0.3 * (100 / (20 * coefficient));
+  }, [getCredibilityValue, isDutyRegionCompany, isLh100To300, lhRegionalAdjustmentCoefficient]);
 
   const isSingleBidEligible = React.useCallback((candidate) => {
     if (!candidate) return false;
