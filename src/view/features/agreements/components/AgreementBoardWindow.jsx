@@ -1932,9 +1932,9 @@ export default function AgreementBoardWindow({
     return Number.isFinite(rMin) && Number.isFinite(rMax) && (rMin > 0.9 || rMax > 0.9);
   }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
   const effectiveNetCostBonusScore = React.useMemo(() => {
-    if (!showNetCostBonus) return 0;
     const manualValue = parseNumeric(netCostBonusOverride);
-    if (manualValue != null) return manualValue;
+    if (manualValue != null && showNetCostBonus) return manualValue;
+    if (!showNetCostBonus) return 0;
     return netCostBonusScore;
   }, [showNetCostBonus, parseNumeric, netCostBonusOverride, netCostBonusScore]);
 
