@@ -3143,14 +3143,14 @@ export default function AgreementBoardWindow({
       if (mergedCandidate?.snapshot && typeof mergedCandidate.snapshot === 'object') {
         mergedCandidate = { ...mergedCandidate.snapshot, ...mergedCandidate };
       }
-      map.set(entry.uid, { ...entry, candidate: mergedCandidate });
+      map.set(entry.uid, { ...entry, candidate: mergedCandidate, sourceCandidate: entry.candidate });
     });
     regionEntries.forEach((entry) => {
       let mergedCandidate = entry.candidate;
       if (mergedCandidate?.snapshot && typeof mergedCandidate.snapshot === 'object') {
         mergedCandidate = { ...mergedCandidate.snapshot, ...mergedCandidate };
       }
-      map.set(entry.uid, { ...entry, candidate: mergedCandidate });
+      map.set(entry.uid, { ...entry, candidate: mergedCandidate, sourceCandidate: entry.candidate });
     });
     if (process.env.NODE_ENV !== 'production') {
       try {
@@ -3999,7 +3999,9 @@ export default function AgreementBoardWindow({
     const ownerKey = String(ownerId || 'lh').toLowerCase();
     const performanceBaseReady = perfBase != null && perfBase > 0;
 
-    const entries = Array.from(participantMap.values()).map((entry) => entry?.candidate).filter(Boolean);
+    const entries = [...representativeEntries, ...regionEntries]
+      .map((entry) => entry?.candidate)
+      .filter(Boolean);
     if (entries.length === 0) return;
 
     if (process.env.NODE_ENV !== 'production') {
@@ -4118,7 +4120,7 @@ export default function AgreementBoardWindow({
     return () => {
       canceled = true;
     };
-  }, [open, participantSignature, participantMap, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, isLh100To300, logLh100To300Debug]);
+  }, [open, participantSignature, representativeEntries, regionEntries, ownerId, ownerKeyUpper, selectedRangeOption?.key, selectedRangeOption?.label, baseAmount, estimatedAmount, fileType, noticeDate, isPpsUnder50, isLh100To300, logLh100To300Debug]);
 
   const handleDragStart = (id, groupIndex, slotIndex) => (event) => {
     if (!id) return;

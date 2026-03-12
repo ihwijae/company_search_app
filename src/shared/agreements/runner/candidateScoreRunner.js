@@ -29,6 +29,13 @@ export async function runAgreementCandidateScoreEvaluation({
   forcePerformanceEvaluation = false,
 }) {
   let updated = 0;
+  const isSameScore = (left, right) => {
+    if (left == null && right == null) return true;
+    const leftNumber = Number(left);
+    const rightNumber = Number(right);
+    if (!Number.isFinite(leftNumber) || !Number.isFinite(rightNumber)) return false;
+    return Math.abs(leftNumber - rightNumber) < 1e-9;
+  };
 
   for (const candidate of entries) {
     if (isCanceled() || !candidate || typeof candidate !== 'object') continue;
@@ -47,6 +54,10 @@ export async function runAgreementCandidateScoreEvaluation({
     const currentPerformanceScore = (candidate._agreementPerformanceScore != null && capVersionFresh)
       ? clampScore(candidate._agreementPerformanceScore, capForStored)
       : null;
+    const prevManagementScore = currentManagement;
+    const prevPerformanceScore = currentPerformanceScore;
+    const prevManagementVersion = candidate._agreementManagementScoreVersion;
+    const prevPerformanceVersion = candidate._agreementPerformanceCapVersion;
     const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
     const hasManualManagement = candidate._agreementManagementManual !== null
       && candidate._agreementManagementManual !== undefined
@@ -176,7 +187,16 @@ export async function runAgreementCandidateScoreEvaluation({
       candidateScoreCache.set(cacheKey, 'done');
     }
 
-    if ((needsManagement && resolvedManagement != null) || (needsPerformanceScore && resolvedPerformanceScore != null)) {
+    const managementChanged = needsManagement
+      && resolvedManagement != null
+      && (!isSameScore(prevManagementScore, resolvedManagement)
+        || prevManagementVersion !== managementScoreVersion);
+    const performanceChanged = needsPerformanceScore
+      && resolvedPerformanceScore != null
+      && (!isSameScore(prevPerformanceScore, resolvedPerformanceScore)
+        || prevPerformanceVersion !== performanceCapVersion);
+
+    if (managementChanged || performanceChanged) {
       if (process.env.NODE_ENV !== 'production') {
         console.debug('[AgreementBoard] candidate score updated', getCompanyName(candidate), {
           management: resolvedManagement,
