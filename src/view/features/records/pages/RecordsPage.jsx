@@ -4,6 +4,7 @@ import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
 import { recordsClient } from '../../../../shared/recordsClient.js';
 import sanitizeHtml from '../../../../shared/sanitizeHtml.js';
+import RecordsEditorWindow from '../components/RecordsEditorWindow.jsx';
 
 const formatCurrency = (value) => {
   if (value === null || value === undefined) return '-';
@@ -133,6 +134,14 @@ function CategoryTree({ items, activeId, onSelect }) {
   );
 }
 
+const DEFAULT_EDITOR_STATE = {
+  open: false,
+  mode: 'create',
+  project: null,
+  defaultCompanyId: '',
+  defaultCompanyType: 'our',
+};
+
 export default function RecordsPage() {
   const [activeMenu, setActiveMenu] = React.useState('records');
   const [projects, setProjects] = React.useState([]);
@@ -142,6 +151,7 @@ export default function RecordsPage() {
   const [filters, setFilters] = React.useState({ keyword: '', companyType: 'our', companyId: '', categoryId: null });
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [editorState, setEditorState] = React.useState(DEFAULT_EDITOR_STATE);
   const [selectedProjectId, setSelectedProjectId] = React.useState(null);
   const [companyDialog, setCompanyDialog] = React.useState({ open: false, name: '', isMisc: false, saving: false, error: '' });
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -226,25 +236,6 @@ export default function RecordsPage() {
     fetchProjects();
   }, [fetchProjects]);
 
-  React.useEffect(() => {
-    const handleFocus = () => {
-      fetchProjects();
-      fetchTaxonomies();
-    };
-    const cleanup = recordsClient.onProjectSaved((payload) => {
-      if (payload?.projectId) {
-        pendingSelectRef.current = payload.projectId;
-        setSelectedProjectId(payload.projectId);
-      }
-      fetchProjects();
-    });
-    window.addEventListener('focus', handleFocus);
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      if (typeof cleanup === 'function') cleanup();
-    };
-  }, [fetchProjects, fetchTaxonomies]);
-
   const handleMenuSelect = (key) => {
     if (key === 'records') {
       setActiveMenu('records');
@@ -286,6 +277,19 @@ export default function RecordsPage() {
   React.useEffect(() => {
     setCurrentPage(1);
   }, [filters.keyword, filters.companyId, filters.categoryId, filters.companyType]);
+
+  const closeEditor = React.useCallback(() => {
+    setEditorState(DEFAULT_EDITOR_STATE);
+  }, []);
+
+  const handleProjectSaved = React.useCallback((project) => {
+    if (project?.id) {
+      pendingSelectRef.current = project.id;
+      setSelectedProjectId(project.id);
+    }
+    closeEditor();
+    fetchProjects();
+  }, [closeEditor, fetchProjects]);
 
   const handleOpenAttachment = React.useCallback(async (projectId, attachmentId) => {
     try {
@@ -455,23 +459,23 @@ export default function RecordsPage() {
   }, []);
 
   const openCreateModal = React.useCallback(() => {
-    recordsClient.openEditorWindow({
+    setEditorState({
+      open: true,
       mode: 'create',
+      project: null,
       defaultCompanyId: filters.companyId || '',
       defaultCompanyType: filters.companyType || 'our',
-    }).catch((err) => {
-      alert(err?.message || '실적 입력 창을 열 수 없습니다.');
     });
   }, [filters.companyId, filters.companyType]);
 
   const openEditModal = React.useCallback((project) => {
     setSelectedProjectId(project.id);
-    recordsClient.openEditorWindow({
+    setEditorState({
+      open: true,
       mode: 'edit',
-      projectId: project?.id,
+      project,
+      defaultCompanyId: '',
       defaultCompanyType: project?.primaryCompanyIsMisc ? 'misc' : 'our',
-    }).catch((err) => {
-      alert(err?.message || '실적 수정 창을 열 수 없습니다.');
     });
   }, []);
 
@@ -737,6 +741,18 @@ export default function RecordsPage() {
           </div>
         </div>
       </div>
+
+      <RecordsEditorWindow
+        open={editorState.open}
+        mode={editorState.mode}
+        initialProject={editorState.project}
+        companies={companies}
+        categories={flatCategories}
+        defaultCompanyId={editorState.defaultCompanyId}
+        defaultCompanyType={editorState.defaultCompanyType}
+        onClose={closeEditor}
+        onSaved={handleProjectSaved}
+      />
 
       {companyDialog.open && (
         <div className="records-dialog-overlay" role="presentation" onClick={closeCompanyDialog}>

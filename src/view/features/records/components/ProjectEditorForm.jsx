@@ -2,6 +2,7 @@ import React from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { recordsClient } from '../../../../shared/recordsClient.js';
+import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 
 const DEFAULT_FORM = {
   companyType: 'our',
@@ -60,9 +61,11 @@ export default function ProjectEditorForm({
   categories,
   defaultCompanyId = '',
   defaultCompanyType = 'our',
+  feedbackPortalTarget = null,
   onCancel,
   onSaved,
 }) {
+  const { confirm, notify } = useFeedback();
   const isEdit = mode === 'edit';
   const [form, setForm] = React.useState(DEFAULT_FORM);
   const [files, setFiles] = React.useState([]);
@@ -184,13 +187,30 @@ export default function ProjectEditorForm({
 
   const handleRemoveExistingAttachment = async (attachment) => {
     if (!isEdit || !initialProject?.id || !attachment?.id) return;
-    if (!window.confirm(`첨부 파일을 삭제할까요?\n${attachment.displayName || '첨부 파일'}`)) return;
+    const approved = await confirm({
+      title: '첨부 파일 삭제',
+      message: `${attachment.displayName || '첨부 파일'}을(를) 삭제할까요?`,
+      confirmText: '삭제',
+      cancelText: '취소',
+      portalTarget: feedbackPortalTarget || null,
+    });
+    if (!approved) return;
     try {
       await recordsClient.removeAttachment(initialProject.id, attachment.id);
       setRemovedAttachmentIds((prev) => [...prev, attachment.id]);
       setError('');
+      notify({
+        type: 'success',
+        message: '첨부 파일을 삭제했습니다.',
+        portalTarget: feedbackPortalTarget || null,
+      });
     } catch (err) {
       setError(err?.message || '첨부 파일을 삭제할 수 없습니다.');
+      notify({
+        type: 'error',
+        message: err?.message || '첨부 파일을 삭제할 수 없습니다.',
+        portalTarget: feedbackPortalTarget || null,
+      });
     }
   };
 
