@@ -1049,6 +1049,7 @@ export default function AgreementBoardWindow({
   ratioBaseAmount = '',
   bidRate = '',
   adjustmentRate = '',
+  netCostBonusOverride = '',
   performanceCoefficient = '',
   regionAdjustmentCoefficient = '',
   bidDeadline = '',
@@ -1430,6 +1431,13 @@ export default function AgreementBoardWindow({
     const nextValue = event.target.value;
     setAdjustmentRateTouched(Boolean(String(nextValue || '').trim()));
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ adjustmentRate: nextValue });
+  }, [onUpdateBoard]);
+
+  const handleNetCostBonusOverrideChange = React.useCallback((event) => {
+    if (typeof onUpdateBoard !== 'function') return;
+    const nextValue = String(event.target.value || '').replace(/[^0-9.]/g, '');
+    if ((nextValue.match(/\./g) || []).length > 1) return;
+    onUpdateBoard({ netCostBonusOverride: nextValue });
   }, [onUpdateBoard]);
 
   const handleBidRateChange = React.useCallback((event) => {
@@ -1923,12 +1931,17 @@ export default function AgreementBoardWindow({
     const rMax = roundTo((bidMax - aValueNumber) / (expectedMax - aValueNumber), 4);
     return Number.isFinite(rMin) && Number.isFinite(rMax) && (rMin > 0.9 || rMax > 0.9);
   }, [isLHOwner, selectedRangeOption?.key, baseAmount, netCostAmount, aValue]);
-  const effectiveNetCostBonusScore = showNetCostBonus ? netCostBonusScore : 0;
+  const effectiveNetCostBonusScore = React.useMemo(() => {
+    if (!showNetCostBonus) return 0;
+    const manualValue = parseNumeric(netCostBonusOverride);
+    if (manualValue != null) return manualValue;
+    return netCostBonusScore;
+  }, [showNetCostBonus, parseNumeric, netCostBonusOverride, netCostBonusScore]);
 
   React.useEffect(() => {
     if (!minRatingOpen) return;
-    setMinRatingNetCostBonus(formatScore(netCostBonusScore, 2));
-  }, [minRatingOpen, netCostBonusScore]);
+    setMinRatingNetCostBonus(formatScore(effectiveNetCostBonusScore, 2));
+  }, [minRatingOpen, effectiveNetCostBonusScore]);
 
   React.useEffect(() => {
     let canceled = false;
@@ -4260,6 +4273,7 @@ export default function AgreementBoardWindow({
         ratioBaseAmount: '',
         bidRate: '',
         adjustmentRate: '',
+        netCostBonusOverride: '',
         entryAmount: '',
         entryMode: 'none',
         netCostAmount: '',
@@ -5587,7 +5601,12 @@ export default function AgreementBoardWindow({
           <>
             <div className="excel-field-block size-xs readonly">
               <span className="field-label">순공사원가가점</span>
-              <div className="readonly-value">{formatScore(netCostBonusScore, 2)}</div>
+              <input
+                className="input"
+                value={netCostBonusOverride ?? ''}
+                onChange={handleNetCostBonusOverrideChange}
+                placeholder={formatScore(netCostBonusScore, 2)}
+              />
               {netCostBonusNotice && (
                 <div className="readonly-note">{netCostBonusNotice}</div>
               )}

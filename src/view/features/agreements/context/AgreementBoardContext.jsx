@@ -44,6 +44,7 @@ const initialState = {
   ratioBaseAmount: '',
   bidRate: '',
   adjustmentRate: '',
+  netCostBonusOverride: '',
   performanceCoefficient: '',
   regionAdjustmentCoefficient: '',
   entryAmount: '',
