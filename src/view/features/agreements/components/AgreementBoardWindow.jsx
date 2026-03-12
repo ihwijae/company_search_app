@@ -5599,7 +5599,7 @@ export default function AgreementBoardWindow({
         </div>
         {isLH && !isLh100To300 && (
           <>
-            <div className="excel-field-block size-xs readonly">
+            <div className="excel-field-block size-xs">
               <span className="field-label">순공사원가가점</span>
               <input
                 className="input"
