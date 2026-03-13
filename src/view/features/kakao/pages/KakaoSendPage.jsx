@@ -2,8 +2,8 @@ import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
-import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
+import Modal from '../../../../components/Modal.jsx';
 import { extractManagerNames, getCandidateTextField } from '../../../../utils/companyIndicators.js';
 import { loadPersisted, savePersisted } from '../../../../shared/persistence.js';
 
@@ -123,7 +123,7 @@ export default function KakaoSendPage() {
     if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return null;
     return stored;
   }, []);
-  const { notify } = useFeedback();
+  const { notify, confirm } = useFeedback();
   const [draft, setDraft] = React.useState(() => String(initialUiState?.draft || ''));
   const [splitEntries, setSplitEntries] = React.useState(() => (
     Array.isArray(initialUiState?.splitEntries) ? initialUiState.splitEntries : []
@@ -145,7 +145,6 @@ export default function KakaoSendPage() {
   const [companyConflictSelections, setCompanyConflictSelections] = React.useState({});
   const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
   const [pendingConflictPayload, setPendingConflictPayload] = React.useState(null);
-  const [industryRequiredModalOpen, setIndustryRequiredModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     const payload = {
@@ -380,9 +379,15 @@ export default function KakaoSendPage() {
 
   const ensureIndustrySelected = React.useCallback(() => {
     if (industryFilter) return true;
-    setIndustryRequiredModalOpen(true);
+    confirm({
+      title: '공종 선택 필요',
+      message: '문자 분리 전에 공종을 먼저 선택해 주세요.',
+      confirmText: '확인',
+      cancelText: '닫기',
+      tone: 'info',
+    });
     return false;
-  }, [industryFilter]);
+  }, [confirm, industryFilter]);
 
   const handleSplitMessages = async () => {
     if (!ensureIndustrySelected()) return;
@@ -920,22 +925,6 @@ export default function KakaoSendPage() {
           </div>
         </div>
       )}
-      <Modal
-        open={industryRequiredModalOpen}
-        onClose={() => setIndustryRequiredModalOpen(false)}
-        onCancel={() => setIndustryRequiredModalOpen(false)}
-        onSave={() => setIndustryRequiredModalOpen(false)}
-        title="공종 선택 필요"
-        confirmLabel="확인"
-        cancelLabel="닫기"
-        size="sm"
-        disableBackdropClose={false}
-        disableEscClose={false}
-      >
-        <div style={{ padding: '4px 4px 0', color: '#334155', lineHeight: 1.6 }}>
-          문자 분리 전에 공종을 먼저 선택해 주세요.
-        </div>
-      </Modal>
     </div>
   );
 }
