@@ -1,6 +1,8 @@
 const ensureApi = () => {
   if (typeof window === 'undefined') return null;
-  const api = window.electronAPI?.tempCompanies;
+  const api = window.electronAPI?.tempCompanies
+    || window.opener?.electronAPI?.tempCompanies
+    || null;
   if (!api) {
     console.warn('[Renderer] tempCompanies API is not available on window.electronAPI.tempCompanies');
   }

@@ -39,6 +39,7 @@ const FIELD_LAYOUT = [
   ['smallBusiness', '중소기업'],
   ['jobCreation', '일자리창출'],
   ['qualityEval', '품질평가'],
+  ['notes', '비고'],
 ];
 
 const COMMA_NUMERIC_FIELDS = new Set([
@@ -220,7 +221,6 @@ export default function TempCompaniesPage() {
 
   return (
     <div className="records-editor-page">
-      <div className="title-drag" />
       <div className="records-editor-page__backdrop" />
       <main className="records-editor-page__shell" style={{ maxWidth: 1320 }}>
         <header className="records-editor-page__header">
@@ -285,30 +285,30 @@ export default function TempCompaniesPage() {
                 {FIELD_LAYOUT.map(([key, label]) => (
                   <div key={key} className="records-editor-form__field">
                     <label>{label}</label>
-                    <input
-                      value={COMMA_NUMERIC_FIELDS.has(key) ? formatNumericValue(form[key]) : (form[key] || '')}
-                      onChange={(e) => handleChange(key, e.target.value)}
-                      placeholder={label}
-                    />
+                    {key === 'notes' ? (
+                      <textarea
+                        value={form.notes || ''}
+                        onChange={(e) => handleChange('notes', e.target.value)}
+                        placeholder="비고"
+                        style={{
+                          minHeight: 44,
+                          borderRadius: 14,
+                          border: '1px solid #d4d4d8',
+                          padding: 12,
+                          fontSize: 14,
+                          fontFamily: 'inherit',
+                          resize: 'vertical',
+                        }}
+                      />
+                    ) : (
+                      <input
+                        value={COMMA_NUMERIC_FIELDS.has(key) ? formatNumericValue(form[key]) : (form[key] || '')}
+                        onChange={(e) => handleChange(key, e.target.value)}
+                        placeholder={label}
+                      />
+                    )}
                   </div>
                 ))}
-                <div className="records-editor-form__field" style={{ gridColumn: '1 / -1' }}>
-                  <label>비고</label>
-                  <textarea
-                    value={form.notes || ''}
-                    onChange={(e) => handleChange('notes', e.target.value)}
-                    placeholder="비고"
-                    style={{
-                      minHeight: 140,
-                      borderRadius: 14,
-                      border: '1px solid #d4d4d8',
-                      padding: 14,
-                      fontSize: 14,
-                      fontFamily: 'inherit',
-                      resize: 'vertical',
-                    }}
-                  />
-                </div>
               </div>
               {(status || error) && (
                 <div className={`records-editor-page__status${error ? ' is-error' : ''}`} style={{ marginTop: 12 }}>
