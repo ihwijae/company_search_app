@@ -37,6 +37,8 @@ export const AGREEMENT_BAN_CONFIG = {
     [{ name: '㈜남양계전', entityType: 'company' }, { name: '㈜이엘케이', entityType: 'company' }],
     [{ name: '㈜부현전기', entityType: 'company' }, { name: '㈜하나전기', entityType: 'company' }],
     [{ name: '㈜부현전기', entityType: 'company' }, { name: '㈜유리시스템즈', entityType: 'company' }],
+    [{ name: '세안이엔씨㈜', entityType: 'company' }, { name: '㈜유리시스템즈', entityType: 'company' }],
+    [{ name: '세안이엔씨㈜', entityType: 'company' }, { name: '㈜하나전기', entityType: 'company' }],
     [{ name: '㈜대광건영', entityType: 'company' }, { name: '김화성', entityType: 'manager' }],
     [{ name: '㈜대한종합산전', entityType: 'company' }, { name: '㈜코원건설', entityType: 'company' }],
   ],
