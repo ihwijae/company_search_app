@@ -45,11 +45,6 @@ const COMPANY_NAME_FIELDS = [
   'company',
   'name',
 ];
-const FILE_TYPE_LABELS = [
-  { key: 'eung', match: /전기/ },
-  { key: 'tongsin', match: /통신/ },
-  { key: 'sobang', match: /소방/ },
-];
 const KAKAO_UI_STORAGE_KEY = 'kakao-send:ui';
 
 const normalizeCompanyName = (name) => {
@@ -103,12 +98,6 @@ const extractCompanyNameFromLine = (line) => {
   return cleaned.trim();
 };
 
-const detectFileTypeFromBlock = (blockText) => {
-  const text = String(blockText || '');
-  const match = FILE_TYPE_LABELS.find((item) => item.match.test(text));
-  return match ? match.key : null;
-};
-
 const normalizeManagerName = (name) => String(name || '').replace(/\s+/g, '').toLowerCase();
 
 const getCandidateName = (candidate) => {
@@ -148,14 +137,15 @@ export default function KakaoSendPage() {
   const [messageDraft, setMessageDraft] = React.useState('');
   const [messageTemplate, setMessageTemplate] = React.useState('');
   const [industryFilter, setIndustryFilter] = React.useState(() => {
-    const next = String(initialUiState?.industryFilter || 'auto');
-    return ['auto', 'eung', 'tongsin', 'sobang'].includes(next) ? next : 'auto';
+    const next = String(initialUiState?.industryFilter || '');
+    return ['eung', 'tongsin', 'sobang'].includes(next) ? next : '';
   });
   const [companySearchKeyword, setCompanySearchKeyword] = React.useState('');
   const [selectedManagerId, setSelectedManagerId] = React.useState(() => String(initialUiState?.selectedManagerId || ''));
   const [companyConflictSelections, setCompanyConflictSelections] = React.useState({});
   const [companyConflictModal, setCompanyConflictModal] = React.useState({ open: false, entries: [], isResolving: false });
   const [pendingConflictPayload, setPendingConflictPayload] = React.useState(null);
+  const [industryRequiredModalOpen, setIndustryRequiredModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     const payload = {
@@ -260,7 +250,7 @@ export default function KakaoSendPage() {
     });
     if (nameSet.size === 0) return { entries, conflictEntries: [] };
     console.log('[kakao-auto-match] query names:', Array.from(nameSet));
-    const searchFileType = overrideFileType && overrideFileType !== 'auto' ? overrideFileType : 'all';
+    const searchFileType = overrideFileType || 'all';
     console.log('[kakao-auto-match] fileType:', searchFileType);
     const response = await window.electronAPI.searchManyCompanies(Array.from(nameSet), searchFileType);
     if (!response?.success) {
@@ -296,7 +286,7 @@ export default function KakaoSendPage() {
       if (list.length > 0) {
         console.log('[kakao-auto-match] candidates for', entry.companyName, list);
       }
-      const targetType = overrideFileType && overrideFileType !== 'auto' ? overrideFileType : entry.fileType;
+      const targetType = overrideFileType || entry.fileType;
       const filtered = targetType
         ? list.filter((candidate) => getCandidateFileType(candidate) === targetType)
         : list;
@@ -388,14 +378,21 @@ export default function KakaoSendPage() {
     }
   };
 
+  const ensureIndustrySelected = React.useCallback(() => {
+    if (industryFilter) return true;
+    setIndustryRequiredModalOpen(true);
+    return false;
+  }, [industryFilter]);
+
   const handleSplitMessages = async () => {
+    if (!ensureIndustrySelected()) return;
     const blocks = String(draft || '')
       .split(/-{5,}/)
       .map((block) => block.trim())
       .filter(Boolean);
     const entries = [];
     blocks.forEach((block, blockIndex) => {
-      const fileType = industryFilter === 'auto' ? detectFileTypeFromBlock(block) : industryFilter;
+      const fileType = industryFilter;
       const lines = block
         .split('\n')
         .map((line) => line.trim())
@@ -451,6 +448,7 @@ export default function KakaoSendPage() {
   };
 
   const handleAutoMatchClick = async () => {
+    if (!ensureIndustrySelected()) return;
     if (splitEntries.length === 0) {
       notify({ type: 'info', message: '먼저 협정문자를 분리해 주세요.' });
       return;
@@ -627,6 +625,19 @@ export default function KakaoSendPage() {
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
                   />
+                  <div className="filter-item" style={{ maxWidth: '160px' }}>
+                    <label>공종 선택</label>
+                    <select
+                      className="filter-input"
+                      value={industryFilter}
+                      onChange={(event) => setIndustryFilter(event.target.value)}
+                    >
+                      <option value="">선택</option>
+                      <option value="eung">전기</option>
+                      <option value="tongsin">통신</option>
+                      <option value="sobang">소방</option>
+                    </select>
+                  </div>
                   <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <button className="primary" type="button" onClick={handleSplitMessages}>문자 분리</button>
                     <button className="secondary" type="button" onClick={handleClearDraft}>입력 초기화</button>
@@ -644,17 +655,6 @@ export default function KakaoSendPage() {
                         value={companySearchKeyword}
                         onChange={(event) => setCompanySearchKeyword(event.target.value)}
                       />
-                      <select
-                        className="filter-input"
-                        value={industryFilter}
-                        onChange={(event) => setIndustryFilter(event.target.value)}
-                        style={{ minWidth: '120px' }}
-                      >
-                        <option value="auto">공종 자동</option>
-                        <option value="eung">전기</option>
-                        <option value="tongsin">통신</option>
-                        <option value="sobang">소방</option>
-                      </select>
                       <button className="secondary" type="button" onClick={handleAutoMatchClick}>담당자 자동매칭</button>
                     </div>
                   </div>
@@ -704,7 +704,7 @@ export default function KakaoSendPage() {
                               </td>
                               <td style={{ textAlign: 'center' }}>
                                 <button
-                                  className={messageOverrides[entry.id] ? 'kakao-override-btn' : 'secondary'}
+                                  className={getEffectiveOverride(entry.id) ? 'kakao-override-btn' : 'secondary'}
                                   type="button"
                                   onClick={() => openMessageModal(entry.id)}
                                 >
@@ -920,6 +920,22 @@ export default function KakaoSendPage() {
           </div>
         </div>
       )}
+      <Modal
+        open={industryRequiredModalOpen}
+        onClose={() => setIndustryRequiredModalOpen(false)}
+        onCancel={() => setIndustryRequiredModalOpen(false)}
+        onSave={() => setIndustryRequiredModalOpen(false)}
+        title="공종 선택 필요"
+        confirmLabel="확인"
+        cancelLabel="닫기"
+        size="sm"
+        disableBackdropClose={false}
+        disableEscClose={false}
+      >
+        <div style={{ padding: '4px 4px 0', color: '#334155', lineHeight: 1.6 }}>
+          문자 분리 전에 공종을 먼저 선택해 주세요.
+        </div>
+      </Modal>
     </div>
   );
 }
