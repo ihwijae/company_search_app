@@ -126,6 +126,8 @@ const getCandidateFileType = (candidate) => {
   return null;
 };
 
+const normalizeMessageText = (value) => String(value || '').replace(/\r\n/g, '\n').trim();
+
 export default function KakaoSendPage() {
   const initialUiState = React.useMemo(() => {
     const stored = loadPersisted(KAKAO_UI_STORAGE_KEY, null);
@@ -487,10 +489,38 @@ export default function KakaoSendPage() {
     notify({ type: 'info', message: '해당 업체를 목록에서 제거했습니다.' });
   };
 
+  const getEffectiveOverride = React.useCallback((entryId) => {
+    const entry = splitEntries.find((item) => item.id === entryId);
+    if (!entry) return '';
+    const override = messageOverrides[entryId];
+    if (override === null || override === undefined) return '';
+    return normalizeMessageText(override) === normalizeMessageText(entry.baseText) ? '' : String(override);
+  }, [messageOverrides, splitEntries]);
+
+  React.useEffect(() => {
+    setMessageOverrides((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      Object.keys(next).forEach((entryId) => {
+        const entry = splitEntries.find((item) => item.id === entryId);
+        if (!entry) {
+          delete next[entryId];
+          changed = true;
+          return;
+        }
+        if (normalizeMessageText(next[entryId]) === normalizeMessageText(entry.baseText)) {
+          delete next[entryId];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [splitEntries]);
+
   const openMessageModal = (entryId) => {
     const entry = splitEntries.find((item) => item.id === entryId);
     if (!entry) return;
-    const existing = messageOverrides[entryId];
+    const existing = getEffectiveOverride(entryId);
     setMessageDraft(existing ?? entry.baseText ?? '');
     setMessageTemplate('');
     setMessageModal({ open: true, entryId });
@@ -504,9 +534,18 @@ export default function KakaoSendPage() {
 
   const handleSaveMessageOverride = () => {
     if (!messageModal.entryId) return;
+    const entry = splitEntries.find((item) => item.id === messageModal.entryId);
+    const baseText = entry?.baseText || '';
     setMessageOverrides((prev) => ({
-      ...prev,
-      [messageModal.entryId]: messageDraft,
+      ...(() => {
+        const next = { ...prev };
+        if (normalizeMessageText(messageDraft) === normalizeMessageText(baseText)) {
+          delete next[messageModal.entryId];
+        } else {
+          next[messageModal.entryId] = messageDraft;
+        }
+        return next;
+      })(),
     }));
     notify({ type: 'success', message: '담당자별 메시지가 저장되었습니다.' });
     closeMessageModal();
@@ -669,7 +708,7 @@ export default function KakaoSendPage() {
                                   type="button"
                                   onClick={() => openMessageModal(entry.id)}
                                 >
-                                  {messageOverrides[entry.id] ? '수정됨' : '기본'}
+                                  {getEffectiveOverride(entry.id) ? '수정됨' : '기본'}
                                 </button>
                               </td>
                               <td style={{ textAlign: 'center' }}>
@@ -710,7 +749,7 @@ export default function KakaoSendPage() {
                         </div>
                         {managerBuckets.filter((bucket) => bucket.id === selectedManagerId).map((bucket) => {
                           const combinedText = bucket.entries
-                            .map((entry) => messageOverrides[entry.id] || entry.baseText)
+                            .map((entry) => getEffectiveOverride(entry.id) || entry.baseText)
                             .filter(Boolean)
                             .join('\n\n---------------------\n\n');
                           return (
@@ -727,8 +766,9 @@ export default function KakaoSendPage() {
                               </div>
                               <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', background: '#ffffff', padding: '10px', maxHeight: '360px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {bucket.entries.map((entry, index) => {
-                                  const isOverride = Boolean(messageOverrides[entry.id]);
-                                  const entryText = (messageOverrides[entry.id] || entry.baseText || '').trim();
+                                  const overrideText = getEffectiveOverride(entry.id);
+                                  const isOverride = Boolean(overrideText);
+                                  const entryText = (overrideText || entry.baseText || '').trim();
                                   return (
                                     <div key={entry.id} style={{ border: '1px solid #e5e7eb', borderRadius: '10px', padding: '10px', background: '#fdfdfd', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                       <pre

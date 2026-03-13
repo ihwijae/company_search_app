@@ -8,6 +8,9 @@ const { SearchLogic } = require('./searchLogic.js');
 const { ensureRecordsDatabase } = require('./src/main/features/records/recordsDatabase.js');
 const { RecordsService } = require('./src/main/features/records/recordsService.js');
 const { registerRecordsIpcHandlers } = require('./src/main/features/records/ipc.js');
+const { ensureTempCompaniesDatabase } = require('./src/main/features/temp-companies/database.js');
+const { TempCompaniesService } = require('./src/main/features/temp-companies/service.js');
+const { registerTempCompaniesIpcHandlers } = require('./src/main/features/temp-companies/ipc.js');
 const industryAverages = require('./src/shared/industryAverages.json');
 const { ExcelAutomationService } = require('./src/main/features/excel/excelAutomation.js');
 const { formatUploadedWorkbook } = require('./src/main/features/excel/formatUploadedWorkbook.js');
@@ -43,8 +46,11 @@ let formulasCache = null;
 let formulasDefaultsCache = null;
 let recordsDbInstance = null;
 let recordsServiceInstance = null;
+let tempCompaniesDbInstance = null;
+let tempCompaniesServiceInstance = null;
 let excelHelperWindow = null;
 let recordsEditorWindow = null;
+let tempCompaniesWindow = null;
 const excelAutomation = new ExcelAutomationService();
 const loadMergedFormulasCached = () => {
   if (formulasCache) return formulasCache;
@@ -1130,6 +1136,55 @@ function createRecordsEditorWindow(payload = {}) {
   return editorWindow;
 }
 
+function createTempCompaniesWindow() {
+  const routeHash = '/temp-companies';
+  if (tempCompaniesWindow && !tempCompaniesWindow.isDestroyed()) {
+    if (isDev) {
+      tempCompaniesWindow.loadURL(`http://localhost:5173/#${routeHash}`);
+    } else {
+      tempCompaniesWindow.loadFile(path.join(__dirname, 'dist', 'index.html'), { hash: routeHash });
+    }
+    tempCompaniesWindow.focus();
+    return tempCompaniesWindow;
+  }
+
+  const childWindow = new BrowserWindow({
+    width: 1320,
+    height: 940,
+    minWidth: 1080,
+    minHeight: 760,
+    backgroundColor: '#f5efe4',
+    title: '임시 업체 관리',
+    icon: APP_ICON_PATH || undefined,
+    autoHideMenuBar: true,
+    showInTaskbar: true,
+    parent: mainWindowRef || undefined,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#ece3cf',
+      symbolColor: '#1b4332',
+      height: 32,
+    },
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+
+  tempCompaniesWindow = childWindow;
+  childWindow.on('closed', () => {
+    tempCompaniesWindow = null;
+  });
+
+  if (isDev) {
+    childWindow.loadURL(`http://localhost:5173/#${routeHash}`);
+  } else {
+    childWindow.loadFile(path.join(__dirname, 'dist', 'index.html'), { hash: routeHash });
+  }
+
+  try { childWindow.setTitle('임시 업체 관리'); } catch {}
+  return childWindow;
+}
+
 function createWindow() {
   const prevState = loadWindowState();
   const bounds = clampBoundsToDisplay(prevState);
@@ -1237,6 +1292,16 @@ app.whenReady().then(async () => {
     }
     recordsServiceInstance = new RecordsService({ userDataDir });
     registerRecordsIpcHandlers({ ipcMain, recordsService: recordsServiceInstance });
+    tempCompaniesDbInstance = await ensureTempCompaniesDatabase({ userDataDir });
+    if (tempCompaniesDbInstance?.path) {
+      console.log('[MAIN] Temp companies database ready:', tempCompaniesDbInstance.path);
+    }
+    tempCompaniesServiceInstance = new TempCompaniesService({ userDataDir });
+    registerTempCompaniesIpcHandlers({
+      ipcMain,
+      tempCompaniesService: tempCompaniesServiceInstance,
+      openWindow: createTempCompaniesWindow,
+    });
   } catch (err) {
     console.error('[MAIN] Failed to initialize records database:', err);
   }
@@ -1320,7 +1385,7 @@ try {
       try { ipcMain.removeHandler('get-regions-all'); } catch {}
       try { ipcMain.removeHandler('search-companies-all'); } catch {}
     }
-    registerAllIpcHandlers({ ipcMain, searchService: svc });
+    registerAllIpcHandlers({ ipcMain, searchService: svc, getTempCompaniesService: () => tempCompaniesServiceInstance });
   } catch {}
 
   ipcMain.on('renderer-state-load-sync', (event, key) => {
@@ -1454,14 +1519,20 @@ try {
       const result = normalizedType === 'all'
         ? svc.searchAll(sanitizedCriteria, sanitizedOptions || {})
         : svc.search(normalizedType, sanitizedCriteria, sanitizedOptions || {});
+      const tempResults = tempCompaniesServiceInstance
+        ? tempCompaniesServiceInstance.searchCompanies(sanitizedCriteria || {})
+        : [];
       if (result && typeof result === 'object' && !Array.isArray(result) && result.meta && result.items) {
         return {
           success: true,
-          data: sanitizeIpcPayload(result.items),
-          meta: sanitizeIpcPayload(result.meta),
+          data: [...sanitizeIpcPayload(result.items), ...sanitizeIpcPayload(tempResults)],
+          meta: sanitizeIpcPayload({
+            ...(result.meta || {}),
+            total: Number(result.meta?.total || 0) + tempResults.length,
+          }),
         };
       }
-      return { success: true, data: sanitizeIpcPayload(result) };
+      return { success: true, data: [...sanitizeIpcPayload(result), ...sanitizeIpcPayload(tempResults)] };
     }
     catch (e) { return { success: false, message: e?.message || 'Search failed' }; }
   });

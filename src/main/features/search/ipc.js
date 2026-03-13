@@ -29,7 +29,7 @@ const parseMaybeJson = (value, label = 'payload') => {
   }
 };
 
-function registerAllIpcHandlers({ ipcMain, searchService, searchLogics }) {
+function registerAllIpcHandlers({ ipcMain, searchService, searchLogics, getTempCompaniesService }) {
   if (!ipcMain) return;
 
   // Aggregate regions across all loaded datasets
@@ -55,6 +55,8 @@ function registerAllIpcHandlers({ ipcMain, searchService, searchLogics }) {
 
   // Search across all loaded datasets and annotate origin type
   ipcMain.handle('search-companies-all', (event, { criteria, options }) => {
+    const tempService = typeof getTempCompaniesService === 'function' ? getTempCompaniesService() : null;
+    const tempItems = tempService ? tempService.searchCompanies(parseMaybeJson(criteria, 'criteria') || {}) : [];
     if (searchService) {
       const normalizedCriteria = parseMaybeJson(criteria, 'criteria');
       const normalizedOptions = parseMaybeJson(options, 'options');
@@ -62,11 +64,14 @@ function registerAllIpcHandlers({ ipcMain, searchService, searchLogics }) {
       if (result && typeof result === 'object' && !Array.isArray(result) && result.meta && result.items) {
         return {
           success: true,
-          data: sanitizeIpcPayload(result.items),
-          meta: sanitizeIpcPayload(result.meta),
+          data: [...sanitizeIpcPayload(result.items), ...sanitizeIpcPayload(tempItems)],
+          meta: sanitizeIpcPayload({
+            ...(result.meta || {}),
+            total: Number(result.meta?.total || 0) + tempItems.length,
+          }),
         };
       }
-      return { success: true, data: sanitizeIpcPayload(result) };
+      return { success: true, data: [...sanitizeIpcPayload(result), ...sanitizeIpcPayload(tempItems)] };
     }
     const merged = [];
     const normalizedCriteria = parseMaybeJson(criteria, 'criteria');
@@ -84,11 +89,14 @@ function registerAllIpcHandlers({ ipcMain, searchService, searchLogics }) {
     if (processed && processed.paginated) {
       return {
         success: true,
-        data: sanitizeIpcPayload(processed.items),
-        meta: sanitizeIpcPayload(processed.meta),
+        data: [...sanitizeIpcPayload(processed.items), ...sanitizeIpcPayload(tempItems)],
+        meta: sanitizeIpcPayload({
+          ...(processed.meta || {}),
+          total: Number(processed.meta?.total || 0) + tempItems.length,
+        }),
       };
     }
-    return { success: true, data: sanitizeIpcPayload(processed.items) };
+    return { success: true, data: [...sanitizeIpcPayload(processed.items), ...sanitizeIpcPayload(tempItems)] };
   });
 }
 

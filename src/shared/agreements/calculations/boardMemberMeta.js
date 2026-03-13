@@ -81,6 +81,9 @@ export function buildBoardMemberMeta({
     calculatePossibleShareRatio(possibleShareBase, sipyungAmount)
   );
   const tags = [];
+  if (candidate._is_temp_company || candidate.snapshot?._is_temp_company) {
+    tags.push({ key: 'temp', label: '임시' });
+  }
   if (isSingleBidEligible(candidate)) {
     tags.push({ key: 'single-bid', label: '단독가능' });
   }

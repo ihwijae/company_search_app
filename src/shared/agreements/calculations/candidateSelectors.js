@@ -60,6 +60,7 @@ export function buildCandidateDrawerEntries({
         candidate,
         companyName,
         hasRecentAwardHistory: hasRecentAwardHistory(companyName, noticeDate),
+        isTempCompany: Boolean(candidate._is_temp_company || candidate.snapshot?._is_temp_company),
         managerName,
         regionLabel,
         isDutyRegion: entry.type === 'region' || isDutyRegionCompany(candidate),

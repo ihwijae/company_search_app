@@ -679,7 +679,8 @@ button.primary:hover { background: var(--accent-2); }
 .company-search-footer {
   margin-top: 14px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 8px;
 }
 .excel-helper-search-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .excel-helper-selected { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
@@ -2404,6 +2405,11 @@ button.primary:hover { background: var(--accent-2); }
 .excel-tag-single-bid {
   background: #fee2e2;
   color: #b91c1c;
+}
+
+.excel-tag-temp {
+  background: #fff7ed;
+  color: #9a3412;
 }
 
 .excel-member-name {

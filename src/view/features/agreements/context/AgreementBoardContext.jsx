@@ -147,6 +147,10 @@ const buildCandidateFromSearchEntry = (entry) => {
     source: 'search',
     _forceRepresentative: true,
   };
+  if (entry._is_temp_company || snapshot._is_temp_company) {
+    candidate._is_temp_company = true;
+    candidate._temp_company_id = entry._temp_company_id || snapshot._temp_company_id || null;
+  }
 
   if (entry?.[AGREEMENT_CANDIDATE_LISTED_FLAG] === true) {
     candidate[AGREEMENT_CANDIDATE_LISTED_FLAG] = true;

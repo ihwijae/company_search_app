@@ -23,6 +23,7 @@ import BidResultPage from './view/features/bid-helper/pages/BidResultPage.jsx';
 import RegionSearchWindowHost from './view/features/agreements/components/RegionSearchWindowHost.jsx';
 import FeedbackProvider from './components/FeedbackProvider.jsx';
 import CompanyNotesPage from './view/features/notes/pages/CompanyNotesPage.jsx';
+import TempCompaniesPage from './view/features/temp-companies/pages/TempCompaniesPage.jsx';
 
 export default function App() {
   const [route, setRoute] = React.useState(window.location.hash || '#/search');
@@ -99,6 +100,9 @@ export default function App() {
       break;
     case '/kakao-send':
       Screen = KakaoSendPage;
+      break;
+    case '/temp-companies':
+      Screen = TempCompaniesPage;
       break;
     case '/search':
     default:

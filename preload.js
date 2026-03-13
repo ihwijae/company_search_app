@@ -109,6 +109,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     exportDatabase: () => ipcRenderer.invoke('records:export-database'),
     importDatabase: () => ipcRenderer.invoke('records:import-database'),
   },
+  tempCompanies: {
+    list: (filters) => ipcRenderer.invoke('temp-companies:list', filters),
+    get: (id) => ipcRenderer.invoke('temp-companies:get', { id }),
+    save: (payload) => ipcRenderer.invoke('temp-companies:save', payload),
+    delete: (id) => ipcRenderer.invoke('temp-companies:delete', { id }),
+    openWindow: (payload) => ipcRenderer.invoke('temp-companies:open-window', payload),
+    exportData: () => ipcRenderer.invoke('temp-companies:export'),
+    importData: () => ipcRenderer.invoke('temp-companies:import'),
+  },
   mail: {
     sendTest: (payload) => ipcRenderer.invoke('mail:send-test', payload),
     sendBatch: (payload) => ipcRenderer.invoke('mail:send-batch', payload),

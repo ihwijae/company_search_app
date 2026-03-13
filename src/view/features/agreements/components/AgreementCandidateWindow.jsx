@@ -113,6 +113,11 @@ export default function AgreementCandidateWindow({
                             낙찰이력
                           </span>
                         )}
+                        {entry.isTempCompany && (
+                          <span className="agreement-candidate-table__meta-badge" style={{ color: '#9a3412', borderColor: '#fdba74', background: '#fff7ed' }}>
+                            임시
+                          </span>
+                        )}
                         {entry.regionLabel && (
                           <span className="agreement-candidate-table__meta-badge">{entry.regionLabel}</span>
                         )}
