@@ -1139,16 +1139,15 @@ function createRecordsEditorWindow(payload = {}) {
 function createTempCompaniesWindow() {
   const routeHash = '/temp-companies';
   if (tempCompaniesWindow && !tempCompaniesWindow.isDestroyed()) {
-    if (isDev) {
-      tempCompaniesWindow.loadURL(`http://localhost:5173/#${routeHash}`);
-    } else {
-      tempCompaniesWindow.loadFile(path.join(__dirname, 'dist', 'index.html'), { hash: routeHash });
-    }
+    if (tempCompaniesWindow.isMinimized()) tempCompaniesWindow.restore();
+    tempCompaniesWindow.show();
+    tempCompaniesWindow.moveTop();
     tempCompaniesWindow.focus();
     return tempCompaniesWindow;
   }
 
   const childWindow = new BrowserWindow({
+    show: false,
     width: 1320,
     height: 940,
     minWidth: 1080,
@@ -1158,7 +1157,6 @@ function createTempCompaniesWindow() {
     icon: APP_ICON_PATH || undefined,
     autoHideMenuBar: true,
     showInTaskbar: true,
-    parent: mainWindowRef || undefined,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#ece3cf',
@@ -1171,6 +1169,13 @@ function createTempCompaniesWindow() {
   });
 
   tempCompaniesWindow = childWindow;
+  childWindow.once('ready-to-show', () => {
+    try {
+      childWindow.show();
+      childWindow.moveTop();
+      childWindow.focus();
+    } catch {}
+  });
   childWindow.on('closed', () => {
     tempCompaniesWindow = null;
   });

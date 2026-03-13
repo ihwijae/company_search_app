@@ -39,6 +39,49 @@ const FIELD_LAYOUT = [
   ['qualityEval', '품질평가'],
 ];
 
+const NUMERIC_FIELDS = new Set([
+  'sipyung',
+  'performance3y',
+  'performance5y',
+  'debtRatio',
+  'currentRatio',
+  'bizYears',
+  'qualityEval',
+]);
+
+const normalizeNumericValue = (value) => {
+  const text = String(value ?? '').replace(/,/g, '').replace(/[^\d.]/g, '');
+  if (!text) return '';
+  const [integerPart = '', ...decimalParts] = text.split('.');
+  const normalizedInteger = integerPart.replace(/^0+(?=\d)/, '') || (integerPart ? '0' : '');
+  if (decimalParts.length === 0) return normalizedInteger;
+  return `${normalizedInteger}.${decimalParts.join('')}`;
+};
+
+const formatNumericValue = (value) => {
+  const normalized = normalizeNumericValue(value);
+  if (!normalized) return '';
+  const [integerPart = '', decimalPart] = normalized.split('.');
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return decimalPart !== undefined ? `${formattedInteger}.${decimalPart}` : formattedInteger;
+};
+
+const normalizeFormValues = (payload = {}) => {
+  const next = { ...payload };
+  NUMERIC_FIELDS.forEach((field) => {
+    next[field] = normalizeNumericValue(next[field]);
+  });
+  return next;
+};
+
+const closeTempCompaniesWindow = () => {
+  try {
+    window.close();
+  } catch {
+    window.location.hash = '#/search';
+  }
+};
+
 export default function TempCompaniesPage() {
   const [items, setItems] = React.useState([]);
   const [query, setQuery] = React.useState('');
@@ -48,6 +91,10 @@ export default function TempCompaniesPage() {
   const [error, setError] = React.useState('');
   const [form, setForm] = React.useState(EMPTY_FORM);
 
+  React.useEffect(() => {
+    document.title = '임시 업체 관리';
+  }, []);
+
   const loadItems = React.useCallback(async (nextQuery = query) => {
     setLoading(true);
     setError('');
@@ -55,7 +102,7 @@ export default function TempCompaniesPage() {
       const list = await tempCompaniesClient.listCompanies({ query: nextQuery });
       setItems(Array.isArray(list) ? list : []);
       if (Array.isArray(list) && list.length > 0 && !form.id) {
-        setForm((prev) => (prev.id ? prev : { ...EMPTY_FORM, ...list[0] }));
+        setForm((prev) => (prev.id ? prev : normalizeFormValues({ ...EMPTY_FORM, ...list[0] })));
       }
     } catch (err) {
       setError(err?.message || String(err));
@@ -69,13 +116,16 @@ export default function TempCompaniesPage() {
   }, [loadItems]);
 
   const handleSelect = React.useCallback((item) => {
-    setForm({ ...EMPTY_FORM, ...(item || {}) });
+    setForm(normalizeFormValues({ ...EMPTY_FORM, ...(item || {}) }));
     setStatus('');
     setError('');
   }, []);
 
   const handleChange = React.useCallback((key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => ({
+      ...prev,
+      [key]: NUMERIC_FIELDS.has(key) ? normalizeNumericValue(value) : value,
+    }));
   }, []);
 
   const handleReset = React.useCallback(() => {
@@ -89,9 +139,9 @@ export default function TempCompaniesPage() {
     setError('');
     setStatus('');
     try {
-      const saved = await tempCompaniesClient.saveCompany(form);
+      const saved = await tempCompaniesClient.saveCompany(normalizeFormValues(form));
       setStatus('저장되었습니다.');
-      setForm({ ...EMPTY_FORM, ...(saved || {}) });
+      setForm(normalizeFormValues({ ...EMPTY_FORM, ...(saved || {}) }));
       await loadItems(query);
     } catch (err) {
       setError(err?.message || String(err));
@@ -147,6 +197,7 @@ export default function TempCompaniesPage() {
 
   return (
     <div className="records-editor-page">
+      <div className="title-drag" />
       <div className="records-editor-page__backdrop" />
       <main className="records-editor-page__shell" style={{ maxWidth: 1320 }}>
         <header className="records-editor-page__header">
@@ -155,7 +206,7 @@ export default function TempCompaniesPage() {
             <h1>임시 업체 관리</h1>
             <p className="records-editor-page__description">DB와 분리된 임시 업체를 저장하고 협정보드 검색에서 함께 사용할 수 있습니다.</p>
           </div>
-          <button type="button" className="btn-muted records-editor-page__close" onClick={() => window.close()}>닫기</button>
+          <button type="button" className="btn-muted records-editor-page__close" onClick={closeTempCompaniesWindow}>창 닫기</button>
         </header>
 
         <section className="records-editor-page__content" style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16 }}>
@@ -212,7 +263,7 @@ export default function TempCompaniesPage() {
                   <div key={key} className="records-editor-form__field">
                     <label>{label}</label>
                     <input
-                      value={form[key] || ''}
+                      value={NUMERIC_FIELDS.has(key) ? formatNumericValue(form[key]) : (form[key] || '')}
                       onChange={(e) => handleChange(key, e.target.value)}
                       placeholder={label}
                     />
