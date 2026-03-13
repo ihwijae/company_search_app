@@ -1148,11 +1148,11 @@ function createTempCompaniesWindow() {
 
   const childWindow = new BrowserWindow({
     show: false,
-    width: 1320,
-    height: 940,
-    minWidth: 1080,
+    width: 1180,
+    height: 920,
+    minWidth: 980,
     minHeight: 760,
-    backgroundColor: '#f5efe4',
+    backgroundColor: '#f3efe5',
     title: '임시 업체 관리',
     icon: APP_ICON_PATH || undefined,
     autoHideMenuBar: true,

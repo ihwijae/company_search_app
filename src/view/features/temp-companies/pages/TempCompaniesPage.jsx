@@ -62,16 +62,7 @@ const normalizeNumericValue = (value) => {
 };
 
 const normalizeRatioValue = (value) => {
-  const raw = String(value ?? '').trim();
-  if (!raw) return '';
-  if (raw.includes('.')) {
-    const normalized = raw.replace(/[^\d.]/g, '');
-    const [integerPart = '', decimalPart = ''] = normalized.split('.');
-    const safeInteger = integerPart.replace(/^0+(?=\d)/, '') || (integerPart ? '0' : '');
-    const safeDecimal = decimalPart.slice(0, 2);
-    return safeDecimal ? `${safeInteger}.${safeDecimal}` : safeInteger;
-  }
-  const digits = raw.replace(/\D/g, '');
+  const digits = String(value ?? '').replace(/\D/g, '');
   if (!digits) return '';
   const trimmed = digits.replace(/^0+(?=\d)/, '') || '0';
   if (trimmed.length <= 2) {
