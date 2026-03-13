@@ -1,4 +1,6 @@
 import React from 'react';
+import '../../../../styles.css';
+import '../../../../fonts.css';
 import tempCompaniesClient from '../../../../shared/tempCompaniesClient.js';
 
 const EMPTY_FORM = {
@@ -43,7 +45,6 @@ const COMMA_NUMERIC_FIELDS = new Set([
   'sipyung',
   'performance3y',
   'performance5y',
-  'bizYears',
   'qualityEval',
 ]);
 
