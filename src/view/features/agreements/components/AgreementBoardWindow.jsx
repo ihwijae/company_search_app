@@ -307,6 +307,7 @@ const resolveTemplateKey = (ownerId, rangeId, fileType) => {
     return 'lh-50to100-et';
   }
   if (ownerKey === 'KRAIL' && rangeKey === KRAIL_UNDER_50_KEY) {
+    if (normalizedType === 'sobang') return 'krail-under50-sobang';
     if (normalizedType === 'eung' || normalizedType === 'tongsin') return 'krail-under50';
     return null;
   }
