@@ -39,14 +39,17 @@ const FIELD_LAYOUT = [
   ['qualityEval', '품질평가'],
 ];
 
-const NUMERIC_FIELDS = new Set([
+const COMMA_NUMERIC_FIELDS = new Set([
   'sipyung',
   'performance3y',
   'performance5y',
-  'debtRatio',
-  'currentRatio',
   'bizYears',
   'qualityEval',
+]);
+
+const RATIO_FIELDS = new Set([
+  'debtRatio',
+  'currentRatio',
 ]);
 
 const normalizeNumericValue = (value) => {
@@ -56,6 +59,27 @@ const normalizeNumericValue = (value) => {
   const normalizedInteger = integerPart.replace(/^0+(?=\d)/, '') || (integerPart ? '0' : '');
   if (decimalParts.length === 0) return normalizedInteger;
   return `${normalizedInteger}.${decimalParts.join('')}`;
+};
+
+const normalizeRatioValue = (value) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  if (raw.includes('.')) {
+    const normalized = raw.replace(/[^\d.]/g, '');
+    const [integerPart = '', decimalPart = ''] = normalized.split('.');
+    const safeInteger = integerPart.replace(/^0+(?=\d)/, '') || (integerPart ? '0' : '');
+    const safeDecimal = decimalPart.slice(0, 2);
+    return safeDecimal ? `${safeInteger}.${safeDecimal}` : safeInteger;
+  }
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  const trimmed = digits.replace(/^0+(?=\d)/, '') || '0';
+  if (trimmed.length <= 2) {
+    return `0.${trimmed.padStart(2, '0')}`;
+  }
+  const integerPart = trimmed.slice(0, -2).replace(/^0+(?=\d)/, '') || '0';
+  const decimalPart = trimmed.slice(-2);
+  return `${integerPart}.${decimalPart}`;
 };
 
 const formatNumericValue = (value) => {
@@ -68,8 +92,11 @@ const formatNumericValue = (value) => {
 
 const normalizeFormValues = (payload = {}) => {
   const next = { ...payload };
-  NUMERIC_FIELDS.forEach((field) => {
+  COMMA_NUMERIC_FIELDS.forEach((field) => {
     next[field] = normalizeNumericValue(next[field]);
+  });
+  RATIO_FIELDS.forEach((field) => {
+    next[field] = normalizeRatioValue(next[field]);
   });
   return next;
 };
@@ -124,7 +151,11 @@ export default function TempCompaniesPage() {
   const handleChange = React.useCallback((key, value) => {
     setForm((prev) => ({
       ...prev,
-      [key]: NUMERIC_FIELDS.has(key) ? normalizeNumericValue(value) : value,
+      [key]: COMMA_NUMERIC_FIELDS.has(key)
+        ? normalizeNumericValue(value)
+        : RATIO_FIELDS.has(key)
+          ? normalizeRatioValue(value)
+          : value,
     }));
   }, []);
 
@@ -263,7 +294,7 @@ export default function TempCompaniesPage() {
                   <div key={key} className="records-editor-form__field">
                     <label>{label}</label>
                     <input
-                      value={NUMERIC_FIELDS.has(key) ? formatNumericValue(form[key]) : (form[key] || '')}
+                      value={COMMA_NUMERIC_FIELDS.has(key) ? formatNumericValue(form[key]) : (form[key] || '')}
                       onChange={(e) => handleChange(key, e.target.value)}
                       placeholder={label}
                     />
