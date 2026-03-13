@@ -29,6 +29,29 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
   const isKrailUnder50SobangDebug = String(agencyId || '').toLowerCase() === 'krail'
     && String(fileType || '').toLowerCase() === 'sobang';
 
+  if (isKrailUnder50SobangDebug) {
+    const base = Number(perfBase);
+    const estimated = Number(estimatedValue);
+    const amountHint = Number(evaluationAmount);
+    const isUnder50Range = Number.isFinite(amountHint) && amountHint > 0 && amountHint < 5000000000;
+    if (Number.isFinite(base) && base > 0 && isUnder50Range) {
+      const multiplier = Number.isFinite(estimated) && estimated >= 3000000000 ? 3 : 2;
+      const ratio = perfAmount / (base * multiplier);
+      const roundedRatio = Number.isFinite(ratio) ? Number(ratio.toFixed(2)) : null;
+      const directScore = roundedRatio != null ? clampScore(roundedRatio * 15, 15) : null;
+      console.warn('[KRAIL_UNDER50_SOBANG][performanceScore] direct override', {
+        perfAmount,
+        base,
+        estimated,
+        multiplier,
+        ratio,
+        roundedRatio,
+        directScore,
+      });
+      if (directScore != null) return directScore;
+    }
+  }
+
   const ratioDigits = Number.isFinite(Number(roundRatioDigits)) ? Number(roundRatioDigits) : null;
   const computeRoundedRatioScore = (cap) => {
     const ratioBase = Number(roundRatioBaseAmount);

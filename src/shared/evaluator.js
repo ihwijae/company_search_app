@@ -79,15 +79,8 @@ function evalManagementComposite(inputs, rules, industryAvg) {
   const currentScore = evaluateThresholdScore(currentNorm, def.currentRatio && def.currentRatio.thresholds);
   const yearsScore = evaluateBizYearsScore(years, def.bizYears && def.bizYears.thresholds);
   const qualityScore = evaluateThresholdScore(quality, def.qualityEval && def.qualityEval.thresholds);
-    const scoreRaw = toNumber(debtScore) + toNumber(currentScore) + toNumber(yearsScore) + (rules.agencyId !== 'lh' ? toNumber(qualityScore) : 0);
-  
-    console.log('[EVAL DEBUG] Composite Scores:');
-    console.log('[EVAL DEBUG]   Debt Score:    ', debtScore);
-    console.log('[EVAL DEBUG]   Current Score: ', currentScore);
-    console.log('[EVAL DEBUG]   Years Score:   ', yearsScore);
-    console.log('[EVAL DEBUG]   Raw Total:     ', scoreRaw);
-    console.log('[EVAL DEBUG] --------------------------');
-  
+  const scoreRaw = toNumber(debtScore) + toNumber(currentScore) + toNumber(yearsScore) + (rules.agencyId !== 'lh' ? toNumber(qualityScore) : 0);
+
   const score = applyRounding(scoreRaw, rules.management.rounding);
   const debtMax = getThresholdMaxScore(def.debtRatio && def.debtRatio.thresholds);
   const currentMax = getThresholdMaxScore(def.currentRatio && def.currentRatio.thresholds);
@@ -278,10 +271,6 @@ function evaluateScores({ agencyId, amount, inputs = {}, industryAvg, useDefault
   const tier = pickTierByAmount(agency.tiers || [], amount);
   if (!tier) return { ok: false, error: 'NO_TIER' };
   const rules = tier.rules || {};
-
-  console.log('[EVAL DEBUG] Selected Agency:', agency.name, '(' + agency.id + ')');
-  console.log('[EVAL DEBUG] Selected Tier:', tier.minAmount, '~', tier.maxAmount);
-  console.log('[EVAL DEBUG] Rules for Management:', JSON.stringify(rules.management));
 
   rules.agencyId = agency.id; // Pass agencyId down to subsequent evaluations
 
