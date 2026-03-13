@@ -26,6 +26,8 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
   clampScore,
 } = {}) {
   if (!performanceBaseReady || perfAmount == null) return null;
+  const isKrailUnder50SobangDebug = String(agencyId || '').toLowerCase() === 'krail'
+    && String(fileType || '').toLowerCase() === 'sobang';
 
   const ratioDigits = Number.isFinite(Number(roundRatioDigits)) ? Number(roundRatioDigits) : null;
   const computeRoundedRatioScore = (cap) => {
@@ -55,14 +57,39 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
     },
   };
 
+  if (isKrailUnder50SobangDebug) {
+    console.warn('[KRAIL_UNDER50_SOBANG][performanceScore] request', {
+      perfAmount,
+      performanceBaseReady,
+      agencyId,
+      fileType,
+      evaluationAmount,
+      perfBase,
+      roundRatioBaseAmount,
+      estimatedValue,
+      perfCoefficient,
+      roundRatioDigits,
+      payload,
+    });
+  }
+
   if (typeof formulasEvaluate === 'function') {
     try {
       const response = await formulasEvaluate(payload);
+      if (isKrailUnder50SobangDebug) {
+        console.warn('[KRAIL_UNDER50_SOBANG][performanceScore] formulas response', response);
+      }
       if (response?.success && response.data?.performance) {
         const perfData = response.data.performance;
         const perfMax = updatePerformanceCap(perfData.maxScore);
         if (ratioDigits != null) {
           const roundedRatioScore = computeRoundedRatioScore(perfMax);
+          if (isKrailUnder50SobangDebug) {
+            console.warn('[KRAIL_UNDER50_SOBANG][performanceScore] rounded ratio override', {
+              perfMax,
+              roundedRatioScore,
+            });
+          }
           if (roundedRatioScore != null) return roundedRatioScore;
         }
         const { score, capped, raw } = perfData;
@@ -71,6 +98,16 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
           .filter((value) => value !== null);
         if (numericCandidates.length > 0) {
           const resolved = clampScore(Math.max(...numericCandidates), perfMax);
+          if (isKrailUnder50SobangDebug) {
+            console.warn('[KRAIL_UNDER50_SOBANG][performanceScore] resolved from formulas', {
+              score,
+              capped,
+              raw,
+              perfMax,
+              numericCandidates,
+              resolved,
+            });
+          }
           if (resolved != null) return resolved;
         }
       }
@@ -81,5 +118,12 @@ export async function evaluateAgreementPerformanceScore(perfAmount, {
 
   if (!performanceBaseReady || perfBase <= 0) return null;
   const cap = getPerformanceCap();
-  return computeRoundedRatioScore(cap);
+  const fallbackScore = computeRoundedRatioScore(cap);
+  if (isKrailUnder50SobangDebug) {
+    console.warn('[KRAIL_UNDER50_SOBANG][performanceScore] fallback score', {
+      cap,
+      fallbackScore,
+    });
+  }
+  return fallbackScore;
 }

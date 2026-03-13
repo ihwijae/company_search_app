@@ -237,9 +237,36 @@ export async function computeGroupSummaries({
         performanceRatio = metric.performanceAmount / perfBase;
       }
     }
+
+    const isKrailUnder50SobangDebug = !isKrail50To100
+      && Number.isFinite(Number(derivedPerformanceMax))
+      && Number(derivedPerformanceMax) === 15
+      && technicianEnabled
+      && !technicianEditable;
+    if (isKrailUnder50SobangDebug) {
+      console.warn('[KRAIL_UNDER50_SOBANG][groupSummary] before rounding', {
+        groupIndex: metric.groupIndex,
+        shareReady,
+        performanceMissing: metric.performanceMissing,
+        performanceAmount: metric.performanceAmount,
+        perfBase,
+        performanceBaseReady,
+        performanceRatioRaw: perfBase && perfBase > 0 ? (metric.performanceAmount / perfBase) : null,
+        performanceScoreRaw: performanceScore,
+        derivedPerformanceMax,
+      });
+    }
+
     performanceScore = roundForLhTotals(roundUpForPpsUnder50(roundForKrailUnder50(performanceScore)));
     performanceScore = roundForPerformanceTotals(performanceScore);
     performanceRatio = roundForKrailUnder50(performanceRatio);
+    if (isKrailUnder50SobangDebug) {
+      console.warn('[KRAIL_UNDER50_SOBANG][groupSummary] after rounding', {
+        groupIndex: metric.groupIndex,
+        performanceScore,
+        performanceRatio,
+      });
+    }
 
     if (shareReady && !metric.technicianMissing && metric.technicianScore != null) {
       technicianScore = roundForKrailUnder50(metric.technicianScore);
