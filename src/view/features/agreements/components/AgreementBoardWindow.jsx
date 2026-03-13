@@ -5549,6 +5549,57 @@ export default function AgreementBoardWindow({
     headerDutySummary || '',
     estimatedAmount ? `추정 ${formatAmount(estimatedAmount)}` : '',
   ].filter(Boolean).join(' · ');
+  const shouldShowKrailSobangDebug = isKrailUnder50 && String(fileType || '').toLowerCase() === 'sobang';
+  const krailSobangDebugRows = React.useMemo(() => {
+    if (!shouldShowKrailSobangDebug) return [];
+    const baseValue = parseAmountValue(baseAmount);
+    const estimatedValue = parseAmountValue(estimatedAmount);
+    return groupAssignments.map((memberIds, groupIndex) => {
+      const members = (Array.isArray(memberIds) ? memberIds : []).map((uid, slotIndex) => {
+        if (!uid) return null;
+        const entry = participantMap.get(uid);
+        const candidate = entry?.candidate;
+        if (!candidate) return null;
+        const share = getSharePercent(groupIndex, slotIndex, candidate);
+        const perf = getCandidatePerformanceAmountForCurrentRange(candidate);
+        return {
+          slotIndex,
+          companyName: getCompanyName(candidate),
+          share,
+          perf,
+          weightedPerf: (toNumber(share) != null && toNumber(perf) != null)
+            ? Number(perf) * (Number(share) / 100)
+            : null,
+        };
+      }).filter(Boolean);
+      const summary = groupSummaries[groupIndex] || null;
+      const weightedPerfTotal = members.reduce((acc, member) => {
+        const value = toNumber(member.weightedPerf);
+        return value != null ? acc + value : acc;
+      }, 0);
+      return {
+        groupIndex,
+        memberCount: members.length,
+        members,
+        weightedPerfTotal,
+        baseValue,
+        estimatedValue,
+        performanceAmount: summary?.performanceAmount ?? null,
+        performanceRatio: summary?.performanceRatio ?? null,
+        performanceScore: summary?.performanceScore ?? null,
+        performanceMax: summary?.performanceMax ?? null,
+      };
+    }).filter((row) => row.memberCount > 0);
+  }, [
+    shouldShowKrailSobangDebug,
+    baseAmount,
+    estimatedAmount,
+    groupAssignments,
+    participantMap,
+    groupSummaries,
+    getSharePercent,
+    getCandidatePerformanceAmountForCurrentRange,
+  ]);
 
   const boardMarkup = (
     <>
@@ -5648,7 +5699,7 @@ export default function AgreementBoardWindow({
             </div>
           </>
         )}
-      </div>
+              </div>
 
               <div className="header-stack stack-bid">
                 <div className="excel-field-block size-sm">
@@ -5788,6 +5839,42 @@ export default function AgreementBoardWindow({
                 </div>
               </div>
             </div>
+
+            {shouldShowKrailSobangDebug && krailSobangDebugRows.length > 0 && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 12,
+                  border: '1px solid #fca5a5',
+                  borderRadius: 12,
+                  background: '#fff7f7',
+                  color: '#7f1d1d',
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                <strong>국가철도공단 50억미만 소방 실적 디버그</strong>
+                {krailSobangDebugRows.map((row) => (
+                  <div key={`krail-sobang-debug-${row.groupIndex}`} style={{ marginTop: 8 }}>
+                    {[
+                      `${row.groupIndex + 1}번 협정`,
+                      `기초금액=${formatAmount(row.baseValue)}`,
+                      `추정가격=${formatAmount(row.estimatedValue)}`,
+                      `가중실적합=${formatAmount(row.weightedPerfTotal)}`,
+                      `summary.performanceAmount=${formatAmount(row.performanceAmount)}`,
+                      `summary.performanceRatio=${row.performanceRatio != null ? row.performanceRatio : '-'}`,
+                      `summary.performanceScore=${row.performanceScore != null ? row.performanceScore : '-'}`,
+                      `summary.performanceMax=${row.performanceMax != null ? row.performanceMax : '-'}`,
+                    ].join(' | ')}
+                    {'\n'}
+                    {row.members.map((member) => (
+                      `- ${member.companyName || '-'} | 지분=${member.share ?? '-'} | 5년실적=${formatAmount(member.perf)} | 가중실적=${formatAmount(member.weightedPerf)}`
+                    )).join('\n')}
+                  </div>
+                ))}
+              </div>
+            )}
 
               <div className="excel-toolbar">
               <div className="excel-toolbar-search">
