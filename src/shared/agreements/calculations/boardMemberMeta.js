@@ -138,6 +138,7 @@ export function buildBoardMemberMeta({
     performanceInput,
     performanceModified: hasPerformanceOverride,
     managementDisplay: formatScore(managementNumeric, 2),
+    managementOk: managementNumeric != null && managementNumeric >= (perSlotMax - 0.01),
     managementAlert: managementNumeric != null && managementNumeric < (perSlotMax - 0.01),
     managementInput,
     managementModified,

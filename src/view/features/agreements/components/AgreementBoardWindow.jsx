@@ -4958,7 +4958,7 @@ export default function AgreementBoardWindow({
   const renderStatusCell = (meta, rowSpan) => (
     <td key={`status-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-status-cell" rowSpan={rowSpan}>
       {meta.empty ? null : (
-        <div className={`excel-status score-only ${meta.managementAlert ? 'warn' : ''}`}>
+        <div className={`excel-status score-only ${meta.managementAlert ? 'warn' : ''}${meta.managementOk ? ' ok' : ''}`}>
           {isAmountCellEditing(meta, 'management') ? (
             <input
               type="text"

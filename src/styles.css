@@ -2557,6 +2557,11 @@ button.primary:hover { background: var(--accent-2); }
   color: #b91c1c;
 }
 
+.excel-status.score-only.ok .status-score {
+  color: #15803d;
+  font-weight: 800;
+}
+
 .excel-status-input {
   width: 100%;
   max-width: 100%;
@@ -2572,6 +2577,12 @@ button.primary:hover { background: var(--accent-2); }
 .excel-status.score-only.warn .excel-inline-edit-display {
   color: #b91c1c;
   font-weight: 700;
+}
+
+.excel-status.score-only.ok .excel-status-input,
+.excel-status.score-only.ok .excel-inline-edit-display {
+  color: #15803d;
+  font-weight: 800;
 }
 
 .excel-inline-edit-display {
