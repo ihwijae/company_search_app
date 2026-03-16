@@ -2,10 +2,10 @@ import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
+import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import { recordsClient } from '../../../../shared/recordsClient.js';
 import sanitizeHtml from '../../../../shared/sanitizeHtml.js';
-import RecordsAuxWindow from '../components/RecordsAuxWindow.jsx';
 import RecordsEditorWindow from '../components/RecordsEditorWindow.jsx';
 
 const formatCurrency = (value) => {
@@ -380,8 +380,7 @@ export default function RecordsPage() {
     setCompanyDialog((prev) => ({ ...prev, isMisc: checked }));
   };
 
-  const handleCompanyDialogSubmit = async (event, portalTarget = null) => {
-    event.preventDefault();
+  const handleCompanyDialogSubmit = async () => {
     const trimmedName = companyDialog.name.trim();
     if (!trimmedName) {
       setCompanyDialog((prev) => ({ ...prev, error: '법인명을 입력해 주세요.' }));
@@ -402,14 +401,11 @@ export default function RecordsPage() {
         companyId: String(saved.id),
       }));
       setCompanyDialog({ open: false, name: '', isMisc: false, saving: false, error: '' });
-      notify({ type: 'success', message: '법인을 등록했습니다.', portalTarget });
+      notify({ type: 'success', message: '법인을 등록했습니다.' });
     } catch (err) {
       const message = err?.message || '법인을 추가할 수 없습니다.';
-      const normalizedMessage = message.includes('UNIQUE constraint failed')
-        ? '이미 등록된 법인명입니다.'
-        : message;
-      setCompanyDialog((prev) => ({ ...prev, saving: false, error: '' }));
-      notify({ type: 'error', message: normalizedMessage, portalTarget });
+      const normalizedMessage = message.includes('UNIQUE constraint failed') ? '이미 등록된 법인명입니다.' : message;
+      setCompanyDialog((prev) => ({ ...prev, saving: false, error: normalizedMessage }));
     }
   };
 
@@ -494,8 +490,7 @@ export default function RecordsPage() {
     setCategoryDialog((prev) => ({ ...prev, name: value, error: '' }));
   };
 
-  const handleCategoryDialogSubmit = async (event, portalTarget = null) => {
-    event.preventDefault();
+  const handleCategoryDialogSubmit = async () => {
     const trimmed = categoryDialog.name.trim();
     if (!trimmed) {
       setCategoryDialog((prev) => ({ ...prev, error: '공사 종류명을 입력해 주세요.' }));
@@ -515,16 +510,10 @@ export default function RecordsPage() {
       notify({
         type: 'success',
         message: categoryDialog.mode === 'edit' ? '공사 종류명을 수정했습니다.' : '공사 종류를 등록했습니다.',
-        portalTarget,
       });
     } catch (err) {
       const message = err?.message || '공사 종류를 추가할 수 없습니다.';
-      setCategoryDialog((prev) => ({ ...prev, saving: false, error: '' }));
-      notify({
-        type: 'error',
-        message,
-        portalTarget,
-      });
+      setCategoryDialog((prev) => ({ ...prev, saving: false, error: message }));
     }
   };
 
@@ -869,82 +858,87 @@ export default function RecordsPage() {
         onSaved={handleProjectSaved}
       />
 
-      <RecordsAuxWindow
+      <Modal
         open={categoryDialog.open}
         title={categoryDialog.mode === 'edit' ? '공사 종류 수정' : '공사 종류 추가'}
-        description={categoryDialog.mode === 'edit' ? '선택한 공사 종류 이름을 바꿉니다.' : '새 공사 종류를 바로 등록합니다.'}
-        width={420}
-        height={320}
-        windowName="company-search-records-category"
         onClose={closeCategoryDialog}
+        onSave={handleCategoryDialogSubmit}
+        closeOnSave={false}
+        disableEscClose={false}
+        disableBackdropClose={false}
+        initialFocusRef={categoryInputRef}
+        confirmLabel={categoryDialog.saving ? '저장 중...' : categoryDialog.mode === 'edit' ? '수정' : '저장'}
+        cancelLabel="취소"
+        width={420}
+        maxWidth={420}
+        boxClassName="records-form-modal"
       >
-        {(portalTarget) => (
-          <form className="records-aux-form" onSubmit={(event) => handleCategoryDialogSubmit(event, portalTarget)}>
-            <label className="records-aux-form__field">
-              {categoryDialog.mode === 'edit' ? '공사 종류명' : '새 공사 종류명'}
-              <input
-                ref={categoryInputRef}
-                type="text"
-                value={categoryDialog.name}
-                onChange={handleCategoryNameChange}
-                placeholder="예: 전기 공사"
-              />
-            </label>
-            {categoryDialog.error && (
-              <p className="records-aux-form__error">{categoryDialog.error}</p>
-            )}
-            <div className="records-aux-form__actions">
-              <button type="button" className="btn-muted" onClick={closeCategoryDialog} disabled={categoryDialog.saving}>취소</button>
-              <button type="submit" className="btn-primary" disabled={categoryDialog.saving}>
-                {categoryDialog.saving ? '저장 중...' : categoryDialog.mode === 'edit' ? '수정' : '저장'}
-              </button>
-            </div>
-          </form>
-        )}
-      </RecordsAuxWindow>
+        <form className="records-form-modal__body" onSubmit={(event) => { event.preventDefault(); handleCategoryDialogSubmit(); }}>
+          <p className="records-form-modal__description">
+            {categoryDialog.mode === 'edit' ? '선택한 공사 종류 이름을 바꿉니다.' : '새 공사 종류를 바로 등록합니다.'}
+          </p>
+          <label className="records-form-modal__field">
+            {categoryDialog.mode === 'edit' ? '공사 종류명' : '새 공사 종류명'}
+            <input
+              ref={categoryInputRef}
+              type="text"
+              value={categoryDialog.name}
+              onChange={handleCategoryNameChange}
+              placeholder="예: 전기 공사"
+              disabled={categoryDialog.saving}
+            />
+          </label>
+          {categoryDialog.error && (
+            <p className="records-form-modal__error">{categoryDialog.error}</p>
+          )}
+        </form>
+      </Modal>
 
-      <RecordsAuxWindow
+      <Modal
         open={companyDialog.open}
         title="법인 추가"
-        description="실적에 연결할 법인을 별도 창에서 바로 등록합니다."
-        width={430}
-        height={340}
-        windowName="company-search-records-company"
         onClose={closeCompanyDialog}
+        onSave={handleCompanyDialogSubmit}
+        closeOnSave={false}
+        disableEscClose={false}
+        disableBackdropClose={false}
+        initialFocusRef={companyInputRef}
+        confirmLabel={companyDialog.saving ? '저장 중...' : '저장'}
+        cancelLabel="취소"
+        width={430}
+        maxWidth={430}
+        boxClassName="records-form-modal"
       >
-        {(portalTarget) => (
-          <form className="records-aux-form" onSubmit={(event) => handleCompanyDialogSubmit(event, portalTarget)}>
-            <label className="records-aux-form__field">
-              새 법인명
-              <input
-                ref={companyInputRef}
-                type="text"
-                value={companyDialog.name}
-                onChange={handleCompanyNameChange}
-                placeholder="예: 지음이엔아이㈜"
-              />
-            </label>
-            <div className="records-aux-form__toggle">
-              <input
-                id="company-dialog-misc"
-                type="checkbox"
-                checked={companyDialog.isMisc}
-                onChange={handleCompanyMiscChange}
-              />
-              <label htmlFor="company-dialog-misc">기타로 등록</label>
-            </div>
-            {companyDialog.error && (
-              <p className="records-aux-form__error">{companyDialog.error}</p>
-            )}
-            <div className="records-aux-form__actions">
-              <button type="button" className="btn-muted" onClick={closeCompanyDialog} disabled={companyDialog.saving}>취소</button>
-              <button type="submit" className="btn-primary" disabled={companyDialog.saving}>
-                {companyDialog.saving ? '저장 중...' : '저장'}
-              </button>
-            </div>
-          </form>
-        )}
-      </RecordsAuxWindow>
+        <form className="records-form-modal__body" onSubmit={(event) => { event.preventDefault(); handleCompanyDialogSubmit(); }}>
+          <p className="records-form-modal__description">
+            실적에 연결할 법인을 현재 화면 안에서 바로 등록합니다.
+          </p>
+          <label className="records-form-modal__field">
+            새 법인명
+            <input
+              ref={companyInputRef}
+              type="text"
+              value={companyDialog.name}
+              onChange={handleCompanyNameChange}
+              placeholder="예: 지음이엔아이㈜"
+              disabled={companyDialog.saving}
+            />
+          </label>
+          <label className="records-form-modal__check">
+            <input
+              id="company-dialog-misc"
+              type="checkbox"
+              checked={companyDialog.isMisc}
+              onChange={handleCompanyMiscChange}
+              disabled={companyDialog.saving}
+            />
+            <span>기타로 등록</span>
+          </label>
+          {companyDialog.error && (
+            <p className="records-form-modal__error">{companyDialog.error}</p>
+          )}
+        </form>
+      </Modal>
     </div>
   );
 }

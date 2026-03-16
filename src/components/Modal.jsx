@@ -47,6 +47,20 @@ export default function Modal({
   ariaLabelledby,
   role = 'dialog',
 }) {
+  const boxRef = React.useRef(null);
+  const previousFocusRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return undefined;
+    previousFocusRef.current = document.activeElement;
+    return () => {
+      const target = previousFocusRef.current;
+      if (target && typeof target.focus === 'function') {
+        try { target.focus(); } catch {}
+      }
+    };
+  }, [open]);
+
   React.useEffect(() => {
     if (!open || disableEscClose) return;
     const onKey = (e) => { if (e.key === 'Escape') onClose && onClose(); };
@@ -66,6 +80,28 @@ export default function Modal({
       try { initialFocusRef.current.focus(); } catch {}
     }
   }, [open, initialFocusRef]);
+
+  React.useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key !== 'Tab' || !boxRef.current) return;
+      const focusable = boxRef.current.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [open]);
 
   if (!open) return null;
 
@@ -101,6 +137,7 @@ export default function Modal({
       role="presentation"
     >
       <div
+        ref={boxRef}
         className={`dialog-box ${boxClassName}`.trim()}
         style={{
           maxWidth: computedMaxWidth,
