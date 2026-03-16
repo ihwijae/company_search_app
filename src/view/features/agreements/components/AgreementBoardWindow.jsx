@@ -4872,7 +4872,14 @@ export default function AgreementBoardWindow({
       {meta.empty ? null : (
         <>
           {isLh100To300 ? (
-            <div className="readonly-value">{meta.isDutyRegion ? '지역' : '-'}</div>
+            <>
+              <div className="readonly-value">{meta.isDutyRegion ? '지역' : '-'}</div>
+              <div className="excel-hint">
+                {meta.isDutyRegion
+                  ? `${meta.shareValue || (meta.shareForCalc != null ? formatShareDecimal(meta.shareForCalc) : '0')}%`
+                  : ''}
+              </div>
+            </>
           ) : (
             isAmountCellEditing(meta, 'credibility') ? (
               <input
@@ -5406,7 +5413,12 @@ export default function AgreementBoardWindow({
             className={`excel-cell total-cell credibility-total-cell${credibilityFull ? ' technician-good' : ''}`}
             rowSpan={rightRowSpan}
           >
-            {credibilitySummary}
+            {isLh100To300 ? (
+              <>
+                <div>{credibilitySummary}</div>
+                <div className="excel-hint">{dutyShareTotal > 0 ? formatPercent(dutyShareTotal) : '-'}</div>
+              </>
+            ) : credibilitySummary}
           </td>
         )}
         {collapsedColumns.status
@@ -5472,7 +5484,12 @@ export default function AgreementBoardWindow({
             rowSpan={rightRowSpan}
             style={credibilityFull ? { color: '#15803d', fontWeight: 800 } : undefined}
           >
-            {credibilitySummary}
+            {isLh100To300 ? (
+              <>
+                <div>{credibilitySummary}</div>
+                <div className="excel-hint">{dutyShareTotal > 0 ? formatPercent(dutyShareTotal) : '-'}</div>
+              </>
+            ) : credibilitySummary}
           </td>
         )}
         {showMiscScore && (
