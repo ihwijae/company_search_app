@@ -252,6 +252,17 @@ export default function ProjectEditorForm({
         ? await recordsClient.updateProject(initialProject.id, payload)
         : await recordsClient.createProject(payload);
 
+      notify({
+        type: 'success',
+        message: isEdit ? '실적을 수정했습니다.' : '실적을 등록했습니다.',
+        duration: 1600,
+        portalTarget: feedbackPortalTarget || null,
+      });
+
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 450);
+      });
+
       if (typeof onSaved === 'function') {
         await onSaved(result);
       }

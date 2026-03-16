@@ -21,6 +21,17 @@ const normalizeIdArray = (input) => {
     .filter((value) => value !== null);
 };
 
+const normalizeRepositoryError = (error) => {
+  const message = error?.message || '';
+  if (message.includes('UNIQUE constraint failed: categories.name')) {
+    return new Error('이미 등록된 공사 종류명입니다.');
+  }
+  if (message.includes('UNIQUE constraint failed: companies.name')) {
+    return new Error('이미 등록된 법인명입니다.');
+  }
+  return error;
+};
+
 class RecordsService {
   constructor({ userDataDir }) {
     if (!userDataDir) throw new Error('userDataDir is required for RecordsService');
@@ -120,15 +131,19 @@ class RecordsService {
     if (!payload || !payload.name) {
       throw new Error('Company name is required');
     }
-    const normalized = {
-      ...payload,
-      isPrimary: !!payload.isPrimary,
-      isMisc: !!payload.isMisc,
-    };
-    const id = this.repository.upsertCompany(normalized);
-    if (!id) throw new Error('Failed to save company');
-    persistRecordsDatabase();
-    return this.repository.getCompanyById(id);
+    try {
+      const normalized = {
+        ...payload,
+        isPrimary: !!payload.isPrimary,
+        isMisc: !!payload.isMisc,
+      };
+      const id = this.repository.upsertCompany(normalized);
+      if (!id) throw new Error('Failed to save company');
+      persistRecordsDatabase();
+      return this.repository.getCompanyById(id);
+    } catch (error) {
+      throw normalizeRepositoryError(error);
+    }
   }
 
   deleteCompany(id) {
@@ -150,10 +165,14 @@ class RecordsService {
     if (!payload || !payload.name) {
       throw new Error('Category name is required');
     }
-    const id = this.repository.upsertCategory(payload);
-    if (!id) throw new Error('Failed to save category');
-    persistRecordsDatabase();
-    return this.repository.getCategoryById(id);
+    try {
+      const id = this.repository.upsertCategory(payload);
+      if (!id) throw new Error('Failed to save category');
+      persistRecordsDatabase();
+      return this.repository.getCategoryById(id);
+    } catch (error) {
+      throw normalizeRepositoryError(error);
+    }
   }
 
   deleteCategory(id) {
