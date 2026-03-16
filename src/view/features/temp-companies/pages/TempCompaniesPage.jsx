@@ -1,6 +1,7 @@
 import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
+import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import tempCompaniesClient from '../../../../shared/tempCompaniesClient.js';
 
 const EMPTY_FORM = {
@@ -103,6 +104,7 @@ const closeTempCompaniesWindow = () => {
 };
 
 export default function TempCompaniesPage() {
+  const { notify, confirm } = useFeedback();
   const [items, setItems] = React.useState([]);
   const [query, setQuery] = React.useState('');
   const [loading, setLoading] = React.useState(true);
@@ -110,6 +112,7 @@ export default function TempCompaniesPage() {
   const [status, setStatus] = React.useState('');
   const [error, setError] = React.useState('');
   const [form, setForm] = React.useState(EMPTY_FORM);
+  const [isCreatingNew, setIsCreatingNew] = React.useState(false);
 
   React.useEffect(() => {
     document.title = '임시 업체 관리';
@@ -121,7 +124,7 @@ export default function TempCompaniesPage() {
     try {
       const list = await tempCompaniesClient.listCompanies({ query: nextQuery });
       setItems(Array.isArray(list) ? list : []);
-      if (Array.isArray(list) && list.length > 0 && !form.id) {
+      if (Array.isArray(list) && list.length > 0 && !form.id && !isCreatingNew) {
         setForm((prev) => (prev.id ? prev : normalizeFormValues({ ...EMPTY_FORM, ...list[0] })));
       }
     } catch (err) {
@@ -129,7 +132,7 @@ export default function TempCompaniesPage() {
     } finally {
       setLoading(false);
     }
-  }, [form.id, query]);
+  }, [form.id, isCreatingNew, query]);
 
   React.useEffect(() => {
     void loadItems('');
@@ -137,6 +140,7 @@ export default function TempCompaniesPage() {
 
   const handleSelect = React.useCallback((item) => {
     setForm(normalizeFormValues({ ...EMPTY_FORM, ...(item || {}) }));
+    setIsCreatingNew(false);
     setStatus('');
     setError('');
   }, []);
@@ -154,6 +158,7 @@ export default function TempCompaniesPage() {
 
   const handleReset = React.useCallback(() => {
     setForm(EMPTY_FORM);
+    setIsCreatingNew(true);
     setStatus('');
     setError('');
   }, []);
@@ -164,33 +169,44 @@ export default function TempCompaniesPage() {
     setStatus('');
     try {
       const saved = await tempCompaniesClient.saveCompany(normalizeFormValues(form));
-      setStatus('저장되었습니다.');
+      setIsCreatingNew(false);
       setForm(normalizeFormValues({ ...EMPTY_FORM, ...(saved || {}) }));
       await loadItems(query);
+      notify({
+        type: 'success',
+        message: form.id ? '임시 업체를 수정했습니다.' : '임시 업체를 저장했습니다.',
+      });
     } catch (err) {
       setError(err?.message || String(err));
     } finally {
       setSaving(false);
     }
-  }, [form, loadItems, query]);
+  }, [form, loadItems, notify, query]);
 
   const handleDelete = React.useCallback(async () => {
     if (!form.id) return;
-    if (!window.confirm('선택한 임시 업체를 삭제하시겠습니까?')) return;
+    const approved = await confirm({
+      title: '임시 업체 삭제',
+      message: '선택한 임시 업체를 삭제하시겠습니까?',
+      confirmText: '삭제',
+      cancelText: '취소',
+    });
+    if (!approved) return;
     setSaving(true);
     setError('');
     setStatus('');
     try {
       await tempCompaniesClient.deleteCompany(form.id);
-      setStatus('삭제되었습니다.');
       setForm(EMPTY_FORM);
+      setIsCreatingNew(false);
       await loadItems(query);
+      notify({ type: 'success', message: '임시 업체를 삭제했습니다.' });
     } catch (err) {
       setError(err?.message || String(err));
     } finally {
       setSaving(false);
     }
-  }, [form.id, loadItems, query]);
+  }, [confirm, form.id, loadItems, notify, query]);
 
   const handleExport = React.useCallback(async () => {
     setError('');
@@ -247,12 +263,30 @@ export default function TempCompaniesPage() {
             <div className="toolbar" style={{ marginBottom: 12 }}>
               <button type="button" className="btn-soft" onClick={handleImport}>가져오기</button>
               <button type="button" className="btn-soft" onClick={handleExport}>내보내기</button>
-              <button type="button" className="btn-muted" onClick={handleReset}>새 항목</button>
+              <button type="button" className="btn-muted" onClick={handleReset}>업체추가</button>
             </div>
             {loading ? (
               <div className="records-editor-page__status">불러오는 중...</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 640, overflow: 'auto' }}>
+                {isCreatingNew && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    style={{
+                      textAlign: 'left',
+                      border: '1px solid #7c3aed',
+                      background: '#f5f3ff',
+                      borderRadius: 12,
+                      padding: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: '#5b21b6' }}>새 업체</div>
+                    <div style={{ color: '#7c3aed', fontSize: 13 }}>빈 입력 폼으로 신규 등록 중</div>
+                    <div style={{ color: '#8b5cf6', fontSize: 12 }}>업체 정보를 입력하고 저장하세요.</div>
+                  </button>
+                )}
                 {items.map((item) => (
                   <button
                     key={item.id}

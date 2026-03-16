@@ -42,7 +42,6 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
       ),
     },
     { key: 'records', label: '실적', icon: '📊' },
-    { key: 'temp-companies', label: '임시업체', icon: '🏢' },
     {
       key: 'mail',
       label: '메일',
@@ -114,6 +113,7 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
         />
       ),
     },
+    { key: 'temp-companies', label: '임시업체', icon: '🏢' },
     { key: 'upload', label: '업로드', icon: '📂' },
     { key: 'settings', label: '설정', icon: '⚙️' },
   ];
