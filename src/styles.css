@@ -2648,6 +2648,10 @@ button.primary:hover { background: var(--accent-2); }
   font-weight: 600;
 }
 
+.excel-cell.performance-coefficient-cell {
+  font-weight: 800;
+}
+
 .excel-cell.total-cell.ok {
   color: #15803d;
   font-weight: 700;
