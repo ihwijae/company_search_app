@@ -163,7 +163,7 @@ const cloneFill = (fill) => {
   try { return JSON.parse(JSON.stringify(fill)); } catch { return fill; }
 };
 
-const MANAGEMENT_SCORE_MAX = 15;
+const DEFAULT_MANAGEMENT_SCORE_MAX = 15;
 const ORANGE_FILL = {
   type: 'pattern',
   pattern: 'solid',
@@ -236,6 +236,9 @@ async function exportAgreementExcel({
   const slotCount = nameColumns.length;
   const summaryColumns = config.summaryColumns || {};
   const qualityColumns = Array.isArray(config.qualityColumns) ? config.qualityColumns : [];
+  const managementScoreMax = Number.isFinite(config.managementScoreMax)
+    ? Number(config.managementScoreMax)
+    : DEFAULT_MANAGEMENT_SCORE_MAX;
   const rowStep = Number(config.rowStep) > 0 ? Number(config.rowStep) : 1;
   const qualityRowOffset = Number.isFinite(config.qualityRowOffset) ? Number(config.qualityRowOffset) : 0;
   const approvalColumn = config.approvalColumn || null;
@@ -450,7 +453,7 @@ async function exportAgreementExcel({
           ...baseStyle,
           fill: cloneFill(CLEAR_FILL),
         };
-        if (managementValue != null && managementValue < MANAGEMENT_SCORE_MAX) {
+        if (managementValue != null && managementValue < managementScoreMax) {
           managementCell.style = {
             ...baseStyle,
             fill: cloneFill(ORANGE_FILL),
@@ -607,7 +610,7 @@ async function exportAgreementExcel({
           ...baseStyle,
           fill: cloneFill(CLEAR_FILL),
         };
-        if (managementValue != null && managementValue < MANAGEMENT_SCORE_MAX) {
+        if (managementValue != null && managementValue < managementScoreMax) {
           managementCell.style = {
             ...baseStyle,
             fill: cloneFill(ORANGE_FILL),

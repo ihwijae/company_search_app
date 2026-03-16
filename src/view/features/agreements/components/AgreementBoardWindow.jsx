@@ -467,6 +467,17 @@ const buildDutySummary = (regions = [], dutyRate = null, teamSize = null) => {
   return [regionPart, teamPart].filter(Boolean).join(', ');
 };
 
+const buildExportDutySummary = (regions = [], dutyRate = null, teamSize = null, { compact = false } = {}) => {
+  if (!compact) return buildDutySummary(regions, dutyRate, teamSize);
+  const normalizedRegions = (Array.isArray(regions) ? regions : [])
+    .map((entry) => (entry ? String(entry).trim() : ''))
+    .filter(Boolean);
+  const regionLabel = normalizedRegions.join('/');
+  const rateText = dutyRate != null ? `${Number(dutyRate)}%` : '';
+  if (!regionLabel && !rateText) return '';
+  return `${regionLabel}${rateText}`.trim();
+};
+
 const sanitizeCompanyName = (value) => {
   if (!value) return '';
   let result = String(value).trim();
@@ -3568,7 +3579,9 @@ export default function AgreementBoardWindow({
         || (ownerKeyUpper === 'LH' && rangeId === LH_50_TO_100_KEY)
         || (ownerKeyUpper === 'MOIS' && (rangeId === MOIS_30_TO_50_KEY || rangeId === MOIS_50_TO_100_KEY));
       const dutyRateNumber = parseNumeric(regionDutyRate);
-      const dutySummaryText = buildDutySummary(dutyRegions, dutyRateNumber, safeParticipantLimit);
+      const dutySummaryText = buildExportDutySummary(dutyRegions, dutyRateNumber, safeParticipantLimit, {
+        compact: ownerKeyUpper === 'LH' && rangeId === LH_100_TO_300_KEY,
+      });
       const formattedDeadline = formatBidDeadline(bidDeadline);
       const payload = buildAgreementExportPayload({
         templateKey,

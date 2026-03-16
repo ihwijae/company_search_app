@@ -494,13 +494,14 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     maxRows: 68,
     rowStep: 2,
     qualityRowOffset: 1,
+    managementScoreMax: 8,
     slotColumns: {
       name: ['C', 'D', 'E', 'F', 'G'],
       share: ['I', 'J', 'K', 'L', 'M'],
       management: ['P', 'Q', 'R', 'S', 'T'],
       performance: ['W', 'X', 'Y', 'Z', 'AA'],
     },
-    qualityColumns: ['I', 'J', 'K', 'L', 'M'],
+    qualityColumns: ['P', 'Q', 'R', 'S', 'T'],
     clearColumns: [
       'C', 'D', 'E', 'F', 'G',
       'I', 'J', 'K', 'L', 'M',
