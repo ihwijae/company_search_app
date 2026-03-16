@@ -4,6 +4,7 @@ import {
 } from './calculations/possibleShare.js';
 
 const LH_100_TO_300_KEY = 'lh-100to300';
+const LH_QUALITY_DEFAULT_OVER_100B = 88;
 
 export function buildAgreementExportPayload({
   templateKey,
@@ -114,7 +115,12 @@ export function buildAgreementExportPayload({
         : null;
       const displayLines = [companyName];
       if (shareLabel) displayLines.push(shareLabel);
-      if (isLh100To300 && qualityScore != null && Number.isFinite(Number(qualityScore))) {
+      if (
+        isLh100To300
+        && qualityScore != null
+        && Number.isFinite(Number(qualityScore))
+        && Number(qualityScore) > LH_QUALITY_DEFAULT_OVER_100B
+      ) {
         displayLines.push(`품질 ${Number(qualityScore).toFixed(2)}`);
       }
       if (managerName) displayLines.push(managerName);
@@ -200,7 +206,7 @@ export function buildAgreementExportPayload({
     const qualityScore = isLh100To300 ? Number(entry.qualityScore) : null;
     const displayLines = [companyName];
     if (shareLabel) displayLines.push(shareLabel);
-    if (isLh100To300 && Number.isFinite(qualityScore)) {
+    if (isLh100To300 && Number.isFinite(qualityScore) && qualityScore > LH_QUALITY_DEFAULT_OVER_100B) {
       displayLines.push(`품질 ${qualityScore.toFixed(2)}`);
     }
     if (managerName) displayLines.push(managerName);
