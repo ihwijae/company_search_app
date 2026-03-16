@@ -301,7 +301,7 @@ const resolveTemplateKey = (ownerId, rangeId, fileType) => {
   if (ownerKey === 'MOIS' && rangeKey === MOIS_50_TO_100_KEY) return 'mois-50to100';
   if (ownerKey === 'PPS' && rangeKey === PPS_UNDER_50_KEY) return 'pps-under50';
   if (ownerKey === 'LH' && rangeKey === LH_UNDER_50_KEY) return 'lh-under50';
-  if (ownerKey === 'LH' && rangeKey === LH_100_TO_300_KEY) return '';
+  if (ownerKey === 'LH' && rangeKey === LH_100_TO_300_KEY) return 'lh-100to300';
   if (ownerKey === 'LH' && rangeKey === LH_50_TO_100_KEY) {
     if (normalizedType === 'sobang') return 'lh-50to100-sobang';
     return 'lh-50to100-et';
