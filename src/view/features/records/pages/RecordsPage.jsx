@@ -677,20 +677,22 @@ export default function RecordsPage() {
           <div className="records-layout">
             <aside className="records-panel records-panel--categories">
               <header className="records-panel__header">
-                <h2>공사 종류</h2>
-                <div className="records-panel__header-actions">
+                <div className="records-panel__header-top">
+                  <h2>공사 종류</h2>
                   <button type="button" className="btn-soft" onClick={handleAddCategory}>+ 추가</button>
+                </div>
+                <div className="records-panel__header-actions">
                   {filters.categoryId && (
-                    <button type="button" className="btn-muted" onClick={() => handleMoveCategory('up')} disabled={!canMoveCategoryUp}>위로</button>
+                    <button type="button" className="btn-muted btn-sm" onClick={() => handleMoveCategory('up')} disabled={!canMoveCategoryUp}>위로</button>
                   )}
                   {filters.categoryId && (
-                    <button type="button" className="btn-muted" onClick={() => handleMoveCategory('down')} disabled={!canMoveCategoryDown}>아래로</button>
+                    <button type="button" className="btn-muted btn-sm" onClick={() => handleMoveCategory('down')} disabled={!canMoveCategoryDown}>아래로</button>
                   )}
                   {filters.categoryId && (
-                    <button type="button" className="btn-muted" onClick={handleEditCategory}>수정</button>
+                    <button type="button" className="btn-muted btn-sm" onClick={handleEditCategory}>수정</button>
                   )}
                   {filters.categoryId && (
-                    <button type="button" className="btn-muted" onClick={handleDeleteCategory}>삭제</button>
+                    <button type="button" className="btn-muted btn-sm" onClick={handleDeleteCategory}>삭제</button>
                   )}
                 </div>
               </header>

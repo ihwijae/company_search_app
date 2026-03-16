@@ -807,7 +807,7 @@ body {
 
 .records-layout {
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 280px minmax(0, 1fr);
   gap: 16px;
   padding: 16px;
   height: 100%;
@@ -846,9 +846,17 @@ body {
 
 .records-panel__header {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.records-panel__header-top {
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  gap: 12px;
+  min-width: 0;
 }
 
 .records-panel__header-actions {
@@ -862,6 +870,7 @@ body {
   margin: 0;
   font-size: 17px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .records-category-tree {
@@ -875,12 +884,14 @@ body {
   text-align: left;
   background: transparent;
   border: none;
-  padding: 10px 14px;
+  padding: 9px 12px;
   border-radius: 8px;
   cursor: pointer;
   color: #1f2937;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
+  line-height: 1.35;
+  word-break: keep-all;
 }
 
 .records-category:hover {
@@ -926,6 +937,17 @@ body {
 .records-toolbar__actions {
   display: flex;
   gap: 8px;
+}
+
+.records-panel--categories .btn-soft,
+.records-panel--categories .btn-muted {
+  min-width: 56px;
+}
+
+@media (max-width: 1100px) {
+  .records-layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
 }
 
 .records-error {
