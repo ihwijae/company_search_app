@@ -2592,6 +2592,10 @@ button.primary:hover { background: var(--accent-2); }
 .excel-status-cell .excel-amount-input {
   padding: 2px 3px;
   font-size: 11px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  line-height: 1.2;
 }
 
 .excel-inline-edit-display:hover {
@@ -2634,6 +2638,16 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-perf-cell .excel-inline-edit-display,
 .excel-perf-cell .excel-amount-input {
+  padding: 2px 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  line-height: 1.2;
+  font-size: 12px;
+}
+
+.excel-sipyung-cell .excel-inline-edit-display,
+.excel-sipyung-cell .excel-amount-input {
   padding: 2px 4px;
   white-space: normal;
   overflow-wrap: anywhere;
