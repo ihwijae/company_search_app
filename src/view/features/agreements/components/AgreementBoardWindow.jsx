@@ -5278,8 +5278,15 @@ export default function AgreementBoardWindow({
     const performanceSummary = summaryInfo?.performanceScore != null
       ? formatScore(summaryInfo.performanceScore, resolveSummaryDigits('performance'))
       : '-';
+    const performanceCoefficientValue = isLh100To300
+      ? (() => {
+        const amount = toNumber(summaryInfo?.performanceAmount);
+        if (amount == null || !(perfectPerformanceAmount > 0)) return null;
+        return amount / perfectPerformanceAmount;
+      })()
+      : null;
     const performanceCoefficientDisplay = isLh100To300
-      ? (summaryInfo?.performanceRatio != null ? formatScore(summaryInfo.performanceRatio, 3) : '-')
+      ? (performanceCoefficientValue != null ? formatScore(performanceCoefficientValue, 4) : '-')
       : null;
     const technicianScoreThreshold = isKrailUnder50 ? 2 : (isKrail50To100 ? 3 : null);
     const technicianScoreWarn = technicianScoreThreshold != null
@@ -5446,14 +5453,14 @@ export default function AgreementBoardWindow({
         {collapsedColumns.performance
           ? renderCollapsedStubCell('performance', rightRowSpan)
           : slotMetas.map((meta) => renderPerformanceCell(meta, rightRowSpan))}
-        <td className={`excel-cell total-cell performance-summary-cell ${performanceState}`} rowSpan={rightRowSpan}>
-          {performanceSummary}
-        </td>
         {isLh100To300 && (
           <td className="excel-cell total-cell performance-coefficient-cell" rowSpan={rightRowSpan}>
             {performanceCoefficientDisplay}
           </td>
         )}
+        <td className={`excel-cell total-cell performance-summary-cell ${performanceState}`} rowSpan={rightRowSpan}>
+          {performanceSummary}
+        </td>
         {technicianEnabled && (collapsedColumns.technician
           ? renderCollapsedStubCell('technician', rightRowSpan)
           : slotMetas.map((meta) => renderTechnicianCell(meta, rightRowSpan)))}
@@ -6123,14 +6130,14 @@ export default function AgreementBoardWindow({
                 >
                   {renderColToggle('performance', '시공실적')}
                 </th>
-                <th rowSpan="2" className="col-header performance-summary-header">
-                  {`실적(${formatScore(performanceHeaderMax, 0)}점)`}
-                </th>
                 {isLh100To300 && (
                   <th rowSpan="2" className="col-header performance-coefficient-header">
                     실적계수
                   </th>
                 )}
+                <th rowSpan="2" className="col-header performance-summary-header">
+                  {`실적(${formatScore(performanceHeaderMax, 0)}점)`}
+                </th>
                 {technicianEnabled && (
                   <th
                     colSpan={collapsedColumns.technician ? 1 : slotLabels.length}
