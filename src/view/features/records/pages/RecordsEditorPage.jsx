@@ -1,6 +1,7 @@
 import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
+import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import { recordsClient } from '../../../../shared/recordsClient.js';
 import ProjectEditorForm from '../components/ProjectEditorForm.jsx';
 
@@ -26,6 +27,7 @@ const closeEditorWindow = () => {
 };
 
 export default function RecordsEditorPage() {
+  const { notify } = useFeedback();
   const [routeState, setRouteState] = React.useState(() => parseEditorRoute());
   const [project, setProject] = React.useState(null);
   const [companies, setCompanies] = React.useState([]);
@@ -80,7 +82,14 @@ export default function RecordsEditorPage() {
         mode: routeState.mode,
       });
     } catch {}
-    closeEditorWindow();
+    notify({
+      type: 'success',
+      message: routeState.mode === 'edit' ? '실적을 수정했습니다.' : '실적을 등록했습니다.',
+      duration: 1600,
+    });
+    window.setTimeout(() => {
+      closeEditorWindow();
+    }, 500);
   };
 
   return (

@@ -2,6 +2,7 @@ import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
 import Sidebar from '../../../../components/Sidebar';
+import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import { recordsClient } from '../../../../shared/recordsClient.js';
 import sanitizeHtml from '../../../../shared/sanitizeHtml.js';
 import RecordsEditorWindow from '../components/RecordsEditorWindow.jsx';
@@ -143,6 +144,7 @@ const DEFAULT_EDITOR_STATE = {
 };
 
 export default function RecordsPage() {
+  const { notify, confirm } = useFeedback();
   const [activeMenu, setActiveMenu] = React.useState('records');
   const [projects, setProjects] = React.useState([]);
   const [categories, setCategories] = React.useState([]);
@@ -239,6 +241,23 @@ export default function RecordsPage() {
   }, [fetchProjects]);
 
   React.useEffect(() => {
+    if (!recordsClient?.onProjectSaved) return undefined;
+    const unsubscribe = recordsClient.onProjectSaved(async (payload) => {
+      const savedProjectId = payload?.projectId;
+      if (savedProjectId) {
+        pendingSelectRef.current = savedProjectId;
+        setSelectedProjectId(savedProjectId);
+      }
+      await fetchProjects();
+      notify({
+        type: 'success',
+        message: payload?.mode === 'edit' ? '실적을 수정했습니다.' : '실적을 등록했습니다.',
+      });
+    });
+    return typeof unsubscribe === 'function' ? unsubscribe : undefined;
+  }, [fetchProjects, notify]);
+
+  React.useEffect(() => {
     if (!companyDialog.open) return undefined;
     const frame = window.requestAnimationFrame(() => {
       try {
@@ -313,21 +332,30 @@ export default function RecordsPage() {
     }
     closeEditor();
     fetchProjects();
-  }, [closeEditor, fetchProjects]);
+    notify({
+      type: 'success',
+      message: editorState.mode === 'edit' ? '실적을 수정했습니다.' : '실적을 등록했습니다.',
+    });
+  }, [closeEditor, editorState.mode, fetchProjects, notify]);
 
   const handleOpenAttachment = React.useCallback(async (projectId, attachmentId) => {
     try {
       if (!projectId) return;
       await recordsClient.openAttachment(projectId, attachmentId);
     } catch (err) {
-      alert(err?.message || '첨부 파일을 열 수 없습니다.');
+      notify({ type: 'error', message: err?.message || '첨부 파일을 열 수 없습니다.' });
     }
-  }, []);
+  }, [notify]);
 
   const handleDeleteProject = React.useCallback(async (project) => {
     if (!project?.id) return;
     const title = project.projectName || project.name || project.clientName || '해당 실적';
-    const confirmed = window.confirm(`정말로 삭제하시겠습니까?\n${title}`);
+    const confirmed = await confirm({
+      title: '실적 삭제',
+      message: `정말로 삭제하시겠습니까?\n${title}`,
+      confirmText: '삭제',
+      cancelText: '취소',
+    });
     if (!confirmed) return;
     try {
       await recordsClient.deleteProject(project.id);
@@ -337,9 +365,9 @@ export default function RecordsPage() {
       }
       fetchProjects();
     } catch (err) {
-      alert(err?.message || '실적을 삭제할 수 없습니다.');
+      notify({ type: 'error', message: err?.message || '실적을 삭제할 수 없습니다.' });
     }
-  }, [fetchProjects]);
+  }, [confirm, fetchProjects, notify]);
 
   const handleAddCompany = React.useCallback(() => {
     setCompanyDialog({ open: true, name: '', isMisc: filters.companyType === 'misc', saving: false, error: '' });
@@ -381,7 +409,7 @@ export default function RecordsPage() {
         companyId: String(saved.id),
       }));
       setCompanyDialog({ open: false, name: '', isMisc: false, saving: false, error: '' });
-      alert('법인을 등록했습니다.');
+      notify({ type: 'success', message: '법인을 등록했습니다.' });
     } catch (err) {
       setCompanyDialog((prev) => ({ ...prev, saving: false, error: err?.message || '법인을 추가할 수 없습니다.' }));
     }
@@ -391,35 +419,45 @@ export default function RecordsPage() {
     if (!filters.companyId) return;
     const company = companies.find((item) => String(item.id) === String(filters.companyId));
     const label = company?.name || '선택한 법인';
-    const confirmed = window.confirm(`'${label}' 법인을 삭제할까요?\n실적과 연결된 경우 기본값(미지정)으로 변경됩니다.`);
+    const confirmed = await confirm({
+      title: '법인 삭제',
+      message: `'${label}' 법인을 삭제할까요?\n실적과 연결된 경우 기본값(미지정)으로 변경됩니다.`,
+      confirmText: '삭제',
+      cancelText: '취소',
+    });
     if (!confirmed) return;
     try {
       await recordsClient.deleteCompany(Number(filters.companyId));
       await fetchTaxonomies();
       setFilters((prev) => ({ ...prev, companyId: '' }));
       await fetchProjects();
-      alert('법인을 삭제했습니다.');
+      notify({ type: 'success', message: '법인을 삭제했습니다.' });
     } catch (err) {
-      alert(err?.message || '법인을 삭제할 수 없습니다.');
+      notify({ type: 'error', message: err?.message || '법인을 삭제할 수 없습니다.' });
     }
-  }, [filters.companyId, companies, fetchTaxonomies, fetchProjects]);
+  }, [confirm, filters.companyId, companies, fetchTaxonomies, fetchProjects, notify]);
 
   const handleDeleteCategory = React.useCallback(async () => {
     if (!filters.categoryId) return;
     const category = flatCategories.find((item) => item.id === filters.categoryId);
     const label = category?.name || '선택한 공사 종류';
-    const confirmed = window.confirm(`'${label}' 공사 종류를 삭제할까요?\n하위 항목과 실적 연결 정보가 함께 제거됩니다.`);
+    const confirmed = await confirm({
+      title: '공사 종류 삭제',
+      message: `'${label}' 공사 종류를 삭제할까요?\n하위 항목과 실적 연결 정보가 함께 제거됩니다.`,
+      confirmText: '삭제',
+      cancelText: '취소',
+    });
     if (!confirmed) return;
     try {
       await recordsClient.deleteCategory(filters.categoryId);
       await fetchTaxonomies();
       setFilters((prev) => ({ ...prev, categoryId: null }));
       await fetchProjects();
-      alert('공사 종류를 삭제했습니다.');
+      notify({ type: 'success', message: '공사 종류를 삭제했습니다.' });
     } catch (err) {
-      alert(err?.message || '공사 종류를 삭제할 수 없습니다.');
+      notify({ type: 'error', message: err?.message || '공사 종류를 삭제할 수 없습니다.' });
     }
-  }, [filters.categoryId, flatCategories, fetchTaxonomies, fetchProjects]);
+  }, [confirm, filters.categoryId, flatCategories, fetchTaxonomies, fetchProjects, notify]);
 
   const handleAddCategory = React.useCallback(() => {
     try {
@@ -476,7 +514,10 @@ export default function RecordsPage() {
         setFilters((prev) => ({ ...prev, categoryId: saved.id }));
       }
       setCategoryDialog({ open: false, id: null, mode: 'create', name: '', saving: false, error: '' });
-      alert(categoryDialog.mode === 'edit' ? '공사 종류명을 수정했습니다.' : '공사 종류를 등록했습니다.');
+      notify({
+        type: 'success',
+        message: categoryDialog.mode === 'edit' ? '공사 종류명을 수정했습니다.' : '공사 종류를 등록했습니다.',
+      });
     } catch (err) {
       setCategoryDialog((prev) => ({ ...prev, saving: false, error: err?.message || '공사 종류를 추가할 수 없습니다.' }));
     }
@@ -540,15 +581,25 @@ export default function RecordsPage() {
       const exportedPath = result.exportedPath || result.targetPath || result.path;
       if (exportedPath) {
         const attachmentNote = result.includedAttachments ? ' (첨부 포함)' : ' (첨부 없음)';
-        alert(`실적 데이터 패키지를 내보냈습니다.\n${exportedPath}${attachmentNote}`);
+        notify({
+          type: 'success',
+          title: 'DB 내보내기 완료',
+          message: `${exportedPath}${attachmentNote}`,
+          duration: 5200,
+        });
       }
     } catch (err) {
-      alert(err?.message || 'DB 파일을 내보낼 수 없습니다.');
+      notify({ type: 'error', message: err?.message || 'DB 파일을 내보낼 수 없습니다.' });
     }
-  }, []);
+  }, [notify]);
 
   const handleImportDatabase = React.useCallback(async () => {
-    const confirmed = window.confirm('가져오기를 실행하면 현재 실적 데이터가 덮어써집니다. 계속할까요?');
+    const confirmed = await confirm({
+      title: 'DB 가져오기',
+      message: '가져오기를 실행하면 현재 실적 데이터가 덮어써집니다. 계속할까요?',
+      confirmText: '가져오기',
+      cancelText: '취소',
+    });
     if (!confirmed) return;
     try {
       const result = await recordsClient.importDatabase();
@@ -556,11 +607,11 @@ export default function RecordsPage() {
       await fetchTaxonomies();
       await fetchProjects();
       const importedNote = result.attachmentsImported ? ' (첨부 포함)' : '';
-      alert(`실적 데이터를 가져왔습니다.${importedNote}`);
+      notify({ type: 'success', message: `실적 데이터를 가져왔습니다.${importedNote}` });
     } catch (err) {
-      alert(err?.message || 'DB 파일을 가져올 수 없습니다.');
+      notify({ type: 'error', message: err?.message || 'DB 파일을 가져올 수 없습니다.' });
     }
-  }, [fetchProjects, fetchTaxonomies]);
+  }, [confirm, fetchProjects, fetchTaxonomies, notify]);
 
   return (
     <div className="app-shell">
@@ -578,14 +629,48 @@ export default function RecordsPage() {
             <aside className="records-panel records-panel--categories">
               <header className="records-panel__header">
                 <h2>공사 종류</h2>
-                <button type="button" className="btn-soft" onClick={handleAddCategory}>+ 추가</button>
-                {filters.categoryId && (
-                  <button type="button" className="btn-muted" onClick={handleEditCategory}>수정</button>
-                )}
-                {filters.categoryId && (
-                  <button type="button" className="btn-muted" onClick={handleDeleteCategory}>삭제</button>
-                )}
+                <div className="records-panel__header-actions">
+                  <button type="button" className="btn-soft" onClick={handleAddCategory}>+ 추가</button>
+                  {filters.categoryId && (
+                    <button type="button" className="btn-muted" onClick={handleEditCategory}>수정</button>
+                  )}
+                  {filters.categoryId && (
+                    <button type="button" className="btn-muted" onClick={handleDeleteCategory}>삭제</button>
+                  )}
+                </div>
               </header>
+              {categoryDialog.open && (
+                <section className="records-inline-editor records-inline-editor--category">
+                  <div className="records-inline-editor__header">
+                    <div>
+                      <strong>{categoryDialog.mode === 'edit' ? '공사 종류 수정' : '공사 종류 추가'}</strong>
+                      <p>{categoryDialog.mode === 'edit' ? '선택한 공사 종류 이름을 바꿉니다.' : '새 공사 종류를 바로 등록합니다.'}</p>
+                    </div>
+                    <button type="button" className="btn-muted" onClick={closeCategoryDialog} disabled={categoryDialog.saving}>닫기</button>
+                  </div>
+                  <form className="records-inline-editor__body" onSubmit={handleCategoryDialogSubmit}>
+                    <label>
+                      {categoryDialog.mode === 'edit' ? '공사 종류명' : '새 공사 종류명'}
+                      <input
+                        ref={categoryInputRef}
+                        type="text"
+                        value={categoryDialog.name}
+                        onChange={handleCategoryNameChange}
+                        placeholder="예: 전기 공사"
+                      />
+                    </label>
+                    {categoryDialog.error && (
+                      <p className="records-inline-editor__error">{categoryDialog.error}</p>
+                    )}
+                    <div className="records-inline-editor__actions">
+                      <button type="button" className="btn-muted" onClick={closeCategoryDialog} disabled={categoryDialog.saving}>취소</button>
+                      <button type="submit" className="btn-primary" disabled={categoryDialog.saving}>
+                        {categoryDialog.saving ? '저장 중...' : categoryDialog.mode === 'edit' ? '수정' : '저장'}
+                      </button>
+                    </div>
+                  </form>
+                </section>
+              )}
               <CategoryTree
                 items={categories}
                 activeId={filters.categoryId}
@@ -638,6 +723,48 @@ export default function RecordsPage() {
                   <button type="button" className="btn-primary" onClick={openCreateModal}>+ 실적 등록</button>
                 </div>
               </header>
+
+              {companyDialog.open && (
+                <section className="records-inline-editor records-inline-editor--company">
+                  <div className="records-inline-editor__header">
+                    <div>
+                      <strong>법인 추가</strong>
+                      <p>실적에 연결할 법인을 현재 화면에서 바로 등록합니다.</p>
+                    </div>
+                    <button type="button" className="btn-muted" onClick={closeCompanyDialog} disabled={companyDialog.saving}>닫기</button>
+                  </div>
+                  <form className="records-inline-editor__body" onSubmit={handleCompanyDialogSubmit}>
+                    <label>
+                      새 법인명
+                      <input
+                        ref={companyInputRef}
+                        type="text"
+                        value={companyDialog.name}
+                        onChange={handleCompanyNameChange}
+                        placeholder="예: 지음이엔아이㈜"
+                      />
+                    </label>
+                    <div className="records-inline-editor__option-row">
+                      <input
+                        id="company-dialog-misc"
+                        type="checkbox"
+                        checked={companyDialog.isMisc}
+                        onChange={handleCompanyMiscChange}
+                      />
+                      <label htmlFor="company-dialog-misc">기타로 등록</label>
+                    </div>
+                    {companyDialog.error && (
+                      <p className="records-inline-editor__error">{companyDialog.error}</p>
+                    )}
+                    <div className="records-inline-editor__actions">
+                      <button type="button" className="btn-muted" onClick={closeCompanyDialog} disabled={companyDialog.saving}>취소</button>
+                      <button type="submit" className="btn-primary" disabled={companyDialog.saving}>
+                        {companyDialog.saving ? '저장 중...' : '저장'}
+                      </button>
+                    </div>
+                  </form>
+                </section>
+              )}
 
               {error && <p className="records-error">{error}</p>}
 
@@ -810,83 +937,6 @@ export default function RecordsPage() {
         onClose={closeEditor}
         onSaved={handleProjectSaved}
       />
-
-      {companyDialog.open && (
-        <div className="records-dialog-overlay" role="presentation" onClick={closeCompanyDialog}>
-          <div
-            className="records-dialog"
-            role="dialog"
-            aria-modal="true"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3>법인 추가</h3>
-            <form onSubmit={handleCompanyDialogSubmit}>
-              <label>
-                새 법인명
-                <input
-                  ref={companyInputRef}
-                  type="text"
-                  value={companyDialog.name}
-                  onChange={handleCompanyNameChange}
-                  placeholder="예: 지음이엔아이㈜"
-                />
-              </label>
-              <div className="records-dialog__option-row">
-                <input
-                  id="company-dialog-misc"
-                  type="checkbox"
-                  checked={companyDialog.isMisc}
-                  onChange={handleCompanyMiscChange}
-                />
-                <label htmlFor="company-dialog-misc">기타로 등록</label>
-              </div>
-              {companyDialog.error && (
-                <p className="records-dialog__error">{companyDialog.error}</p>
-              )}
-              <div className="records-dialog__actions">
-                <button type="button" className="btn-muted" onClick={closeCompanyDialog} disabled={companyDialog.saving}>취소</button>
-                <button type="submit" className="btn-primary" disabled={companyDialog.saving}>
-                  {companyDialog.saving ? '저장 중...' : '저장'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {categoryDialog.open && (
-        <div className="records-dialog-overlay" role="presentation" onClick={closeCategoryDialog}>
-          <div
-            className="records-dialog"
-            role="dialog"
-            aria-modal="true"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3>{categoryDialog.mode === 'edit' ? '공사 종류 수정' : '공사 종류 추가'}</h3>
-            <form onSubmit={handleCategoryDialogSubmit}>
-              <label>
-                {categoryDialog.mode === 'edit' ? '공사 종류명' : '새 공사 종류명'}
-                <input
-                  ref={categoryInputRef}
-                  type="text"
-                  value={categoryDialog.name}
-                  onChange={handleCategoryNameChange}
-                  placeholder="예: 전기 공사"
-                />
-              </label>
-              {categoryDialog.error && (
-                <p className="records-dialog__error">{categoryDialog.error}</p>
-              )}
-              <div className="records-dialog__actions">
-                <button type="button" className="btn-muted" onClick={closeCategoryDialog} disabled={categoryDialog.saving}>취소</button>
-                <button type="submit" className="btn-primary" disabled={categoryDialog.saving}>
-                  {categoryDialog.saving ? '저장 중...' : categoryDialog.mode === 'edit' ? '수정' : '저장'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
