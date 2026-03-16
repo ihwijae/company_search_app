@@ -145,6 +145,7 @@ const COLUMN_WIDTHS = {
   constructionExperience: 70,
   performanceCell: 120,
   performanceSummary: 50,
+  performanceCoefficient: 55,
   technicianCell: 90,
   technicianSummary: 55,
   technicianAbilitySummary: 55,
@@ -172,6 +173,7 @@ const COLLAPSED_COLUMN_WIDTHS = {
   constructionExperience: 32,
   performanceCell: 26,
   performanceSummary: 28,
+  performanceCoefficient: 28,
   technicianCell: 26,
   technicianSummary: 28,
   technicianAbilitySummary: 28,
@@ -2214,6 +2216,7 @@ export default function AgreementBoardWindow({
       + (showConstructionExperience ? COLUMN_WIDTHS.constructionExperience : 0)
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
+      + (isLh100To300 ? COLUMN_WIDTHS.performanceCoefficient : 0)
       + (technicianEnabled
         ? (collapsedColumns.technicianSummary ? COLLAPSED_COLUMN_WIDTHS.technicianSummary : COLUMN_WIDTHS.technicianSummary)
           + (collapsedColumns.technicianAbility ? COLLAPSED_COLUMN_WIDTHS.technicianAbilitySummary : COLUMN_WIDTHS.technicianAbilitySummary)
@@ -5275,6 +5278,9 @@ export default function AgreementBoardWindow({
     const performanceSummary = summaryInfo?.performanceScore != null
       ? formatScore(summaryInfo.performanceScore, resolveSummaryDigits('performance'))
       : '-';
+    const performanceCoefficientDisplay = isLh100To300
+      ? (summaryInfo?.performanceRatio != null ? formatScore(summaryInfo.performanceRatio, 3) : '-')
+      : null;
     const technicianScoreThreshold = isKrailUnder50 ? 2 : (isKrail50To100 ? 3 : null);
     const technicianScoreWarn = technicianScoreThreshold != null
       && summaryInfo?.technicianScore != null
@@ -5443,6 +5449,11 @@ export default function AgreementBoardWindow({
         <td className={`excel-cell total-cell performance-summary-cell ${performanceState}`} rowSpan={rightRowSpan}>
           {performanceSummary}
         </td>
+        {isLh100To300 && (
+          <td className="excel-cell total-cell performance-coefficient-cell" rowSpan={rightRowSpan}>
+            {performanceCoefficientDisplay}
+          </td>
+        )}
         {technicianEnabled && (collapsedColumns.technician
           ? renderCollapsedStubCell('technician', rightRowSpan)
           : slotMetas.map((meta) => renderTechnicianCell(meta, rightRowSpan)))}
@@ -5975,6 +5986,7 @@ export default function AgreementBoardWindow({
                 ))
               )}
               <col className="col-performance-summary" style={{ width: `${COLUMN_WIDTHS.performanceSummary}px` }} />
+              {isLh100To300 && <col className="col-performance-coefficient" style={{ width: `${COLUMN_WIDTHS.performanceCoefficient}px` }} />}
               {technicianEnabled && (
                 collapsedColumns.technician ? (
                   <col
@@ -6114,6 +6126,11 @@ export default function AgreementBoardWindow({
                 <th rowSpan="2" className="col-header performance-summary-header">
                   {`실적(${formatScore(performanceHeaderMax, 0)}점)`}
                 </th>
+                {isLh100To300 && (
+                  <th rowSpan="2" className="col-header performance-coefficient-header">
+                    실적계수
+                  </th>
+                )}
                 {technicianEnabled && (
                   <th
                     colSpan={collapsedColumns.technician ? 1 : slotLabels.length}
