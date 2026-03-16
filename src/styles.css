@@ -2544,6 +2544,8 @@ button.primary:hover { background: var(--accent-2); }
   min-height: 28px;
   flex-direction: column;
   gap: 1px;
+  width: 100%;
+  min-width: 0;
 }
 
 .excel-status.score-only .status-score {
@@ -2590,6 +2592,9 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-status-cell .excel-inline-edit-display,
 .excel-status-cell .excel-amount-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 2px 3px;
   font-size: 11px;
   white-space: normal;
