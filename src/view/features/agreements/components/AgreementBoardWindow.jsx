@@ -144,8 +144,8 @@ const COLUMN_WIDTHS = {
   qualityPoints: 42,
   constructionExperience: 70,
   performanceCell: 64,
-  performanceSummary: 24,
-  performanceCoefficient: 108,
+  performanceSummary: 36,
+  performanceCoefficient: 84,
   technicianCell: 90,
   technicianSummary: 55,
   technicianAbilitySummary: 55,
@@ -172,8 +172,8 @@ const COLLAPSED_COLUMN_WIDTHS = {
   qualityPoints: 20,
   constructionExperience: 32,
   performanceCell: 18,
-  performanceSummary: 12,
-  performanceCoefficient: 60,
+  performanceSummary: 20,
+  performanceCoefficient: 36,
   technicianCell: 26,
   technicianSummary: 28,
   technicianAbilitySummary: 28,
@@ -5993,8 +5993,8 @@ export default function AgreementBoardWindow({
                   />
                 ))
               )}
-              <col className="col-performance-summary" style={{ width: `${COLUMN_WIDTHS.performanceSummary}px` }} />
               {isLh100To300 && <col className="col-performance-coefficient" style={{ width: `${COLUMN_WIDTHS.performanceCoefficient}px` }} />}
+              <col className="col-performance-summary" style={{ width: `${COLUMN_WIDTHS.performanceSummary}px` }} />
               {technicianEnabled && (
                 collapsedColumns.technician ? (
                   <col
