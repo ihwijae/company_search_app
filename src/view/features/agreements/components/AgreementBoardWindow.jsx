@@ -842,15 +842,6 @@ const formatPercent = (value) => {
   return `${number.toFixed(2)}%`;
 };
 
-const formatUnroundedScore = (score, digits = 6) => {
-  const value = toNumber(score);
-  if (value === null) return '-';
-  const text = String(value.toFixed(digits))
-    .replace(/\.0+$/, '')
-    .replace(/(\.\d*?[1-9])0+$/, '$1');
-  return text;
-};
-
 const parsePercentValue = (value) => {
   const number = toNumber(value);
   if (number === null) return NaN;
@@ -5139,9 +5130,7 @@ export default function AgreementBoardWindow({
       return acc + (score * (share / 100));
     }, 0);
     const qualityTotalDisplay = slotMetas.some((meta) => !meta.empty)
-      ? (selectedRangeOption?.key === LH_100_TO_300_KEY
-        ? formatUnroundedScore(resolvedQualityTotal)
-        : formatScore(resolvedQualityTotal, 2))
+      ? formatScore(resolvedQualityTotal, 2)
       : '-';
     return (
       <tr key={`${group.id}-quality`} className="excel-board-row quality-row">
