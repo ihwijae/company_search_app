@@ -285,7 +285,6 @@ export default function TempCompaniesPage() {
 
   return (
     <div className="records-editor-page temp-companies-page">
-      <div className="title-drag" />
       <div className="records-editor-page__backdrop" />
       <main className="records-editor-page__shell" style={{ maxWidth: 1320 }}>
         <header className="records-editor-page__header">
@@ -344,6 +343,8 @@ export default function TempCompaniesPage() {
                       managerName: item.managerName,
                       manager: item.managerName,
                       담당자: item.managerName,
+                      비고: item.notes,
+                      notes: item.notes,
                     });
                     const industryLabel = getIndustryLabel(item.industry);
                     return (
@@ -363,7 +364,7 @@ export default function TempCompaniesPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <div style={{ fontWeight: 700 }}>{item.name || '이름 없음'}</div>
                       {industryLabel && (
-                        <span className="records-tag">{industryLabel}</span>
+                        <span className={`records-tag records-tag--industry-${normalizeIndustry(item.industry)}`}>{industryLabel}</span>
                       )}
                       {managerBadges.map((manager) => (
                         <span key={`${item.id}-${manager}`} className="badge-person">{manager}</span>

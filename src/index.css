@@ -1126,6 +1126,21 @@ body {
   color: #b45309;
 }
 
+.records-tag--industry-eung {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.records-tag--industry-tongsin {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.records-tag--industry-sobang {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .records-list-empty {
   text-align: center;
   padding: 32px 12px;
