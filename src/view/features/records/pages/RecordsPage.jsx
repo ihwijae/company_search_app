@@ -155,9 +155,11 @@ export default function RecordsPage() {
   const [selectedProjectId, setSelectedProjectId] = React.useState(null);
   const [companyDialog, setCompanyDialog] = React.useState({ open: false, name: '', isMisc: false, saving: false, error: '' });
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [categoryDialog, setCategoryDialog] = React.useState({ open: false, name: '', saving: false, error: '' });
+  const [categoryDialog, setCategoryDialog] = React.useState({ open: false, id: null, mode: 'create', name: '', saving: false, error: '' });
   const pendingSelectRef = React.useRef(null);
   const baseDateRef = React.useRef(new Date());
+  const companyInputRef = React.useRef(null);
+  const categoryInputRef = React.useRef(null);
   const baseDateLabel = React.useMemo(() => {
     const baseDate = baseDateRef.current;
     const year = baseDate.getFullYear();
@@ -235,6 +237,28 @@ export default function RecordsPage() {
   React.useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  React.useEffect(() => {
+    if (!companyDialog.open) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        companyInputRef.current?.focus();
+        companyInputRef.current?.select?.();
+      } catch {}
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [companyDialog.open]);
+
+  React.useEffect(() => {
+    if (!categoryDialog.open) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        categoryInputRef.current?.focus();
+        categoryInputRef.current?.select?.();
+      } catch {}
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [categoryDialog.open, categoryDialog.mode]);
 
   const handleMenuSelect = (key) => {
     if (key === 'records') {
@@ -398,11 +422,35 @@ export default function RecordsPage() {
   }, [filters.categoryId, flatCategories, fetchTaxonomies, fetchProjects]);
 
   const handleAddCategory = React.useCallback(() => {
-    setCategoryDialog({ open: true, name: '', saving: false, error: '' });
+    try {
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
+    } catch {}
+    setCategoryDialog({ open: true, id: null, mode: 'create', name: '', saving: false, error: '' });
   }, []);
 
+  const handleEditCategory = React.useCallback(() => {
+    if (!filters.categoryId) return;
+    const category = flatCategories.find((item) => item.id === filters.categoryId);
+    if (!category) return;
+    try {
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
+    } catch {}
+    setCategoryDialog({
+      open: true,
+      id: category.id,
+      mode: 'edit',
+      name: category.name || '',
+      saving: false,
+      error: '',
+    });
+  }, [filters.categoryId, flatCategories]);
+
   const closeCategoryDialog = React.useCallback(() => {
-    setCategoryDialog({ open: false, name: '', saving: false, error: '' });
+    setCategoryDialog({ open: false, id: null, mode: 'create', name: '', saving: false, error: '' });
   }, []);
 
   const handleCategoryNameChange = (event) => {
@@ -419,10 +467,16 @@ export default function RecordsPage() {
     }
     setCategoryDialog((prev) => ({ ...prev, saving: true, error: '' }));
     try {
-      await recordsClient.saveCategory({ name: trimmed });
+      const saved = await recordsClient.saveCategory({
+        id: categoryDialog.mode === 'edit' ? categoryDialog.id : undefined,
+        name: trimmed,
+      });
       await fetchTaxonomies();
-      setCategoryDialog({ open: false, name: '', saving: false, error: '' });
-      alert('공사 종류를 등록했습니다.');
+      if (saved?.id) {
+        setFilters((prev) => ({ ...prev, categoryId: saved.id }));
+      }
+      setCategoryDialog({ open: false, id: null, mode: 'create', name: '', saving: false, error: '' });
+      alert(categoryDialog.mode === 'edit' ? '공사 종류명을 수정했습니다.' : '공사 종류를 등록했습니다.');
     } catch (err) {
       setCategoryDialog((prev) => ({ ...prev, saving: false, error: err?.message || '공사 종류를 추가할 수 없습니다.' }));
     }
@@ -525,6 +579,9 @@ export default function RecordsPage() {
               <header className="records-panel__header">
                 <h2>공사 종류</h2>
                 <button type="button" className="btn-soft" onClick={handleAddCategory}>+ 추가</button>
+                {filters.categoryId && (
+                  <button type="button" className="btn-muted" onClick={handleEditCategory}>수정</button>
+                )}
                 {filters.categoryId && (
                   <button type="button" className="btn-muted" onClick={handleDeleteCategory}>삭제</button>
                 )}
@@ -767,11 +824,11 @@ export default function RecordsPage() {
               <label>
                 새 법인명
                 <input
+                  ref={companyInputRef}
                   type="text"
                   value={companyDialog.name}
                   onChange={handleCompanyNameChange}
                   placeholder="예: 지음이엔아이㈜"
-                  autoFocus
                 />
               </label>
               <div className="records-dialog__option-row">
@@ -805,16 +862,16 @@ export default function RecordsPage() {
             aria-modal="true"
             onClick={(event) => event.stopPropagation()}
           >
-            <h3>공사 종류 추가</h3>
+            <h3>{categoryDialog.mode === 'edit' ? '공사 종류 수정' : '공사 종류 추가'}</h3>
             <form onSubmit={handleCategoryDialogSubmit}>
               <label>
-                새 공사 종류명
+                {categoryDialog.mode === 'edit' ? '공사 종류명' : '새 공사 종류명'}
                 <input
+                  ref={categoryInputRef}
                   type="text"
                   value={categoryDialog.name}
                   onChange={handleCategoryNameChange}
                   placeholder="예: 전기 공사"
-                  autoFocus
                 />
               </label>
               {categoryDialog.error && (
@@ -823,7 +880,7 @@ export default function RecordsPage() {
               <div className="records-dialog__actions">
                 <button type="button" className="btn-muted" onClick={closeCategoryDialog} disabled={categoryDialog.saving}>취소</button>
                 <button type="submit" className="btn-primary" disabled={categoryDialog.saving}>
-                  {categoryDialog.saving ? '저장 중...' : '저장'}
+                  {categoryDialog.saving ? '저장 중...' : categoryDialog.mode === 'edit' ? '수정' : '저장'}
                 </button>
               </div>
             </form>
