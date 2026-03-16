@@ -168,9 +168,13 @@ class RecordsRepository {
   upsertCategory(payload) {
     this.refreshDb();
     const db = this.db;
-    const parentId = Number.isInteger(payload.parentId) ? payload.parentId : null;
+    const existing = payload.id ? this.getCategoryById(payload.id) : null;
+    const parentId = Number.isInteger(payload.parentId)
+      ? payload.parentId
+      : existing?.parentId ?? null;
     const computeNextOrder = () => {
       if (Number.isFinite(payload.sortOrder)) return payload.sortOrder;
+      if (existing && Number.isFinite(existing.sortOrder)) return existing.sortOrder;
       const sql = parentId === null
         ? 'SELECT IFNULL(MAX(sort_order), -1) + 1 FROM categories WHERE parent_id IS NULL'
         : 'SELECT IFNULL(MAX(sort_order), -1) + 1 FROM categories WHERE parent_id = ?';

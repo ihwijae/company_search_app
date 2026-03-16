@@ -171,6 +171,26 @@ export default function RecordsPage() {
     return `${year}.${month}.${day}`;
   }, []);
 
+  const selectedCategory = React.useMemo(
+    () => flatCategories.find((item) => item.id === filters.categoryId) || null,
+    [flatCategories, filters.categoryId],
+  );
+
+  const selectedCategorySiblings = React.useMemo(() => {
+    if (!selectedCategory) return [];
+    return flatCategories
+      .filter((item) => item.parentId === selectedCategory.parentId)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name));
+  }, [flatCategories, selectedCategory]);
+
+  const selectedCategoryIndex = React.useMemo(
+    () => selectedCategorySiblings.findIndex((item) => item.id === selectedCategory?.id),
+    [selectedCategory, selectedCategorySiblings],
+  );
+
+  const canMoveCategoryUp = selectedCategoryIndex > 0;
+  const canMoveCategoryDown = selectedCategoryIndex >= 0 && selectedCategoryIndex < selectedCategorySiblings.length - 1;
+
   const fetchTaxonomies = React.useCallback(async () => {
     try {
       const [cats, comps] = await Promise.all([
@@ -453,6 +473,41 @@ export default function RecordsPage() {
     }
   }, [confirm, filters.categoryId, flatCategories, fetchTaxonomies, fetchProjects, notify]);
 
+  const handleMoveCategory = React.useCallback(async (direction) => {
+    if (!selectedCategory) return;
+    const siblings = selectedCategorySiblings;
+    const currentIndex = siblings.findIndex((item) => item.id === selectedCategory.id);
+    if (currentIndex < 0) return;
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const swapTarget = siblings[targetIndex];
+    if (!swapTarget) return;
+
+    try {
+      await recordsClient.saveCategory({
+        id: selectedCategory.id,
+        name: selectedCategory.name,
+        parentId: selectedCategory.parentId ?? undefined,
+        active: selectedCategory.active,
+        sortOrder: swapTarget.sortOrder ?? targetIndex,
+      });
+      await recordsClient.saveCategory({
+        id: swapTarget.id,
+        name: swapTarget.name,
+        parentId: swapTarget.parentId ?? undefined,
+        active: swapTarget.active,
+        sortOrder: selectedCategory.sortOrder ?? currentIndex,
+      });
+      await fetchTaxonomies();
+      notify({
+        type: 'success',
+        message: direction === 'up' ? '공사 종류를 위로 이동했습니다.' : '공사 종류를 아래로 이동했습니다.',
+        duration: 1800,
+      });
+    } catch (err) {
+      notify({ type: 'error', message: err?.message || '공사 종류 순서를 변경할 수 없습니다.' });
+    }
+  }, [fetchTaxonomies, notify, selectedCategory, selectedCategorySiblings]);
+
   const handleAddCategory = React.useCallback(() => {
     try {
       if (document.activeElement && typeof document.activeElement.blur === 'function') {
@@ -625,6 +680,12 @@ export default function RecordsPage() {
                 <h2>공사 종류</h2>
                 <div className="records-panel__header-actions">
                   <button type="button" className="btn-soft" onClick={handleAddCategory}>+ 추가</button>
+                  {filters.categoryId && (
+                    <button type="button" className="btn-muted" onClick={() => handleMoveCategory('up')} disabled={!canMoveCategoryUp}>위로</button>
+                  )}
+                  {filters.categoryId && (
+                    <button type="button" className="btn-muted" onClick={() => handleMoveCategory('down')} disabled={!canMoveCategoryDown}>아래로</button>
+                  )}
                   {filters.categoryId && (
                     <button type="button" className="btn-muted" onClick={handleEditCategory}>수정</button>
                   )}
