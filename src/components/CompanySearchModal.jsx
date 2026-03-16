@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { openTempCompaniesWindow as openTempCompaniesPopup } from '../utils/tempCompaniesWindow.js';
 import {
   isWomenOwnedCompany,
   getQualityBadgeText,
@@ -44,13 +45,10 @@ export default function CompanySearchModal({
   const [error, setError] = useState('');
   const openTempCompaniesWindow = () => {
     try {
-      const opener = window.electronAPI?.tempCompanies?.openWindow;
-      if (typeof opener === 'function') {
-        const normalizedType = normalizeFileType(fileType);
-        opener({ industry: normalizedType && normalizedType !== 'all' ? normalizedType : '' });
-        return;
-      }
-      throw new Error('임시 업체 창을 열지 못했습니다.');
+      const normalizedType = normalizeFileType(fileType);
+      openTempCompaniesPopup({
+        industry: normalizedType && normalizedType !== 'all' ? normalizedType : '',
+      });
     } catch (e) {
       setError(String(e?.message || e));
     }

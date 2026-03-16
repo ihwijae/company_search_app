@@ -285,6 +285,7 @@ export default function TempCompaniesPage() {
 
   return (
     <div className="records-editor-page temp-companies-page">
+      <div className="title-drag" />
       <div className="records-editor-page__backdrop" />
       <main className="records-editor-page__shell" style={{ maxWidth: 1320 }}>
         <header className="records-editor-page__header">

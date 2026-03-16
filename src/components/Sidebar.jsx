@@ -6,6 +6,7 @@ import autoIcon from '../assets/auto.png';
 import exchangeIcon from '../assets/교환.png';
 import kakaoIcon from '../assets/kakao.png';
 import notesIcon from '../assets/특이사항아이콘.png';
+import { openTempCompaniesWindow } from '../utils/tempCompaniesWindow.js';
 
 export default function Sidebar({ active, onSelect, fileStatuses, collapsed = true }) {
   const anyLoaded = !!(fileStatuses?.eung || fileStatuses?.tongsin || fileStatuses?.sobang);
@@ -19,11 +20,10 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
       }
     }
     if (key === 'temp-companies' && typeof window !== 'undefined') {
-      const opener = window.electronAPI?.tempCompanies?.openWindow;
-      if (typeof opener === 'function') {
-        opener();
+      try {
+        openTempCompaniesWindow();
         return;
-      }
+      } catch {}
     }
     if (onSelect) onSelect(key);
   };
