@@ -495,6 +495,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     rowStep: 2,
     qualityRowOffset: 1,
     managementScoreMax: 8,
+    qualityHighlightMin: 88,
     slotColumns: {
       name: ['C', 'D', 'E', 'F', 'G'],
       share: ['I', 'J', 'K', 'L', 'M'],
@@ -521,7 +522,6 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     summaryColumns: {
       credibility: 'AF',
       netCostBonus: 'AG',
-      qualityPoints: 'AD',
     },
     regionFill: {
       type: 'pattern',

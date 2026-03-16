@@ -3,6 +3,8 @@ import {
   formatPossibleShareValue,
 } from './calculations/possibleShare.js';
 
+const LH_100_TO_300_KEY = 'lh-100to300';
+
 export function buildAgreementExportPayload({
   templateKey,
   appendTargetPath = '',
@@ -58,6 +60,7 @@ export function buildAgreementExportPayload({
   getQualityScoreValue,
   resolveQualityPoints,
 }) {
+  const isLh100To300 = isLHOwner && selectedRangeKey === LH_100_TO_300_KEY;
   let exportIndex = 1;
   const groupPayloads = groupAssignments.flatMap((memberIds, groupIndex) => {
     const hasMembers = Array.isArray(memberIds) && memberIds.some((uid) => Boolean(uid));
@@ -106,11 +109,16 @@ export function buildAgreementExportPayload({
       const shareLabel = includePossibleShare
         ? formatPossibleShareValue(possibleShareRatio)
         : '';
-      const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
       const qualityScore = isLHOwner
         ? getQualityScoreValue(groupIndex, slotIndex, candidate)
         : null;
-      const displayName = managerName ? `${nameLine}\n${managerName}` : nameLine;
+      const displayLines = [companyName];
+      if (shareLabel) displayLines.push(shareLabel);
+      if (isLh100To300 && qualityScore != null && Number.isFinite(Number(qualityScore))) {
+        displayLines.push(`품질 ${Number(qualityScore).toFixed(2)}`);
+      }
+      if (managerName) displayLines.push(managerName);
+      const displayName = displayLines.filter(Boolean).join('\n');
       return {
         slotIndex,
         role: slotIndex === 0 ? 'representative' : 'member',
@@ -189,8 +197,14 @@ export function buildAgreementExportPayload({
     const companyName = sanitizeCompanyName(getCompanyName(candidate));
     const managerName = getCandidateManagerName(candidate);
     const shareLabel = entry.possibleShareText ? String(entry.possibleShareText).replace(/%$/, '') : '';
-    const nameLine = shareLabel ? `${companyName} ${shareLabel}` : companyName;
-    const displayName = managerName ? `${nameLine}\n${managerName}` : nameLine;
+    const qualityScore = isLh100To300 ? Number(entry.qualityScore) : null;
+    const displayLines = [companyName];
+    if (shareLabel) displayLines.push(shareLabel);
+    if (isLh100To300 && Number.isFinite(qualityScore)) {
+      displayLines.push(`품질 ${qualityScore.toFixed(2)}`);
+    }
+    if (managerName) displayLines.push(managerName);
+    const displayName = displayLines.filter(Boolean).join('\n');
     return {
       candidateIndex: index + 1,
       isRegion: Boolean(entry.isDutyRegion),

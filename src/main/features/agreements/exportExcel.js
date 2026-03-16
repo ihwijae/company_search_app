@@ -236,6 +236,9 @@ async function exportAgreementExcel({
   const slotCount = nameColumns.length;
   const summaryColumns = config.summaryColumns || {};
   const qualityColumns = Array.isArray(config.qualityColumns) ? config.qualityColumns : [];
+  const qualityHighlightMin = Number.isFinite(config.qualityHighlightMin)
+    ? Number(config.qualityHighlightMin)
+    : null;
   const managementScoreMax = Number.isFinite(config.managementScoreMax)
     ? Number(config.managementScoreMax)
     : DEFAULT_MANAGEMENT_SCORE_MAX;
@@ -470,6 +473,17 @@ async function exportAgreementExcel({
           const qualityCell = worksheet.getCell(`${qualityColumn}${qualityRowIndex}`);
           const qualityValue = toExcelNumber(member.qualityScore);
           if (qualityValue != null) qualityCell.value = qualityValue;
+          const baseStyle = qualityCell.style ? { ...qualityCell.style } : {};
+          qualityCell.style = {
+            ...baseStyle,
+            fill: cloneFill(CLEAR_FILL),
+          };
+          if (qualityValue != null && qualityHighlightMin != null && qualityValue >= qualityHighlightMin) {
+            qualityCell.style = {
+              ...baseStyle,
+              fill: cloneFill(YELLOW_FILL),
+            };
+          }
         }
       }
 
@@ -632,6 +646,17 @@ async function exportAgreementExcel({
           const qualityCell = worksheet.getCell(`${qualityColumn}${rowIndex + qualityRowOffset}`);
           const qualityValue = toExcelNumber(candidate.qualityScore);
           if (qualityValue != null) qualityCell.value = qualityValue;
+          const baseStyle = qualityCell.style ? { ...qualityCell.style } : {};
+          qualityCell.style = {
+            ...baseStyle,
+            fill: cloneFill(CLEAR_FILL),
+          };
+          if (qualityValue != null && qualityHighlightMin != null && qualityValue >= qualityHighlightMin) {
+            qualityCell.style = {
+              ...baseStyle,
+              fill: cloneFill(YELLOW_FILL),
+            };
+          }
         }
       }
     });
