@@ -2247,11 +2247,11 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-perf-cell {
-  min-width: 120px;
+  min-width: 88px;
 }
 
 .excel-status-cell {
-  min-width: 56px;
+  min-width: 48px;
   overflow: hidden;
 }
 
@@ -2537,9 +2537,9 @@ button.primary:hover { background: var(--accent-2); }
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
+  min-height: 32px;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .excel-status.score-only .status-score {
@@ -2584,6 +2584,11 @@ button.primary:hover { background: var(--accent-2); }
   box-sizing: border-box;
 }
 
+.excel-status-cell .excel-inline-edit-display,
+.excel-status-cell .excel-amount-input {
+  padding: 3px 4px;
+}
+
 .excel-inline-edit-display:hover {
   border-color: #cbd5e1;
   background: #f8fafc;
@@ -2601,13 +2606,15 @@ button.primary:hover { background: var(--accent-2); }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
+  width: 100%;
 }
 
 .excel-performance .perf-label {
-  font-size: 11px;
+  font-size: 10px;
   color: #94a3b8;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
 }
 
 .excel-performance .perf-value {
@@ -2618,6 +2625,15 @@ button.primary:hover { background: var(--accent-2); }
   text-align: center;
   width: 100%;
   white-space: normal;
+}
+
+.excel-perf-cell .excel-inline-edit-display,
+.excel-perf-cell .excel-amount-input {
+  padding: 2px 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  line-height: 1.2;
 }
 
 .excel-cell.total-cell {
