@@ -2247,12 +2247,16 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-perf-cell {
-  min-width: 88px;
+  min-width: 72px;
 }
 
 .excel-status-cell {
-  min-width: 48px;
+  min-width: 42px;
   overflow: hidden;
+}
+
+.excel-share-cell {
+  min-width: 46px;
 }
 
 .order-cell,
@@ -2506,9 +2510,9 @@ button.primary:hover { background: var(--accent-2); }
   width: 100%;
   border-radius: 8px;
   border: 1px solid #d1d5db;
-  padding: 6px 8px;
+  padding: 4px 4px;
   text-align: right;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .excel-amount-input {
@@ -2537,7 +2541,7 @@ button.primary:hover { background: var(--accent-2); }
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
+  min-height: 28px;
   flex-direction: column;
   gap: 1px;
 }
@@ -2586,7 +2590,8 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-status-cell .excel-inline-edit-display,
 .excel-status-cell .excel-amount-input {
-  padding: 3px 4px;
+  padding: 2px 3px;
+  font-size: 11px;
 }
 
 .excel-inline-edit-display:hover {
@@ -2596,6 +2601,8 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-inline-edit-display-share {
   text-align: right;
+  padding: 2px 3px;
+  font-size: 11px;
 }
 
 .excel-share-input {
@@ -2634,6 +2641,7 @@ button.primary:hover { background: var(--accent-2); }
   overflow-wrap: anywhere;
   word-break: break-all;
   line-height: 1.2;
+  font-size: 11px;
 }
 
 .excel-cell.total-cell {
