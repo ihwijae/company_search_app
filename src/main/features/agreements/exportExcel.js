@@ -478,7 +478,7 @@ async function exportAgreementExcel({
             ...baseStyle,
             fill: cloneFill(CLEAR_FILL),
           };
-          if (qualityValue != null && qualityHighlightMin != null && qualityValue >= qualityHighlightMin) {
+          if (qualityValue != null && qualityHighlightMin != null && qualityValue > qualityHighlightMin) {
             qualityCell.style = {
               ...baseStyle,
               fill: cloneFill(YELLOW_FILL),
@@ -651,7 +651,7 @@ async function exportAgreementExcel({
             ...baseStyle,
             fill: cloneFill(CLEAR_FILL),
           };
-          if (qualityValue != null && qualityHighlightMin != null && qualityValue >= qualityHighlightMin) {
+          if (qualityValue != null && qualityHighlightMin != null && qualityValue > qualityHighlightMin) {
             qualityCell.style = {
               ...baseStyle,
               fill: cloneFill(YELLOW_FILL),
