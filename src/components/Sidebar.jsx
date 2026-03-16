@@ -18,6 +18,13 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
         return;
       }
     }
+    if (key === 'temp-companies' && typeof window !== 'undefined') {
+      const opener = window.electronAPI?.tempCompanies?.openWindow;
+      if (typeof opener === 'function') {
+        opener();
+        return;
+      }
+    }
     if (onSelect) onSelect(key);
   };
 
@@ -35,6 +42,7 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
       ),
     },
     { key: 'records', label: '실적', icon: '📊' },
+    { key: 'temp-companies', label: '임시업체', icon: '🏢' },
     {
       key: 'mail',
       label: '메일',
@@ -117,7 +125,7 @@ export default function Sidebar({ active, onSelect, fileStatuses, collapsed = tr
       onClick={() => handleSelect(key)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && onSelect) onSelect(key); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelect(key); }}
     >
       <span style={{ width: 28, fontSize: 22 }}>{icon}</span>
       {!isCollapsed && <span>{label}</span>}
