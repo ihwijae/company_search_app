@@ -110,10 +110,6 @@ export default function App() {
       break;
   }
 
-  if (path === '/temp-companies') {
-    return <TempCompaniesPage />;
-  }
-
   return (
     <FeedbackProvider>
       <AgreementBoardProvider>
