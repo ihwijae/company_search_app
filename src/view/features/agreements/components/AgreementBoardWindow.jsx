@@ -136,7 +136,7 @@ const COLUMN_WIDTHS = {
   order: 40,
   approval: 90,
   name: 100,
-  share: 46,
+  share: 56,
   status: 42,
   management: 55,
   managementBonus: 50,
@@ -164,7 +164,7 @@ const COLLAPSED_COLUMN_WIDTHS = {
   order: 26,
   approval: 28,
   name: 26,
-  share: 22,
+  share: 26,
   status: 20,
   management: 28,
   managementBonus: 26,
@@ -1595,6 +1595,7 @@ export default function AgreementBoardWindow({
   const ownerCredibilityMax = credibilityConfig.max;
   const showCredibilityBeforeStatus = credibilityEnabled && !placeCredibilityAfterQuality;
   const showCredibilityAfterQuality = credibilityEnabled && placeCredibilityAfterQuality;
+  const showCredibilitySlots = credibilityEnabled && !isLh100To300;
   const credibilityLabel = isLh100To300 ? '지역경제 기여도' : '신인도';
   const ownerPerformanceFallback = React.useMemo(() => {
     if (isLh100To300) return 11;
@@ -2176,7 +2177,7 @@ export default function AgreementBoardWindow({
   const columnSpans = React.useMemo(() => {
     const nameSpan = collapsedColumns.name ? 1 : slotLabels.length;
     const shareSpan = collapsedColumns.share ? 1 : slotLabels.length;
-    const credibilitySpan = credibilityEnabled ? (collapsedColumns.credibility ? 1 : slotLabels.length) : 0;
+    const credibilitySpan = showCredibilitySlots ? (collapsedColumns.credibility ? 1 : slotLabels.length) : 0;
     const statusSpan = collapsedColumns.status ? 1 : slotLabels.length;
     const performanceSpan = collapsedColumns.performance ? 1 : slotLabels.length;
     const technicianSpan = technicianEnabled ? (collapsedColumns.technician ? 1 : slotLabels.length) : 0;
@@ -2190,12 +2191,12 @@ export default function AgreementBoardWindow({
       technicianSpan,
       sipyungSpan,
     };
-  }, [collapsedColumns, slotLabels.length, credibilityEnabled, technicianEnabled]);
+  }, [collapsedColumns, slotLabels.length, showCredibilitySlots, technicianEnabled]);
 
   const tableMinWidth = React.useMemo(() => {
     const nameWidth = columnSpans.nameSpan * (collapsedColumns.name ? COLLAPSED_COLUMN_WIDTHS.name : COLUMN_WIDTHS.name);
     const shareWidth = columnSpans.shareSpan * (collapsedColumns.share ? COLLAPSED_COLUMN_WIDTHS.share : COLUMN_WIDTHS.share);
-    const credibilityWidth = credibilityEnabled
+    const credibilityWidth = showCredibilitySlots
       ? columnSpans.credibilitySpan * (collapsedColumns.credibility ? COLLAPSED_COLUMN_WIDTHS.credibilityCell : COLUMN_WIDTHS.credibilityCell)
       : 0;
     const statusWidth = columnSpans.statusSpan * (collapsedColumns.status ? COLLAPSED_COLUMN_WIDTHS.status : COLUMN_WIDTHS.status);
@@ -2234,7 +2235,7 @@ export default function AgreementBoardWindow({
     return Math.max(1200, total);
   }, [
     columnSpans,
-    credibilityEnabled,
+    showCredibilitySlots,
     isLHOwner,
     showManagementBonus,
     showBidScore,
@@ -5418,7 +5419,7 @@ export default function AgreementBoardWindow({
             <div className="excel-warning">의무지분 미충족</div>
           )}
         </td>
-        {showCredibilityBeforeStatus && (collapsedColumns.credibility
+        {showCredibilityBeforeStatus && showCredibilitySlots && (collapsedColumns.credibility
           ? renderCollapsedStubCell('credibility', rightRowSpan)
           : slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan)))}
         {showCredibilityBeforeStatus && (
@@ -5493,7 +5494,7 @@ export default function AgreementBoardWindow({
             {qualityPointsDisplay}
           </td>
         )}
-        {showCredibilityAfterQuality && (collapsedColumns.credibility
+        {showCredibilityAfterQuality && showCredibilitySlots && (collapsedColumns.credibility
           ? renderCollapsedStubCell('credibility', rightRowSpan)
           : slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan)))}
         {showCredibilityAfterQuality && (
@@ -5950,7 +5951,7 @@ export default function AgreementBoardWindow({
                   ))
                 )}
                 <col className="col-share-total" style={{ width: `${COLUMN_WIDTHS.shareTotal}px` }} />
-                {showCredibilityBeforeStatus && (
+                {showCredibilityBeforeStatus && showCredibilitySlots && (
                   collapsedColumns.credibility ? (
                     <col
                       className="col-credibility-slot col-collapsed-stub"
@@ -6021,8 +6022,8 @@ export default function AgreementBoardWindow({
               )}
               {isLHOwner && <col className="col-quality-points" style={{ width: `${COLUMN_WIDTHS.qualityPoints}px` }} />}
               {showConstructionExperience && <col className="col-construction-experience" style={{ width: `${COLUMN_WIDTHS.constructionExperience}px` }} />}
-              {showCredibilityAfterQuality && (
-                collapsedColumns.credibility ? (
+                {showCredibilityAfterQuality && showCredibilitySlots && (
+                  collapsedColumns.credibility ? (
                   <col
                     className="col-credibility-slot col-collapsed-stub"
                     style={{ width: resolveColWidth('credibilityCell', 'credibility') }}
@@ -6094,7 +6095,7 @@ export default function AgreementBoardWindow({
                       '지분합계'
                     )}
                   </th>
-                    {showCredibilityBeforeStatus && (
+                    {showCredibilityBeforeStatus && showCredibilitySlots && (
                       <th
                         colSpan={collapsedColumns.credibility ? 1 : slotLabels.length}
                         rowSpan={collapsedColumns.credibility ? 2 : undefined}
@@ -6175,7 +6176,7 @@ export default function AgreementBoardWindow({
                     시공경험점수
                   </th>
                 )}
-                {showCredibilityAfterQuality && (
+                {showCredibilityAfterQuality && showCredibilitySlots && (
                   <th
                     colSpan={collapsedColumns.credibility ? 1 : slotLabels.length}
                     rowSpan={collapsedColumns.credibility ? 2 : undefined}
@@ -6242,7 +6243,7 @@ export default function AgreementBoardWindow({
                 {!collapsedColumns.share && slotLabels.map((label, index) => (
                   <th key={`share-head-${index}`} className="subheader-share">{label}</th>
                 ))}
-                {showCredibilityBeforeStatus && !collapsedColumns.credibility && slotLabels.map((label, index) => (
+                {showCredibilityBeforeStatus && showCredibilitySlots && !collapsedColumns.credibility && slotLabels.map((label, index) => (
                   <th key={`credibility-head-${index}`} className="subheader-credibility">{label}</th>
                 ))}
                 {!collapsedColumns.status && slotLabels.map((label, index) => (
@@ -6254,7 +6255,7 @@ export default function AgreementBoardWindow({
                 {technicianEnabled && !collapsedColumns.technician && slotLabels.map((label, index) => (
                   <th key={`tech-head-${index}`} className="subheader-technician">{label}</th>
                 ))}
-                {showCredibilityAfterQuality && !collapsedColumns.credibility && slotLabels.map((label, index) => (
+                {showCredibilityAfterQuality && showCredibilitySlots && !collapsedColumns.credibility && slotLabels.map((label, index) => (
                   <th key={`credibility-head-late-${index}`} className="subheader-credibility">{label}</th>
                 ))}
                 {!collapsedColumns.sipyung && slotLabels.map((label, index) => (

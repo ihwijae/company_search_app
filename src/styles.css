@@ -2256,7 +2256,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-share-cell {
-  min-width: 46px;
+  min-width: 56px;
 }
 
 .order-cell,
@@ -2510,9 +2510,9 @@ button.primary:hover { background: var(--accent-2); }
   width: 100%;
   border-radius: 8px;
   border: 1px solid #d1d5db;
-  padding: 4px 4px;
+  padding: 6px 8px;
   text-align: right;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .excel-amount-input {
@@ -2601,8 +2601,6 @@ button.primary:hover { background: var(--accent-2); }
 
 .excel-inline-edit-display-share {
   text-align: right;
-  padding: 2px 3px;
-  font-size: 11px;
 }
 
 .excel-share-input {
@@ -2618,7 +2616,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-performance .perf-label {
-  font-size: 10px;
+  font-size: 11px;
   color: #94a3b8;
   letter-spacing: 0.02em;
   line-height: 1.1;
@@ -2641,7 +2639,7 @@ button.primary:hover { background: var(--accent-2); }
   overflow-wrap: anywhere;
   word-break: break-all;
   line-height: 1.2;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .excel-cell.total-cell {
