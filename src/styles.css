@@ -2247,7 +2247,7 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-perf-cell {
-  min-width: 72px;
+  min-width: 64px;
 }
 
 .excel-status-cell {
