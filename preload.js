@@ -117,6 +117,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     openWindow: (payload) => ipcRenderer.invoke('temp-companies:open-window', payload),
     exportData: () => ipcRenderer.invoke('temp-companies:export'),
     importData: () => ipcRenderer.invoke('temp-companies:import'),
+    onDefaultIndustry: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const listener = (_event, industry) => callback(industry);
+      ipcRenderer.on('temp-companies:set-default-industry', listener);
+      return () => ipcRenderer.removeListener('temp-companies:set-default-industry', listener);
+    },
   },
   mail: {
     sendTest: (payload) => ipcRenderer.invoke('mail:send-test', payload),

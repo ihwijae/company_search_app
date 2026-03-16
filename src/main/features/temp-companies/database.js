@@ -36,6 +36,23 @@ const MIGRATIONS = [
       ON temp_companies(name, ifnull(biz_no, ''));
     COMMIT;`);
   },
+  (db) => {
+    try {
+      const info = db.exec("PRAGMA table_info('temp_companies')");
+      const columns = Array.isArray(info) && info.length > 0 && Array.isArray(info[0].values)
+        ? info[0].values.map((row) => row?.[1]).filter(Boolean)
+        : [];
+      if (!columns.includes('industry')) {
+        db.exec("ALTER TABLE temp_companies ADD COLUMN industry TEXT NOT NULL DEFAULT '';");
+      }
+      if (!columns.includes('manager_name')) {
+        db.exec("ALTER TABLE temp_companies ADD COLUMN manager_name TEXT NOT NULL DEFAULT '';");
+      }
+    } catch (error) {
+      console.error('[DB][temp-companies] Failed to ensure industry/manager_name columns:', error);
+      throw error;
+    }
+  },
 ];
 
 const wasmPath = require.resolve('sql.js/dist/sql-wasm.wasm');

@@ -1136,9 +1136,17 @@ function createRecordsEditorWindow(payload = {}) {
   return editorWindow;
 }
 
-function createTempCompaniesWindow() {
-  const routeHash = '/temp-companies';
+function createTempCompaniesWindow(payload = {}) {
+  const requestedIndustry = String(payload?.industry || '').trim();
+  const routeHash = requestedIndustry
+    ? `/temp-companies?industry=${encodeURIComponent(requestedIndustry)}`
+    : '/temp-companies';
   if (tempCompaniesWindow && !tempCompaniesWindow.isDestroyed()) {
+    if (requestedIndustry) {
+      try {
+        tempCompaniesWindow.webContents.send('temp-companies:set-default-industry', requestedIndustry);
+      } catch {}
+    }
     if (tempCompaniesWindow.isMinimized()) tempCompaniesWindow.restore();
     tempCompaniesWindow.show();
     tempCompaniesWindow.moveTop();
@@ -1525,7 +1533,7 @@ try {
         ? svc.searchAll(sanitizedCriteria, sanitizedOptions || {})
         : svc.search(normalizedType, sanitizedCriteria, sanitizedOptions || {});
       const tempResults = tempCompaniesServiceInstance
-        ? tempCompaniesServiceInstance.searchCompanies(sanitizedCriteria || {})
+        ? tempCompaniesServiceInstance.searchCompanies(sanitizedCriteria || {}, normalizedType || '')
         : [];
       if (result && typeof result === 'object' && !Array.isArray(result) && result.meta && result.items) {
         return {

@@ -8,6 +8,8 @@ const {
 
 const FIELD_KEYS = [
   'name',
+  'industry',
+  'managerName',
   'representative',
   'bizNo',
   'region',
@@ -35,6 +37,8 @@ const normalizeBizNo = (value) => normalizeText(value).replace(/[^0-9]/g, '');
 const toRow = (item = {}) => ({
   id: item.id ? Number(item.id) : null,
   name: normalizeText(item.name || item['업체명']),
+  industry: normalizeText(item.industry || item.fileType || item['공종']),
+  managerName: normalizeText(item.managerName || item.manager || item['담당자']),
   representative: normalizeText(item.representative || item['대표자']),
   bizNo: normalizeBizNo(item.bizNo || item['사업자번호']),
   region: normalizeText(item.region || item['지역']),
@@ -55,6 +59,8 @@ const toRow = (item = {}) => ({
 const rowToEntity = (row = {}) => ({
   id: Number(row.id),
   name: normalizeText(row.name),
+  industry: normalizeText(row.industry),
+  managerName: normalizeText(row.manager_name),
   representative: normalizeText(row.representative),
   bizNo: normalizeBizNo(row.biz_no),
   region: normalizeText(row.region),
@@ -80,9 +86,13 @@ const entityToSearchItem = (entity = {}) => ({
   bizNo: entity.bizNo,
   _is_temp_company: true,
   _temp_company_id: entity.id,
-  _file_type: '',
+  _file_type: entity.industry || '',
   '검색된 회사': entity.name,
   '업체명': entity.name,
+  '공종': entity.industry,
+  '담당자': entity.managerName,
+  managerName: entity.managerName,
+  manager: entity.managerName,
   '대표자': entity.representative,
   '사업자번호': entity.bizNo,
   '지역': entity.region,
@@ -114,7 +124,7 @@ class TempCompaniesService {
   listCompanies({ query = '' } = {}) {
     const db = getTempCompaniesDatabase();
     const trimmed = normalizeText(query);
-    const stmt = trimmed
+      const stmt = trimmed
       ? db.prepare(`SELECT * FROM temp_companies
         WHERE name LIKE ? OR representative LIKE ? OR biz_no LIKE ? OR region LIKE ?
         ORDER BY updated_at DESC, id DESC`)
@@ -145,13 +155,13 @@ class TempCompaniesService {
     const now = new Date().toISOString();
     if (row.id) {
       const stmt = db.prepare(`UPDATE temp_companies SET
-        name = ?, representative = ?, biz_no = ?, region = ?, sipyung = ?,
+        name = ?, industry = ?, manager_name = ?, representative = ?, biz_no = ?, region = ?, sipyung = ?,
         performance3y = ?, performance5y = ?, debt_ratio = ?, current_ratio = ?,
         biz_years = ?, credit_grade = ?, women_owned = ?, small_business = ?,
         job_creation = ?, quality_eval = ?, notes = ?, updated_at = ?
         WHERE id = ?`);
       stmt.run([
-        row.name, row.representative, row.bizNo, row.region, row.sipyung,
+        row.name, row.industry, row.managerName, row.representative, row.bizNo, row.region, row.sipyung,
         row.performance3y, row.performance5y, row.debtRatio, row.currentRatio,
         row.bizYears, row.creditGrade, row.womenOwned, row.smallBusiness,
         row.jobCreation, row.qualityEval, row.notes, now, row.id,
@@ -159,12 +169,12 @@ class TempCompaniesService {
       stmt.free();
     } else {
       const stmt = db.prepare(`INSERT INTO temp_companies (
-        name, representative, biz_no, region, sipyung, performance3y, performance5y,
+        name, industry, manager_name, representative, biz_no, region, sipyung, performance3y, performance5y,
         debt_ratio, current_ratio, biz_years, credit_grade, women_owned, small_business,
         job_creation, quality_eval, notes, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
       stmt.run([
-        row.name, row.representative, row.bizNo, row.region, row.sipyung,
+        row.name, row.industry, row.managerName, row.representative, row.bizNo, row.region, row.sipyung,
         row.performance3y, row.performance5y, row.debtRatio, row.currentRatio,
         row.bizYears, row.creditGrade, row.womenOwned, row.smallBusiness,
         row.jobCreation, row.qualityEval, row.notes, now, now,
@@ -185,9 +195,15 @@ class TempCompaniesService {
     return true;
   }
 
-  searchCompanies(criteria = {}) {
+  searchCompanies(criteria = {}, fileType = '') {
     const query = normalizeText(criteria.name || criteria.query || '');
-    return this.listCompanies({ query }).map(entityToSearchItem);
+    const normalizedType = normalizeText(fileType).toLowerCase();
+    return this.listCompanies({ query })
+      .filter((entity) => {
+        if (!normalizedType || normalizedType === 'all') return true;
+        return normalizeText(entity.industry).toLowerCase() === normalizedType;
+      })
+      .map(entityToSearchItem);
   }
 
   exportCompanies(targetPath) {
@@ -220,7 +236,7 @@ class TempCompaniesService {
       job_creation, quality_eval, notes, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     const updateStmt = db.prepare(`UPDATE temp_companies SET
-      representative = ?, region = ?, sipyung = ?, performance3y = ?, performance5y = ?,
+      industry = ?, manager_name = ?, representative = ?, region = ?, sipyung = ?, performance3y = ?, performance5y = ?,
       debt_ratio = ?, current_ratio = ?, biz_years = ?, credit_grade = ?, women_owned = ?,
       small_business = ?, job_creation = ?, quality_eval = ?, notes = ?, updated_at = ?
       WHERE id = ?`);
@@ -235,14 +251,14 @@ class TempCompaniesService {
       findStmt.reset();
       if (existing?.id) {
         updateStmt.run([
-          row.representative, row.region, row.sipyung, row.performance3y, row.performance5y,
+          row.industry, row.managerName, row.representative, row.region, row.sipyung, row.performance3y, row.performance5y,
           row.debtRatio, row.currentRatio, row.bizYears, row.creditGrade, row.womenOwned,
           row.smallBusiness, row.jobCreation, row.qualityEval, row.notes, now, existing.id,
         ]);
         replacedCount += 1;
       } else {
         insertStmt.run([
-          row.name, row.representative, row.bizNo, row.region, row.sipyung,
+          row.name, row.industry, row.managerName, row.representative, row.bizNo, row.region, row.sipyung,
           row.performance3y, row.performance5y, row.debtRatio, row.currentRatio,
           row.bizYears, row.creditGrade, row.womenOwned, row.smallBusiness,
           row.jobCreation, row.qualityEval, row.notes, now, now,

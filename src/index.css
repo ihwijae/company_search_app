@@ -2728,12 +2728,24 @@ body {
   padding: 34px 30px 38px;
 }
 
+.temp-companies-page .records-editor-page__shell {
+  padding-top: 0;
+}
+
 .records-editor-page__header {
   display: flex;
   justify-content: space-between;
   gap: 24px;
   align-items: flex-start;
   margin-bottom: 24px;
+}
+
+.temp-companies-page .records-editor-page__header {
+  margin: 0 -30px 24px;
+  padding: 30px 30px 24px;
+  background:
+    linear-gradient(180deg, rgba(244, 237, 220, 0.96) 0%, rgba(248, 245, 238, 0.92) 100%);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
 }
 
 .records-editor-page__header-copy {

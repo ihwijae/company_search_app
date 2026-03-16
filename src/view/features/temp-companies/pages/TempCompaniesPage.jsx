@@ -2,11 +2,14 @@ import React from 'react';
 import '../../../../styles.css';
 import '../../../../fonts.css';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
+import { extractManagerNames } from '../../../../utils/companyIndicators.js';
 import tempCompaniesClient from '../../../../shared/tempCompaniesClient.js';
 
 const EMPTY_FORM = {
   id: null,
   name: '',
+  industry: '',
+  managerName: '',
   representative: '',
   bizNo: '',
   region: '',
@@ -26,6 +29,8 @@ const EMPTY_FORM = {
 
 const FIELD_LAYOUT = [
   ['name', '업체명'],
+  ['industry', '공종'],
+  ['managerName', '담당자'],
   ['representative', '대표자'],
   ['bizNo', '사업자번호'],
   ['region', '지역'],
@@ -42,6 +47,24 @@ const FIELD_LAYOUT = [
   ['qualityEval', '품질평가'],
   ['notes', '비고'],
 ];
+
+const INDUSTRY_OPTIONS = [
+  { value: '', label: '공종 선택' },
+  { value: 'eung', label: '전기' },
+  { value: 'tongsin', label: '통신' },
+  { value: 'sobang', label: '소방' },
+];
+
+const normalizeIndustry = (value) => {
+  const token = String(value || '').trim().toLowerCase();
+  if (!token) return '';
+  if (token === '전기' || token === 'eung') return 'eung';
+  if (token === '통신' || token === 'tongsin') return 'tongsin';
+  if (token === '소방' || token === 'sobang') return 'sobang';
+  return '';
+};
+
+const getIndustryLabel = (value) => INDUSTRY_OPTIONS.find((option) => option.value === normalizeIndustry(value))?.label || '';
 
 const COMMA_NUMERIC_FIELDS = new Set([
   'sipyung',
@@ -86,6 +109,7 @@ const formatNumericValue = (value) => {
 
 const normalizeFormValues = (payload = {}) => {
   const next = { ...payload };
+  next.industry = normalizeIndustry(next.industry);
   COMMA_NUMERIC_FIELDS.forEach((field) => {
     next[field] = normalizeNumericValue(next[field]);
   });
@@ -93,6 +117,14 @@ const normalizeFormValues = (payload = {}) => {
     next[field] = normalizeRatioValue(next[field]);
   });
   return next;
+};
+
+const getRouteIndustry = () => {
+  const rawHash = window.location.hash || '#/temp-companies';
+  const normalized = rawHash.startsWith('#') ? rawHash.slice(1) : rawHash;
+  const [, query = ''] = normalized.split('?');
+  const params = new URLSearchParams(query);
+  return normalizeIndustry(params.get('industry'));
 };
 
 const closeTempCompaniesWindow = () => {
@@ -113,10 +145,26 @@ export default function TempCompaniesPage() {
   const [error, setError] = React.useState('');
   const [form, setForm] = React.useState(EMPTY_FORM);
   const [isCreatingNew, setIsCreatingNew] = React.useState(false);
+  const [defaultIndustry, setDefaultIndustry] = React.useState(() => getRouteIndustry());
 
   React.useEffect(() => {
     document.title = '임시 업체 관리';
   }, []);
+
+  React.useEffect(() => {
+    const onHashChange = () => setDefaultIndustry(getRouteIndustry());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  React.useEffect(() => {
+    const unsubscribe = window.electronAPI?.tempCompanies?.onDefaultIndustry?.((industry) => {
+      const normalized = normalizeIndustry(industry);
+      setDefaultIndustry(normalized);
+      setForm((prev) => (prev.id || !isCreatingNew ? prev : { ...prev, industry: normalized }));
+    });
+    return typeof unsubscribe === 'function' ? unsubscribe : undefined;
+  }, [isCreatingNew]);
 
   const loadItems = React.useCallback(async (nextQuery = query) => {
     setLoading(true);
@@ -157,11 +205,11 @@ export default function TempCompaniesPage() {
   }, []);
 
   const handleReset = React.useCallback(() => {
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, industry: defaultIndustry || '' });
     setIsCreatingNew(true);
     setStatus('');
     setError('');
-  }, []);
+  }, [defaultIndustry]);
 
   const handleSave = React.useCallback(async () => {
     setSaving(true);
@@ -236,7 +284,7 @@ export default function TempCompaniesPage() {
   }, [loadItems, query]);
 
   return (
-    <div className="records-editor-page">
+    <div className="records-editor-page temp-companies-page">
       <div className="records-editor-page__backdrop" />
       <main className="records-editor-page__shell" style={{ maxWidth: 1320 }}>
         <header className="records-editor-page__header">
@@ -283,11 +331,21 @@ export default function TempCompaniesPage() {
                     }}
                   >
                     <div style={{ fontWeight: 700, color: '#5b21b6' }}>새 업체</div>
-                    <div style={{ color: '#7c3aed', fontSize: 13 }}>빈 입력 폼으로 신규 등록 중</div>
+                    <div style={{ color: '#7c3aed', fontSize: 13 }}>
+                      {getIndustryLabel(form.industry) ? `${getIndustryLabel(form.industry)} 공종으로 신규 등록 중` : '빈 입력 폼으로 신규 등록 중'}
+                    </div>
                     <div style={{ color: '#8b5cf6', fontSize: 12 }}>업체 정보를 입력하고 저장하세요.</div>
                   </button>
                 )}
                 {items.map((item) => (
+                  (() => {
+                    const managerBadges = extractManagerNames({
+                      managerName: item.managerName,
+                      manager: item.managerName,
+                      담당자: item.managerName,
+                    });
+                    const industryLabel = getIndustryLabel(item.industry);
+                    return (
                   <button
                     key={item.id}
                     type="button"
@@ -301,10 +359,20 @@ export default function TempCompaniesPage() {
                       cursor: 'pointer',
                     }}
                   >
-                    <div style={{ fontWeight: 700 }}>{item.name || '이름 없음'}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ fontWeight: 700 }}>{item.name || '이름 없음'}</div>
+                      {industryLabel && (
+                        <span className="records-tag">{industryLabel}</span>
+                      )}
+                      {managerBadges.map((manager) => (
+                        <span key={`${item.id}-${manager}`} className="badge-person">{manager}</span>
+                      ))}
+                    </div>
                     <div style={{ color: '#475569', fontSize: 13 }}>{item.representative || '-'} | {item.bizNo || '-'}</div>
                     <div style={{ color: '#64748b', fontSize: 12 }}>{item.region || '-'}</div>
                   </button>
+                    );
+                  })()
                 ))}
                 {items.length === 0 && (
                   <div className="records-editor-page__status">등록된 임시 업체가 없습니다.</div>
@@ -319,7 +387,16 @@ export default function TempCompaniesPage() {
                 {FIELD_LAYOUT.map(([key, label]) => (
                   <div key={key} className="records-editor-form__field">
                     <label>{label}</label>
-                    {key === 'notes' ? (
+                    {key === 'industry' ? (
+                      <select
+                        value={form.industry || ''}
+                        onChange={(e) => handleChange('industry', e.target.value)}
+                      >
+                        {INDUSTRY_OPTIONS.map((option) => (
+                          <option key={option.value || 'empty'} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    ) : key === 'notes' ? (
                       <textarea
                         value={form.notes || ''}
                         onChange={(e) => handleChange('notes', e.target.value)}
