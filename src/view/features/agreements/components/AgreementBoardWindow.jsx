@@ -2158,9 +2158,9 @@ export default function AgreementBoardWindow({
       .join(' ')
   ), [collapsedColumns]);
 
-  const constructionExperienceColWidth = isLHOwner ? 50 : COLUMN_WIDTHS.constructionExperience;
-  const subcontractColWidth = isLh50To100 ? 40 : COLUMN_WIDTHS.subcontract;
-  const materialColWidth = isLh50To100 ? 40 : COLUMN_WIDTHS.material;
+  const constructionExperienceColWidth = isLHOwner ? 42 : COLUMN_WIDTHS.constructionExperience;
+  const subcontractColWidth = isLh50To100 ? 34 : COLUMN_WIDTHS.subcontract;
+  const materialColWidth = isLh50To100 ? 34 : COLUMN_WIDTHS.material;
   const netCostBonusColWidth = isLHOwner ? 42 : COLUMN_WIDTHS.netCostBonus;
 
   const renderColToggle = React.useCallback((key, label, options = {}) => {
