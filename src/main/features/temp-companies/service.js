@@ -90,6 +90,7 @@ const entityToSearchItem = (entity = {}) => ({
   '검색된 회사': entity.name,
   '업체명': entity.name,
   '공종': entity.industry,
+  '담당자명': entity.managerName,
   '담당자': entity.managerName,
   managerName: entity.managerName,
   manager: entity.managerName,

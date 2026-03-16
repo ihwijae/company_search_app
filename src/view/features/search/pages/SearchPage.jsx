@@ -1357,6 +1357,7 @@ function App() {
                       const listKey = composeCompanyKey(company, globalIndex) || `idx-${globalIndex}`;
                       const womenOwned = isWomenOwnedCompany(company);
                       const hasQualityEvaluation = hasQualityEvaluationData(company);
+                      const managerBadgeText = company['담당자명'] || company['담당자'] || company.managerName || company.manager || '';
                       return (
                         <li key={listKey} onClick={() => handleCompanySelect(company, globalIndex)} className={`company-list-item ${searchedFileType === 'all' ? (selectedIndex === globalIndex ? 'active' : '') : (isActive ? 'active' : '')}`}>
                           <div className="company-info-wrapper">
@@ -1376,7 +1377,7 @@ function App() {
                                 LH
                               </span>
                             )}
-                            {company['담당자명'] && <span className="badge-person">{company['담당자명']}</span>}
+                            {managerBadgeText && <span className="badge-person">{managerBadgeText}</span>}
                           </div>
                           <span className={`summary-status-badge ${getStatusClass(summaryStatus)}`}>{summaryStatus}</span>
                         </li>

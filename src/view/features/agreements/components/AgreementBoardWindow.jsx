@@ -1352,6 +1352,13 @@ export default function AgreementBoardWindow({
   }, [onUpdateBoard]);
 
   const updateBidDeadlineFromParts = React.useCallback((date, period, hour, minute) => {
+    if (!date) {
+      if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: '' });
+      return;
+    }
+    if (hour === '' || minute === '') return;
+    if (String(hour).length > 2) return;
+    if (String(minute).length < 2) return;
     const nextValue = buildBidDeadline(date, period, hour, minute);
     if (nextValue === null) return;
     if (typeof onUpdateBoard === 'function') onUpdateBoard({ bidDeadline: nextValue });
@@ -1372,14 +1379,21 @@ export default function AgreementBoardWindow({
   const handleBidHourChange = React.useCallback((event) => {
     const nextHour = String(event.target.value || '').replace(/\D/g, '').slice(0, 2);
     setBidHourInput(nextHour);
-    updateBidDeadlineFromParts(bidDatePart, bidTimePeriod, nextHour, bidMinuteInput);
-  }, [bidDatePart, bidTimePeriod, bidMinuteInput, updateBidDeadlineFromParts]);
+  }, []);
 
   const handleBidMinuteChange = React.useCallback((event) => {
     const nextMinute = String(event.target.value || '').replace(/\D/g, '').slice(0, 2);
     setBidMinuteInput(nextMinute);
-    updateBidDeadlineFromParts(bidDatePart, bidTimePeriod, bidHourInput, nextMinute);
-  }, [bidDatePart, bidTimePeriod, bidHourInput, updateBidDeadlineFromParts]);
+  }, []);
+
+  const commitBidTimeInputs = React.useCallback(() => {
+    const normalizedHour = String(bidHourInput || '').replace(/\D/g, '').slice(0, 2);
+    const rawMinute = String(bidMinuteInput || '').replace(/\D/g, '').slice(0, 2);
+    const normalizedMinute = rawMinute.length === 1 ? `0${rawMinute}` : rawMinute;
+    if (normalizedHour !== bidHourInput) setBidHourInput(normalizedHour);
+    if (normalizedMinute !== bidMinuteInput) setBidMinuteInput(normalizedMinute);
+    updateBidDeadlineFromParts(bidDatePart, bidTimePeriod, normalizedHour, normalizedMinute);
+  }, [bidDatePart, bidHourInput, bidMinuteInput, bidTimePeriod, updateBidDeadlineFromParts]);
 
   const handleBaseAmountChange = React.useCallback((value) => {
     // Any direct edit (including clear) means user is overriding auto-base.
@@ -5708,6 +5722,7 @@ export default function AgreementBoardWindow({
                       inputMode="numeric"
                       value={bidHourInput}
                       onChange={handleBidHourChange}
+                      onBlur={commitBidTimeInputs}
                       placeholder="시"
                       aria-label="개찰 시"
                     />
@@ -5718,6 +5733,7 @@ export default function AgreementBoardWindow({
                       inputMode="numeric"
                       value={bidMinuteInput}
                       onChange={handleBidMinuteChange}
+                      onBlur={commitBidTimeInputs}
                       placeholder="분"
                       aria-label="개찰 분"
                     />
