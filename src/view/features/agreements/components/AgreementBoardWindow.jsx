@@ -2158,6 +2158,11 @@ export default function AgreementBoardWindow({
       .join(' ')
   ), [collapsedColumns]);
 
+  const constructionExperienceColWidth = isLHOwner ? 50 : COLUMN_WIDTHS.constructionExperience;
+  const subcontractColWidth = isLh50To100 ? 40 : COLUMN_WIDTHS.subcontract;
+  const materialColWidth = isLh50To100 ? 40 : COLUMN_WIDTHS.material;
+  const netCostBonusColWidth = isLHOwner ? 42 : COLUMN_WIDTHS.netCostBonus;
+
   const renderColToggle = React.useCallback((key, label, options = {}) => {
     const collapsed = collapsedColumns[key];
     const displayLabel = collapsed && options.collapsedLabel != null ? options.collapsedLabel : label;
@@ -2214,7 +2219,7 @@ export default function AgreementBoardWindow({
         : 0)
       + COLUMN_WIDTHS.shareTotal
       + (isLHOwner ? COLUMN_WIDTHS.qualityPoints : 0)
-      + (showConstructionExperience ? COLUMN_WIDTHS.constructionExperience : 0)
+      + (showConstructionExperience ? constructionExperienceColWidth : 0)
       + (credibilityEnabled ? COLUMN_WIDTHS.credibility : 0)
       + COLUMN_WIDTHS.performanceSummary
       + (isLh100To300 ? COLUMN_WIDTHS.performanceCoefficient : 0)
@@ -2223,11 +2228,11 @@ export default function AgreementBoardWindow({
           + (collapsedColumns.technicianAbility ? COLLAPSED_COLUMN_WIDTHS.technicianAbilitySummary : COLUMN_WIDTHS.technicianAbilitySummary)
         : 0)
       + ((isMois30To50 || isEx50To100 || isKrail50To100)
-        ? (collapsedColumns.subcontract ? COLLAPSED_COLUMN_WIDTHS.subcontract : COLUMN_WIDTHS.subcontract)
+        ? (collapsedColumns.subcontract ? COLLAPSED_COLUMN_WIDTHS.subcontract : subcontractColWidth)
         : 0)
-      + (isLh50To100 ? (COLUMN_WIDTHS.subcontract + COLUMN_WIDTHS.material) : 0)
+      + (isLh50To100 ? (subcontractColWidth + materialColWidth) : 0)
       + (showBidScore ? COLUMN_WIDTHS.bid : 0)
-      + (showNetCostBonus ? COLUMN_WIDTHS.netCostBonus : 0)
+      + (showNetCostBonus ? netCostBonusColWidth : 0)
       + COLUMN_WIDTHS.total
       + COLUMN_WIDTHS.sipyungSummary;
     const total = base + nameWidth + shareWidth + credibilityWidth + statusWidth
@@ -2236,6 +2241,10 @@ export default function AgreementBoardWindow({
   }, [
     columnSpans,
     showCredibilitySlots,
+    constructionExperienceColWidth,
+    subcontractColWidth,
+    materialColWidth,
+    netCostBonusColWidth,
     isLHOwner,
     showManagementBonus,
     showBidScore,
@@ -6021,7 +6030,7 @@ export default function AgreementBoardWindow({
                 />
               )}
               {isLHOwner && <col className="col-quality-points" style={{ width: `${COLUMN_WIDTHS.qualityPoints}px` }} />}
-              {showConstructionExperience && <col className="col-construction-experience" style={{ width: `${COLUMN_WIDTHS.constructionExperience}px` }} />}
+              {showConstructionExperience && <col className="col-construction-experience" style={{ width: `${constructionExperienceColWidth}px` }} />}
                 {showCredibilityAfterQuality && showCredibilitySlots && (
                   collapsedColumns.credibility ? (
                   <col
@@ -6042,13 +6051,13 @@ export default function AgreementBoardWindow({
                 <col className="col-credibility" style={{ width: `${COLUMN_WIDTHS.credibility}px` }} />
               )}
               {showMiscScore && <col className="col-misc-score" style={{ width: `${COLUMN_WIDTHS.bid}px` }} />}
-              {(isLh50To100 || isMois50To100) && <col className="col-subcontract" style={{ width: `${COLUMN_WIDTHS.subcontract}px` }} />}
-              {(isLh50To100 || isMois50To100) && <col className="col-material" style={{ width: `${COLUMN_WIDTHS.material}px` }} />}
+              {(isLh50To100 || isMois50To100) && <col className="col-subcontract" style={{ width: `${subcontractColWidth}px` }} />}
+              {(isLh50To100 || isMois50To100) && <col className="col-material" style={{ width: `${materialColWidth}px` }} />}
               {(isMois30To50 || isEx50To100 || isKrail50To100) && (
                 <col className="col-subcontract" style={{ width: resolveColWidth('subcontract') }} />
               )}
               {showBidScore && <col className="col-bid" style={{ width: `${COLUMN_WIDTHS.bid}px` }} />}
-              {showNetCostBonus && <col className="col-netcost-bonus" style={{ width: `${COLUMN_WIDTHS.netCostBonus}px` }} />}
+              {showNetCostBonus && <col className="col-netcost-bonus" style={{ width: `${netCostBonusColWidth}px` }} />}
               <col className="col-total" style={{ width: `${COLUMN_WIDTHS.total}px` }} />
               {collapsedColumns.sipyung ? (
                 <col
