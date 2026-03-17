@@ -1843,7 +1843,7 @@ try {
 
 // Agreements: Fetch candidates (skeleton implementation)
 try {
-  const { isSingleBidEligible } = require('./src/shared/agreements/rules/singleBidEligibility.js');
+  const { evaluateSingleBidEligibility } = require('./src/shared/agreements/rules/singleBidEligibility.js');
   if (ipcMain.removeHandler) { try { ipcMain.removeHandler('agreements-fetch-candidates'); } catch {} }
   ipcMain.handle('agreements-fetch-candidates', async (_event, params = {}) => {
     try {
@@ -2330,17 +2330,6 @@ try {
         if (wasAlwaysExcluded) continue;
 
         const isPpsOwner = normalizedOwnerId === 'pps';
-        let sbe = null;
-        if (!isPpsOwner) {
-          try {
-            sbe = isSingleBidEligible(c, {
-              entryAmount: entryMode === 'none' ? 0 : entryAmount,
-              baseAmount,
-              dutyRegions,
-            });
-          } catch {}
-        }
-
         let moneyOk = null;
         let perfOk = null;
         let regionOk = matchesRegion(region);
@@ -2478,105 +2467,30 @@ try {
         }
         const managementIsPerfect = managementMax > 0 && Math.abs(managementScore - managementMax) < 1e-6;
 
-        if (isPpsOwner) {
-          const entryNum = entryMode === 'none' ? 0 : toNumber(entryAmount);
-          const baseNum = toNumber(baseAmount);
-          const sipValue = rating;
-          const perfValue = performanceAmount;
-          const hasEntry = entryMode !== 'none' && entryNum > 0;
-          const moneyCondition = hasEntry ? (sipValue >= entryNum) : true;
-          const perfCondition = baseNum > 0 && perfValue >= baseNum;
-          const managementCondition = managementIsPerfect;
+        let sbe = null;
+        try {
+          const performanceTarget = Number(perfectPerformanceNumber) > 0 ? perfectPerformanceNumber : baseAmountNumber;
+          sbe = evaluateSingleBidEligibility({
+            entryAmount: entryMode === 'none' ? 0 : entryAmount,
+            performanceTarget,
+            performanceLabel: '기초금액',
+            baseAmount: baseAmountNumber,
+            dutyRegions,
+            sipyungAmount: rating,
+            performanceAmount,
+            region,
+            regionOk,
+            managementScore,
+            managementMax,
+            managementRequired: true,
+          });
+        } catch {}
 
-          moneyOk = hasEntry ? moneyCondition : null;
-          perfOk = perfCondition;
-
-          const reasons = [];
-          const toLocale = (num) => (Number.isFinite(num) ? num.toLocaleString() : String(num || '0'));
-          if (hasEntry && !moneyCondition) {
-            reasons.push(`시평 미달: ${toLocale(sipValue)} < 참가자격 ${toLocale(entryNum)}`);
-          }
-          if (!perfCondition) {
-            reasons.push(`5년 실적 미달: ${toLocale(perfValue)} < 기초금액 ${toLocale(baseNum)}`);
-          }
-          if (!managementCondition) {
-            reasons.push('경영점수 만점 미달');
-          }
-
-          sbe = {
-            ok: Boolean((!hasEntry || moneyCondition) && perfCondition && managementCondition),
-            reasons,
-            facts: {
-              sipyung: sipValue,
-              perf5y: perfValue,
-              entry: entryNum,
-              base: baseNum,
-              managementScore,
-              managementMax,
-            },
-          };
-        } else if (sbe) {
-          const facts = sbe.facts || {};
-          const entryFact = toNumber(facts.entry);
-          const baseFact = toNumber(facts.base);
-          const sipFact = toNumber(facts.sipyung);
-          const perfFact = toNumber(facts.perf5y);
-          if (entryFact > 0) {
-            moneyOk = sipFact >= entryFact;
-          }
-          if (baseFact > 0) {
-            perfOk = perfFact >= baseFact;
-          }
-          if (Array.isArray(dutyRegions) && dutyRegions.length > 0) {
-            const factRegion = facts.region != null ? String(facts.region).trim() : region;
-            if (factRegion) {
-              regionOk = matchesRegion(factRegion);
-            }
-          }
-        }
-
-        singleBidEligible = Boolean(sbe && sbe.ok);
-
-        if (isMoisUnder30) {
-          const entryNum = entryMode === 'none' ? 0 : toNumber(entryAmount);
-          const perfTargetRaw = perfectPerformanceNumber;
-          const sipNumeric = parseNumeric(rating);
-          const perfNumeric = parseNumeric(performanceAmount);
-          const perfTarget = toNumber(perfTargetRaw);
-          const hasEntry = entryMode !== 'none' && entryNum > 0;
-          const toLocale = (num) => (Number.isFinite(num) ? num.toLocaleString() : String(num || '0'));
-
-          const moneyCondition = hasEntry ? (sipNumeric >= entryNum) : true;
-          moneyOk = hasEntry ? moneyCondition : null;
-
-          const hasPerfTarget = perfTarget > 0;
-          const perfCondition = hasPerfTarget ? (perfNumeric >= perfTarget) : true;
-          perfOk = hasPerfTarget ? perfCondition : null;
-
-          regionOk = matchesRegion(region);
-
-          const singleBidOk = moneyCondition && perfCondition && regionOk !== false;
-          const reasons = [];
-
-          if (hasEntry && moneyOk === false) {
-            reasons.push(`시평 미달: ${toLocale(sipNumeric)} < 참가자격 ${toLocale(entryNum)}`);
-          }
-          if (perfOk === false) {
-            reasons.push(`5년 실적 미달: ${toLocale(perfNumeric)} < 기초금액 ${toLocale(perfTarget)}`);
-          }
-          sbe = {
-            ok: singleBidOk,
-            reasons,
-            facts: {
-              sipyung: sipNumeric,
-              perf5y: perfNumeric,
-              entry: hasEntry ? entryNum : 0,
-              base: perfTarget,
-              region,
-            },
-          };
-
-          singleBidEligible = singleBidOk;
+        if (sbe) {
+          moneyOk = sbe.entry.applied ? sbe.entry.ok : null;
+          perfOk = sbe.performance.applied ? sbe.performance.ok : null;
+          regionOk = sbe.region.applied ? sbe.region.ok : null;
+          singleBidEligible = Boolean(sbe.ok);
         }
 
         if (shouldExcludeSingle && singleBidEligible) continue;
@@ -2655,6 +2569,7 @@ try {
             base: toNumber(sbe.facts.base),
             region: sbe.facts.region || region,
           } : null,
+          singleBidDetails: sbe || null,
           singleBidEligible,
           wasAlwaysExcluded,
           qualityEval,

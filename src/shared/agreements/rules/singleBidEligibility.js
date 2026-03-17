@@ -20,6 +20,112 @@ function getCompanyRegion(company) {
   return String(r || '').trim();
 }
 
+function toNullableNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = parseAmount(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function compareRegions(region, dutyRegions = []) {
+  if (!Array.isArray(dutyRegions) || dutyRegions.length === 0) return true;
+  const target = String(region || '').trim();
+  if (!target) return false;
+  if (dutyRegions.includes(target)) return true;
+  return dutyRegions.some((entry) => {
+    const normalized = String(entry || '').trim();
+    if (!normalized) return false;
+    return target.startsWith(normalized) || normalized.startsWith(target);
+  });
+}
+
+function evaluateSingleBidEligibility({
+  company = null,
+  entryAmount = 0,
+  performanceTarget = null,
+  performanceLabel = '기초금액',
+  baseAmount = null,
+  dutyRegions = [],
+  sipyungAmount = null,
+  performanceAmount = null,
+  region = '',
+  regionOk = null,
+  managementScore = null,
+  managementMax = null,
+  managementRequired = false,
+} = {}) {
+  const sipyung = toNullableNumber(sipyungAmount) ?? parseAmount(company && company['시평']);
+  const perf5y = toNullableNumber(performanceAmount) ?? parseAmount(company && company['5년 실적']);
+  const entry = parseAmount(entryAmount);
+  const perfTarget = toNullableNumber(performanceTarget);
+  const base = toNullableNumber(baseAmount);
+  const resolvedPerfTarget = perfTarget != null ? perfTarget : base;
+  const resolvedRegion = String(region || getCompanyRegion(company) || '').trim();
+
+  const hasEntryLimit = entry > 0;
+  const entryOk = hasEntryLimit ? sipyung >= entry : true;
+
+  const hasPerformanceLimit = resolvedPerfTarget != null && resolvedPerfTarget > 0;
+  const performanceOk = hasPerformanceLimit ? perf5y >= resolvedPerfTarget : false;
+
+  const hasManagementLimit = managementRequired && Number.isFinite(Number(managementMax)) && Number(managementMax) > 0;
+  const managementScoreValue = toNullableNumber(managementScore);
+  const managementMaxValue = hasManagementLimit ? Number(managementMax) : null;
+  const managementOk = hasManagementLimit
+    ? (managementScoreValue != null && managementScoreValue >= (managementMaxValue - 0.01))
+    : true;
+
+  const regionApplied = Array.isArray(dutyRegions) && dutyRegions.length > 0;
+  const resolvedRegionOk = typeof regionOk === 'boolean' ? regionOk : compareRegions(resolvedRegion, dutyRegions);
+  const finalRegionOk = regionApplied ? resolvedRegionOk : true;
+
+  const ok = Boolean(entryOk && performanceOk && managementOk && finalRegionOk);
+  const reasons = [];
+  if (hasEntryLimit && !entryOk) reasons.push(`시평 미달: ${sipyung.toLocaleString()} < 참가자격 ${entry.toLocaleString()}`);
+  if (hasPerformanceLimit && !performanceOk) {
+    const label = performanceLabel || '기초금액';
+    reasons.push(`5년 실적 미달(만점 기준): ${perf5y.toLocaleString()} < ${label} ${resolvedPerfTarget.toLocaleString()}`);
+  }
+  if (hasManagementLimit && !managementOk) reasons.push('경영점수 만점 미달');
+  if (regionApplied && !finalRegionOk) reasons.push(`의무지역 불일치: ${resolvedRegion || '지역없음'}`);
+
+  return {
+    ok,
+    reasons,
+    facts: {
+      sipyung,
+      perf5y,
+      entry,
+      base: resolvedPerfTarget,
+      region: resolvedRegion,
+    },
+    entry: {
+      applied: hasEntryLimit,
+      amount: entry,
+      sipyung,
+      ok: entryOk,
+    },
+    performance: {
+      applied: hasPerformanceLimit,
+      amount: perf5y,
+      target: resolvedPerfTarget,
+      label: performanceLabel || '기초금액',
+      ok: performanceOk,
+    },
+    management: {
+      applied: hasManagementLimit,
+      score: managementScoreValue,
+      max: managementMaxValue,
+      ok: managementOk,
+    },
+    region: {
+      applied: regionApplied,
+      companyRegion: resolvedRegion,
+      dutyRegions: Array.isArray(dutyRegions) ? [...dutyRegions] : [],
+      ok: finalRegionOk,
+    },
+  };
+}
+
 /**
  * 공통 단독입찰 가능 여부
  * 조건:
@@ -34,30 +140,19 @@ function getCompanyRegion(company) {
  * @returns {{ ok: boolean, reasons: string[], facts: {sipyung:number, perf5y:number, entry:number, base:number, region:string} }}
  */
 function isSingleBidEligible(company, { entryAmount, baseAmount, dutyRegions = [] } = {}) {
-  const sipyung = parseAmount(company && company['시평']);
-  const perf5y = parseAmount(company && company['5년 실적']);
-  const entry = parseAmount(entryAmount);
-  const base = parseAmount(baseAmount);
-  const region = getCompanyRegion(company);
-
-  const hasEntryLimit = entry > 0;
-  const moneyOk = hasEntryLimit ? (sipyung >= entry) : true; // 참가자격 없으면 금액 조건 스킵
-  const perfOk = base > 0 && perf5y >= base;     // 실적만점(≥ 기초금액)
-  const regionOk = Array.isArray(dutyRegions) && dutyRegions.length > 0
-    ? dutyRegions.includes(region)
-    : true; // 의무지역 비어있으면 통과
-
-  const ok = Boolean(moneyOk && perfOk && regionOk);
-  const reasons = [];
-  if (hasEntryLimit && !moneyOk) reasons.push(`시평 미달: ${sipyung.toLocaleString()} < 참가자격 ${entry.toLocaleString()}`);
-  if (!perfOk) reasons.push(`5년 실적 미달(만점 기준): ${perf5y.toLocaleString()} < 기초금액 ${base.toLocaleString()}`);
-  if (!regionOk) reasons.push(`의무지역 불일치: ${region || '지역없음'}`);
-
-  return { ok, reasons, facts: { sipyung, perf5y, entry, base, region } };
+  return evaluateSingleBidEligibility({
+    company,
+    entryAmount,
+    baseAmount,
+    performanceTarget: baseAmount,
+    performanceLabel: '기초금액',
+    dutyRegions,
+  });
 }
 
 module.exports = {
   parseAmount,
   getCompanyRegion,
+  evaluateSingleBidEligibility,
   isSingleBidEligible,
 };

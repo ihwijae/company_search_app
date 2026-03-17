@@ -66,6 +66,7 @@ import {
   formatTechnicianScore,
 } from '../../../../shared/agreements/calculations/technicianScore.js';
 import { runAgreementCandidateScoreEvaluation } from '../../../../shared/agreements/runner/candidateScoreRunner.js';
+import singleBidEligibilityRules from '../../../../shared/agreements/rules/singleBidEligibility.js';
 import {
   getLhAwardHistoryText,
   hasRecentLhAwardHistory,
@@ -2927,31 +2928,33 @@ export default function AgreementBoardWindow({
 
   const isSingleBidEligible = React.useCallback((candidate) => {
     if (!candidate) return false;
-    const entryValue = parseAmountValue(entryAmount) || 0;
-    const sipyungAmount = getCandidateSipyungAmount(candidate);
-    const entryOk = entryValue > 0
-      ? (sipyungAmount != null && sipyungAmount >= entryValue)
-      : true;
-
-    const perfTarget = perfectPerformanceAmount || 0;
-    const performanceAmount = getCandidatePerformanceAmountForCurrentRange(candidate);
-    const perfOk = perfTarget > 0
-      ? (performanceAmount != null && performanceAmount >= perfTarget)
-      : false;
-
-    const managementScore = getCandidateManagementScore(candidate);
     const maxScore = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
-    const managementOk = managementScore != null && managementScore >= (maxScore - 0.01);
-
-    const regionOk = dutyRegionSet.size === 0 ? true : isDutyRegionCompany(candidate);
-
-    return entryOk && perfOk && managementOk && regionOk;
+    const managementScore = getCandidateManagementScore(candidate);
+    const result = singleBidEligibilityRules.evaluateSingleBidEligibility({
+      company: candidate,
+      entryAmount: parseAmountValue(entryAmount) || 0,
+      performanceTarget: perfectPerformanceAmount || 0,
+      performanceLabel: '기초금액',
+      dutyRegions,
+      sipyungAmount: getCandidateSipyungAmount(candidate),
+      performanceAmount: getCandidatePerformanceAmountForCurrentRange(candidate),
+      region: getRegionLabel(candidate),
+      regionOk: dutyRegionSet.size === 0 ? true : isDutyRegionCompany(candidate),
+      managementScore,
+      managementMax: maxScore,
+      managementRequired: true,
+    });
+    return !!result.ok;
   }, [
     entryAmount,
     perfectPerformanceAmount,
     managementMax,
+    dutyRegions,
     dutyRegionSet,
     isDutyRegionCompany,
+    getRegionLabel,
+    getCandidateManagementScore,
+    getCandidateSipyungAmount,
     getCandidatePerformanceAmountForCurrentRange,
   ]);
 
