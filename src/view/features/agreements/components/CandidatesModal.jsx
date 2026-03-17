@@ -702,6 +702,7 @@ const industryToLabel = (type) => {
         rangeId,
         fileType,
         entryAmount: requestParams.entryAmount,
+        entryMode,
         baseAmount: requestParams.baseAmount,
         estimatedAmount,
         perfectPerformanceAmount: perfectAmountParam,

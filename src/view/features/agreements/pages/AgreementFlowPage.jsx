@@ -591,12 +591,13 @@ export default function AgreementFlowPage({
   }, []);
 
   React.useEffect(() => {
+    if (viewMode === 'region') return;
     const sessionId = regionSearchSessionRef.current;
     if (!sessionId) return;
     const currentState = getRegionSearchState();
     if (!currentState.open || currentState.props?.sessionId !== sessionId) return;
     updateRegionSearchProps(buildRegionSearchPayload(), sessionId);
-  }, [buildRegionSearchPayload]);
+  }, [buildRegionSearchPayload, viewMode]);
 
   const handleOpenBoard = useCallback(() => {
     openBoard({
