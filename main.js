@@ -422,6 +422,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     },
     approvalColumn: 'B',
     summaryColumns: {
+      qualityPoints: 'AD',
       credibility: 'AF',
       netCostBonus: 'AG',
     },
@@ -472,6 +473,7 @@ const AGREEMENT_TEMPLATE_CONFIGS = {
     },
     approvalColumn: 'B',
     summaryColumns: {
+      qualityPoints: 'AD',
       credibility: 'AF',
       netCostBonus: 'AG',
     },

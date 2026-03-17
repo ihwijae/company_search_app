@@ -135,6 +135,23 @@ function setUserVersion(db, version) {
   db.exec(`PRAGMA user_version = ${version}`);
 }
 
+function getMetaValue(db, key) {
+  const stmt = db.prepare('SELECT value FROM meta WHERE key = ?');
+  stmt.bind([key]);
+  const value = stmt.step() ? stmt.getAsObject().value : null;
+  stmt.free();
+  return value;
+}
+
+function setMetaValue(db, key, value) {
+  const stmt = db.prepare(`INSERT INTO meta (key, value, updated_at)
+    VALUES (?, ?, datetime('now'))
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`);
+  stmt.bind([key, String(value)]);
+  stmt.step();
+  stmt.free();
+}
+
 function runMigrations(db) {
   let current = getUserVersion(db);
   const target = MIGRATIONS.length;
@@ -269,8 +286,20 @@ async function ensureRecordsDatabase({ userDataDir } = {}) {
       const db = fileBuffer && fileBuffer.length ? new SQL.Database(fileBuffer) : new SQL.Database();
 
       runMigrations(db);
-      const seeded = seedDefaults(db);
-      if (!hasExistingFile || seeded) {
+      const hasSeedMarker = getMetaValue(db, 'defaults_seeded') === '1';
+      let mutated = false;
+
+      // Seed defaults only for a brand-new database. Existing/imported user DBs win as-is.
+      if (!hasExistingFile && !hasSeedMarker) {
+        mutated = seedDefaults(db) || mutated;
+        setMetaValue(db, 'defaults_seeded', '1');
+        mutated = true;
+      } else if (!hasSeedMarker) {
+        setMetaValue(db, 'defaults_seeded', '1');
+        mutated = true;
+      }
+
+      if (!hasExistingFile || mutated) {
         persistDatabase(db, databasePath);
       }
 
