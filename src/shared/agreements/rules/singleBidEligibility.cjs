@@ -127,7 +127,7 @@ function isSingleBidEligible(company, { entryAmount, baseAmount, dutyRegions = [
   });
 }
 
-export {
+module.exports = {
   parseAmount,
   getCompanyRegion,
   evaluateSingleBidEligibility,

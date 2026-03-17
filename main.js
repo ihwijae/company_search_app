@@ -1843,7 +1843,7 @@ try {
 
 // Agreements: Fetch candidates (skeleton implementation)
 try {
-  const { evaluateSingleBidEligibility } = require('./src/shared/agreements/rules/singleBidEligibility.js');
+  const { evaluateSingleBidEligibility } = require('./src/shared/agreements/rules/singleBidEligibility.cjs');
   if (ipcMain.removeHandler) { try { ipcMain.removeHandler('agreements-fetch-candidates'); } catch {} }
   ipcMain.handle('agreements-fetch-candidates', async (_event, params = {}) => {
     try {
