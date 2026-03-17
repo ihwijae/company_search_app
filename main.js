@@ -1859,10 +1859,10 @@ try {
       const baseAmount = params.baseAmount || 0;
       const menuKey = params.menuKey || '';
       const perfectPerformanceAmount = params.perfectPerformanceAmount || 0;
+      const perfectPerformanceBasis = params.perfectPerformanceBasis || '';
       const dutyRegions = Array.isArray(params.dutyRegions) ? params.dutyRegions : [];
       const excludeSingleBidEligible = params.excludeSingleBidEligible !== false; // default true
       const filterByRegion = !!params.filterByRegion; // only include region-matching when dutyRegions provided
-      const isMoisUnder30 = ownerId === 'MOIS' && menuKey === 'mois-under30';
 
       // Load rules
       let rulesDoc = null;
@@ -1981,9 +1981,7 @@ try {
       const estimatedAmount = params.estimatedAmount || params.estimatedPrice || 0;
       let tierAmount = toNumber(estimatedAmount || baseAmount || entryAmount);
       const baseAmountNumber = toNumber(baseAmount);
-      const perfectPerformanceNumber = isMoisUnder30
-        ? (toNumber(perfectPerformanceAmount) || baseAmountNumber)
-        : baseAmountNumber;
+      const perfectPerformanceNumber = toNumber(perfectPerformanceAmount) || baseAmountNumber;
       const matchesRegion = (value) => {
         if (!Array.isArray(dutyRegions) || dutyRegions.length === 0) return true;
         const target = String(value || '').trim();
@@ -2473,7 +2471,7 @@ try {
           sbe = evaluateSingleBidEligibility({
             entryAmount: entryMode === 'none' ? 0 : entryAmount,
             performanceTarget,
-            performanceLabel: '기초금액',
+            performanceLabel: perfectPerformanceBasis || '기초금액',
             baseAmount: baseAmountNumber,
             dutyRegions,
             sipyungAmount: rating,

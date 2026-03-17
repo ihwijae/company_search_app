@@ -172,6 +172,7 @@ export default function CandidatesModal({
   bidRate = '',
   adjustmentRate = '',
   perfectPerformanceAmount = 0,
+  perfectPerformanceBasis = '',
   dutyRegions = [],
   ratioBaseAmount = '',
   defaultExcludeSingle = true,
@@ -710,7 +711,7 @@ const industryToLabel = (type) => {
     const dutyRegionsPayload = filterByRegion ? requestParams.dutyRegions : [];
     setLoading(true); setError(''); setList([]);
     try {
-      const perfectAmountParam = isMoisUnder30 ? requestParams.baseAmount : perfAmountValue;
+      const perfectAmountParam = perfAmountValue || requestParams.baseAmount;
       const r = await window.electronAPI.fetchCandidates({
         ownerId,
         menuKey,
@@ -721,6 +722,7 @@ const industryToLabel = (type) => {
         baseAmount: requestParams.baseAmount,
         estimatedAmount,
         perfectPerformanceAmount: perfectAmountParam,
+        perfectPerformanceBasis,
         dutyRegions: dutyRegionsPayload,
         excludeSingleBidEligible: requestParams.excludeSingleBidEligible,
         filterByRegion,

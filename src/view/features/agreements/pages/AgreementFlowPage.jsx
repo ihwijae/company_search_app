@@ -568,11 +568,12 @@ export default function AgreementFlowPage({
     bidRate: form.bidRate,
     adjustmentRate: form.adjustmentRate,
     perfectPerformanceAmount,
+    perfectPerformanceBasis,
     dutyRegions,
     ratioBaseAmount: isPPS ? (form.bidAmount || '') : (form.ratioBaseAmount || form.bidAmount || ''),
     defaultExcludeSingle: true,
     readOnly: true,
-  }), [resolvedOwnerId, activeMenuKey, currentFileType, form.noticeNo, form.title, form.noticeDate, form.industry, form.entryQualificationAmount, entryMode, form.baseAmount, form.estimatedPrice, form.bidAmount, form.bidRate, form.adjustmentRate, perfectPerformanceAmount, dutyRegions, isPPS, form.ratioBaseAmount]);
+  }), [resolvedOwnerId, activeMenuKey, currentFileType, form.noticeNo, form.title, form.noticeDate, form.industry, form.entryQualificationAmount, entryMode, form.baseAmount, form.estimatedPrice, form.bidAmount, form.bidRate, form.adjustmentRate, perfectPerformanceAmount, perfectPerformanceBasis, dutyRegions, isPPS, form.ratioBaseAmount]);
 
   const handleOpenRegionSearch = useCallback(() => {
     const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
