@@ -66,7 +66,7 @@ import {
   formatTechnicianScore,
 } from '../../../../shared/agreements/calculations/technicianScore.js';
 import { runAgreementCandidateScoreEvaluation } from '../../../../shared/agreements/runner/candidateScoreRunner.js';
-import singleBidEligibilityRules from '../../../../shared/agreements/rules/singleBidEligibility.js';
+import { evaluateSingleBidEligibility } from '../../../../shared/agreements/rules/singleBidEligibility.js';
 import {
   getLhAwardHistoryText,
   hasRecentLhAwardHistory,
@@ -2930,7 +2930,7 @@ export default function AgreementBoardWindow({
     if (!candidate) return false;
     const maxScore = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
     const managementScore = getCandidateManagementScore(candidate);
-    const result = singleBidEligibilityRules.evaluateSingleBidEligibility({
+    const result = evaluateSingleBidEligibility({
       company: candidate,
       entryAmount: parseAmountValue(entryAmount) || 0,
       performanceTarget: perfectPerformanceAmount || 0,
