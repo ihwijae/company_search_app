@@ -479,14 +479,14 @@ export default function AgreementFlowPage({
 
   const evalSingleBid = (company) => {
     if (!company) return;
-    const entry = parseAmount(form.entryQualificationAmount || form.estimatedPrice);
+    const hasEntry = entryMode !== 'none';
+    const entry = hasEntry ? parseAmount(form.entryQualificationAmount || '') : 0;
     const base = parseAmount(form.baseAmount);
     const perf5y = parseAmount(company['5년 실적']);
     const sipyung = parseAmount(company['시평']);
     const region = String(company['대표지역'] || company['지역'] || '').trim();
     if (isPPS) {
-      const hasEntry = entry > 0;
-      const moneyOk = hasEntry ? sipyung >= entry : true;
+      const moneyOk = hasEntry && entry > 0 ? sipyung >= entry : true;
       const perfOk = base > 0 && perf5y >= base;
       const managementRaw = Number(String(
         company['경영점수']
@@ -499,7 +499,7 @@ export default function AgreementFlowPage({
 
       const reasons = [];
       const toLocale = (value) => (Number.isFinite(value) ? value.toLocaleString() : String(value || '0'));
-      if (hasEntry && !moneyOk) reasons.push(`시평 미달: ${toLocale(sipyung)} < 참가자격 ${toLocale(entry)}`);
+      if (hasEntry && entry > 0 && !moneyOk) reasons.push(`시평 미달: ${toLocale(sipyung)} < 참가자격 ${toLocale(entry)}`);
       if (!perfOk) reasons.push(`5년 실적 미달: ${toLocale(perf5y)} < 기초금액 ${toLocale(base)}`);
       if (!managementOk) reasons.push('경영점수 만점이 아닙니다.');
 
@@ -507,12 +507,12 @@ export default function AgreementFlowPage({
       return;
     }
 
-    const moneyOk = sipyung >= entry && entry > 0;
+    const moneyOk = hasEntry && entry > 0 ? sipyung >= entry : true;
     const perfOk = perf5y >= base && base > 0;
     const regionOk = dutyRegions.length === 0 || dutyRegions.includes(region);
 
     const reasons = [];
-    if (!moneyOk) reasons.push(`시평액 미달: ${sipyung.toLocaleString()} < 참가자격금액 ${entry.toLocaleString()}`);
+    if (hasEntry && entry > 0 && !moneyOk) reasons.push(`시평액 미달: ${sipyung.toLocaleString()} < 참가자격금액 ${entry.toLocaleString()}`);
     if (!perfOk) reasons.push(`5년 실적 미달(만점 기준): ${perf5y.toLocaleString()} < 기초금액 ${base.toLocaleString()}`);
     if (!regionOk) reasons.push(`의무지역 불충족: 선택(${dutyRegions.join(', ')}) / 업체지역(${region || '없음'})`);
 

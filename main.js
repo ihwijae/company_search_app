@@ -1850,7 +1850,12 @@ try {
       const ownerId = params.ownerId || 'LH';
       const rawFileType = params.fileType || 'eung';
       const fileType = normalizeFileType(rawFileType, { fallback: 'eung' }) || 'eung';
-      const entryAmount = params.entryAmount || params.estimatedPrice || 0;
+      const entryMode = params.entryMode === 'sum'
+        ? 'sum'
+        : (params.entryMode === 'none' ? 'none' : 'ratio');
+      const entryAmount = entryMode === 'none'
+        ? 0
+        : (params.entryAmount || params.estimatedPrice || 0);
       const baseAmount = params.baseAmount || 0;
       const menuKey = params.menuKey || '';
       const perfectPerformanceAmount = params.perfectPerformanceAmount || 0;
@@ -2327,7 +2332,13 @@ try {
         const isPpsOwner = normalizedOwnerId === 'pps';
         let sbe = null;
         if (!isPpsOwner) {
-          try { sbe = isSingleBidEligible(c, { entryAmount, baseAmount, dutyRegions }); } catch {}
+          try {
+            sbe = isSingleBidEligible(c, {
+              entryAmount: entryMode === 'none' ? 0 : entryAmount,
+              baseAmount,
+              dutyRegions,
+            });
+          } catch {}
         }
 
         let moneyOk = null;
@@ -2468,11 +2479,11 @@ try {
         const managementIsPerfect = managementMax > 0 && Math.abs(managementScore - managementMax) < 1e-6;
 
         if (isPpsOwner) {
-          const entryNum = toNumber(entryAmount);
+          const entryNum = entryMode === 'none' ? 0 : toNumber(entryAmount);
           const baseNum = toNumber(baseAmount);
           const sipValue = rating;
           const perfValue = performanceAmount;
-          const hasEntry = entryNum > 0;
+          const hasEntry = entryMode !== 'none' && entryNum > 0;
           const moneyCondition = hasEntry ? (sipValue >= entryNum) : true;
           const perfCondition = baseNum > 0 && perfValue >= baseNum;
           const managementCondition = managementIsPerfect;
@@ -2527,12 +2538,12 @@ try {
         singleBidEligible = Boolean(sbe && sbe.ok);
 
         if (isMoisUnder30) {
-          const entryNum = toNumber(entryAmount);
+          const entryNum = entryMode === 'none' ? 0 : toNumber(entryAmount);
           const perfTargetRaw = perfectPerformanceNumber;
           const sipNumeric = parseNumeric(rating);
           const perfNumeric = parseNumeric(performanceAmount);
           const perfTarget = toNumber(perfTargetRaw);
-          const hasEntry = entryNum > 0;
+          const hasEntry = entryMode !== 'none' && entryNum > 0;
           const toLocale = (num) => (Number.isFinite(num) ? num.toLocaleString() : String(num || '0'));
 
           const moneyCondition = hasEntry ? (sipNumeric >= entryNum) : true;
