@@ -483,20 +483,17 @@ export default function RecordsPage() {
     if (!swapTarget) return;
 
     try {
-      await recordsClient.saveCategory({
-        id: selectedCategory.id,
-        name: selectedCategory.name,
-        parentId: selectedCategory.parentId ?? undefined,
-        active: selectedCategory.active,
-        sortOrder: swapTarget.sortOrder ?? targetIndex,
-      });
-      await recordsClient.saveCategory({
-        id: swapTarget.id,
-        name: swapTarget.name,
-        parentId: swapTarget.parentId ?? undefined,
-        active: swapTarget.active,
-        sortOrder: selectedCategory.sortOrder ?? currentIndex,
-      });
+      const reordered = [...siblings];
+      const [moved] = reordered.splice(currentIndex, 1);
+      reordered.splice(targetIndex, 0, moved);
+
+      await Promise.all(reordered.map((category, index) => recordsClient.saveCategory({
+        id: category.id,
+        name: category.name,
+        parentId: category.parentId ?? undefined,
+        active: category.active,
+        sortOrder: index,
+      })));
       await fetchTaxonomies();
       notify({
         type: 'success',

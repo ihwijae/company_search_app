@@ -135,6 +135,43 @@ const MIGRATIONS = [
       console.error('[DB][records] Failed to normalize invalid category parents:', error);
       throw error;
     }
+  },
+  (db) => {
+    try {
+      const groupResult = db.exec(`
+        SELECT DISTINCT parent_id
+        FROM categories
+        ORDER BY CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, parent_id
+      `);
+      const parentValues = Array.isArray(groupResult) && groupResult[0] && Array.isArray(groupResult[0].values)
+        ? groupResult[0].values
+        : [];
+      const updateStmt = db.prepare('UPDATE categories SET sort_order = ?, updated_at = datetime(\'now\') WHERE id = ?');
+
+      db.exec('BEGIN');
+      parentValues.forEach(([parentId]) => {
+        const sql = parentId === null
+          ? 'SELECT id FROM categories WHERE parent_id IS NULL ORDER BY sort_order, name, id'
+          : 'SELECT id FROM categories WHERE parent_id = ? ORDER BY sort_order, name, id';
+        const stmt = db.prepare(sql);
+        if (parentId !== null) stmt.bind([parentId]);
+        let nextOrder = 0;
+        while (stmt.step()) {
+          const row = stmt.getAsObject();
+          updateStmt.bind([nextOrder, row.id]);
+          updateStmt.step();
+          updateStmt.reset();
+          nextOrder += 1;
+        }
+        stmt.free();
+      });
+      db.exec('COMMIT');
+      updateStmt.free();
+    } catch (error) {
+      try { db.exec('ROLLBACK'); } catch {}
+      console.error('[DB][records] Failed to normalize category sort order:', error);
+      throw error;
+    }
   }
 ];
 
