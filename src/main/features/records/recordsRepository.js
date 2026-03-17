@@ -21,6 +21,10 @@ function toBoolean(value) {
   return value ? true : false;
 }
 
+function normalizeCategoryParentId(value) {
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
 class RecordsRepository {
   constructor() {
     this.db = getRecordsDatabase();
@@ -169,9 +173,10 @@ class RecordsRepository {
     this.refreshDb();
     const db = this.db;
     const existing = payload.id ? this.getCategoryById(payload.id) : null;
-    const parentId = Number.isInteger(payload.parentId)
-      ? payload.parentId
-      : existing?.parentId ?? null;
+    const normalizedParentId = normalizeCategoryParentId(payload.parentId);
+    const parentId = payload.parentId !== undefined
+      ? normalizedParentId
+      : normalizeCategoryParentId(existing?.parentId);
     const computeNextOrder = () => {
       if (Number.isFinite(payload.sortOrder)) return payload.sortOrder;
       if (existing && Number.isFinite(existing.sortOrder)) return existing.sortOrder;

@@ -120,6 +120,21 @@ const MIGRATIONS = [
       console.error('[DB][records] Failed to migrate attachments table to multi-file:', error);
       throw error;
     }
+  },
+  (db) => {
+    try {
+      db.exec(`BEGIN;
+        UPDATE categories
+        SET parent_id = NULL,
+            updated_at = datetime('now')
+        WHERE parent_id IS NOT NULL
+          AND parent_id NOT IN (SELECT id FROM categories);
+      COMMIT;`);
+    } catch (error) {
+      try { db.exec('ROLLBACK'); } catch {}
+      console.error('[DB][records] Failed to normalize invalid category parents:', error);
+      throw error;
+    }
   }
 ];
 
