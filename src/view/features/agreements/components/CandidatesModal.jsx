@@ -407,7 +407,22 @@ const industryToLabel = (type) => {
     };
   }, [isMoisUnder30, perfAmountValue, estimatedAmount, entryAmount, baseAmount, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle, hasEntryLimit, isPpsOwner]);
 
-  const initKey = JSON.stringify({ ownerId, menuKey, entryAmount, baseAmount, estimatedAmount, perfAmountValue, dutyRegions, ratioBaseAmount, bidAmount, bidRate, adjustmentRate, defaultExcludeSingle, fileType });
+  const initKey = JSON.stringify({
+    ownerId,
+    menuKey,
+    entryAmount,
+    entryMode,
+    baseAmount,
+    estimatedAmount,
+    perfAmountValue,
+    dutyRegions,
+    ratioBaseAmount,
+    bidAmount,
+    bidRate,
+    adjustmentRate,
+    defaultExcludeSingle,
+    fileType,
+  });
   const didInitFetch = useRef(false);
   const ratioLabel = showTenderFields ? '투찰금액(지분 기준)' : '시공비율 기준금액';
   const displayEntryAmountRaw = formatAmount(params.entryAmount || entryAmount);

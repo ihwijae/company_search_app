@@ -15,10 +15,8 @@ import Modal from '../../../../components/Modal.jsx';
 import { useFeedback } from '../../../../components/FeedbackProvider.jsx';
 import { copyDocumentStyles } from '../../../../utils/windowBridge.js';
 import {
-  getRegionSearchState,
   openRegionSearch,
   subscribeRegionSearch,
-  updateRegionSearchProps,
 } from './regionSearchStore.js';
 import { isWomenOwnedCompany, getQualityBadgeText, extractManagerNames } from '../../../../utils/companyIndicators.js';
 import { generateMany } from '../../../../shared/agreements/generator.js';
@@ -1820,11 +1818,7 @@ export default function AgreementBoardWindow({
   }, []);
 
   React.useEffect(() => {
-    const sessionId = regionSearchSessionRef.current;
-    if (!sessionId) return;
-    const currentState = getRegionSearchState();
-    if (!currentState.open || currentState.props?.sessionId !== sessionId) return;
-    updateRegionSearchProps(buildRegionSearchPayload(), sessionId);
+    // Keep the opened region-search popup stable; changes apply on reopen/re-search.
   }, [buildRegionSearchPayload]);
 
 
