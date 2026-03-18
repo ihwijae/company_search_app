@@ -15,6 +15,82 @@ const formatCurrency = (value) => {
   return num.toLocaleString();
 };
 
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildKeywordRegex = (keyword) => {
+  const trimmed = String(keyword || '').trim();
+  if (!trimmed) return null;
+  return new RegExp(`(${escapeRegExp(trimmed)})`, 'gi');
+};
+
+const highlightPlainText = (value, keyword) => {
+  const text = value == null ? '' : String(value);
+  const regex = buildKeywordRegex(keyword);
+  if (!regex || !text) return text || '—';
+
+  const parts = text.split(regex);
+  if (parts.length <= 1) return text;
+  const normalizedKeyword = String(keyword || '').trim().toLowerCase();
+
+  return parts.map((part, index) => (
+    part.toLowerCase() === normalizedKeyword
+      ? <mark key={`${part}-${index}`} className="records-highlight">{part}</mark>
+      : <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>
+  ));
+};
+
+const highlightSanitizedHtml = (html, keyword) => {
+  const trimmedKeyword = String(keyword || '').trim();
+  const regex = buildKeywordRegex(trimmedKeyword);
+  if (!regex || !html || typeof document === 'undefined') return html;
+
+  try {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+
+    while (walker.nextNode()) {
+      textNodes.push(walker.currentNode);
+    }
+
+    textNodes.forEach((node) => {
+      const text = node.textContent || '';
+      if (!text || !buildKeywordRegex(trimmedKeyword)?.test(text)) return;
+
+      const fragment = document.createDocumentFragment();
+      const localRegex = buildKeywordRegex(trimmedKeyword);
+      let lastIndex = 0;
+      let match = localRegex.exec(text);
+
+      while (match) {
+        const matchText = match[0];
+        const matchIndex = match.index;
+        if (matchIndex > lastIndex) {
+          fragment.appendChild(document.createTextNode(text.slice(lastIndex, matchIndex)));
+        }
+        const mark = document.createElement('mark');
+        mark.className = 'records-highlight';
+        mark.textContent = matchText;
+        fragment.appendChild(mark);
+        lastIndex = matchIndex + matchText.length;
+        match = localRegex.exec(text);
+      }
+
+      if (lastIndex < text.length) {
+        fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+      }
+
+      node.parentNode?.replaceChild(fragment, node);
+    });
+
+    return template.innerHTML;
+  } catch (error) {
+    console.warn('[Renderer] Failed to highlight records HTML:', error);
+    return html;
+  }
+};
+
 const ITEMS_PER_PAGE = 3;
 const TEN_YEARS_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 
@@ -580,6 +656,8 @@ export default function RecordsPage() {
     return projects.slice(start, start + ITEMS_PER_PAGE);
   }, [projects, currentPage]);
 
+  const keyword = React.useMemo(() => String(filters.keyword || '').trim(), [filters.keyword]);
+
   React.useEffect(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     const slice = projects.slice(start, start + ITEMS_PER_PAGE);
@@ -705,7 +783,7 @@ export default function RecordsPage() {
                 <div className="records-toolbar__filters">
                   <input
                     type="text"
-                    placeholder="공사명/발주처 검색"
+                    placeholder="공사명/발주처/시공규모 및 비고 검색"
                     value={filters.keyword}
                     onChange={(event) => setFilters((prev) => ({ ...prev, keyword: event.target.value }))}
                   />
@@ -763,6 +841,7 @@ export default function RecordsPage() {
                       const attachments = Array.isArray(project.attachments) ? project.attachments : [];
                       const hasAttachment = attachments.length > 0;
                       const sanitizedNotes = sanitizeHtml(project.scopeNotes);
+                      const highlightedNotes = highlightSanitizedHtml(sanitizedNotes, keyword);
                       let isExpired = false;
                       const expirySource = project.endDate || project.startDate;
                       const expiryDate = toDate(expirySource);
@@ -784,14 +863,14 @@ export default function RecordsPage() {
                           onClick={() => setSelectedProjectId(project.id)}
                         >
                           <div className="records-grid__cell records-grid__cell--company">
-                            <span className="records-grid__company-text">{companyName}</span>
+                            <span className="records-grid__company-text">{highlightPlainText(companyName, keyword)}</span>
                           </div>
                           <div className="records-grid__cell records-grid__cell--info">
-                            <div className="records-grid__project-name">공사명: {project.projectName}</div>
+                            <div className="records-grid__project-name">공사명: {highlightPlainText(project.projectName, keyword)}</div>
                             <div className="records-grid__info">
                               <div className="records-grid__info-item">
                                 <span className="records-grid__info-label">발주처</span>
-                                <span className="records-grid__info-value">{project.clientName || '—'}</span>
+                                <span className="records-grid__info-value">{highlightPlainText(project.clientName, keyword)}</span>
                               </div>
                               <div className="records-grid__info-item">
                                 <span className="records-grid__info-label">공사기간</span>
@@ -808,8 +887,8 @@ export default function RecordsPage() {
                             </div>
                           </div>
                           <div className="records-grid__cell records-grid__cell--notes">
-                            {sanitizedNotes ? (
-                              <div className="records-grid__notes" dangerouslySetInnerHTML={{ __html: sanitizedNotes }} />
+                            {highlightedNotes ? (
+                              <div className="records-grid__notes" dangerouslySetInnerHTML={{ __html: highlightedNotes }} />
                             ) : (
                               <div className="records-grid__notes">—</div>
                             )}

@@ -467,8 +467,8 @@ class RecordsRepository {
 
     if (filters.keyword) {
       const keyword = `%${filters.keyword.trim()}%`;
-      whereParts.push('(p.project_name LIKE ? OR p.client_name LIKE ? OR p.corporation_name LIKE ?)');
-      bindings.push(keyword, keyword, keyword);
+      whereParts.push('(p.project_name LIKE ? OR p.client_name LIKE ? OR p.scope_notes LIKE ? OR p.corporation_name LIKE ?)');
+      bindings.push(keyword, keyword, keyword, keyword);
     }
 
     if (Array.isArray(filters.companyIds) && filters.companyIds.length > 0) {

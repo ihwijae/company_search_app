@@ -3047,3 +3047,10 @@ button.primary:hover { background: var(--accent-2); }
 .company-notes-table .details-table td {
   vertical-align: middle;
 }
+
+.records-highlight {
+  background: #fde68a;
+  color: inherit;
+  border-radius: 4px;
+  padding: 0 2px;
+}
