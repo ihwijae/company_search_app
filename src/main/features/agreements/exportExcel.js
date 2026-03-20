@@ -452,9 +452,13 @@ async function exportAgreementExcel({
         } else {
           shareCell.value = null;
         }
-        shareCell.fill = hasFractionalShareValue(member.sharePercent)
-          ? cloneFill(ORANGE_FILL)
-          : cloneFill(CLEAR_FILL);
+        const baseStyle = shareCell.style ? { ...shareCell.style } : {};
+        shareCell.style = {
+          ...baseStyle,
+          fill: hasFractionalShareValue(member.sharePercent)
+            ? cloneFill(ORANGE_FILL)
+            : cloneFill(CLEAR_FILL),
+        };
       }
       if (managementCell) {
         const managementValue = toExcelNumber(member.managementScore);
