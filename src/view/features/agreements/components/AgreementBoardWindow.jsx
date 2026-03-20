@@ -490,6 +490,8 @@ const sanitizeCompanyName = (value) => {
   let result = String(value).trim();
   result = result.replace(/㈜/g, '');
   result = result.replace(/\(주\)/g, '');
+  result = result.replace(/\(유\)/g, '');
+  result = result.replace(/\(합\)/g, '');
   result = result.replace(/주식회사/g, '');
   result = result.replace(/\s+/g, ' ').trim();
   return result;
