@@ -190,7 +190,7 @@ const RED_FILL = {
 };
 const CLEAR_FILL = { type: 'pattern', pattern: 'none' };
 const AWARD_HISTORY_FONT = {
-  color: { argb: 'FFB91C1C' },
+  color: { argb: 'FFFF0000' },
   bold: true,
 };
 
