@@ -6,6 +6,34 @@ import {
 const LH_100_TO_300_KEY = 'lh-100to300';
 const LH_QUALITY_DEFAULT_OVER_100B = 88;
 
+function buildExportDisplayName({
+  companyName = '',
+  managerName = '',
+  shareLabel = '',
+  qualityScore = null,
+  includeQuality = false,
+}) {
+  const parts = [];
+  const trimmedCompanyName = String(companyName || '').trim();
+  const trimmedManagerName = String(managerName || '').trim();
+  const trimmedShareLabel = String(shareLabel || '').trim();
+
+  if (trimmedCompanyName) {
+    parts.push(trimmedCompanyName);
+  }
+
+  const managerAndShare = `${trimmedManagerName}${trimmedShareLabel}`;
+  if (managerAndShare) {
+    parts.push(managerAndShare);
+  }
+
+  if (includeQuality && Number.isFinite(Number(qualityScore))) {
+    parts.push(`품질${Number(qualityScore).toFixed(2)}`);
+  }
+
+  return parts.filter(Boolean).join('_');
+}
+
 export function buildAgreementExportPayload({
   templateKey,
   appendTargetPath = '',
@@ -113,18 +141,19 @@ export function buildAgreementExportPayload({
       const qualityScore = isLHOwner
         ? getQualityScoreValue(groupIndex, slotIndex, candidate)
         : null;
-      const displayLines = [companyName];
-      if (shareLabel) displayLines.push(shareLabel);
-      if (
+      const includeQuality = (
         isLh100To300
         && qualityScore != null
         && Number.isFinite(Number(qualityScore))
         && Number(qualityScore) > LH_QUALITY_DEFAULT_OVER_100B
-      ) {
-        displayLines.push(`품질 ${Number(qualityScore).toFixed(2)}`);
-      }
-      if (managerName) displayLines.push(managerName);
-      const displayName = displayLines.filter(Boolean).join('\n');
+      );
+      const displayName = buildExportDisplayName({
+        companyName,
+        managerName,
+        shareLabel,
+        qualityScore,
+        includeQuality,
+      });
       return {
         slotIndex,
         role: slotIndex === 0 ? 'representative' : 'member',
@@ -204,13 +233,13 @@ export function buildAgreementExportPayload({
     const managerName = getCandidateManagerName(candidate);
     const shareLabel = entry.possibleShareText ? String(entry.possibleShareText).replace(/%$/, '') : '';
     const qualityScore = isLh100To300 ? Number(entry.qualityScore) : null;
-    const displayLines = [companyName];
-    if (shareLabel) displayLines.push(shareLabel);
-    if (isLh100To300 && Number.isFinite(qualityScore) && qualityScore > LH_QUALITY_DEFAULT_OVER_100B) {
-      displayLines.push(`품질 ${qualityScore.toFixed(2)}`);
-    }
-    if (managerName) displayLines.push(managerName);
-    const displayName = displayLines.filter(Boolean).join('\n');
+    const displayName = buildExportDisplayName({
+      companyName,
+      managerName,
+      shareLabel,
+      qualityScore,
+      includeQuality: isLh100To300 && Number.isFinite(qualityScore) && qualityScore > LH_QUALITY_DEFAULT_OVER_100B,
+    });
     return {
       candidateIndex: index + 1,
       isRegion: Boolean(entry.isDutyRegion),
