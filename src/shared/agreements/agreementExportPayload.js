@@ -137,7 +137,7 @@ export function buildAgreementExportPayload({
         ? calculatePossibleShareRatio(possibleShareBase, sipyung)
         : null;
       const shareLabel = includePossibleShare
-        ? formatPossibleShareValue(possibleShareRatio)
+        ? formatPossibleShareValue(possibleShareRatio, { mode: isLh100To300 ? 'truncate' : 'round' })
         : '';
       const qualityScore = isLHOwner
         ? getQualityScoreValue(groupIndex, slotIndex, candidate)
