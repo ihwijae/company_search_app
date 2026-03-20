@@ -189,6 +189,10 @@ const RED_FILL = {
   bgColor: { indexed: 64 },
 };
 const CLEAR_FILL = { type: 'pattern', pattern: 'none' };
+const AWARD_HISTORY_FONT = {
+  color: { argb: 'FFB91C1C' },
+  bold: true,
+};
 
 async function exportAgreementExcel({
   config,
@@ -201,6 +205,8 @@ async function exportAgreementExcel({
   if (!config || !config.path) throw new Error('템플릿 설정이 올바르지 않습니다.');
   if (!payload) throw new Error('엑셀 내보내기 데이터가 없습니다.');
   const { header = {}, groups = [], candidates = [] } = payload;
+  const isLh100To300 = String(payload?.context?.ownerId || '').toUpperCase() === 'LH'
+    && String(payload?.context?.rangeId || '').toLowerCase() === 'lh-100to300';
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(config.path);
@@ -444,6 +450,17 @@ async function exportAgreementExcel({
       }
 
       nameCell.value = rawName;
+      if (isLh100To300 && member.hasRecentAwardHistory) {
+        const baseStyle = nameCell.style ? { ...nameCell.style } : {};
+        const baseFont = nameCell.font ? { ...nameCell.font } : { ...(baseStyle.font || {}) };
+        nameCell.style = {
+          ...baseStyle,
+          font: {
+            ...baseFont,
+            ...AWARD_HISTORY_FONT,
+          },
+        };
+      }
       if (shareCell) {
         const shareValueRaw = toExcelNumber(member.sharePercent);
         if (shareValueRaw != null) {
@@ -612,6 +629,17 @@ async function exportAgreementExcel({
       const abilityCell = abilityColumn ? worksheet.getCell(`${abilityColumn}${rowIndex}`) : null;
 
       nameCell.value = typeof candidate.name === 'string' ? candidate.name : '';
+      if (isLh100To300 && candidate.hasRecentAwardHistory) {
+        const baseStyle = nameCell.style ? { ...nameCell.style } : {};
+        const baseFont = nameCell.font ? { ...nameCell.font } : { ...(baseStyle.font || {}) };
+        nameCell.style = {
+          ...baseStyle,
+          font: {
+            ...baseFont,
+            ...AWARD_HISTORY_FONT,
+          },
+        };
+      }
       if (candidate.isRegion && regionFillTemplate) {
         regionCells.push({ column: nameColumn, row: rowIndex });
         const baseStyle = nameCell.style ? { ...nameCell.style } : {};

@@ -88,6 +88,7 @@ export function buildAgreementExportPayload({
   getBizNo,
   getQualityScoreValue,
   resolveQualityPoints,
+  hasRecentAwardHistory = () => false,
 }) {
   const isLh100To300 = isLHOwner && selectedRangeKey === LH_100_TO_300_KEY;
   let exportIndex = 1;
@@ -159,6 +160,7 @@ export function buildAgreementExportPayload({
         role: slotIndex === 0 ? 'representative' : 'member',
         type: entry.type,
         isRegion: Boolean(isRegionMember),
+        hasRecentAwardHistory: hasRecentAwardHistory(getCompanyName(candidate), bidDeadline),
         name: displayName,
         manager: managerName,
         region: getRegionLabel(candidate),
@@ -243,6 +245,7 @@ export function buildAgreementExportPayload({
     return {
       candidateIndex: index + 1,
       isRegion: Boolean(entry.isDutyRegion),
+      hasRecentAwardHistory: Boolean(entry.hasRecentAwardHistory),
       name: displayName,
       manager: managerName,
       region: getRegionLabel(candidate),

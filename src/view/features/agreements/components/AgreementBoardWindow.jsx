@@ -3658,6 +3658,7 @@ export default function AgreementBoardWindow({
         getBizNo,
         getQualityScoreValue,
         resolveQualityPoints,
+        hasRecentAwardHistory: isRecentAwardHistoryCompany,
       });
 
       const response = await api.agreementsExportExcel(payload);
