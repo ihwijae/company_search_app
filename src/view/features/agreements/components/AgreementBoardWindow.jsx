@@ -3392,6 +3392,7 @@ export default function AgreementBoardWindow({
       managementMax,
       managementScoreMax: MANAGEMENT_SCORE_MAX,
       possibleShareBase,
+      possibleShareFormatMode: isLh100To300 ? 'truncate' : 'round',
       toNumber,
       clampScore,
       hasRecentAwardHistory: isRecentAwardHistoryCompany,
@@ -3405,6 +3406,7 @@ export default function AgreementBoardWindow({
     candidateMetricsVersion,
     managementMax,
     isMois30To50,
+    isLh100To300,
     possibleShareBase,
     isDutyRegionCompany,
     getCandidatePerformanceAmountForCurrentRange,
@@ -4760,6 +4762,7 @@ export default function AgreementBoardWindow({
       getCompanyName,
       hasRecentAwardHistory: isRecentAwardHistoryCompany,
       noticeDate,
+      possibleShareFormatMode: isLh100To300 ? 'truncate' : 'round',
     });
   };
 

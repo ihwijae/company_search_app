@@ -36,6 +36,7 @@ export function buildBoardMemberMeta({
   getCompanyName,
   hasRecentAwardHistory = () => false,
   noticeDate = '',
+  possibleShareFormatMode = 'round',
 }) {
   const memberIds = Array.isArray(group?.memberIds) ? group.memberIds : [];
   const uid = memberIds[slotIndex];
@@ -78,7 +79,8 @@ export function buildBoardMemberMeta({
     ? candidate._agreementSipyungInput
     : (sipyungAmount != null ? formatAmount(sipyungAmount) : '');
   const possibleShareText = formatPossibleShareText(
-    calculatePossibleShareRatio(possibleShareBase, sipyungAmount)
+    calculatePossibleShareRatio(possibleShareBase, sipyungAmount),
+    { mode: possibleShareFormatMode }
   );
   const tags = [];
   if (candidate._is_temp_company || candidate.snapshot?._is_temp_company) {

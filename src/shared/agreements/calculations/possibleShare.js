@@ -7,13 +7,21 @@ export function calculatePossibleShareRatio(possibleShareBase, sipyungAmount) {
   return Number.isFinite(ratio) && ratio > 0 ? ratio : null;
 }
 
-export function formatPossibleShareValue(ratio) {
-  const numeric = Number(ratio);
-  if (!Number.isFinite(numeric) || numeric <= 0 || numeric >= 100) return '';
-  return numeric.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+function truncateDecimal(value, digits = 2) {
+  const factor = 10 ** digits;
+  return Math.trunc(value * factor) / factor;
 }
 
-export function formatPossibleShareText(ratio) {
-  const value = formatPossibleShareValue(ratio);
+export function formatPossibleShareValue(ratio, { mode = 'round' } = {}) {
+  const numeric = Number(ratio);
+  if (!Number.isFinite(numeric) || numeric <= 0 || numeric >= 100) return '';
+  const resolved = mode === 'truncate'
+    ? truncateDecimal(numeric, 2)
+    : numeric;
+  return resolved.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+}
+
+export function formatPossibleShareText(ratio, options) {
+  const value = formatPossibleShareValue(ratio, options);
   return value ? `${value}%` : '';
 }
