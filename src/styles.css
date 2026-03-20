@@ -2625,6 +2625,17 @@ button.primary:hover { background: var(--accent-2); }
   text-align: right;
 }
 
+.excel-share-cell.share-fractional {
+  background: #ffedd5;
+}
+
+.excel-share-cell.share-fractional .excel-inline-edit-display,
+.excel-share-cell.share-fractional .excel-share-input {
+  background: #ffedd5;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
 .excel-performance {
   display: flex;
   flex-direction: column;

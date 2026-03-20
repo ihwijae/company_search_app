@@ -330,6 +330,12 @@ const parseNumeric = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const hasFractionalShareValue = (value) => {
+  const numeric = parseNumeric(value);
+  if (numeric == null) return false;
+  return Math.abs(numeric - Math.round(numeric)) > 1e-6;
+};
+
 const equalGroupSummaries = (left, right) => {
   if (left === right) return true;
   if (!Array.isArray(left) || !Array.isArray(right)) return false;
@@ -4848,36 +4854,40 @@ export default function AgreementBoardWindow({
     );
   };
 
-  const renderShareCell = (meta) => (
-    <td key={`share-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-share-cell">
-      {meta.empty ? null : (
-        isAmountCellEditing(meta, 'share') ? (
-          <input
-            type="text"
-            className="excel-amount-input excel-share-input"
-            value={meta.shareValue}
-            onChange={(event) => handleShareInput(meta.groupIndex, meta.slotIndex, event.target.value)}
-            onBlur={() => finishAmountCellEdit(meta, 'share')}
-            onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'share')}
-            placeholder={meta.sharePlaceholder}
-            autoFocus
-          />
-        ) : (
+  const renderShareCell = (meta) => {
+    const displayedShare = meta.shareValue || (meta.shareForCalc != null ? formatShareDecimal(meta.shareForCalc) : '');
+    const hasFractionalShare = hasFractionalShareValue(displayedShare || meta.shareForCalc);
+
+    return (
+      <td
+        key={`share-${meta.groupIndex}-${meta.slotIndex}`}
+        className={`excel-cell excel-share-cell${hasFractionalShare ? ' share-fractional' : ''}`}
+      >
+        {meta.empty ? null : (
+          isAmountCellEditing(meta, 'share') ? (
+            <input
+              type="text"
+              className="excel-amount-input excel-share-input"
+              value={meta.shareValue}
+              onChange={(event) => handleShareInput(meta.groupIndex, meta.slotIndex, event.target.value)}
+              onBlur={() => finishAmountCellEdit(meta, 'share')}
+              onKeyDown={(event) => handleInlineEditKeyDown(event, meta, 'share')}
+              placeholder={meta.sharePlaceholder}
+              autoFocus
+            />
+          ) : (
             <button
               type="button"
               className="excel-inline-edit-display excel-inline-edit-display-share"
               {...getInlineEditTriggerProps(meta, 'share')}
             >
-            {(() => {
-              const base = meta.shareValue || (meta.shareForCalc != null ? formatShareDecimal(meta.shareForCalc) : '');
-              if (!base) return '-';
-              return `${base}%`;
-            })()}
-          </button>
-        )
-      )}
-    </td>
-  );
+              {displayedShare ? `${displayedShare}%` : '-'}
+            </button>
+          )
+        )}
+      </td>
+    );
+  };
 
   const renderCredibilityCell = (meta, rowSpan) => (
     <td key={`cred-${meta.groupIndex}-${meta.slotIndex}`} className="excel-cell excel-credibility-cell" rowSpan={rowSpan}>

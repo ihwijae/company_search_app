@@ -15,6 +15,12 @@ const toExcelNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const hasFractionalShareValue = (value) => {
+  const numeric = toExcelNumber(value);
+  if (numeric == null) return false;
+  return Math.abs(numeric - Math.round(numeric)) > 1e-6;
+};
+
 const toPlainText = (value) => {
   if (!value) return '';
   return String(value)
@@ -446,7 +452,9 @@ async function exportAgreementExcel({
         } else {
           shareCell.value = null;
         }
-        shareCell.fill = undefined;
+        shareCell.fill = hasFractionalShareValue(member.sharePercent)
+          ? cloneFill(ORANGE_FILL)
+          : cloneFill(CLEAR_FILL);
       }
       if (managementCell) {
         const managementValue = toExcelNumber(member.managementScore);
