@@ -129,7 +129,7 @@ export const buildInconMemoText = ({
     if (memberIds.length === 0) return;
 
     const approval = String(groupApprovals[groupIndex] || '').trim();
-    if (approval === '알림' || approval === '취소') return;
+    if (approval === '취소') return;
 
     const members = memberIds.map((uid, slotIndex) => {
       const entry = participantMap?.get(uid);
