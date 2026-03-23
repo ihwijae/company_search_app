@@ -122,18 +122,6 @@ const formatNumericValue = (value) => {
   return decimalPart !== undefined ? `${formattedInteger}.${decimalPart}` : formattedInteger;
 };
 
-const divideThousandsDisplay = (value) => {
-  const normalized = normalizeNumericValue(value);
-  if (!normalized) return '';
-  const [integerPart = '', decimalPart = ''] = normalized.split('.');
-  const digitsOnly = `${integerPart}${decimalPart}`.replace(/^0+(?=\d)/, '') || '0';
-  const decimalPlaces = decimalPart.length;
-  const number = Number(digitsOnly);
-  if (!Number.isFinite(number)) return normalized;
-  const scaled = number / (10 ** decimalPlaces) / 1000;
-  return normalizeNumericValue(String(scaled));
-};
-
 const multiplyThousandsStorage = (value) => {
   const normalized = normalizeNumericValue(value);
   if (!normalized) return '';
@@ -151,9 +139,7 @@ const normalizeFormValues = (payload = {}) => {
   next.industry = normalizeIndustry(next.industry);
   next.bizNo = formatBizNoValue(next.bizNo);
   COMMA_NUMERIC_FIELDS.forEach((field) => {
-    next[field] = THOUSAND_UNIT_FIELDS.has(field)
-      ? divideThousandsDisplay(next[field])
-      : normalizeNumericValue(next[field]);
+    next[field] = normalizeNumericValue(next[field]);
   });
   RATIO_FIELDS.forEach((field) => {
     next[field] = normalizeRatioValue(next[field]);
@@ -256,7 +242,9 @@ export default function TempCompaniesPage() {
       [key]: key === 'bizNo'
         ? formatBizNoValue(value)
         : COMMA_NUMERIC_FIELDS.has(key)
-          ? normalizeNumericValue(value)
+          ? THOUSAND_UNIT_FIELDS.has(key)
+            ? multiplyThousandsStorage(value)
+            : normalizeNumericValue(value)
           : RATIO_FIELDS.has(key)
             ? normalizeRatioValue(value)
             : value,
