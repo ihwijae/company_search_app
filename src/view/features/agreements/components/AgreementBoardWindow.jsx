@@ -38,6 +38,7 @@ import {
   buildGroupSummaryMetrics,
   computeGroupSummaries,
 } from '../../../../shared/agreements/calculations/groupSummary.js';
+import { buildInconMemoText } from '../../../../shared/agreements/calculations/inconMemo.js';
 import {
   extractCreditGrade,
   getCandidateManagementScore as resolveCandidateManagementScore,
@@ -1462,6 +1463,29 @@ export default function AgreementBoardWindow({
   const handleMemoInput = React.useCallback((event) => {
     setMemoDraft(event.currentTarget.innerHTML);
   }, []);
+
+  const handleGenerateInconMemo = React.useCallback(async () => {
+    const text = buildInconMemoText({
+      fileType,
+      dutyRegions,
+      groupAssignments,
+      groupShares,
+      groupApprovals,
+      participantMap,
+    });
+    if (!text) {
+      showHeaderAlert('아이건설넷 메모로 만들 협정 내용이 없습니다.');
+      return;
+    }
+    try {
+      const result = await window.electronAPI.clipboardWriteText(text);
+      if (!result?.success) throw new Error(result?.message || 'Clipboard write failed');
+      showHeaderAlert('아이건설넷 메모가 클립보드에 복사되었습니다.');
+    } catch (err) {
+      console.error('Failed to copy incon memo: ', err);
+      showHeaderAlert('클립보드 복사에 실패했습니다.');
+    }
+  }, [dutyRegions, fileType, groupAssignments, groupApprovals, groupShares, participantMap, showHeaderAlert]);
 
   const applyMemoCommand = React.useCallback((command, value) => {
     if (!memoEditorRef.current) return;
@@ -5923,6 +5947,14 @@ export default function AgreementBoardWindow({
                   disabled={exporting}
                 >엑셀로 내보내기</button>
                 <button type="button" className="excel-btn" onClick={handleGenerateText}>협정 문자 생성</button>
+                <button
+                  type="button"
+                  className="excel-btn"
+                  onClick={handleGenerateInconMemo}
+                  style={{ background: '#eef6d8', borderColor: '#b7d48a', color: '#3f5f1e' }}
+                >
+                  아이건설넷 메모
+                </button>
                 <button type="button" className="excel-btn" onClick={handleAddGroup}>빈 행 추가</button>
                 <button type="button" className="excel-btn" onClick={handleDeleteGroups}>선택 삭제</button>
                 <button type="button" className="excel-btn" onClick={handleResetGroups}>초기화</button>
