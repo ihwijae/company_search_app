@@ -73,6 +73,12 @@ const COMMA_NUMERIC_FIELDS = new Set([
   'qualityEval',
 ]);
 
+const THOUSAND_UNIT_FIELDS = new Set([
+  'sipyung',
+  'performance3y',
+  'performance5y',
+]);
+
 const RATIO_FIELDS = new Set([
   'debtRatio',
   'currentRatio',
@@ -99,6 +105,15 @@ const normalizeRatioValue = (value) => {
   return `${integerPart}.${decimalPart}`;
 };
 
+const normalizeBizNoDigits = (value) => String(value ?? '').replace(/\D/g, '').slice(0, 10);
+
+const formatBizNoValue = (value) => {
+  const digits = normalizeBizNoDigits(value);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+};
+
 const formatNumericValue = (value) => {
   const normalized = normalizeNumericValue(value);
   if (!normalized) return '';
@@ -107,11 +122,53 @@ const formatNumericValue = (value) => {
   return decimalPart !== undefined ? `${formattedInteger}.${decimalPart}` : formattedInteger;
 };
 
+const divideThousandsDisplay = (value) => {
+  const normalized = normalizeNumericValue(value);
+  if (!normalized) return '';
+  const [integerPart = '', decimalPart = ''] = normalized.split('.');
+  const digitsOnly = `${integerPart}${decimalPart}`.replace(/^0+(?=\d)/, '') || '0';
+  const decimalPlaces = decimalPart.length;
+  const number = Number(digitsOnly);
+  if (!Number.isFinite(number)) return normalized;
+  const scaled = number / (10 ** decimalPlaces) / 1000;
+  return normalizeNumericValue(String(scaled));
+};
+
+const multiplyThousandsStorage = (value) => {
+  const normalized = normalizeNumericValue(value);
+  if (!normalized) return '';
+  const [integerPart = '', decimalPart = ''] = normalized.split('.');
+  const digitsOnly = `${integerPart}${decimalPart}`.replace(/^0+(?=\d)/, '') || '0';
+  const decimalPlaces = decimalPart.length;
+  const number = Number(digitsOnly);
+  if (!Number.isFinite(number)) return normalized;
+  const scaled = (number / (10 ** decimalPlaces)) * 1000;
+  return normalizeNumericValue(String(scaled));
+};
+
 const normalizeFormValues = (payload = {}) => {
   const next = { ...payload };
   next.industry = normalizeIndustry(next.industry);
+  next.bizNo = formatBizNoValue(next.bizNo);
   COMMA_NUMERIC_FIELDS.forEach((field) => {
-    next[field] = normalizeNumericValue(next[field]);
+    next[field] = THOUSAND_UNIT_FIELDS.has(field)
+      ? divideThousandsDisplay(next[field])
+      : normalizeNumericValue(next[field]);
+  });
+  RATIO_FIELDS.forEach((field) => {
+    next[field] = normalizeRatioValue(next[field]);
+  });
+  return next;
+};
+
+const buildSavePayload = (payload = {}) => {
+  const next = { ...payload };
+  next.industry = normalizeIndustry(next.industry);
+  next.bizNo = normalizeBizNoDigits(next.bizNo);
+  COMMA_NUMERIC_FIELDS.forEach((field) => {
+    next[field] = THOUSAND_UNIT_FIELDS.has(field)
+      ? multiplyThousandsStorage(next[field])
+      : normalizeNumericValue(next[field]);
   });
   RATIO_FIELDS.forEach((field) => {
     next[field] = normalizeRatioValue(next[field]);
@@ -196,11 +253,13 @@ export default function TempCompaniesPage() {
   const handleChange = React.useCallback((key, value) => {
     setForm((prev) => ({
       ...prev,
-      [key]: COMMA_NUMERIC_FIELDS.has(key)
-        ? normalizeNumericValue(value)
-        : RATIO_FIELDS.has(key)
-          ? normalizeRatioValue(value)
-          : value,
+      [key]: key === 'bizNo'
+        ? formatBizNoValue(value)
+        : COMMA_NUMERIC_FIELDS.has(key)
+          ? normalizeNumericValue(value)
+          : RATIO_FIELDS.has(key)
+            ? normalizeRatioValue(value)
+            : value,
     }));
   }, []);
 
@@ -216,7 +275,7 @@ export default function TempCompaniesPage() {
     setError('');
     setStatus('');
     try {
-      const saved = await tempCompaniesClient.saveCompany(normalizeFormValues(form));
+      const saved = await tempCompaniesClient.saveCompany(buildSavePayload(form));
       setIsCreatingNew(false);
       setForm(normalizeFormValues({ ...EMPTY_FORM, ...(saved || {}) }));
       await loadItems(query);
