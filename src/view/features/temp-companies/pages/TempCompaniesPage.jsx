@@ -134,6 +134,18 @@ const multiplyThousandsStorage = (value) => {
   return normalizeNumericValue(String(scaled));
 };
 
+const divideThousandsDisplay = (value) => {
+  const normalized = normalizeNumericValue(value);
+  if (!normalized) return '';
+  const [integerPart = '', decimalPart = ''] = normalized.split('.');
+  const digitsOnly = `${integerPart}${decimalPart}`.replace(/^0+(?=\d)/, '') || '0';
+  const decimalPlaces = decimalPart.length;
+  const number = Number(digitsOnly);
+  if (!Number.isFinite(number)) return normalized;
+  const scaled = number / (10 ** decimalPlaces) / 1000;
+  return normalizeNumericValue(String(scaled));
+};
+
 const normalizeFormValues = (payload = {}) => {
   const next = { ...payload };
   next.industry = normalizeIndustry(next.industry);
@@ -189,6 +201,7 @@ export default function TempCompaniesPage() {
   const [form, setForm] = React.useState(EMPTY_FORM);
   const [isCreatingNew, setIsCreatingNew] = React.useState(false);
   const [defaultIndustry, setDefaultIndustry] = React.useState(() => getRouteIndustry());
+  const [focusedField, setFocusedField] = React.useState('');
 
   React.useEffect(() => {
     document.title = '임시 업체 관리';
@@ -232,6 +245,7 @@ export default function TempCompaniesPage() {
   const handleSelect = React.useCallback((item) => {
     setForm(normalizeFormValues({ ...EMPTY_FORM, ...(item || {}) }));
     setIsCreatingNew(false);
+    setFocusedField('');
     setStatus('');
     setError('');
   }, []);
@@ -254,6 +268,7 @@ export default function TempCompaniesPage() {
   const handleReset = React.useCallback(() => {
     setForm({ ...EMPTY_FORM, industry: defaultIndustry || '' });
     setIsCreatingNew(true);
+    setFocusedField('');
     setStatus('');
     setError('');
   }, [defaultIndustry]);
@@ -462,8 +477,22 @@ export default function TempCompaniesPage() {
                       />
                     ) : (
                       <input
-                        value={COMMA_NUMERIC_FIELDS.has(key) ? formatNumericValue(form[key]) : (form[key] || '')}
+                        value={
+                          COMMA_NUMERIC_FIELDS.has(key)
+                            ? formatNumericValue(
+                              THOUSAND_UNIT_FIELDS.has(key) && focusedField === key
+                                ? divideThousandsDisplay(form[key])
+                                : form[key]
+                            )
+                            : (form[key] || '')
+                        }
                         onChange={(e) => handleChange(key, e.target.value)}
+                        onFocus={() => {
+                          if (THOUSAND_UNIT_FIELDS.has(key)) setFocusedField(key);
+                        }}
+                        onBlur={() => {
+                          if (THOUSAND_UNIT_FIELDS.has(key) && focusedField === key) setFocusedField('');
+                        }}
                         placeholder={label}
                       />
                     )}
