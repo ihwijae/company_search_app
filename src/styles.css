@@ -2512,7 +2512,7 @@ button.primary:hover { background: var(--accent-2); }
   border-radius: 8px;
   border: 1px solid #d1d5db;
   padding: 6px 8px;
-  text-align: right;
+  text-align: center;
   font-size: 13px;
 }
 
@@ -2619,11 +2619,11 @@ button.primary:hover { background: var(--accent-2); }
 }
 
 .excel-inline-edit-display-share {
-  text-align: right;
+  text-align: center;
 }
 
 .excel-share-input {
-  text-align: right;
+  text-align: center;
 }
 
 .excel-share-cell.share-fractional {
