@@ -3203,7 +3203,7 @@ export default function AgreementBoardWindow({
       groupShares,
       groupApprovals,
       participantMap,
-      useLeaderBizNoForMembers: isLHOwner,
+      lhLeaderBizNoFormat: isLHOwner,
     });
     if (!text) {
       showHeaderAlert('아이건설넷 메모로 만들 협정 내용이 없습니다.');
