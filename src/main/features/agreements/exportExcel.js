@@ -188,10 +188,27 @@ const RED_FILL = {
   fgColor: { argb: 'FFFF0000' },
   bgColor: { indexed: 64 },
 };
+const APPROVAL_INFO_FILL = {
+  type: 'pattern',
+  pattern: 'solid',
+  fgColor: { argb: 'FF00B0F0' },
+  bgColor: { indexed: 64 },
+};
 const CLEAR_FILL = { type: 'pattern', pattern: 'none' };
 const AWARD_HISTORY_FONT = {
   color: { argb: 'FFFF0000' },
   bold: true,
+};
+
+const getApprovalFill = (value) => {
+  const approval = String(value || '').trim();
+  if (approval === '알림' || approval === '추가' || approval === '정정') {
+    return cloneFill(APPROVAL_INFO_FILL);
+  }
+  if (approval === '취소' || approval === '취솔') {
+    return cloneFill(RED_FILL);
+  }
+  return null;
 };
 
 async function exportAgreementExcel({
@@ -383,11 +400,12 @@ async function exportAgreementExcel({
       const approvalCell = worksheet.getCell(`${approvalColumn}${rowIndex}`);
       const approvalValue = group?.approval ? String(group.approval) : '';
       approvalCell.value = approvalValue || null;
-      if (approvalValue === '취소') {
+      const approvalFill = getApprovalFill(approvalValue);
+      if (approvalFill) {
         const baseStyle = approvalCell.style ? { ...approvalCell.style } : {};
         approvalCell.style = {
           ...baseStyle,
-          fill: cloneFill(RED_FILL),
+          fill: approvalFill,
         };
       }
     }

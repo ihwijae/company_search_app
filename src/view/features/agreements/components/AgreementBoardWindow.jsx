@@ -5448,9 +5448,10 @@ export default function AgreementBoardWindow({
         <td className={`excel-cell order-cell${scoreState ? ` score-${scoreState}` : ''}${collapsedColumns.order ? ' collapsed-stub-cell order-stub' : ''}`}>
           {collapsedColumns.order ? '' : group.id}
         </td>
-        <td className={`excel-cell approval-cell${getApprovalCellClassName(approvalValue)}${collapsedColumns.approval ? ' collapsed-stub-cell approval-stub' : ''}`}>
+        <td className={`excel-cell approval-cell${collapsedColumns.approval ? ' collapsed-stub-cell approval-stub' : ''}`}>
           {!collapsedColumns.approval && (
             <select
+              className={getApprovalCellClassName(approvalValue).trim()}
               value={approvalValue}
               onChange={(event) => handleApprovalChange(groupIndex, event.target.value)}
             >

@@ -74,19 +74,14 @@ export function buildGroupSummaryMetrics({
           if (!member.isDutyRegion || !Number.isFinite(rawShare)) return acc;
           return acc + Math.max(rawShare, 0);
         }, 0);
-        const coefficientRaw = Number(regionalContributionAdjustmentCoefficient);
-        const coefficient = Number.isFinite(coefficientRaw) && coefficientRaw > 0 ? coefficientRaw : 1;
-        const thresholdShare = Number.isFinite(Number(regionalContributionTargetShare)) && Number(regionalContributionTargetShare) > 0
-          ? Number(regionalContributionTargetShare)
-          : 20;
-        const maxScore = Number.isFinite(Number(regionalContributionMaxScore)) && Number(regionalContributionMaxScore) > 0
-          ? Number(regionalContributionMaxScore)
-          : 0.3;
-        if (dutyRegionShare >= thresholdShare) {
-          aggregatedCredibility = maxScore;
+        if (dutyRegionShare >= 40) {
+          aggregatedCredibility = 0.3;
+        } else if (dutyRegionShare >= 35) {
+          aggregatedCredibility = 0.2;
+        } else if (dutyRegionShare > 30) {
+          aggregatedCredibility = 0.1;
         } else {
-          const rawScore = maxScore * (dutyRegionShare / (thresholdShare * coefficient));
-          aggregatedCredibility = Math.min(maxScore, Math.max(0, rawScore));
+          aggregatedCredibility = 0;
         }
       }
     } else if (credibilityEnabled) {

@@ -1699,20 +1699,12 @@ button.primary:hover { background: var(--accent-2); }
   width: 16px;
   height: 16px;
 }
-.excel-cell.approval-cell.approval-info {
-  background: #2563eb;
-  color: #ffffff;
-}
-.excel-cell.approval-cell.approval-info select {
+.approval-cell select.approval-info {
   background: #2563eb;
   color: #ffffff;
   border-color: #1d4ed8;
 }
-.excel-cell.approval-cell.approval-cancel {
-  background: #ff0000;
-  color: #ffffff;
-}
-.excel-cell.approval-cell.approval-cancel select {
+.approval-cell select.approval-cancel {
   background: #ff0000;
   color: #ffffff;
   border-color: #b91c1c;
