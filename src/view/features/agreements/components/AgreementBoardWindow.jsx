@@ -3197,6 +3197,7 @@ export default function AgreementBoardWindow({
 
   const handleGenerateInconMemo = React.useCallback(async () => {
     const text = buildInconMemoText({
+      ownerId,
       fileType,
       dutyRegions,
       groupAssignments,
@@ -3216,7 +3217,7 @@ export default function AgreementBoardWindow({
       console.error('Failed to copy incon memo: ', err);
       showHeaderAlert('클립보드 복사에 실패했습니다.');
     }
-  }, [dutyRegions, fileType, groupAssignments, groupApprovals, groupShares, participantMap, showHeaderAlert]);
+  }, [ownerId, dutyRegions, fileType, groupAssignments, groupApprovals, groupShares, participantMap, showHeaderAlert]);
 
   const resolveCandidateBySlot = React.useCallback((groupIndex, slotIndex) => {
     const uid = groupAssignments[groupIndex]?.[slotIndex];
