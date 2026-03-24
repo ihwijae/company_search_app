@@ -42,10 +42,31 @@ const getCandidateName = (candidate) => (
 
 const getCandidateBizNo = (candidate) => (
   candidate?.bizNo
+  || candidate?.biz_no
+  || candidate?.bizno
+  || candidate?.bizNumber
+  || candidate?.biznumber
+  || candidate?.businessNumber
   || candidate?.['사업자번호']
   || candidate?.['사업자 번호']
+  || candidate?.['사업자등록번호']
+  || candidate?.['사업자등록 번호']
+  || candidate?.['법인등록번호']
+  || candidate?.['법인등록 번호']
+  || candidate?.['법인번호']
+  || candidate?.snapshot?.bizNo
+  || candidate?.snapshot?.biz_no
+  || candidate?.snapshot?.bizno
+  || candidate?.snapshot?.bizNumber
+  || candidate?.snapshot?.biznumber
+  || candidate?.snapshot?.businessNumber
   || candidate?.snapshot?.['사업자번호']
   || candidate?.snapshot?.['사업자 번호']
+  || candidate?.snapshot?.['사업자등록번호']
+  || candidate?.snapshot?.['사업자등록 번호']
+  || candidate?.snapshot?.['법인등록번호']
+  || candidate?.snapshot?.['법인등록 번호']
+  || candidate?.snapshot?.['법인번호']
   || ''
 );
 
