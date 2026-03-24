@@ -99,7 +99,9 @@ const buildGroupBlock = (members, useLeaderBizNoForMembers = false) => {
     const name = String(member.name || '').trim();
     const shareText = getShareText(member.share);
     if (index === 0) return `${name} ${shareText}%`;
-    const bizSource = useLeaderBizNoForMembers ? leaderBizNo : member.bizNo;
+    const bizSource = useLeaderBizNoForMembers
+      ? (leaderBizNo || member.bizNo)
+      : member.bizNo;
     const bizNo = formatBizNo(bizSource);
     return bizNo ? `${name} ${shareText}% [${bizNo}]` : `${name} ${shareText}%`;
   }).join('\n');
