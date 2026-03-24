@@ -4527,11 +4527,9 @@ export default function AgreementBoardWindow({
     const candidate = resolveCandidateBySlot(groupIndex, slotIndex);
     const possibleShareLimit = getPossibleShareLimit(candidate);
     const numeric = sanitized === '' ? null : toNumber(sanitized);
-    const clampedNumeric = (numeric != null && possibleShareLimit != null)
-      ? Math.min(numeric, possibleShareLimit)
-      : numeric;
-    const nextValue = clampedNumeric != null
-      ? (possibleShareLimit != null ? formatPossibleShareInputValue(clampedNumeric) : formatShareDecimal(clampedNumeric))
+    const exceedsLimit = numeric != null && possibleShareLimit != null && numeric > possibleShareLimit;
+    const nextValue = exceedsLimit
+      ? formatPossibleShareInputValue(possibleShareLimit)
       : sanitized;
     setGroupShares((prev) => {
       const next = prev.map((row) => row.slice());
