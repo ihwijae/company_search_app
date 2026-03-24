@@ -61,6 +61,12 @@ function isLH(owner) {
   return /주택공사|LH/.test(s);
 }
 
+function isExpressway(owner) {
+  const s = String(owner || '').trim();
+  if (!s) return false;
+  return /한국도로공사/.test(s) || /^EX$/i.test(s);
+}
+
 function isPPS(owner) {
   const s = String(owner || '');
   return /조달청|PPS/.test(s);
@@ -91,7 +97,7 @@ export function generateOne(item) {
   const owner = String(item.owner || '').trim();
   const ownerDisplayName = owner === 'LH'
     ? '한국토지주택공사'
-    : (isKRail(owner) ? '국가철도공단' : owner);
+    : (isKRail(owner) ? '국가철도공단' : (isExpressway(owner) ? '한국도로공사' : owner));
   const mainLine = [String(item.noticeNo || '').trim(), String(item.title || '').trim()]
     .filter(Boolean)
     .join(' ')

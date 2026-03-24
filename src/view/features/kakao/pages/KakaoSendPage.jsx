@@ -23,7 +23,7 @@ const MENU_ROUTES = {
 };
 
 const TEAM_LEAD_BUCKET_ID = 'team-lead';
-const TEAM_LEAD_EXCLUDE = ['윤명숙', '이동훈', '김희준', '김대열', '김기성'];
+const TEAM_LEAD_EXCLUDE = ['윤명숙', '이동훈', '김희준', '김대열', '김기성', '박성균'];
 const BIZ_FIELDS = ['사업자번호', 'bizNo', '사업자 번호'];
 const NAME_FIELDS = ['업체명', '회사명', 'name', '검색된 회사'];
 const REPRESENTATIVE_FIELDS = ['대표자', '대표자명'];

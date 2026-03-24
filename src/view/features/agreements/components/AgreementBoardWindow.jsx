@@ -159,6 +159,13 @@ const COLUMN_WIDTHS = {
   sipyungCell: 90,
   sipyungSummary: 120,
 };
+
+const getApprovalCellClassName = (value) => {
+  const approval = String(value || '').trim();
+  if (approval === '알림' || approval === '추가' || approval === '정정') return ' approval-info';
+  if (approval === '취소' || approval === '취솔') return ' approval-cancel';
+  return '';
+};
 const COLLAPSED_COLUMN_WIDTHS = {
   select: 24,
   order: 26,
@@ -5441,7 +5448,7 @@ export default function AgreementBoardWindow({
         <td className={`excel-cell order-cell${scoreState ? ` score-${scoreState}` : ''}${collapsedColumns.order ? ' collapsed-stub-cell order-stub' : ''}`}>
           {collapsedColumns.order ? '' : group.id}
         </td>
-        <td className={`excel-cell approval-cell${approvalValue === '취소' ? ' approval-cancel' : ''}${collapsedColumns.approval ? ' collapsed-stub-cell approval-stub' : ''}`}>
+        <td className={`excel-cell approval-cell${getApprovalCellClassName(approvalValue)}${collapsedColumns.approval ? ' collapsed-stub-cell approval-stub' : ''}`}>
           {!collapsedColumns.approval && (
             <select
               value={approvalValue}
