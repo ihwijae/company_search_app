@@ -3233,11 +3233,16 @@ export default function AgreementBoardWindow({
     return numeric;
   }, [possibleShareBase, getCandidateSipyungAmount]);
 
+  const formatPossibleShareInputValue = React.useCallback((value) => {
+    const formatted = formatPossibleShareValue(value, { mode: isLh100To300 ? 'truncate' : 'round' });
+    return formatted || '';
+  }, [isLh100To300]);
+
   const getDefaultShareValue = React.useCallback((candidate) => {
     const possibleShareLimit = getPossibleShareLimit(candidate);
     if (possibleShareLimit == null) return '';
-    return formatShareDecimal(possibleShareLimit);
-  }, [getPossibleShareLimit]);
+    return formatPossibleShareInputValue(possibleShareLimit);
+  }, [getPossibleShareLimit, formatPossibleShareInputValue]);
 
   const {
     boardSearchOpen,
@@ -4525,7 +4530,9 @@ export default function AgreementBoardWindow({
     const clampedNumeric = (numeric != null && possibleShareLimit != null)
       ? Math.min(numeric, possibleShareLimit)
       : numeric;
-    const nextValue = clampedNumeric != null ? formatShareDecimal(clampedNumeric) : sanitized;
+    const nextValue = clampedNumeric != null
+      ? (possibleShareLimit != null ? formatPossibleShareInputValue(clampedNumeric) : formatShareDecimal(clampedNumeric))
+      : sanitized;
     setGroupShares((prev) => {
       const next = prev.map((row) => row.slice());
       while (next.length <= groupIndex) next.push([]);
