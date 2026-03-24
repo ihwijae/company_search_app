@@ -21,8 +21,6 @@ const formatBizNo = (value) => {
   return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
 };
 
-const isLHOwner = (ownerId) => /^(LH|한국토지주택공사)$/i.test(String(ownerId || '').trim());
-
 const getShareText = (value) => {
   const text = String(value ?? '').trim();
   if (!text) return '0';
@@ -91,7 +89,7 @@ const isSoloGroup = (members) => {
   return Number.isFinite(share) && share === 100;
 };
 
-const buildGroupBlock = (members, ownerId = '') => {
+const buildGroupBlock = (members, useLeaderBizNoForMembers = false) => {
   if (!Array.isArray(members) || members.length === 0) return '';
   if (isSoloGroup(members)) {
     return `${getSoloDisplayName(members[0].name)} 단독`;
@@ -101,7 +99,7 @@ const buildGroupBlock = (members, ownerId = '') => {
     const name = String(member.name || '').trim();
     const shareText = getShareText(member.share);
     if (index === 0) return `${name} ${shareText}%`;
-    const bizSource = isLHOwner(ownerId) ? leaderBizNo : member.bizNo;
+    const bizSource = useLeaderBizNoForMembers ? leaderBizNo : member.bizNo;
     const bizNo = formatBizNo(bizSource);
     return bizNo ? `${name} ${shareText}% [${bizNo}]` : `${name} ${shareText}%`;
   }).join('\n');
@@ -117,13 +115,13 @@ const classifyGroup = (members) => {
 };
 
 export const buildInconMemoText = ({
-  ownerId = '',
   fileType = '',
   dutyRegions = [],
   groupAssignments = [],
   groupShares = [],
   groupApprovals = [],
   participantMap,
+  useLeaderBizNoForMembers = false,
 }) => {
   const topLines = [];
   const upperBlocks = [];
@@ -156,7 +154,7 @@ export const buildInconMemoText = ({
       return;
     }
 
-    const block = buildGroupBlock(members, ownerId);
+    const block = buildGroupBlock(members, useLeaderBizNoForMembers);
     if (!block) return;
 
     if (section === 'upper') {

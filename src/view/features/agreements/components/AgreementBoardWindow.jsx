@@ -3197,13 +3197,13 @@ export default function AgreementBoardWindow({
 
   const handleGenerateInconMemo = React.useCallback(async () => {
     const text = buildInconMemoText({
-      ownerId,
       fileType,
       dutyRegions,
       groupAssignments,
       groupShares,
       groupApprovals,
       participantMap,
+      useLeaderBizNoForMembers: isLHOwner,
     });
     if (!text) {
       showHeaderAlert('아이건설넷 메모로 만들 협정 내용이 없습니다.');
@@ -3217,7 +3217,7 @@ export default function AgreementBoardWindow({
       console.error('Failed to copy incon memo: ', err);
       showHeaderAlert('클립보드 복사에 실패했습니다.');
     }
-  }, [ownerId, dutyRegions, fileType, groupAssignments, groupApprovals, groupShares, participantMap, showHeaderAlert]);
+  }, [isLHOwner, dutyRegions, fileType, groupAssignments, groupApprovals, groupShares, participantMap, showHeaderAlert]);
 
   const resolveCandidateBySlot = React.useCallback((groupIndex, slotIndex) => {
     const uid = groupAssignments[groupIndex]?.[slotIndex];
