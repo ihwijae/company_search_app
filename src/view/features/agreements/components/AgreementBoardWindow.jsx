@@ -3225,6 +3225,20 @@ export default function AgreementBoardWindow({
     return entry?.candidate || null;
   }, [groupAssignments, participantMap]);
 
+  const getPossibleShareLimit = React.useCallback((candidate) => {
+    if (!candidate) return null;
+    const ratio = calculatePossibleShareRatio(possibleShareBase, getCandidateSipyungAmount(candidate));
+    const numeric = Number(ratio);
+    if (!Number.isFinite(numeric) || numeric <= 0 || numeric >= 100) return null;
+    return numeric;
+  }, [possibleShareBase, getCandidateSipyungAmount]);
+
+  const getDefaultShareValue = React.useCallback((candidate) => {
+    const possibleShareLimit = getPossibleShareLimit(candidate);
+    if (possibleShareLimit == null) return '';
+    return formatShareDecimal(possibleShareLimit);
+  }, [getPossibleShareLimit]);
+
   const {
     boardSearchOpen,
     boardSearchField,
@@ -3833,6 +3847,12 @@ export default function AgreementBoardWindow({
       return;
     }
     const prevAssignments = prevAssignmentsRef.current || [];
+    const prevAssignedIds = new Set();
+    prevAssignments.forEach((group) => {
+      group.forEach((id) => {
+        if (id) prevAssignedIds.add(id);
+      });
+    });
     setGroupShares((prevShares) => {
       const shareMap = new Map();
       prevAssignments.forEach((group, gIdx) => {
@@ -3844,7 +3864,14 @@ export default function AgreementBoardWindow({
         });
       });
       return groupAssignments.map((group) => (
-        group.map((id) => (id ? (shareMap.get(id) ?? '') : ''))
+        group.map((id) => {
+          if (!id) return '';
+          const preserved = shareMap.get(id);
+          if (preserved !== undefined && preserved !== null && preserved !== '') return preserved;
+          if (prevAssignedIds.has(id)) return preserved ?? '';
+          const candidate = participantMap.get(id)?.candidate;
+          return getDefaultShareValue(candidate);
+        })
       ));
     });
     setGroupShareRawInputs((prevRaw) => {
@@ -3858,7 +3885,14 @@ export default function AgreementBoardWindow({
         });
       });
       return groupAssignments.map((group) => (
-        group.map((id) => (id ? (rawMap.get(id) ?? '') : ''))
+        group.map((id) => {
+          if (!id) return '';
+          const preserved = rawMap.get(id);
+          if (preserved !== undefined && preserved !== null && preserved !== '') return preserved;
+          if (prevAssignedIds.has(id)) return preserved ?? '';
+          const candidate = participantMap.get(id)?.candidate;
+          return getDefaultShareValue(candidate);
+        })
       ));
     });
     setGroupCredibility((prevCred) => {
@@ -3890,7 +3924,7 @@ export default function AgreementBoardWindow({
       ));
     });
     prevAssignmentsRef.current = groupAssignments;
-  }, [groupAssignments]);
+  }, [groupAssignments, participantMap, getDefaultShareValue]);
 
   React.useEffect(() => {
     if (!open) {
@@ -4485,18 +4519,25 @@ export default function AgreementBoardWindow({
     const original = rawValue ?? '';
     const sanitized = original.replace(/[^0-9.]/g, '');
     if ((sanitized.match(/\./g) || []).length > 1) return;
+    const candidate = resolveCandidateBySlot(groupIndex, slotIndex);
+    const possibleShareLimit = getPossibleShareLimit(candidate);
+    const numeric = sanitized === '' ? null : toNumber(sanitized);
+    const clampedNumeric = (numeric != null && possibleShareLimit != null)
+      ? Math.min(numeric, possibleShareLimit)
+      : numeric;
+    const nextValue = clampedNumeric != null ? formatShareDecimal(clampedNumeric) : sanitized;
     setGroupShares((prev) => {
       const next = prev.map((row) => row.slice());
       while (next.length <= groupIndex) next.push([]);
       while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
-      next[groupIndex][slotIndex] = sanitized;
+      next[groupIndex][slotIndex] = nextValue;
       return next;
     });
     setGroupShareRawInputs((prev) => {
       const next = prev.map((row) => row.slice());
       while (next.length <= groupIndex) next.push([]);
       while (next[groupIndex].length <= slotIndex) next[groupIndex].push('');
-      next[groupIndex][slotIndex] = original;
+      next[groupIndex][slotIndex] = nextValue;
       return next;
     });
   };
@@ -4534,10 +4575,11 @@ export default function AgreementBoardWindow({
     const cleaned = String(original).replace(/[^0-9,.-]/g, '');
     const trimmed = cleaned.trim();
     const parsed = toNumber(trimmed);
+    const formattedAmountInput = trimmed && parsed != null ? formatAmount(parsed) : cleaned;
     const managementCap = Number.isFinite(managementMax) ? managementMax : MANAGEMENT_SCORE_MAX;
     if (kind === 'performance') {
       if (trimmed) {
-        candidate._agreementPerformanceInput = cleaned;
+        candidate._agreementPerformanceInput = formattedAmountInput;
         candidate._agreementPerformanceCleared = false;
         if (parsed != null) {
           candidate._agreementPerformance5y = parsed;
@@ -4545,7 +4587,7 @@ export default function AgreementBoardWindow({
           delete candidate._agreementPerformance5y;
         }
         updateCandidateOverride(candidate, {
-          _agreementPerformanceInput: cleaned,
+          _agreementPerformanceInput: formattedAmountInput,
           _agreementPerformanceCleared: false,
           _agreementPerformance5y: parsed != null ? parsed : null,
           _agreementPerformanceScore: undefined,
@@ -4570,7 +4612,7 @@ export default function AgreementBoardWindow({
       delete candidate._agreementPerformanceCapVersion;
     } else if (kind === 'sipyung') {
       if (trimmed) {
-        candidate._agreementSipyungInput = cleaned;
+        candidate._agreementSipyungInput = formattedAmountInput;
         candidate._agreementSipyungCleared = false;
         if (parsed != null) {
           candidate._agreementSipyungAmount = parsed;
@@ -4578,7 +4620,7 @@ export default function AgreementBoardWindow({
           delete candidate._agreementSipyungAmount;
         }
         updateCandidateOverride(candidate, {
-          _agreementSipyungInput: cleaned,
+          _agreementSipyungInput: formattedAmountInput,
           _agreementSipyungCleared: false,
           _agreementSipyungAmount: parsed != null ? parsed : null,
         });
