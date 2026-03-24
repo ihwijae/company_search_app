@@ -7,7 +7,7 @@ export function buildGroupSummaryMetrics({
   technicianEditable = false,
   getTechnicianValue,
   credibilityEnabled = false,
-  credibilityMode = 'manual',
+  credibilityMode = 'weighted-credibility',
   regionalContributionTargetShare = 20,
   regionalContributionMaxScore = 0.3,
   regionalContributionAdjustmentCoefficient = 1,

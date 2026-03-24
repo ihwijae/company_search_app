@@ -3928,7 +3928,7 @@ export default function AgreementBoardWindow({
       technicianEditable,
       getTechnicianValue,
       credibilityEnabled,
-      credibilityMode: isLh100To300 ? 'regional-share' : 'manual',
+      credibilityMode: isLh100To300 ? 'regional-share' : 'weighted-credibility',
       isDutyRegionCompany,
       getCredibilityValue: getEffectiveCredibilityValue,
       getCandidateSipyungAmount,
@@ -5372,6 +5372,9 @@ export default function AgreementBoardWindow({
     const credibilityFull = showMiscScore
       && toNumber(summaryInfo?.credibilityScore) != null
       && toNumber(summaryInfo?.credibilityScore) >= 0.3 - 0.0001;
+    const credibilityWarn = showMiscScore
+      && toNumber(summaryInfo?.credibilityScore) != null
+      && toNumber(summaryInfo?.credibilityScore) < 0.3 - 0.0001;
     const qualityPointsDisplay = isLHOwner
       ? (qualityPoints != null ? formatScore(qualityPoints, resolveSummaryDigits('quality')) : '-')
       : null;
@@ -5481,8 +5484,9 @@ export default function AgreementBoardWindow({
           : slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan)))}
         {showCredibilityBeforeStatus && (
           <td
-            className={`excel-cell total-cell credibility-total-cell${credibilityFull ? ' technician-good' : ''}`}
+            className={`excel-cell total-cell credibility-total-cell${credibilityFull ? ' technician-good' : ''}${credibilityWarn ? ' technician-warn' : ''}`}
             rowSpan={rightRowSpan}
+            style={credibilityWarn ? { color: '#b91c1c', fontWeight: 800 } : undefined}
           >
             {isLh100To300 ? (
               <>
@@ -5556,9 +5560,9 @@ export default function AgreementBoardWindow({
           : slotMetas.map((meta) => renderCredibilityCell(meta, rightRowSpan)))}
         {showCredibilityAfterQuality && (
           <td
-            className={`excel-cell total-cell credibility-total-cell${credibilityFull ? ' technician-good' : ''}`}
+            className={`excel-cell total-cell credibility-total-cell${credibilityFull ? ' technician-good' : ''}${credibilityWarn ? ' technician-warn' : ''}`}
             rowSpan={rightRowSpan}
-            style={credibilityFull ? { color: '#15803d', fontWeight: 800 } : undefined}
+            style={credibilityFull ? { color: '#15803d', fontWeight: 800 } : (credibilityWarn ? { color: '#b91c1c', fontWeight: 800 } : undefined)}
           >
             {isLh100To300 ? (
               <>
