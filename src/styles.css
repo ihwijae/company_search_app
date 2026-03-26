@@ -33,16 +33,35 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
 .app-header__bar-inner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   height: 100%;
-  padding: 0;
+  padding: 0 0 0 12px;
 }
 .app-header__left {
   display: flex;
   align-items: center;
-  flex: 1 1 auto;
+  gap: 14px;
   min-width: 0;
-  overflow: hidden;
+}
+.app-header__drag-space {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 40px;
+}
+.app-header__menu-button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #d0d5dd;
+  background: #ffffff;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 600;
+}
+.app-header__menu-button.is-active {
+  background: #e8eefc;
+  border-color: #b8c6ea;
 }
 .app-header__window-controls {
   display: flex;
@@ -65,33 +84,36 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
   background: #ef4444;
   color: #ffffff;
 }
+.app-header__panel {
+  background: rgba(245, 246, 250, 0.98);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+  padding: 10px 12px 12px;
+}
 .app-menu {
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 100%;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  padding: 0 10px;
 }
 .app-menu__item {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: 38px;
+  padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
+  border: 1px solid #d8dee9;
+  background: #ffffff;
   color: #334155;
-  font-size: 13px;
 }
 .app-menu__item:hover {
   background: #eef3ff;
-  border-color: #dde7fb;
+  border-color: #c7d4f5;
 }
 .app-menu__item.active {
   background: #dbe7ff;
@@ -108,7 +130,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
 }
 .app-menu__label {
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 .app-menu .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(148, 163, 184, 0.55); }
