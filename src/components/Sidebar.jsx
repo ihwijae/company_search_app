@@ -99,8 +99,8 @@ export default function Sidebar({ active, onSelect, fileStatuses }) {
   return (
     <header className={`app-header ${menuOpen ? 'is-menu-open' : ''}`}>
       <div className="app-header__bar title-drag">
-        <div className="app-header__bar-inner no-drag">
-          <div className="app-header__left">
+        <div className="app-header__bar-inner">
+          <div className="app-header__left no-drag">
             <button
               type="button"
               className={`app-header__menu-button ${menuOpen ? 'is-active' : ''}`}
@@ -112,7 +112,8 @@ export default function Sidebar({ active, onSelect, fileStatuses }) {
             </button>
             <span className="app-header__title">협정보조</span>
           </div>
-          <div className="app-header__window-controls">
+          <div className="app-header__drag-space" aria-hidden="true" />
+          <div className="app-header__window-controls no-drag">
             <button type="button" className="app-window-button" onClick={() => controls?.minimize?.()} aria-label="최소화">─</button>
             <button type="button" className="app-window-button" onClick={() => controls?.maximizeToggle?.()} aria-label={isMaximized ? '복원' : '최대화'}>
               {isMaximized ? '❐' : '□'}

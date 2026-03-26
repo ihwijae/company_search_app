@@ -44,6 +44,11 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
   gap: 10px;
   min-width: 0;
 }
+.app-header__drag-space {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 40px;
+}
 .app-header__menu-button {
   height: 28px;
   padding: 0 12px;
@@ -67,7 +72,6 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
 .app-header__window-controls {
   display: flex;
   align-self: stretch;
-  margin-left: auto;
 }
 .app-window-button {
   width: 46px;
