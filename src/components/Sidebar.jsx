@@ -10,7 +10,6 @@ import { openTempCompaniesWindow } from '../utils/tempCompaniesWindow.js';
 
 export default function Sidebar({ active, onSelect, fileStatuses }) {
   const anyLoaded = !!(fileStatuses?.eung || fileStatuses?.tongsin || fileStatuses?.sobang);
-  const [menuOpen, setMenuOpen] = React.useState(false);
   const [isMaximized, setIsMaximized] = React.useState(false);
 
   React.useEffect(() => {
@@ -33,7 +32,6 @@ export default function Sidebar({ active, onSelect, fileStatuses }) {
   }, []);
 
   const handleSelect = (key) => {
-    setMenuOpen(false);
     if (key === 'agreements' && typeof window !== 'undefined') {
       const opener = window.__openAgreementBoard;
       if (typeof opener === 'function') {
@@ -97,20 +95,25 @@ export default function Sidebar({ active, onSelect, fileStatuses }) {
   const controls = window.electronAPI?.windowControls;
 
   return (
-    <header className={`app-header ${menuOpen ? 'is-menu-open' : ''}`}>
+    <header className="app-header">
       <div className="app-header__bar title-drag">
         <div className="app-header__bar-inner">
           <div className="app-header__left no-drag">
-            <button
-              type="button"
-              className={`app-header__menu-button ${menuOpen ? 'is-active' : ''}`}
-              onClick={() => setMenuOpen((prev) => !prev)}
-              aria-expanded={menuOpen}
-              aria-controls="app-global-menu"
-            >
-              메뉴
-            </button>
             <span className="app-header__title">협정보조</span>
+            <nav className="app-menu" aria-label="전역 메뉴">
+              {navItems.map(({ key, label, icon }) => (
+                <button
+                  type="button"
+                  key={key}
+                  className={`app-menu__item ${active === key ? 'active' : ''}`}
+                  onClick={() => handleSelect(key)}
+                >
+                  <span className="app-menu__icon">{icon}</span>
+                  <span className="app-menu__label">{label}</span>
+                  {key === 'upload' && <span className={`dot ${anyLoaded ? 'on' : ''}`} />}
+                </button>
+              ))}
+            </nav>
           </div>
           <div className="app-header__drag-space" aria-hidden="true" />
           <div className="app-header__window-controls no-drag">
@@ -122,25 +125,6 @@ export default function Sidebar({ active, onSelect, fileStatuses }) {
           </div>
         </div>
       </div>
-
-      {menuOpen && (
-        <div className="app-header__panel no-drag" id="app-global-menu">
-          <nav className="app-menu" aria-label="전역 메뉴">
-            {navItems.map(({ key, label, icon }) => (
-              <button
-                type="button"
-                key={key}
-                className={`app-menu__item ${active === key ? 'active' : ''}`}
-                onClick={() => handleSelect(key)}
-              >
-                <span className="app-menu__icon">{icon}</span>
-                <span className="app-menu__label">{label}</span>
-                {key === 'upload' && <span className={`dot ${anyLoaded ? 'on' : ''}`} />}
-              </button>
-            ))}
-          </nav>
-        </div>
-      )}
     </header>
   );
 }
