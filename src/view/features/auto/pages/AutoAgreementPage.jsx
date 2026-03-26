@@ -662,8 +662,6 @@ export default function AutoAgreementPage() {
       <div className="app-shell">
         <Sidebar active="auto-agreement" onSelect={handleMenuSelect} collapsed={true} />
         <div className="main">
-          <div className="title-drag" />
-          <div className="topbar" />
           <div className="stage">
             <div className="content auto-agreement-layout">
             <div className="panel auto-panel">

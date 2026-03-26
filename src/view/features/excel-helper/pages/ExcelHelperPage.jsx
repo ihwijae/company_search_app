@@ -1756,8 +1756,6 @@ export default function ExcelHelperPage() {
     <div className="app-shell">
       <Sidebar active="excel-helper" onSelect={handleSidebarSelect} fileStatuses={{}} collapsed={true} />
       <div className="main">
-        <div className="title-drag" />
-        <div className="topbar" />
         <div className="stage excel-helper-stage">
           <div className="excel-helper-shell">
             <h1 className="excel-helper-title">엑셀 협정 도우미</h1>

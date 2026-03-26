@@ -658,8 +658,6 @@ export default function SettingsPage() {
         collapsed={true}
       />
       <div className="main">
-        <div className="title-drag" />
-        <div className="topbar" />
         <div className="stage">
           <div className="content">
             <div className="panel" style={{ gridColumn: '1 / -1' }}>

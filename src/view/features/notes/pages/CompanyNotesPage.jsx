@@ -590,8 +590,6 @@ export default function CompanyNotesPage() {
     <div className="app-shell">
       <Sidebar active={activeMenu} onSelect={handleMenuSelect} collapsed={true} />
       <div className="main">
-        <div className="title-drag" />
-        <div className="topbar" />
         <div className="stage company-notes-stage">
           <div className="company-notes-shell">
             <div className="company-notes-header">

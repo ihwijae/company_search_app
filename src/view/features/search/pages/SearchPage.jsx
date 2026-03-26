@@ -1200,8 +1200,6 @@ function App() {
         collapsed={true}
       />
       <div className="main">
-        <div className="title-drag" />
-        <div className="topbar" />
         <div className="stage">
           <div className="content">
           <div className="panel panel-filters">

@@ -746,8 +746,6 @@ export default function RecordsPage() {
         collapsed={true}
       />
       <div className="main">
-        <div className="title-drag" />
-        <div className="topbar" />
         <div className="stage records-stage">
           <div className="records-layout">
             <aside className="records-panel records-panel--categories">

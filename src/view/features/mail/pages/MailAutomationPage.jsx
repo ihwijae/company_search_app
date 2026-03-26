@@ -1265,8 +1265,6 @@ function MailAutomationPageInner() {
     <div className="app-shell">
       <Sidebar active={activeMenu} onSelect={handleMenuSelect} collapsed={true} />
       <div className="main">
-        <div className="title-drag" />
-        <div className="topbar" />
         <div className="stage mail-stage">
           <div className="mail-layout">
             <section className="mail-panel mail-panel--config">

@@ -48,8 +48,6 @@ export default function AgreementBoardPage() {
     <div className="app-shell">
       <Sidebar active="agreements" onSelect={handleMenuSelect} collapsed={true} />
       <div className="main">
-        <div className="title-drag" />
-        <div className="topbar" />
         <div className="stage">
           <div className="content">
             <p>협정보드는 새 창에서 열립니다.</p>

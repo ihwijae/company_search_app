@@ -1036,8 +1036,6 @@ export default function BidResultPage() {
     <div className="app-shell">
       <Sidebar active="bid-result" onSelect={handleSidebarSelect} fileStatuses={{}} collapsed={true} />
       <div className="main">
-        <div className="title-drag" />
-        <div className="topbar" />
         <div className="stage excel-helper-stage">
           <div className="excel-helper-shell">
             <h1 className="excel-helper-title">개찰결과 도우미</h1>
