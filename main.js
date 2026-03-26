@@ -1255,15 +1255,11 @@ function createWindow() {
     y: bounds.y,
     width: bounds.width,
     height: bounds.height,
-    backgroundColor: '#1f2937',
+    backgroundColor: '#f5f6fa',
     title: APP_DISPLAY_NAME,
     icon: APP_ICON_PATH || undefined,
-    titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#1f2937',
-      symbolColor: '#e2e8f0',
-      height: 32,
-    },
+    autoHideMenuBar: true,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -1305,6 +1301,29 @@ function createWindow() {
   }
 }
 
+ipcMain.handle('window:minimize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) win.minimize();
+});
+
+ipcMain.handle('window:maximize-toggle', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win || win.isDestroyed()) return { isMaximized: false };
+  if (win.isMaximized()) win.unmaximize();
+  else win.maximize();
+  return { isMaximized: win.isMaximized() };
+});
+
+ipcMain.handle('window:close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) win.close();
+});
+
+ipcMain.handle('window:get-state', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  return { isMaximized: !!win?.isMaximized?.() };
+});
+
 function createExcelHelperWindow() {
   if (excelHelperWindow && !excelHelperWindow.isDestroyed()) {
     excelHelperWindow.focus();
@@ -1345,6 +1364,19 @@ function createExcelHelperWindow() {
 
   return win;
 }
+
+app.on('browser-window-created', (_event, win) => {
+  const emitState = () => {
+    if (!win || win.isDestroyed()) return;
+    try {
+      win.webContents.send('window:state-changed', { isMaximized: win.isMaximized() });
+    } catch {}
+  };
+  win.on('maximize', emitState);
+  win.on('unmaximize', emitState);
+  win.on('enter-full-screen', emitState);
+  win.on('leave-full-screen', emitState);
+});
 
 app.whenReady().then(async () => {
   try {

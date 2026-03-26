@@ -134,4 +134,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return () => ipcRenderer.removeListener(channel, listener);
     },
   },
+  windowControls: {
+    minimize: () => ipcRenderer.invoke('window:minimize'),
+    maximizeToggle: () => ipcRenderer.invoke('window:maximize-toggle'),
+    close: () => ipcRenderer.invoke('window:close'),
+    getState: () => ipcRenderer.invoke('window:get-state'),
+    onStateChange: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('window:state-changed', listener);
+      return () => ipcRenderer.removeListener('window:state-changed', listener);
+    },
+  },
 });
