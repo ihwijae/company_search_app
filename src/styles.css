@@ -33,32 +33,21 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
 .app-header__bar-inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   height: 100%;
-  padding: 0 0 0 12px;
+  padding: 0;
 }
 .app-header__left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
-}
-.app-header__drag-space {
-  flex: 1 1 auto;
-  align-self: stretch;
-  min-width: 40px;
-}
-.app-header__title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #334155;
-  white-space: nowrap;
 }
 .app-header__window-controls {
   display: flex;
   align-self: stretch;
+  flex: 0 0 auto;
 }
 .app-window-button {
   width: 46px;
@@ -80,10 +69,12 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
+  padding: 0 10px;
 }
 .app-menu__item {
   display: inline-flex;
@@ -293,10 +284,10 @@ button.primary:hover { background: var(--accent-2); }
 
 @media (max-width: 960px) {
   .app-header__bar-inner {
-    padding-left: 8px;
+    gap: 6px;
   }
   .app-header__left {
-    gap: 8px;
+    min-width: 0;
   }
   .app-menu__item {
     min-height: 28px;

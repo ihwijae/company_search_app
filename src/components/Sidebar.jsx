@@ -99,7 +99,6 @@ export default function Sidebar({ active, onSelect, fileStatuses }) {
       <div className="app-header__bar title-drag">
         <div className="app-header__bar-inner">
           <div className="app-header__left no-drag">
-            <span className="app-header__title">협정보조</span>
             <nav className="app-menu" aria-label="전역 메뉴">
               {navItems.map(({ key, label, icon }) => (
                 <button
@@ -115,7 +114,6 @@ export default function Sidebar({ active, onSelect, fileStatuses }) {
               ))}
             </nav>
           </div>
-          <div className="app-header__drag-space" aria-hidden="true" />
           <div className="app-header__window-controls no-drag">
             <button type="button" className="app-window-button" onClick={() => controls?.minimize?.()} aria-label="최소화">─</button>
             <button type="button" className="app-window-button" onClick={() => controls?.maximizeToggle?.()} aria-label={isMaximized ? '복원' : '최대화'}>
