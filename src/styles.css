@@ -11,6 +11,9 @@
   --danger: #e11d48;
   --success: #16a34a;
   --radius: 10px;
+  --app-titlebar-height: 36px;
+  --app-menubar-height: 54px;
+  --app-header-height: calc(var(--app-titlebar-height) + var(--app-menubar-height));
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
@@ -24,8 +27,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
   z-index: 1400;
 }
 .app-header__bar {
-  height: 36px;
-  min-height: 36px;
+  height: var(--app-titlebar-height);
+  min-height: var(--app-titlebar-height);
   background: rgba(245, 246, 250, 0.96);
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(10px);
@@ -36,12 +39,15 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
   justify-content: space-between;
   gap: 8px;
   height: 100%;
-  padding: 0 0 0 8px;
+  padding: 0 0 0 12px;
 }
-.app-header__left {
+.app-header__title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   min-width: 0;
 }
 .app-header__drag-space {
@@ -49,19 +55,10 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
   align-self: stretch;
   min-width: 40px;
 }
-.app-header__menu-button {
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid #d0d5dd;
-  background: #ffffff;
-  color: #111827;
-  font-size: 12px;
-  font-weight: 600;
-}
-.app-header__menu-button.is-active {
-  background: #e8eefc;
-  border-color: #b8c6ea;
+.app-header__menu-strip {
+  background: rgba(245, 246, 250, 0.98);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
 }
 .app-header__window-controls {
   display: flex;
@@ -85,16 +82,15 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
   color: #ffffff;
 }
 .app-header__panel {
-  background: rgba(245, 246, 250, 0.98);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
-  padding: 8px 10px 10px;
+  min-height: var(--app-menubar-height);
+  padding: 10px 12px;
 }
 .app-menu {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
+  min-height: calc(var(--app-menubar-height) - 20px);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -149,7 +145,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prete
   to { opacity: 1; transform: translateX(0); }
 }
 
-.main { display: flex; flex-direction: column; height: 100vh; padding-top: 36px; background: var(--bg); min-width: 0; }
+.main { display: flex; flex-direction: column; height: 100vh; padding-top: var(--app-header-height); background: var(--bg); min-width: 0; }
 .topbar { display: none; height: 0; }
 .stage { position: relative; background: var(--panel); flex: 1 1 auto; min-height: 0; min-width: 0; max-width: 100%; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08), 0 4px 18px rgba(15, 23, 42, 0.05); overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(15, 23, 42, 0.04); }
 .stage.agreement-board-stage { overflow-y: auto; overflow-x: hidden; padding-bottom: 24px; min-width: 0; overscroll-behavior: contain; }
@@ -294,9 +290,9 @@ button.primary:hover { background: var(--accent-2); }
 
 /* 타이틀바 드래그 영역 */
 .title-drag {
-  height: 36px;
-  flex: 0 0 36px;
-  min-height: 36px;
+  height: var(--app-titlebar-height);
+  flex: 0 0 var(--app-titlebar-height);
+  min-height: var(--app-titlebar-height);
   -webkit-app-region: drag;
   background: transparent;
   border-bottom: none;
@@ -308,7 +304,7 @@ button.primary:hover { background: var(--accent-2); }
   .app-header__bar-inner {
     gap: 6px;
   }
-  .app-header__left {
+  .app-header__title {
     min-width: 0;
   }
   .app-menu__item {
