@@ -2,6 +2,27 @@
 
 이 문서는 PC를 포맷한 뒤 이 저장소를 다시 받아서 작업할 때 필요한 환경 세팅을 정리한 문서다.
 
+## Codex에 바로 넘길 때
+
+이 문서는 설명서이고, 실제 자동 설치는 `scripts/setup-wsl-dev.sh`가 수행한다.
+
+Codex에게는 아래처럼 지시하면 된다.
+
+```text
+docs/pc백업.md를 읽고 WSL 개발 환경을 세팅해줘.
+설치 작업은 scripts/setup-wsl-dev.sh를 실행해서 진행하고,
+실패하는 단계가 있으면 멈추지 말고 원인과 필요한 조치를 정리해줘.
+설치가 끝나면 node, npm, codex 버전과 npm install 결과를 요약해줘.
+```
+
+`codex` 전역 설치를 제외하려면 아래처럼 지시하면 된다.
+
+```text
+docs/pc백업.md를 읽고 WSL 개발 환경을 세팅해줘.
+scripts/setup-wsl-dev.sh를 INSTALL_CODEX=0 옵션으로 실행해줘.
+실패하는 단계가 있으면 원인과 필요한 조치를 정리해줘.
+```
+
 ## 1. 먼저 설치할 프로그램
 
 ### Windows 필수
@@ -218,7 +239,41 @@ codex
 - 저장소는 가능하면 WSL 홈 디렉터리 아래에 두고 작업
 - Windows Excel 의존 기능은 WSL이 아니라 Windows에서 확인
 
-## 14. 복구 후 빠른 체크리스트
+## 14. WSL 개발 환경 자동 설치 스크립트
+
+이 저장소에는 WSL 기준 개발 환경 복구용 스크립트를 추가해두었다.
+
+파일:
+- `scripts/setup-wsl-dev.sh`
+
+수행 내용:
+- Ubuntu 기본 패키지 설치
+- `nvm` 설치
+- Node.js 20 설치 및 기본 버전 지정
+- `@openai/codex` 전역 설치
+- 프로젝트 `npm install`
+- 설치 버전 출력
+
+실행 방법:
+
+```bash
+cd ~/projects/company_search_app
+bash scripts/setup-wsl-dev.sh
+```
+
+`codex` 설치를 제외하고 싶으면:
+
+```bash
+INSTALL_CODEX=0 bash scripts/setup-wsl-dev.sh
+```
+
+Node 메이저 버전을 바꾸고 싶으면:
+
+```bash
+NODE_MAJOR_VERSION=20 bash scripts/setup-wsl-dev.sh
+```
+
+## 15. 복구 후 빠른 체크리스트
 
 - Git 설치
 - Node.js 20 LTS 설치
