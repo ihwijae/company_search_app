@@ -1,24 +1,63 @@
 {
   "dbPath": "db/업체DB.xlsx",
   "dbPaths": {
-    "eung": "",
-    "tongsin": "",
-    "sobang": ""
+    "eung": "..\\..\\..\\01_업무\\협력업체자료(2024년반영)_2026.01.29\\1.협력업체요약(2024년전기)2026.01.29.xlsx",
+    "tongsin": "..\\..\\..\\01_업무\\협력업체자료(2024년반영)_2026.01.29\\2.협력업체요약(2024년통신)2026.01.29.xlsx",
+    "sobang": "..\\..\\..\\01_업무\\협력업체자료(2024년반영)_2026.01.29\\3.협력업체요약(2024년소방)2026.01.29.xlsx"
   },
   "lastIndustry": "eung",
   "industryAverages": {
-    "eung": { "debtRatio": 124.41, "currentRatio": 142.58 },
-    "tongsin": { "debtRatio": 124.03, "currentRatio": 140.06 },
-    "sobang": { "debtRatio": 110.08, "currentRatio": 139.32 }
+    "eung": {
+      "debtRatio": 124.41,
+      "currentRatio": 142.58
+    },
+    "tongsin": {
+      "debtRatio": 124.03,
+      "currentRatio": 140.06
+    },
+    "sobang": {
+      "debtRatio": 110.08,
+      "currentRatio": 139.32
+    }
   },
   "mois_under30": {
-    "nameCols": ["C", "D", "E", "F", "G"],
-    "managementCols": ["P", "Q", "R", "S", "T"],
-    "performanceCols": ["W", "X", "Y", "Z", "AA"],
-    "sipyungCols": ["AO", "AP", "AQ", "AR", "AS"],
+    "nameCols": [
+      "C",
+      "D",
+      "E",
+      "F",
+      "G"
+    ],
+    "managementCols": [
+      "P",
+      "Q",
+      "R",
+      "S",
+      "T"
+    ],
+    "performanceCols": [
+      "W",
+      "X",
+      "Y",
+      "Z",
+      "AA"
+    ],
+    "sipyungCols": [
+      "AO",
+      "AP",
+      "AQ",
+      "AR",
+      "AS"
+    ],
     "bizYearsThresholds": [
-      { "gteYears": 3, "score": 1.0 },
-      { "ltYears": 3, "score": 0.9 }
+      {
+        "gteYears": 3,
+        "score": 1.0
+      },
+      {
+        "ltYears": 3,
+        "score": 0.9
+      }
     ],
     "startRow": 5,
     "maxRows": 68
