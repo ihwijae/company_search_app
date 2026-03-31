@@ -41,6 +41,7 @@ const resolveAppIconPath = () => {
 };
 
 const APP_ICON_PATH = resolveAppIconPath();
+const SHARED_RECORDS_DIR = 'F:\\내 드라이브\\실적관리';
 
 let formulasCache = null;
 let formulasDefaultsCache = null;
@@ -98,6 +99,7 @@ try { app.commandLine.appendSwitch('disable-gpu-shader-disk-cache'); } catch {}
 
 // --- 설정 ---
 let FILE_PATHS = { eung: '', tongsin: '', sobang: '' };
+let FILE_SOURCE_MODES = { eung: 'auto', tongsin: 'auto', sobang: 'auto' };
 let SMPP_CREDENTIALS = { id: 'jium2635', password: 'jium2635' };
 
 const registerSmppFallbackHandler = (message = 'SMPP 기능이 초기화되지 않았습니다.') => {
@@ -124,6 +126,11 @@ const buildConfigSnapshot = () => ({
     eung: FILE_PATHS.eung || '',
     tongsin: FILE_PATHS.tongsin || '',
     sobang: FILE_PATHS.sobang || '',
+  },
+  filePathModes: {
+    eung: FILE_SOURCE_MODES.eung || 'auto',
+    tongsin: FILE_SOURCE_MODES.tongsin || 'auto',
+    sobang: FILE_SOURCE_MODES.sobang || 'auto',
   },
   smpp: sanitizeSmppCredentials(SMPP_CREDENTIALS),
   agreementBoardDir: AGREEMENT_BOARD_DIR,
@@ -178,11 +185,121 @@ const FILE_TYPE_LABELS = {
   sobang: '소방',
 };
 
+const FILE_TYPE_AUTO_KEYWORDS = {
+  eung: ['전기'],
+  tongsin: ['통신'],
+  sobang: ['소방'],
+};
+
+const normalizeSourceMode = (value, fallback = 'auto') => {
+  const token = String(value || '').trim().toLowerCase();
+  if (token === 'manual') return 'manual';
+  if (token === 'auto') return 'auto';
+  return fallback;
+};
+
 const resolveFileTypeLabel = (type) => FILE_TYPE_LABELS[type] || String(type || '');
 
 const resolveExistingPath = (paths = []) => {
   for (const candidate of paths) {
     if (candidate && fs.existsSync(candidate)) return candidate;
+  }
+  return '';
+};
+
+const resolveLatestMatchingExcelPath = (fileType, seedPath) => {
+  const normalizedType = normalizeFileType(fileType, { fallback: null });
+  if (!normalizedType || normalizedType === 'all' || !seedPath) return seedPath || '';
+  const directory = path.dirname(seedPath);
+  const keywords = FILE_TYPE_AUTO_KEYWORDS[normalizedType] || [];
+  if (!directory || !fs.existsSync(directory)) return seedPath;
+
+  let entries = [];
+  try {
+    entries = fs.readdirSync(directory, { withFileTypes: true });
+  } catch {
+    return seedPath;
+  }
+
+  const matched = entries
+    .filter((entry) => entry && entry.isFile && entry.isFile())
+    .map((entry) => {
+      const fullPath = path.join(directory, entry.name);
+      const lowerName = String(entry.name || '').toLowerCase();
+      if (!lowerName.endsWith('.xlsx')) return null;
+      if (!keywords.some((keyword) => lowerName.includes(String(keyword).toLowerCase()))) return null;
+      let stat = null;
+      try { stat = fs.statSync(fullPath); } catch {}
+      return {
+        fullPath,
+        mtimeMs: Number(stat?.mtimeMs || 0),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.mtimeMs - a.mtimeMs || a.fullPath.localeCompare(b.fullPath));
+
+  if (matched.length > 0) {
+    return matched[0].fullPath;
+  }
+  return seedPath;
+};
+
+const listLatestMatchingExcelFromRoot = (fileType, rootDir) => {
+  const normalizedType = normalizeFileType(fileType, { fallback: null });
+  if (!normalizedType || normalizedType === 'all' || !rootDir || !fs.existsSync(rootDir)) return '';
+  const keywords = FILE_TYPE_AUTO_KEYWORDS[normalizedType] || [];
+  const stack = [rootDir];
+  let bestMatch = null;
+
+  while (stack.length) {
+    const current = stack.pop();
+    let entries = [];
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const lowerName = String(entry.name || '').toLowerCase();
+      if (!lowerName.endsWith('.xlsx')) continue;
+      if (!keywords.some((keyword) => lowerName.includes(String(keyword).toLowerCase()))) continue;
+      let stat = null;
+      try { stat = fs.statSync(fullPath); } catch {}
+      const nextMatch = {
+        fullPath,
+        mtimeMs: Number(stat?.mtimeMs || 0),
+      };
+      if (!bestMatch || nextMatch.mtimeMs > bestMatch.mtimeMs) {
+        bestMatch = nextMatch;
+      }
+    }
+  }
+
+  return bestMatch?.fullPath || '';
+};
+
+const resolveAutoSearchRoots = () => {
+  const roots = new Set();
+  const agreementParent = AGREEMENT_BOARD_DIR ? path.dirname(AGREEMENT_BOARD_DIR) : '';
+  const agreementGrandParent = agreementParent ? path.dirname(agreementParent) : '';
+  [agreementParent, agreementGrandParent, 'F:\\내 드라이브', 'F:\\My Drive'].forEach((candidate) => {
+    if (candidate && fs.existsSync(candidate)) roots.add(candidate);
+  });
+  return Array.from(roots);
+};
+
+const resolveAutoDiscoveredExcelPath = (fileType) => {
+  const roots = resolveAutoSearchRoots();
+  for (const rootDir of roots) {
+    const foundPath = listLatestMatchingExcelFromRoot(fileType, rootDir);
+    if (foundPath) return foundPath;
   }
   return '';
 };
@@ -859,6 +976,31 @@ const FORMULAS_PATH = path.join(userDataDir, 'formulas.json');
 const RENDERER_STATE_PATH = path.join(userDataDir, 'renderer-state.json');
 const COMPANY_NOTES_PATH = path.join(userDataDir, 'company-notes.json');
 
+const ensureDirectoryPath = (targetPath) => {
+  if (!targetPath) return;
+  try {
+    fs.mkdirSync(targetPath, { recursive: true });
+  } catch (err) {
+    console.warn('[MAIN] 디렉터리 생성 실패:', targetPath, err?.message || err);
+  }
+};
+
+const canUseSharedRecordsDir = () => {
+  try {
+    const rootPath = path.parse(SHARED_RECORDS_DIR).root;
+    return Boolean(rootPath) && fs.existsSync(rootPath);
+  } catch {
+    return false;
+  }
+};
+
+const resolveRecordsStorageDir = () => {
+  if (canUseSharedRecordsDir()) {
+    return SHARED_RECORDS_DIR;
+  }
+  return userDataDir;
+};
+
 const RENDERER_STATE_MISSING = { __companySearchStateMissing: true };
 
 const readRendererState = () => {
@@ -958,6 +1100,7 @@ function loadConfig() {
                 ? rawConfig.filePaths
                 : rawConfig;
             const normalizedConfig = { eung: '', tongsin: '', sobang: '' };
+            const normalizedModes = { eung: 'auto', tongsin: 'auto', sobang: 'auto' };
             Object.entries(filePathSource || {}).forEach(([key, value]) => {
                 const normKey = normalizeFileType(key);
                 if (!normKey || normKey === 'all') return;
@@ -973,6 +1116,18 @@ function loadConfig() {
                 tongsin: FILE_PATHS.tongsin,
                 sobang: FILE_PATHS.sobang,
             };
+
+            const filePathModesSource = (rawConfig && typeof rawConfig.filePathModes === 'object')
+                ? rawConfig.filePathModes
+                : {};
+            Object.entries(filePathModesSource || {}).forEach(([key, value]) => {
+                const normKey = normalizeFileType(key);
+                if (!normKey || normKey === 'all') return;
+                if (normKey === 'eung' || normKey === 'tongsin' || normKey === 'sobang') {
+                    normalizedModes[normKey] = normalizeSourceMode(value, normalizedModes[normKey]);
+                }
+            });
+            FILE_SOURCE_MODES = normalizedModes;
 
             const smppSource = (rawConfig && typeof rawConfig.smpp === 'object') ? rawConfig.smpp : {};
             SMPP_CREDENTIALS = sanitizeSmppCredentials(smppSource);
@@ -1377,11 +1532,13 @@ app.on('browser-window-created', (_event, win) => {
 
 app.whenReady().then(async () => {
   try {
-    recordsDbInstance = await ensureRecordsDatabase({ userDataDir });
+    const recordsStorageDir = resolveRecordsStorageDir();
+    ensureDirectoryPath(recordsStorageDir);
+    recordsDbInstance = await ensureRecordsDatabase({ userDataDir: recordsStorageDir });
     if (recordsDbInstance?.path) {
       console.log('[MAIN] Records database ready:', recordsDbInstance.path);
     }
-    recordsServiceInstance = new RecordsService({ userDataDir });
+    recordsServiceInstance = new RecordsService({ userDataDir: recordsStorageDir });
     registerRecordsIpcHandlers({ ipcMain, recordsService: recordsServiceInstance });
     tempCompaniesDbInstance = await ensureTempCompaniesDatabase({ userDataDir });
     if (tempCompaniesDbInstance?.path) {
@@ -1460,10 +1617,27 @@ try {
   (async () => {
     try {
       for (const ft in FILE_PATHS) {
+        const sourceMode = normalizeSourceMode(FILE_SOURCE_MODES[ft], 'auto');
         const originalPath = FILE_PATHS[ft];
-        const runtimePath = toWSLPathIfNeeded(originalPath);
+        const resolvedSourcePath = sourceMode === 'manual'
+          ? resolveLatestMatchingExcelPath(ft, originalPath)
+          : resolveAutoDiscoveredExcelPath(ft) || resolveLatestMatchingExcelPath(ft, originalPath);
+        const runtimePath = toWSLPathIfNeeded(resolvedSourcePath);
+        const watchBasePath = resolvedSourcePath || originalPath;
+        const runtimeWatchPath = toWSLPathIfNeeded(path.dirname(watchBasePath || '')) || path.dirname(watchBasePath || '');
         if (runtimePath && fs.existsSync(runtimePath)) {
-          try { await svc.loadAndWatch(ft, runtimePath); } catch {}
+          try {
+            await svc.loadAndWatch(ft, runtimePath, {
+              mode: sourceMode,
+              watchPath: runtimeWatchPath,
+              resolveSourcePath: () => {
+                const nextPath = sourceMode === 'manual'
+                  ? resolveLatestMatchingExcelPath(ft, originalPath)
+                  : resolveAutoDiscoveredExcelPath(ft) || resolveLatestMatchingExcelPath(ft, originalPath);
+                return toWSLPathIfNeeded(nextPath) || nextPath;
+              },
+            });
+          } catch {}
         }
       }
     } catch {}
@@ -1567,11 +1741,25 @@ try {
       tongsin: normalizedType === 'tongsin' ? filePath : FILE_PATHS.tongsin,
       sobang: normalizedType === 'sobang' ? filePath : FILE_PATHS.sobang,
     };
+    FILE_SOURCE_MODES = {
+      eung: normalizedType === 'eung' ? 'manual' : FILE_SOURCE_MODES.eung,
+      tongsin: normalizedType === 'tongsin' ? 'manual' : FILE_SOURCE_MODES.tongsin,
+      sobang: normalizedType === 'sobang' ? 'manual' : FILE_SOURCE_MODES.sobang,
+    };
     saveConfig();
-    const runtimePath = toWSLPathIfNeeded(filePath);
+    const resolvedSourcePath = resolveLatestMatchingExcelPath(normalizedType, filePath);
+    const runtimePath = toWSLPathIfNeeded(resolvedSourcePath);
+    const runtimeWatchPath = toWSLPathIfNeeded(path.dirname(filePath)) || path.dirname(filePath);
     try {
-      await svc.loadAndWatch(normalizedType, runtimePath);
-      return { success: true, path: filePath };
+      await svc.loadAndWatch(normalizedType, runtimePath, {
+        mode: 'manual',
+        watchPath: runtimeWatchPath,
+        resolveSourcePath: () => {
+          const nextPath = resolveLatestMatchingExcelPath(normalizedType, filePath);
+          return toWSLPathIfNeeded(nextPath) || nextPath;
+        },
+      });
+      return { success: true, path: filePath, resolvedPath: resolvedSourcePath };
     }
     catch (e) { return { success: false, message: e?.message || 'Load failed' }; }
 });
@@ -1595,7 +1783,26 @@ try {
 
   // get-file-paths: expose currently registered original paths
   if (ipcMain.removeHandler) ipcMain.removeHandler('get-file-paths');
-  ipcMain.handle('get-file-paths', () => ({ success: true, data: FILE_PATHS }));
+  ipcMain.handle('get-file-paths', () => ({
+    success: true,
+    data: {
+      eung: {
+        path: FILE_PATHS.eung,
+        mode: normalizeSourceMode(FILE_SOURCE_MODES.eung, 'auto'),
+        resolvedPath: svc.getLoadedSourcePath('eung'),
+      },
+      tongsin: {
+        path: FILE_PATHS.tongsin,
+        mode: normalizeSourceMode(FILE_SOURCE_MODES.tongsin, 'auto'),
+        resolvedPath: svc.getLoadedSourcePath('tongsin'),
+      },
+      sobang: {
+        path: FILE_PATHS.sobang,
+        mode: normalizeSourceMode(FILE_SOURCE_MODES.sobang, 'auto'),
+        resolvedPath: svc.getLoadedSourcePath('sobang'),
+      },
+    },
+  }));
 
   if (ipcMain.removeHandler) ipcMain.removeHandler('search-companies');
   ipcMain.handle('search-companies', (_event, { criteria, file_type, options }) => {

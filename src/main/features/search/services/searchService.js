@@ -12,6 +12,8 @@ class SearchService {
     this.notifyUpdated = typeof notifyUpdated === 'function' ? notifyUpdated : () => {};
     this.searchLogics = {}; // { eung|tongsin|sobang: SearchLogic }
     this.fileWatchers = {}; // { type: FSWatcher }
+    this.loadedSourcePaths = {}; // { type: sourcePath }
+    this.sourceModes = {}; // { type: auto|manual }
   }
 
   debounce(fn, delay) {
@@ -29,6 +31,14 @@ class SearchService {
     const status = {};
     keys.forEach((k) => { status[k] = this.isLoaded(k); });
     return status;
+  }
+
+  getLoadedSourcePath(type) {
+    return this.loadedSourcePaths[type] || '';
+  }
+
+  getSourceMode(type) {
+    return this.sourceModes[type] || 'auto';
   }
 
   getRegions(type) {
@@ -87,13 +97,20 @@ class SearchService {
     return results.map(item => ({ ...item, _file_type: type }));
   }
 
-  async loadAndWatch(fileType, sourcePath) {
-    const { sanitizedPath, sanitized } = this.sanitizeXlsx(sourcePath);
-    if (sanitized) this.registerSanitized(sourcePath, sanitizedPath);
+  async loadAndWatch(fileType, sourcePath, options = {}) {
+    const resolveSourcePath = typeof options.resolveSourcePath === 'function'
+      ? options.resolveSourcePath
+      : () => sourcePath;
+    const watchPath = options.watchPath || sourcePath;
+    const initialSourcePath = resolveSourcePath() || sourcePath;
+    const { sanitizedPath, sanitized } = this.sanitizeXlsx(initialSourcePath);
+    if (sanitized) this.registerSanitized(initialSourcePath, sanitizedPath);
     const logic = new SearchLogic(sanitizedPath);
     await logic.load();
     this.searchLogics[fileType] = logic;
-    console.log('[SearchService] loaded', { type: fileType, sourcePath, sanitizedPath });
+    this.loadedSourcePaths[fileType] = initialSourcePath;
+    this.sourceModes[fileType] = options.mode || this.sourceModes[fileType] || 'auto';
+    console.log('[SearchService] loaded', { type: fileType, sourcePath: initialSourcePath, sanitizedPath });
     try { this.notifyUpdated(fileType); } catch {}
 
     if (this.fileWatchers[fileType]) {
@@ -103,17 +120,21 @@ class SearchService {
 
     const debouncedReload = this.debounce(async () => {
       try {
-        const { sanitizedPath: sp2, sanitized: san2 } = this.sanitizeXlsx(sourcePath);
-        if (san2) this.registerSanitized(sourcePath, sp2);
+        const nextSourcePath = resolveSourcePath() || sourcePath;
+        const { sanitizedPath: sp2, sanitized: san2 } = this.sanitizeXlsx(nextSourcePath);
+        if (san2) this.registerSanitized(nextSourcePath, sp2);
         const lg = new SearchLogic(sp2);
         await lg.load();
         this.searchLogics[fileType] = lg;
+        this.loadedSourcePaths[fileType] = nextSourcePath;
         this.notifyUpdated(fileType);
       } catch {}
     }, this.debounceMs);
 
-    const watcher = this.chokidar.watch(sourcePath, { ignoreInitial: true });
+    const watcher = this.chokidar.watch(watchPath, { ignoreInitial: true });
     watcher.on('change', () => debouncedReload());
+    watcher.on('add', () => debouncedReload());
+    watcher.on('unlink', () => debouncedReload());
     this.fileWatchers[fileType] = watcher;
   }
 }

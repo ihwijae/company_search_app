@@ -184,6 +184,19 @@ const formatSmppTimestamp = (value) => {
   return `${yyyy}.${mm}.${dd} ${hh}:${min}`;
 };
 
+const getBaseName = (value) => {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const tokens = text.split(/[\\/]/);
+  return tokens[tokens.length - 1] || text;
+};
+
+const createEmptyFileSourceInfo = () => ({
+  eung: { path: '', resolvedPath: '', mode: 'auto' },
+  tongsin: { path: '', resolvedPath: '', mode: 'auto' },
+  sobang: { path: '', resolvedPath: '', mode: 'auto' },
+});
+
 // Parse percent-like strings into numbers, e.g., "123.4%" -> 123.4
 const parsePercentNumber = (v) => { if (v === null || v === undefined) return NaN; const s = String(v).replace(/[%%%\\s,]/g, ''); const n = Number(s); return Number.isFinite(n) ? n : NaN; };
 
@@ -231,13 +244,14 @@ function CopyDialog({ isOpen, message, onClose }) {
   );
 }
 
-function FileUploader({ type, label, isUploaded, onUploadSuccess }) {
+function FileUploader({ type, label, isUploaded, fileInfo, onUploadSuccess }) {
   const [message, setMessage] = useState('');
   const handleSelectFile = async () => {
     setMessage('파일 선택창을 여는 중...');
     const result = await window.electronAPI.selectFile(type);
     if (result.success) {
-      setMessage(`경로 설정 완료: ${result.path}`);
+      const displayPath = result.resolvedPath || result.path;
+      setMessage(`경로 설정 완료: ${displayPath}`);
       onUploadSuccess(); // [핵심] 성공 시 부모에게 알림
     } else {
       if (result.message !== '파일 선택이 취소되었습니다.') {
@@ -254,6 +268,13 @@ function FileUploader({ type, label, isUploaded, onUploadSuccess }) {
         <p className="upload-message success">✅ 파일 경로가 설정되었습니다.</p> : 
         <p className="upload-message warning">⚠️ 파일 경로를 설정해주세요.</p>
       }
+      {isUploaded && (
+        <div className="upload-message info">
+          현재 파일: {getBaseName(fileInfo?.resolvedPath || fileInfo?.path) || '미확인'}
+          {' · '}
+          {fileInfo?.mode === 'manual' ? '수동 지정' : '자동 연결'}
+        </div>
+      )}
       <div className="uploader-controls">
         <button onClick={handleSelectFile}>경로 설정</button>
       </div>
@@ -262,7 +283,7 @@ function FileUploader({ type, label, isUploaded, onUploadSuccess }) {
   );
 }
 
-function AdminUpload({ fileStatuses, onUploadSuccess }) {
+function AdminUpload({ fileStatuses, fileSourceInfo, onUploadSuccess }) {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <div className={`admin-upload-section ${isOpen ? 'is-open' : ''}`}>
@@ -271,9 +292,9 @@ function AdminUpload({ fileStatuses, onUploadSuccess }) {
         <span className="toggle-arrow">{isOpen ? '▲' : '▼'}</span>
       </div>
       <div className="uploaders-grid">
-        <FileUploader type="eung" label="전기" isUploaded={fileStatuses.eung} onUploadSuccess={onUploadSuccess} />
-        <FileUploader type="tongsin" label="통신" isUploaded={fileStatuses.tongsin} onUploadSuccess={onUploadSuccess} />
-        <FileUploader type="sobang" label="소방" isUploaded={fileStatuses.sobang} onUploadSuccess={onUploadSuccess} />
+        <FileUploader type="eung" label="전기" isUploaded={fileStatuses.eung} fileInfo={fileSourceInfo.eung} onUploadSuccess={onUploadSuccess} />
+        <FileUploader type="tongsin" label="통신" isUploaded={fileStatuses.tongsin} fileInfo={fileSourceInfo.tongsin} onUploadSuccess={onUploadSuccess} />
+        <FileUploader type="sobang" label="소방" isUploaded={fileStatuses.sobang} fileInfo={fileSourceInfo.sobang} onUploadSuccess={onUploadSuccess} />
       </div>
     </div>
   );
@@ -380,6 +401,7 @@ function App() {
   const restoreSearchRef = useRef(Boolean(persisted.searchPerformed));
 
   const [fileStatuses, setFileStatuses] = useState({ eung: false, tongsin: false, sobang: false });
+  const [fileSourceInfo, setFileSourceInfo] = useState(createEmptyFileSourceInfo);
   const [activeMenu, setActiveMenu] = useState('search');
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadCount, setUploadCount] = useState(0);
@@ -729,8 +751,18 @@ function App() {
   }, [goToPage, totalPages]);
 
   const refreshFileStatuses = async () => {
-    const statuses = await window.electronAPI.checkFiles();
+    const [statuses, filePathsResponse] = await Promise.all([
+      window.electronAPI.checkFiles(),
+      window.electronAPI.getFilePaths(),
+    ]);
     setFileStatuses(statuses);
+    if (filePathsResponse?.success && filePathsResponse?.data) {
+      setFileSourceInfo({
+        eung: filePathsResponse.data.eung || createEmptyFileSourceInfo().eung,
+        tongsin: filePathsResponse.data.tongsin || createEmptyFileSourceInfo().tongsin,
+        sobang: filePathsResponse.data.sobang || createEmptyFileSourceInfo().sobang,
+      });
+    }
   };
   
   // 데이터 자동 갱신 이벤트 구독
@@ -1553,7 +1585,7 @@ function App() {
         />
       </div>
       <Drawer open={uploadOpen} onClose={() => setUploadOpen(false)}>
-        <AdminUpload fileStatuses={fileStatuses} onUploadSuccess={handleUploadSuccess} />
+        <AdminUpload fileStatuses={fileStatuses} fileSourceInfo={fileSourceInfo} onUploadSuccess={handleUploadSuccess} />
       </Drawer>
     </div>
   );

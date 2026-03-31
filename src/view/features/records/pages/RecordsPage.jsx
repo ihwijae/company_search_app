@@ -234,7 +234,7 @@ export default function RecordsPage() {
   const [categories, setCategories] = React.useState([]);
   const [companies, setCompanies] = React.useState([]);
   const [flatCategories, setFlatCategories] = React.useState([]);
-  const [filters, setFilters] = React.useState({ keyword: '', companyType: 'our', companyId: '', categoryId: null });
+  const [filters, setFilters] = React.useState({ keyword: '', companyType: 'all', companyId: '', categoryId: null });
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [editorState, setEditorState] = React.useState(DEFAULT_EDITOR_STATE);
@@ -291,7 +291,13 @@ export default function RecordsPage() {
 
   const visibleCompanies = React.useMemo(() => {
     if (!Array.isArray(companies)) return [];
-    return companies.filter((company) => (filters.companyType === 'misc' ? company.isMisc : !company.isMisc));
+    if (filters.companyType === 'misc') {
+      return companies.filter((company) => company.isMisc);
+    }
+    if (filters.companyType === 'our') {
+      return companies.filter((company) => !company.isMisc);
+    }
+    return companies;
   }, [companies, filters.companyType]);
 
   const fetchProjects = React.useCallback(async () => {
@@ -409,7 +415,7 @@ export default function RecordsPage() {
   };
 
   const clearFilters = () => {
-    setFilters({ keyword: '', companyType: 'our', companyId: '', categoryId: null });
+    setFilters({ keyword: '', companyType: 'all', companyId: '', categoryId: null });
   };
 
   const handleCompanyTypeChange = (event) => {
@@ -806,6 +812,7 @@ export default function RecordsPage() {
                     value={filters.companyType}
                     onChange={handleCompanyTypeChange}
                   >
+                    <option value="all">전체</option>
                     <option value="our">우리법인</option>
                     <option value="misc">기타</option>
                   </select>
@@ -813,7 +820,13 @@ export default function RecordsPage() {
                     value={filters.companyId}
                     onChange={(event) => setFilters((prev) => ({ ...prev, companyId: event.target.value }))}
                   >
-                    <option value="">{filters.companyType === 'misc' ? '전체 기타 법인' : '전체 우리 법인'}</option>
+                    <option value="">
+                      {filters.companyType === 'misc'
+                        ? '전체 기타 법인'
+                        : filters.companyType === 'our'
+                          ? '전체 우리 법인'
+                          : '전체 법인'}
+                    </option>
                     {visibleCompanies.map((company) => (
                       <option key={company.id} value={company.id}>{company.name}</option>
                     ))}
