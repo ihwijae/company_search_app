@@ -329,6 +329,139 @@ button.primary:hover { background: var(--accent-2); }
 
 .helper-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .content.excel-helper-layout { grid-template-columns: 1fr; }
+
+/* Search page layout tuning */
+.content.search-layout {
+  grid-template-columns: minmax(248px, 0.78fr) minmax(340px, 1.15fr) minmax(420px, 1.55fr);
+  gap: 10px;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.content.search-layout > .panel {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.content.search-layout .panel-search-filters,
+.content.search-layout .panel-search-detail {
+  display: flex;
+  flex-direction: column;
+}
+
+.content.search-layout .panel-search-filters {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.content.search-layout .search-filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px;
+  margin-bottom: 0;
+  min-height: 0;
+}
+
+.content.search-layout .file-type-selector {
+  margin-bottom: 0;
+}
+
+.content.search-layout .radio-group {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.content.search-layout .radio-group label {
+  min-width: 52px;
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.content.search-layout .filter-grid {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.content.search-layout .filter-item label {
+  margin-bottom: 4px;
+}
+
+.content.search-layout .filter-input,
+.content.search-layout select,
+.content.search-layout input {
+  height: 36px;
+  padding: 8px 10px;
+}
+
+.content.search-layout .region-selector .region-display {
+  min-height: 36px;
+}
+
+.content.search-layout .search-button,
+.content.search-layout .reset-button {
+  height: 38px;
+  padding: 0.55rem 1rem;
+}
+
+.content.search-layout .panel-results {
+  min-width: 0;
+}
+
+.content.search-layout .company-details {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+}
+
+.content.search-layout .details-header {
+  align-items: flex-start;
+}
+
+.content.search-layout .table-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.content.search-layout .details-table {
+  width: 100%;
+}
+
+.content.search-layout .details-table th {
+  width: 112px;
+}
+
+@media (max-width: 1500px) {
+  .content.search-layout {
+    grid-template-columns: minmax(236px, 0.78fr) minmax(320px, 1.05fr) minmax(380px, 1.35fr);
+  }
+}
+
+@media (max-width: 1280px) {
+  .content.search-layout {
+    grid-template-columns: minmax(230px, 0.82fr) minmax(320px, 1.18fr);
+  }
+
+  .content.search-layout .panel-search-detail {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 860px) {
+  .content.search-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .content.search-layout .panel {
+    height: auto;
+    max-height: none;
+  }
+}
+
 .excel-helper-shell { height: 100%; min-height: 0; display: flex; flex-direction: column; background: #f5f6fa; padding: 0 18px; }
 .excel-helper-title { margin: 0 0 16px; font-size: 20px; font-weight: 700; color: #1f2937; padding-top: 4px; }
 .excel-helper-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 16px; }

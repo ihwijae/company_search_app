@@ -1201,8 +1201,8 @@ function App() {
       />
       <div className="main">
         <div className="stage">
-          <div className="content">
-          <div className="panel panel-filters">
+          <div className="content search-layout">
+          <div className="panel panel-filters panel-search-filters">
             <div className="search-filter-section" ref={topSectionRef}>
               <div className="file-type-selector">
                 <div className="radio-group">
@@ -1386,7 +1386,7 @@ function App() {
               </div>
             </div>
           </div>
-          <div className="panel">
+          <div className="panel panel-search-detail">
             {searchPerformed && (
               <div className="company-details fade-in" key={animationKey}>
                 {selectedCompany && (
