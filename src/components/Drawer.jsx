@@ -1,7 +1,28 @@
 ﻿import React from 'react';
 
+const createEmptyPaths = () => ({
+  eung: { path: '', resolvedPath: '', mode: 'auto' },
+  tongsin: { path: '', resolvedPath: '', mode: 'auto' },
+  sobang: { path: '', resolvedPath: '', mode: 'auto' },
+});
+
+const getBaseName = (value) => {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const tokens = text.split(/[\\/]/);
+  return tokens[tokens.length - 1] || text;
+};
+
+const formatPathEntry = (entry) => {
+  if (!entry) return '-';
+  if (typeof entry === 'string') return entry || '-';
+  const fileName = getBaseName(entry.resolvedPath || entry.path);
+  if (!fileName) return '-';
+  return `${fileName} (${entry.mode === 'manual' ? '수동' : '자동'})`;
+};
+
 export default function Drawer({ open, onClose, children }) {
-  const [paths, setPaths] = React.useState({ eung: '', tongsin: '', sobang: '' });
+  const [paths, setPaths] = React.useState(createEmptyPaths);
 
   React.useEffect(() => {
     if (!open) return;
@@ -29,9 +50,9 @@ export default function Drawer({ open, onClose, children }) {
           <button onClick={onClose}>닫기</button>
         </div>
         <div className="upload-message info" style={{ marginBottom: 8 }}>
-          <div><strong>전기</strong>: {paths.eung || '-'}</div>
-          <div><strong>통신</strong>: {paths.tongsin || '-'}</div>
-          <div><strong>소방</strong>: {paths.sobang || '-'}</div>
+          <div><strong>전기</strong>: {formatPathEntry(paths.eung)}</div>
+          <div><strong>통신</strong>: {formatPathEntry(paths.tongsin)}</div>
+          <div><strong>소방</strong>: {formatPathEntry(paths.sobang)}</div>
         </div>
         {children}
       </div>
@@ -39,4 +60,3 @@ export default function Drawer({ open, onClose, children }) {
     </>
   );
 }
-
