@@ -852,7 +852,7 @@ if (windowsUserDataDir) {
 const CONFIG_PATH = path.join(userDataDir, 'config.json');
 const WINDOW_STATE_PATH = path.join(userDataDir, 'window-state.json');
 const AGREEMENTS_PATH = path.join(userDataDir, 'agreements.json');
-const DEFAULT_AGREEMENT_BOARD_DIR = path.join(userDataDir, 'agreement-board');
+const DEFAULT_AGREEMENT_BOARD_DIR = 'F:\\내 드라이브\\협정';
 let AGREEMENT_BOARD_DIR = DEFAULT_AGREEMENT_BOARD_DIR;
 const AGREEMENTS_RULES_PATH = path.join(userDataDir, 'agreements.rules.json');
 const FORMULAS_PATH = path.join(userDataDir, 'formulas.json');
@@ -977,11 +977,8 @@ function loadConfig() {
             const smppSource = (rawConfig && typeof rawConfig.smpp === 'object') ? rawConfig.smpp : {};
             SMPP_CREDENTIALS = sanitizeSmppCredentials(smppSource);
 
-            if (typeof rawConfig.agreementBoardDir === 'string' && rawConfig.agreementBoardDir.trim()) {
-                AGREEMENT_BOARD_DIR = rawConfig.agreementBoardDir.trim();
-            } else {
-                AGREEMENT_BOARD_DIR = DEFAULT_AGREEMENT_BOARD_DIR;
-            }
+            // Force the shared agreement board directory for all existing users.
+            AGREEMENT_BOARD_DIR = DEFAULT_AGREEMENT_BOARD_DIR;
 
             const snapshot = buildConfigSnapshot();
             const shouldRewrite = JSON.stringify(rawConfig) !== JSON.stringify(snapshot);
