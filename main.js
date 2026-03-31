@@ -41,8 +41,11 @@ const resolveAppIconPath = () => {
 };
 
 const APP_ICON_PATH = resolveAppIconPath();
-const SHARED_RECORDS_DIR = 'F:\\내 드라이브\\실적관리';
-const SHARED_MAIL_ADDRESSBOOK_PATH = 'F:\\내 드라이브\\mail-addressbook.json';
+const SHARED_DRIVE_NAME_CANDIDATES = ['내 드라이브', 'My Drive'];
+const SHARED_TEAM_ROOT_DIRNAME = '협정보조툴';
+const SHARED_RECORDS_DIRNAME = '실적관리';
+const SHARED_MAIL_ADDRESSBOOK_FILENAME = 'mail-addressbook.json';
+const SHARED_AGREEMENT_DIRNAME = '협정';
 
 let formulasCache = null;
 let formulasDefaultsCache = null;
@@ -291,7 +294,8 @@ const resolveAutoSearchRoots = () => {
   const roots = new Set();
   const agreementParent = AGREEMENT_BOARD_DIR ? path.dirname(AGREEMENT_BOARD_DIR) : '';
   const agreementGrandParent = agreementParent ? path.dirname(agreementParent) : '';
-  [agreementParent, agreementGrandParent, 'F:\\내 드라이브', 'F:\\My Drive'].forEach((candidate) => {
+  const sharedTeamRootDir = resolveSharedTeamRootDir();
+  [agreementParent, agreementGrandParent, sharedTeamRootDir].forEach((candidate) => {
     if (candidate && fs.existsSync(candidate)) roots.add(candidate);
   });
   return Array.from(roots);
@@ -971,7 +975,7 @@ if (windowsUserDataDir) {
 const CONFIG_PATH = path.join(userDataDir, 'config.json');
 const WINDOW_STATE_PATH = path.join(userDataDir, 'window-state.json');
 const AGREEMENTS_PATH = path.join(userDataDir, 'agreements.json');
-const DEFAULT_AGREEMENT_BOARD_DIR = 'F:\\내 드라이브\\협정';
+const DEFAULT_AGREEMENT_BOARD_DIR = buildSharedTeamPath(SHARED_AGREEMENT_DIRNAME) || path.join(userDataDir, 'agreement-board');
 let AGREEMENT_BOARD_DIR = DEFAULT_AGREEMENT_BOARD_DIR;
 const AGREEMENTS_RULES_PATH = path.join(userDataDir, 'agreements.rules.json');
 const FORMULAS_PATH = path.join(userDataDir, 'formulas.json');
@@ -987,29 +991,58 @@ const ensureDirectoryPath = (targetPath) => {
   }
 };
 
-const canUseSharedRecordsDir = () => {
-  try {
-    const rootPath = path.parse(SHARED_RECORDS_DIR).root;
-    return Boolean(rootPath) && fs.existsSync(rootPath);
-  } catch {
-    return false;
+function resolveSharedDriveBaseDir() {
+  for (let code = 67; code <= 90; code += 1) {
+    const driveLetter = String.fromCharCode(code);
+    for (const folderName of SHARED_DRIVE_NAME_CANDIDATES) {
+      const candidate = `${driveLetter}:\\${folderName}`;
+      try {
+        if (fs.existsSync(candidate)) {
+          return candidate;
+        }
+      } catch {}
+    }
   }
+  return '';
+}
+
+function buildSharedDrivePath(...segments) {
+  const baseDir = resolveSharedDriveBaseDir();
+  if (!baseDir) return '';
+  return path.join(baseDir, ...segments.filter(Boolean));
+}
+
+function resolveSharedTeamRootDir() {
+  const teamRoot = buildSharedDrivePath(SHARED_TEAM_ROOT_DIRNAME);
+  if (!teamRoot) return '';
+  try {
+    if (fs.existsSync(teamRoot)) return teamRoot;
+  } catch {}
+  return '';
+}
+
+function buildSharedTeamPath(...segments) {
+  const teamRoot = resolveSharedTeamRootDir();
+  if (!teamRoot) return '';
+  return path.join(teamRoot, ...segments.filter(Boolean));
+}
+
+const canUseSharedRecordsDir = () => {
+  const targetPath = buildSharedTeamPath(SHARED_RECORDS_DIRNAME);
+  return Boolean(targetPath);
 };
 
 const resolveRecordsStorageDir = () => {
-  if (canUseSharedRecordsDir()) {
-    return SHARED_RECORDS_DIR;
+  const sharedDir = buildSharedTeamPath(SHARED_RECORDS_DIRNAME);
+  if (sharedDir && canUseSharedRecordsDir()) {
+    return sharedDir;
   }
   return userDataDir;
 };
 
 const resolveMailAddressBookPath = () => {
-  try {
-    const rootPath = path.parse(SHARED_MAIL_ADDRESSBOOK_PATH).root;
-    if (rootPath && fs.existsSync(rootPath)) {
-      return SHARED_MAIL_ADDRESSBOOK_PATH;
-    }
-  } catch {}
+  const sharedPath = buildSharedTeamPath(SHARED_MAIL_ADDRESSBOOK_FILENAME);
+  if (sharedPath) return sharedPath;
   return path.join(userDataDir, 'mail-addressbook.json');
 };
 
