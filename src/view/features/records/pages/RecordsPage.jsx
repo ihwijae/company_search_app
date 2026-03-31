@@ -15,6 +15,12 @@ const formatCurrency = (value) => {
   return num.toLocaleString();
 };
 
+const normalizeProjectTitle = (value) => {
+  const text = value == null ? '' : String(value).trim();
+  if (!text) return '—';
+  return text.replace(/^\s*공사명\s*:\s*/i, '').trim() || '—';
+};
+
 const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const buildKeywordRegex = (keyword) => {
@@ -93,6 +99,7 @@ const highlightSanitizedHtml = (html, keyword) => {
 
 const ITEMS_PER_PAGE = 3;
 const TEN_YEARS_MS = 10 * 365 * 24 * 60 * 60 * 1000;
+const PAGE_WINDOW_SIZE = 20;
 
 const formatDateToken = (value) => {
   if (!value) return '';
@@ -656,6 +663,16 @@ export default function RecordsPage() {
     return projects.slice(start, start + ITEMS_PER_PAGE);
   }, [projects, currentPage]);
 
+  const visiblePageNumbers = React.useMemo(() => {
+    const windowIndex = Math.floor((currentPage - 1) / PAGE_WINDOW_SIZE);
+    const startPage = windowIndex * PAGE_WINDOW_SIZE + 1;
+    const endPage = Math.min(totalPages, startPage + PAGE_WINDOW_SIZE - 1);
+    return Array.from({ length: endPage - startPage + 1 }, (_, index) => startPage + index);
+  }, [currentPage, totalPages]);
+
+  const hasPreviousPageWindow = visiblePageNumbers.length > 0 && visiblePageNumbers[0] > 1;
+  const hasNextPageWindow = visiblePageNumbers.length > 0 && visiblePageNumbers[visiblePageNumbers.length - 1] < totalPages;
+
   const keyword = React.useMemo(() => String(filters.keyword || '').trim(), [filters.keyword]);
 
   React.useEffect(() => {
@@ -864,7 +881,7 @@ export default function RecordsPage() {
                             <span className="records-grid__company-text">{highlightPlainText(companyName, keyword)}</span>
                           </div>
                           <div className="records-grid__cell records-grid__cell--info">
-                            <div className="records-grid__project-name">공사명: {highlightPlainText(project.projectName, keyword)}</div>
+                            <div className="records-grid__project-name">{highlightPlainText(normalizeProjectTitle(project.projectName), keyword)}</div>
                             <div className="records-grid__info">
                               <div className="records-grid__info-item">
                                 <span className="records-grid__info-label">발주처</span>
@@ -958,7 +975,16 @@ export default function RecordsPage() {
                   >
                     이전
                   </button>
-                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                  {hasPreviousPageWindow && (
+                    <button
+                      type="button"
+                      className="records-pagination__nav"
+                      onClick={() => handlePageChange(Math.max(1, visiblePageNumbers[0] - 1))}
+                    >
+                      ›
+                    </button>
+                  )}
+                  {visiblePageNumbers.map((page) => (
                     <button
                       key={page}
                       type="button"
@@ -968,6 +994,15 @@ export default function RecordsPage() {
                       {page}
                     </button>
                   ))}
+                  {hasNextPageWindow && (
+                    <button
+                      type="button"
+                      className="records-pagination__nav"
+                      onClick={() => handlePageChange(Math.min(totalPages, visiblePageNumbers[visiblePageNumbers.length - 1] + 1))}
+                    >
+                      ›
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="records-pagination__nav"
