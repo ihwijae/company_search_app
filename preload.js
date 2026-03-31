@@ -127,6 +127,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   mail: {
     sendTest: (payload) => ipcRenderer.invoke('mail:send-test', payload),
     sendBatch: (payload) => ipcRenderer.invoke('mail:send-batch', payload),
+    loadAddressBook: () => ipcRenderer.invoke('mail:address-book-load'),
+    saveAddressBook: (contacts) => ipcRenderer.invoke('mail:address-book-save', contacts),
+    onAddressBookUpdated: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const listener = () => callback();
+      ipcRenderer.on('mail:address-book-updated', listener);
+      return () => ipcRenderer.removeListener('mail:address-book-updated', listener);
+    },
     onProgress: (channel, callback) => {
       if (!channel || typeof callback !== 'function') return () => {};
       const listener = (_event, data) => callback(data);

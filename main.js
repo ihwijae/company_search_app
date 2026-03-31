@@ -42,6 +42,7 @@ const resolveAppIconPath = () => {
 
 const APP_ICON_PATH = resolveAppIconPath();
 const SHARED_RECORDS_DIR = 'F:\\내 드라이브\\실적관리';
+const SHARED_MAIL_ADDRESSBOOK_PATH = 'F:\\내 드라이브\\mail-addressbook.json';
 
 let formulasCache = null;
 let formulasDefaultsCache = null;
@@ -49,6 +50,7 @@ let recordsDbInstance = null;
 let recordsServiceInstance = null;
 let tempCompaniesDbInstance = null;
 let tempCompaniesServiceInstance = null;
+let mailAddressBookWatcher = null;
 let excelHelperWindow = null;
 let recordsEditorWindow = null;
 let tempCompaniesWindow = null;
@@ -1001,6 +1003,16 @@ const resolveRecordsStorageDir = () => {
   return userDataDir;
 };
 
+const resolveMailAddressBookPath = () => {
+  try {
+    const rootPath = path.parse(SHARED_MAIL_ADDRESSBOOK_PATH).root;
+    if (rootPath && fs.existsSync(rootPath)) {
+      return SHARED_MAIL_ADDRESSBOOK_PATH;
+    }
+  } catch {}
+  return path.join(userDataDir, 'mail-addressbook.json');
+};
+
 const RENDERER_STATE_MISSING = { __companySearchStateMissing: true };
 
 const readRendererState = () => {
@@ -1911,6 +1923,52 @@ try {
   console.error('[MAIN] mail:send-test IPC wiring failed:', err);
 }
 
+const readMailAddressBookDocument = () => {
+  const targetPath = resolveMailAddressBookPath();
+  if (!fs.existsSync(targetPath)) {
+    return { path: targetPath, contacts: [] };
+  }
+  const raw = fs.readFileSync(targetPath, 'utf-8');
+  if (!raw.trim()) {
+    return { path: targetPath, contacts: [] };
+  }
+  const parsed = JSON.parse(raw);
+  return { path: targetPath, contacts: Array.isArray(parsed) ? parsed : [] };
+};
+
+const writeMailAddressBookDocument = (contacts = []) => {
+  const targetPath = resolveMailAddressBookPath();
+  ensureDirectoryPath(path.dirname(targetPath));
+  fs.writeFileSync(targetPath, JSON.stringify(Array.isArray(contacts) ? contacts : [], null, 2));
+  return targetPath;
+};
+
+const broadcastMailAddressBookUpdated = () => {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win || win.isDestroyed()) return;
+    try { win.webContents.send('mail:address-book-updated'); } catch {}
+  });
+};
+
+const ensureMailAddressBookWatcher = () => {
+  const targetPath = resolveMailAddressBookPath();
+  const watchTarget = path.dirname(targetPath);
+  if (mailAddressBookWatcher) {
+    try { mailAddressBookWatcher.close(); } catch {}
+    mailAddressBookWatcher = null;
+  }
+  if (!watchTarget || !fs.existsSync(watchTarget)) return;
+  mailAddressBookWatcher = chokidar.watch(watchTarget, { ignoreInitial: true });
+  const emitIfTarget = (changedPath) => {
+    if (!changedPath) return;
+    if (path.resolve(changedPath) !== path.resolve(targetPath)) return;
+    broadcastMailAddressBookUpdated();
+  };
+  mailAddressBookWatcher.on('add', emitIfTarget);
+  mailAddressBookWatcher.on('change', emitIfTarget);
+  mailAddressBookWatcher.on('unlink', emitIfTarget);
+};
+
 try {
   if (ipcMain.removeHandler) ipcMain.removeHandler('mail:send-batch');
   ipcMain.handle('mail:send-batch', async (event, payload = {}) => {
@@ -1932,6 +1990,32 @@ try {
   });
 } catch (err) {
   console.error('[MAIN] mail:send-batch IPC wiring failed:', err);
+}
+
+try {
+  if (ipcMain.removeHandler) ipcMain.removeHandler('mail:address-book-load');
+  if (ipcMain.removeHandler) ipcMain.removeHandler('mail:address-book-save');
+  ipcMain.handle('mail:address-book-load', async () => {
+    try {
+      ensureMailAddressBookWatcher();
+      const { path: filePath, contacts } = readMailAddressBookDocument();
+      return { success: true, data: { contacts, path: filePath } };
+    } catch (err) {
+      return { success: false, message: err?.message || '주소록을 불러오지 못했습니다.' };
+    }
+  });
+  ipcMain.handle('mail:address-book-save', async (_event, contacts = []) => {
+    try {
+      const filePath = writeMailAddressBookDocument(contacts);
+      ensureMailAddressBookWatcher();
+      broadcastMailAddressBookUpdated();
+      return { success: true, data: { path: filePath } };
+    } catch (err) {
+      return { success: false, message: err?.message || '주소록을 저장하지 못했습니다.' };
+    }
+  });
+} catch (err) {
+  console.error('[MAIN] mail address book IPC wiring failed:', err);
 }
 
 try {

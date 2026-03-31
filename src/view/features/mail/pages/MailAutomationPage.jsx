@@ -299,6 +299,8 @@ function MailAutomationPageInner() {
   const recipientIdRef = React.useRef(SEED_RECIPIENTS.length + 1);
   const contactIdRef = React.useRef(persistedContacts.length + 1);
   const contactsFileInputRef = React.useRef(null);
+  const addressBookLoadedRef = React.useRef(false);
+  const lastSavedAddressBookRef = React.useRef('');
   const contactIndex = React.useMemo(() => {
     const index = new Map();
     contacts.forEach((contact) => {
@@ -336,9 +338,50 @@ function MailAutomationPageInner() {
   }, [contactIndex]);
 
   React.useEffect(() => {
-    savePersisted('mail:addressBook', contacts);
     const nextId = contacts.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1;
     contactIdRef.current = Math.max(nextId, 1);
+  }, [contacts]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const loadAddressBook = async () => {
+      try {
+        const response = await window.electronAPI?.mail?.loadAddressBook?.();
+        if (!mounted || !response?.success) return;
+        const nextContacts = sanitizeContactsList(response.data?.contacts || []);
+        const normalized = nextContacts.length > 0 ? nextContacts : sanitizeContactsList(SEED_CONTACTS);
+        lastSavedAddressBookRef.current = JSON.stringify(normalized.map(({ id, ...rest }) => rest));
+        setContacts(normalized);
+        addressBookLoadedRef.current = true;
+      } catch (error) {
+        console.error('[mail] address book load failed', error);
+      }
+    };
+    loadAddressBook();
+    const unsubscribe = window.electronAPI?.mail?.onAddressBookUpdated?.(() => {
+      loadAddressBook();
+    });
+    return () => {
+      mounted = false;
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!addressBookLoadedRef.current) return;
+    savePersisted('mail:addressBook', contacts);
+    const payload = contacts.map(({ id, ...rest }) => rest);
+    const serialized = JSON.stringify(payload);
+    if (serialized === lastSavedAddressBookRef.current) return;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        await window.electronAPI?.mail?.saveAddressBook?.(payload);
+        lastSavedAddressBookRef.current = serialized;
+      } catch (error) {
+        console.error('[mail] address book auto-save failed', error);
+      }
+    }, 300);
+    return () => window.clearTimeout(timeoutId);
   }, [contacts]);
   const contactIndexRef = React.useRef(new Map());
 
@@ -780,8 +823,13 @@ function MailAutomationPageInner() {
   };
 
   const handleManualSaveContacts = React.useCallback(() => {
-    savePersisted('mail:addressBook', contacts);
-    notify({ type: 'success', message: '주소록을 저장했습니다.' });
+    const payload = contacts.map(({ id, ...rest }) => rest);
+    window.electronAPI?.mail?.saveAddressBook?.(payload)
+      .then(() => {
+        lastSavedAddressBookRef.current = JSON.stringify(payload);
+        notify({ type: 'success', message: '주소록을 저장했습니다.' });
+      })
+      .catch((error) => notify({ type: 'error', message: error?.message || '주소록 저장에 실패했습니다.' }));
   }, [contacts, notify]);
 
   const handleUseContact = (contact) => {
