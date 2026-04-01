@@ -2272,20 +2272,38 @@ try {
 
       // Access SearchService instance created above
       let data = [];
+      let serviceSearchAttempted = false;
+      let serviceSearchReady = false;
+      let serviceSearchFailed = false;
       try {
         // Reach into the earlier service by calling the same search IPC logic path
         // We can't call renderer IPC from main; instead, reuse svc captured in this file's scope if available
         // eslint-disable-next-line no-undef
-        if (typeof svc !== 'undefined' && svc && svc.search) {
-          data = svc.search(fileType, {});
+        if (typeof svc !== 'undefined' && svc && typeof svc.search === 'function') {
+          serviceSearchAttempted = true;
+          serviceSearchReady = typeof svc.isLoaded === 'function'
+            ? Boolean(svc.isLoaded(fileType))
+            : true;
+          if (serviceSearchReady) {
+            data = svc.search(fileType, {});
+          }
         }
-      } catch {}
+      } catch (e) {
+        serviceSearchFailed = true;
+        console.warn('[MAIN] candidates service search failed:', e?.message || e);
+      }
 
       if (!Array.isArray(data)) data = [];
-      // Fallback: if service instance not reachable, read from source file directly
-      if (data.length === 0) {
+
+      // Fallback only when the search service was not ready or failed.
+      // An empty array from the loaded service is still a valid search result.
+      if (!serviceSearchAttempted || !serviceSearchReady || serviceSearchFailed) {
         try {
-          const srcPath = FILE_PATHS[fileType];
+          // eslint-disable-next-line no-undef
+          const resolvedSourcePath = (typeof svc !== 'undefined' && svc && typeof svc.getLoadedSourcePath === 'function')
+            ? svc.getLoadedSourcePath(fileType)
+            : '';
+          const srcPath = resolvedSourcePath || FILE_PATHS[fileType];
           const runtimePath = toWSLPathIfNeeded(srcPath);
           if (runtimePath && fs.existsSync(runtimePath)) {
             const { sanitizedPath } = sanitizeXlsx(runtimePath);
