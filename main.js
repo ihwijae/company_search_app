@@ -53,6 +53,7 @@ let recordsDbInstance = null;
 let recordsServiceInstance = null;
 let tempCompaniesDbInstance = null;
 let tempCompaniesServiceInstance = null;
+let searchServiceInstance = null;
 let mailAddressBookWatcher = null;
 let excelHelperWindow = null;
 let recordsEditorWindow = null;
@@ -1657,6 +1658,7 @@ try {
     debounceMs: DEBOUNCE_MS,
     notifyUpdated: (type) => { try { if (mainWindowRef && !mainWindowRef.isDestroyed()) { mainWindowRef.webContents.send('data-updated', { type }); } } catch {} }
   });
+  searchServiceInstance = svc;
 
   // Preload previously saved files so UI can use immediately
   (async () => {
@@ -2296,19 +2298,18 @@ try {
       try {
         // Reach into the earlier service by calling the same search IPC logic path
         // We can't call renderer IPC from main; instead, reuse svc captured in this file's scope if available
-        // eslint-disable-next-line no-undef
-        if (typeof svc !== 'undefined' && svc && typeof svc.search === 'function') {
+        if (searchServiceInstance && typeof searchServiceInstance.search === 'function') {
           serviceSearchAttempted = true;
           candidateDebug.serviceSearchAttempted = true;
-          serviceSearchReady = typeof svc.isLoaded === 'function'
-            ? Boolean(svc.isLoaded(fileType))
+          serviceSearchReady = typeof searchServiceInstance.isLoaded === 'function'
+            ? Boolean(searchServiceInstance.isLoaded(fileType))
             : true;
           candidateDebug.serviceSearchReady = serviceSearchReady;
-          candidateDebug.loadedPath = typeof svc.getLoadedSourcePath === 'function'
-            ? (svc.getLoadedSourcePath(fileType) || '')
+          candidateDebug.loadedPath = typeof searchServiceInstance.getLoadedSourcePath === 'function'
+            ? (searchServiceInstance.getLoadedSourcePath(fileType) || '')
             : '';
           if (serviceSearchReady) {
-            data = svc.search(fileType, {});
+            data = searchServiceInstance.search(fileType, {});
             candidateDebug.dataSource = 'searchService';
           }
         }
@@ -2324,11 +2325,13 @@ try {
       // An empty array from the loaded service is still a valid search result.
       if (!serviceSearchAttempted || !serviceSearchReady || serviceSearchFailed) {
         try {
-          // eslint-disable-next-line no-undef
-          const resolvedSourcePath = (typeof svc !== 'undefined' && svc && typeof svc.getLoadedSourcePath === 'function')
-            ? svc.getLoadedSourcePath(fileType)
+          const resolvedSourcePath = (searchServiceInstance && typeof searchServiceInstance.getLoadedSourcePath === 'function')
+            ? searchServiceInstance.getLoadedSourcePath(fileType)
             : '';
-          const srcPath = resolvedSourcePath || FILE_PATHS[fileType];
+          const autoDiscoveredPath = normalizeSourceMode(FILE_SOURCE_MODES[fileType], 'auto') === 'auto'
+            ? resolveAutoDiscoveredExcelPath(fileType) || resolveLatestMatchingExcelPath(fileType, FILE_PATHS[fileType])
+            : '';
+          const srcPath = resolvedSourcePath || autoDiscoveredPath || FILE_PATHS[fileType];
           candidateDebug.fallbackPath = srcPath || '';
           const runtimePath = toWSLPathIfNeeded(srcPath);
           if (runtimePath && fs.existsSync(runtimePath)) {
