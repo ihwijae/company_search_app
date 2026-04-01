@@ -1209,6 +1209,21 @@ function saveConfig(payload) {
     }
 }
 
+function syncResolvedFilePath(fileType, resolvedPath) {
+    const normalizedType = normalizeFileType(fileType, { fallback: null });
+    if (!normalizedType || normalizedType === 'all') return false;
+    const nextPath = String(resolvedPath || '').trim();
+    if (!nextPath) return false;
+    if (normalizeSourceMode(FILE_SOURCE_MODES[normalizedType], 'auto') !== 'auto') return false;
+    if (FILE_PATHS[normalizedType] === nextPath) return false;
+    FILE_PATHS = {
+        ...FILE_PATHS,
+        [normalizedType]: nextPath,
+    };
+    saveConfig();
+    return true;
+}
+
 function setAgreementBoardDir(nextPath) {
     if (!nextPath || typeof nextPath !== 'string') return;
     const trimmed = nextPath.trim();
@@ -1656,7 +1671,15 @@ try {
     chokidar,
     registerSanitized,
     debounceMs: DEBOUNCE_MS,
-    notifyUpdated: (type) => { try { if (mainWindowRef && !mainWindowRef.isDestroyed()) { mainWindowRef.webContents.send('data-updated', { type }); } } catch {} }
+    notifyUpdated: (type) => {
+      try {
+        const resolvedPath = typeof svc?.getLoadedSourcePath === 'function'
+          ? svc.getLoadedSourcePath(type)
+          : '';
+        syncResolvedFilePath(type, resolvedPath);
+      } catch {}
+      try { if (mainWindowRef && !mainWindowRef.isDestroyed()) { mainWindowRef.webContents.send('data-updated', { type }); } } catch {}
+    }
   });
   searchServiceInstance = svc;
 
@@ -1684,6 +1707,7 @@ try {
                 return toWSLPathIfNeeded(nextPath) || nextPath;
               },
             });
+            syncResolvedFilePath(ft, svc.getLoadedSourcePath(ft));
           } catch {}
         }
       }
