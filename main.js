@@ -2216,6 +2216,24 @@ try {
       const dutyRegions = Array.isArray(params.dutyRegions) ? params.dutyRegions : [];
       const excludeSingleBidEligible = params.excludeSingleBidEligible !== false; // default true
       const filterByRegion = !!params.filterByRegion; // only include region-matching when dutyRegions provided
+      const candidateDebug = {
+        fileType,
+        ownerId,
+        menuKey,
+        sourceMode: normalizeSourceMode(FILE_SOURCE_MODES[fileType], 'auto'),
+        configuredPath: FILE_PATHS[fileType] || '',
+        loadedPath: '',
+        fallbackPath: '',
+        serviceSearchAttempted: false,
+        serviceSearchReady: false,
+        serviceSearchFailed: false,
+        dataSource: 'unknown',
+        rawCount: 0,
+        excludedAlwaysCount: 0,
+        excludedSingleCount: 0,
+        excludedRegionCount: 0,
+        finalCount: 0,
+      };
 
       // Load rules
       let rulesDoc = null;
@@ -2281,15 +2299,22 @@ try {
         // eslint-disable-next-line no-undef
         if (typeof svc !== 'undefined' && svc && typeof svc.search === 'function') {
           serviceSearchAttempted = true;
+          candidateDebug.serviceSearchAttempted = true;
           serviceSearchReady = typeof svc.isLoaded === 'function'
             ? Boolean(svc.isLoaded(fileType))
             : true;
+          candidateDebug.serviceSearchReady = serviceSearchReady;
+          candidateDebug.loadedPath = typeof svc.getLoadedSourcePath === 'function'
+            ? (svc.getLoadedSourcePath(fileType) || '')
+            : '';
           if (serviceSearchReady) {
             data = svc.search(fileType, {});
+            candidateDebug.dataSource = 'searchService';
           }
         }
       } catch (e) {
         serviceSearchFailed = true;
+        candidateDebug.serviceSearchFailed = true;
         console.warn('[MAIN] candidates service search failed:', e?.message || e);
       }
 
@@ -2304,15 +2329,18 @@ try {
             ? svc.getLoadedSourcePath(fileType)
             : '';
           const srcPath = resolvedSourcePath || FILE_PATHS[fileType];
+          candidateDebug.fallbackPath = srcPath || '';
           const runtimePath = toWSLPathIfNeeded(srcPath);
           if (runtimePath && fs.existsSync(runtimePath)) {
             const { sanitizedPath } = sanitizeXlsx(runtimePath);
             const lg = new SearchLogic(sanitizedPath);
             await lg.load();
             data = lg.search({});
+            candidateDebug.dataSource = 'fallback-file';
           }
         } catch (e) { console.warn('[MAIN] fallback loading for candidates failed:', e?.message || e); }
       }
+      candidateDebug.rawCount = Array.isArray(data) ? data.length : 0;
 
       const norm = (s) => String(s || '').trim();
       const excludeBiz = new Set();
@@ -2696,7 +2724,10 @@ try {
         const creditGradeRaw = extractCreditGrade(creditRawFull);
 
         const wasAlwaysExcluded = (bizNo && excludeBiz.has(bizNo)) || (!bizNo && excludeName.has(name));
-        if (wasAlwaysExcluded) continue;
+        if (wasAlwaysExcluded) {
+          candidateDebug.excludedAlwaysCount += 1;
+          continue;
+        }
 
         const isPpsOwner = normalizedOwnerId === 'pps';
         let moneyOk = null;
@@ -2862,8 +2893,14 @@ try {
           singleBidEligible = Boolean(sbe.ok);
         }
 
-        if (shouldExcludeSingle && singleBidEligible) continue;
-        if (filterByRegion && dutyRegions.length > 0 && regionOk === false) continue;
+        if (shouldExcludeSingle && singleBidEligible) {
+          candidateDebug.excludedSingleCount += 1;
+          continue;
+        }
+        if (filterByRegion && dutyRegions.length > 0 && regionOk === false) {
+          candidateDebug.excludedRegionCount += 1;
+          continue;
+        }
 
         out.push({
           id: bizNo || name,
@@ -2950,6 +2987,8 @@ try {
           ].filter(Boolean),
         });
       }
+      candidateDebug.finalCount = out.length;
+      console.log('[MAIN] agreements-fetch-candidates debug:', candidateDebug);
 
       return { success: true, data: out };
     } catch (e) {

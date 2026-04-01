@@ -706,59 +706,28 @@ const industryToLabel = (type) => {
 
   const runFetch = async (overrideParams = null) => {
     const requestParams = overrideParams ? { ...overrideParams } : { ...params };
-    const buildFetchPayload = (sourceParams) => {
-      const hasRegionFilters = Array.isArray(sourceParams.dutyRegions) && sourceParams.dutyRegions.length > 0;
-      const filterByRegion = !!sourceParams.filterByRegion && hasRegionFilters;
-      return {
-        payload: {
-          ownerId,
-          menuKey,
-          rangeId,
-          fileType,
-          entryAmount: sourceParams.entryAmount,
-          entryMode,
-          baseAmount: sourceParams.baseAmount,
-          estimatedAmount,
-          perfectPerformanceAmount: perfAmountValue || sourceParams.baseAmount,
-          perfectPerformanceBasis,
-          dutyRegions: filterByRegion ? sourceParams.dutyRegions : [],
-          excludeSingleBidEligible: sourceParams.excludeSingleBidEligible,
-          filterByRegion,
-          evaluationDate: noticeDate,
-        },
-        filterByRegion,
-      };
-    };
-    const requestCandidates = async (sourceParams) => {
-      const { payload } = buildFetchPayload(sourceParams);
-      const response = await window.electronAPI.fetchCandidates(payload);
-      if (!response?.success) throw new Error(response?.message || '후보 요청 실패');
-      return response;
-    };
+    const hasRegionFilters = Array.isArray(requestParams.dutyRegions) && requestParams.dutyRegions.length > 0;
+    const filterByRegion = !!requestParams.filterByRegion && hasRegionFilters;
+    const dutyRegionsPayload = filterByRegion ? requestParams.dutyRegions : [];
     setLoading(true); setError(''); setList([]);
     try {
-      let effectiveParams = { ...requestParams };
-      let r = await requestCandidates(effectiveParams);
-      if (readOnlyMode && Array.isArray(r.data) && r.data.length === 0 && effectiveParams.excludeSingleBidEligible) {
-        effectiveParams = { ...effectiveParams, excludeSingleBidEligible: false };
-        r = await requestCandidates(effectiveParams);
-        showToast('단독입찰 가능 업체 제외를 해제하고 다시 조회했습니다.', 'info');
-      }
-      if (
-        readOnlyMode
-        && Array.isArray(r.data)
-        && r.data.length === 0
-        && effectiveParams.filterByRegion
-        && Array.isArray(effectiveParams.dutyRegions)
-        && effectiveParams.dutyRegions.length > 0
-      ) {
-        effectiveParams = { ...effectiveParams, filterByRegion: false };
-        r = await requestCandidates(effectiveParams);
-        showToast('의무지역 필터를 해제하고 다시 조회했습니다.', 'info');
-      }
-      if (overrideParams === null && JSON.stringify(effectiveParams) !== JSON.stringify(requestParams)) {
-        setParams(effectiveParams);
-      }
+      const perfectAmountParam = perfAmountValue || requestParams.baseAmount;
+      const r = await window.electronAPI.fetchCandidates({
+        ownerId,
+        menuKey,
+        rangeId,
+        fileType,
+        entryAmount: requestParams.entryAmount,
+        entryMode,
+        baseAmount: requestParams.baseAmount,
+        estimatedAmount,
+        perfectPerformanceAmount: perfectAmountParam,
+        perfectPerformanceBasis,
+        dutyRegions: dutyRegionsPayload,
+        excludeSingleBidEligible: requestParams.excludeSingleBidEligible,
+        filterByRegion,
+        evaluationDate: noticeDate,
+      });
       if (!r?.success) throw new Error(r?.message || '후보 요청 실패');
 
       const enriched = (r.data || []).map((item) => {
