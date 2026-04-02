@@ -85,6 +85,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   records: {
     listProjects: (filters) => ipcRenderer.invoke('records:list-projects', filters),
+    reloadData: () => ipcRenderer.invoke('records:reload-data'),
     getProject: (id) => ipcRenderer.invoke('records:get-project', { id }),
     createProject: (payload) => ipcRenderer.invoke('records:create-project', payload),
     updateProject: (id, data) => ipcRenderer.invoke('records:update-project', { id, data }),
@@ -96,6 +97,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
       const listener = (_event, payload) => callback(payload);
       ipcRenderer.on('records:project-saved', listener);
       return () => ipcRenderer.removeListener('records:project-saved', listener);
+    },
+    onDataUpdated: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('records:data-updated', listener);
+      return () => ipcRenderer.removeListener('records:data-updated', listener);
     },
     removeAttachment: (projectId, attachmentId) => ipcRenderer.invoke('records:remove-attachment', { projectId, attachmentId }),
     addAttachments: (projectId, attachments) => ipcRenderer.invoke('records:add-attachments', { projectId, attachments }),

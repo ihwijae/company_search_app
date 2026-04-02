@@ -351,6 +351,25 @@ export default function RecordsPage() {
   }, [fetchProjects]);
 
   React.useEffect(() => {
+    let alive = true;
+    const reloadOnEnter = async () => {
+      try {
+        await recordsClient.reloadData();
+      } catch (err) {
+        if (!alive) return;
+        console.error('[Renderer] Failed to reload records database on enter:', err);
+      }
+      if (!alive) return;
+      await fetchTaxonomies();
+      await fetchProjects();
+    };
+    reloadOnEnter();
+    return () => {
+      alive = false;
+    };
+  }, [fetchProjects, fetchTaxonomies]);
+
+  React.useEffect(() => {
     if (!recordsClient?.onProjectSaved) return undefined;
     const unsubscribe = recordsClient.onProjectSaved(async (payload) => {
       const savedProjectId = payload?.projectId;
@@ -362,6 +381,15 @@ export default function RecordsPage() {
     });
     return typeof unsubscribe === 'function' ? unsubscribe : undefined;
   }, [fetchProjects]);
+
+  React.useEffect(() => {
+    if (!recordsClient?.onDataUpdated) return undefined;
+    const unsubscribe = recordsClient.onDataUpdated(async () => {
+      await fetchTaxonomies();
+      await fetchProjects();
+    });
+    return typeof unsubscribe === 'function' ? unsubscribe : undefined;
+  }, [fetchProjects, fetchTaxonomies]);
 
   React.useEffect(() => {
     if (!companyDialog.open) return undefined;

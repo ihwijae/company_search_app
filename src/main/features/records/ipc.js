@@ -26,6 +26,7 @@ function registerRecordsIpcHandlers({ ipcMain, recordsService }) {
   };
 
   handle('records:list-projects', (payload) => recordsService.listProjects(payload));
+  handle('records:reload-data', () => recordsService.reloadDatabase());
   handle('records:get-project', (payload) => {
     if (!payload || !payload.id) throw new Error('id is required');
     return recordsService.getProject(payload.id);

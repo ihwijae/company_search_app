@@ -5,7 +5,7 @@ const chokidar = require('chokidar');
 const { sanitizeXlsx } = require('./utils/sanitizeXlsx');
 const { evaluateScores } = require('./src/shared/evaluator.js');
 const { SearchLogic } = require('./searchLogic.js');
-const { ensureRecordsDatabase } = require('./src/main/features/records/recordsDatabase.js');
+const { ensureRecordsDatabase, resetRecordsDatabase } = require('./src/main/features/records/recordsDatabase.js');
 const { RecordsService } = require('./src/main/features/records/recordsService.js');
 const { registerRecordsIpcHandlers } = require('./src/main/features/records/ipc.js');
 const { ensureTempCompaniesDatabase } = require('./src/main/features/temp-companies/database.js');
@@ -55,9 +55,12 @@ let tempCompaniesDbInstance = null;
 let tempCompaniesServiceInstance = null;
 let searchServiceInstance = null;
 let mailAddressBookWatcher = null;
+let recordsDatabaseWatcher = null;
+let recordsDatabaseReloadTimer = null;
 let excelHelperWindow = null;
 let recordsEditorWindow = null;
 let tempCompaniesWindow = null;
+let recordsStorageDirPath = '';
 const excelAutomation = new ExcelAutomationService();
 const loadMergedFormulasCached = () => {
   if (formulasCache) return formulasCache;
@@ -1047,6 +1050,57 @@ const resolveMailAddressBookPath = () => {
   return path.join(userDataDir, 'mail-addressbook.json');
 };
 
+const broadcastRecordsDataUpdated = (payload = {}) => {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win || win.isDestroyed()) return;
+    try { win.webContents.send('records:data-updated', payload); } catch {}
+  });
+};
+
+const scheduleRecordsDatabaseReload = (reason = 'change') => {
+  if (!recordsStorageDirPath) return;
+  if (recordsDatabaseReloadTimer) {
+    clearTimeout(recordsDatabaseReloadTimer);
+  }
+  recordsDatabaseReloadTimer = setTimeout(async () => {
+    recordsDatabaseReloadTimer = null;
+    try {
+      recordsDbInstance = await resetRecordsDatabase({ userDataDir: recordsStorageDirPath });
+      if (recordsDbInstance?.path) {
+        console.log('[MAIN] Records database reloaded:', recordsDbInstance.path, 'reason:', reason);
+      }
+      broadcastRecordsDataUpdated({ reason });
+    } catch (error) {
+      console.error('[MAIN] Failed to reload records database after external change:', error);
+    }
+  }, 700);
+};
+
+const ensureRecordsDatabaseWatcher = () => {
+  const targetPath = path.join(recordsStorageDirPath || '', 'records.sqlite');
+  if (recordsDatabaseWatcher) {
+    try { recordsDatabaseWatcher.close(); } catch {}
+    recordsDatabaseWatcher = null;
+  }
+  if (!targetPath) return;
+  ensureDirectoryPath(path.dirname(targetPath));
+  recordsDatabaseWatcher = chokidar.watch(targetPath, {
+    ignoreInitial: true,
+    awaitWriteFinish: {
+      stabilityThreshold: 1000,
+      pollInterval: 100,
+    },
+  });
+  const onChanged = (changedPath) => {
+    if (!changedPath) return;
+    if (path.resolve(changedPath) !== path.resolve(targetPath)) return;
+    scheduleRecordsDatabaseReload('external-db-change');
+  };
+  recordsDatabaseWatcher.on('add', onChanged);
+  recordsDatabaseWatcher.on('change', onChanged);
+  recordsDatabaseWatcher.on('unlink', onChanged);
+};
+
 const RENDERER_STATE_MISSING = { __companySearchStateMissing: true };
 
 const readRendererState = () => {
@@ -1593,14 +1647,16 @@ app.on('browser-window-created', (_event, win) => {
 
 app.whenReady().then(async () => {
   try {
-    const recordsStorageDir = resolveRecordsStorageDir();
-    ensureDirectoryPath(recordsStorageDir);
-    recordsDbInstance = await ensureRecordsDatabase({ userDataDir: recordsStorageDir });
+    recordsStorageDirPath = resolveRecordsStorageDir();
+    ensureDirectoryPath(recordsStorageDirPath);
+    recordsDbInstance = await ensureRecordsDatabase({ userDataDir: recordsStorageDirPath });
     if (recordsDbInstance?.path) {
       console.log('[MAIN] Records database ready:', recordsDbInstance.path);
     }
-    recordsServiceInstance = new RecordsService({ userDataDir: recordsStorageDir });
+    recordsServiceInstance = new RecordsService({ userDataDir: recordsStorageDirPath });
     registerRecordsIpcHandlers({ ipcMain, recordsService: recordsServiceInstance });
+    ensureRecordsDatabaseWatcher();
+    ensureMailAddressBookWatcher();
     tempCompaniesDbInstance = await ensureTempCompaniesDatabase({ userDataDir });
     if (tempCompaniesDbInstance?.path) {
       console.log('[MAIN] Temp companies database ready:', tempCompaniesDbInstance.path);

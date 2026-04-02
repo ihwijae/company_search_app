@@ -117,6 +117,13 @@ class RecordsService {
     return getRecordsDatabasePath();
   }
 
+  async reloadDatabase() {
+    await resetRecordsDatabase({ userDataDir: this.userDataDir });
+    return {
+      path: this.getDatabasePath(),
+    };
+  }
+
   listCompanies(options = {}) {
     return this.repository.listCompanies(options)
       .map((row) => ({

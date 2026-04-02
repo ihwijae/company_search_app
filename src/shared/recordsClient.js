@@ -30,6 +30,7 @@ const wrapEvent = (method, ...args) => {
 
 export const recordsClient = {
   listProjects: (filters) => wrapInvoke('listProjects', filters),
+  reloadData: () => wrapInvoke('reloadData'),
   getProject: (id) => wrapInvoke('getProject', id),
   createProject: (payload) => wrapInvoke('createProject', payload),
   updateProject: (id, data) => wrapInvoke('updateProject', id, data),
@@ -37,6 +38,7 @@ export const recordsClient = {
   openEditorWindow: (payload) => wrapInvoke('openEditorWindow', payload),
   notifyProjectSaved: (payload) => wrapEvent('notifyProjectSaved', payload),
   onProjectSaved: (callback) => wrapEvent('onProjectSaved', callback),
+  onDataUpdated: (callback) => wrapEvent('onDataUpdated', callback),
   removeAttachment: (projectId, attachmentId) => wrapInvoke('removeAttachment', projectId, attachmentId),
   addAttachments: (projectId, attachments) => wrapInvoke('addAttachments', projectId, attachments),
   listCompanies: (options) => wrapInvoke('listCompanies', options),
